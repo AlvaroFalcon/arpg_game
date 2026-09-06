@@ -1,0 +1,15 @@
+# Godot 4+
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+.mono/
+data_*/
+
+# Common
+.DS_Store
+*.log
+
+# OMC/session state
+.omc/
