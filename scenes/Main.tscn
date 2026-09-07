@@ -1,6 +1,23 @@
-[gd_scene load_steps=2 format=3 uid="uid://bxvq0m8k7n5tq"]
+[gd_scene load_steps=4 format=3 uid="uid://bxvq0m8k7n5tq"]
 
 [ext_resource type="Script" path="res://scripts/Main.cs" id="1_0mn4x"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2_player"]
+
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_1"]
+vertices = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
+polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2, 3)])
+outlines = Array[PackedVector2Array]([PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)])
 
 [node name="Main" type="Node"]
 script = ExtResource("1_0mn4x")
+
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
+navigation_polygon = SubResource("NavigationPolygon_1")
+
+[node name="Floor" type="Polygon2D" parent="NavigationRegion2D"]
+z_index = -10
+color = Color(0.16, 0.16, 0.18, 1)
+polygon = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(500, 350)
