@@ -5,12 +5,26 @@ Godot game project. This file orients any agent (or future-you) working here.
 ## Engine rules
 
 - **Godot 4.x only.** Never write or suggest Godot 3 syntax/APIs.
-  - `@export`, `@onready`, `@export_range(...)` etc (annotations, not `export(...)` / `onready var`)
-  - Typed GDScript where practical (`var hp: int = 10`, `func take_damage(amount: int) -> void:`)
-  - Signals via `signal foo(bar: int)` + `foo.connect(callable)` / `foo.emit(x)`, not `connect("foo", self, "_on_foo")`
-  - `class_name` for reusable scripts, autoloads set up via Project Settings
-- Prefer composition via scenes + `class_name` scripts over deep inheritance chains.
-- If a GDScript API is unclear or version-sensitive, check installed Godot version first (`godot --version`) rather than assuming.
+- **Language: C# (.NET), not GDScript.** Requires the Mono/.NET build of the Godot editor (plain `Godot.app` cannot run C#) — see Toolchain below.
+  - `[Export]`, `[Signal]`, `[GlobalClass]` attributes (not GDScript annotations)
+  - Signals: `[Signal] public delegate void FooEventHandler(int bar);` + `Foo += Handler;` / `EmitSignal(SignalName.Foo, x)`
+  - Nodes/scenes still authored as `.tscn`; scripts attached are `.cs`
+  - Nullable reference types and modern C# (target framework set by the Godot-generated `.csproj`, currently `net6.0`) — don't fight the generated project settings
+- Prefer composition via scenes + partial classes/components over deep inheritance chains.
+- If a Godot C# API is unclear or version-sensitive, check the installed Godot version first (`godot --version`, and confirm it's the **mono** build) rather than assuming — the C# API has real gaps vs GDScript that shift between versions.
+
+## Target platforms
+
+- **Windows and macOS only, for now.** No Web/HTML5 export — the .NET runtime doesn't run in the browser sandbox, so C# projects structurally cannot export to Web in Godot 4 (not a temporary gap). If Web ever becomes a requirement, that means dropping C# for GDScript, not a build-config fix.
+- Export presets live in `export_presets.cfg`, **committed to git** (Godot's own docs confirm this is safe — no secrets, just build config). Two presets exist: `Windows Desktop` → `build/windows/PathToExile.exe`, `macOS` → `build/macos/PathToExile.zip`. Both verified working end-to-end (real `dotnet publish` + packaged exe/app bundle) as of project setup.
+- To export: `godot --headless --path . --export-release "Windows Desktop" build/windows/PathToExile.exe` (or `"macOS" build/macos/PathToExile.zip`) — this alone triggers the C# publish step, no separate build command needed. `build/` is git-ignored (export output, not source).
+
+## Toolchain
+
+- Godot editor: **Mono/.NET build** required, installed at `~/Applications/Godot_mono.app` — the standard (non-mono) build silently can't load C# scripts. `godot --version` must contain `mono`.
+- .NET SDK: installed at **`~/.dotnet`** (.NET 6 SDK, matches this project's `net6.0` target). **Do not rely on a Homebrew-installed `dotnet`** if one exists on this machine — Homebrew's keg layout puts `hostfxr` under `libexec/host/fxr/` instead of the standard location Godot's resolver checks, and if it's a newer major version (e.g. 7.x) than this project targets, Godot's MSBuild/SDK resolution picks it up via `PATH` regardless of `DOTNET_ROOT`, causing a `FileNotFoundException` for `System.Runtime` at the wrong version. Both `DOTNET_ROOT=~/.dotnet` **and** `~/.dotnet` prepended to `PATH` are required together — `scripts/run_headless.sh` sets both automatically; do the same for any other Godot invocation (editor, `--build-solutions`, `--export-release`).
+- Export templates: the **mono** export-templates package, installed under `~/Library/Application Support/Godot/export_templates/4.1.1.stable.mono/`.
+- Known quirks (Godot 4.1.1 mono, macOS): headless `--quit`/`--quit-after` exits with code **1** by design — not a failure signal, check stdout/output files instead. `--build-solutions` run fully headless (no prior GUI editor session) can hang indefinitely after the actual compile succeeds (spamming harmless `EditorSettings` errors) — check `.godot/mono/temp/bin/Debug/PathToExile.dll`'s existence/timestamp rather than trusting a clean process exit; prefer `--export-release`, which triggers the build internally and does exit cleanly. The one-time initial `PathToExile.csproj`/`.sln` generation (via "Project > Tools > C# > Create C# Solution") has **no headless/CLI equivalent** in this version — it must be triggered once from the actual editor GUI; after that, headless builds/exports work fine.
 
 ## Repo layout (create as needed, keep consistent)
 
@@ -26,10 +40,9 @@ docs/
     journal.md     # raw running notes, append-only, one entry per notable session
     posts/         # polished devlog posts drafted from journal.md
     screenshots/   # images referenced by devlog posts
-scripts_tools/      # (repo-root ./scripts is for game logic; put dev/CI tooling here if it grows)
+build/             # git-ignored export output (Windows .exe, macOS .app/.zip)
+PathToExile.csproj / .sln  # generated by Godot, targets net6.0 — don't hand-edit the TFM
 ```
-
-(No `project.godot` exists yet — this is pre-implementation. Create the actual Godot project structure when development starts.)
 
 ## Design documentation policy
 
@@ -54,9 +67,7 @@ Use [scripts/run_headless.sh](scripts/run_headless.sh) so agents can launch/test
 ./scripts/run_headless.sh [extra godot args...]
 ```
 
-It auto-detects a Godot 4 binary (checks `$GODOT_BIN`, `godot4`/`godot` on PATH, then common `/Applications` and `~/Downloads` install locations) and runs `--headless --path .` against the project. Use `--quit-after <N>` style args or a dedicated headless test scene/autoload for automated checks — ask the godot-expert agent to wire up a proper headless test entrypoint once there's actual game code.
-
-A Godot.app (4.1.1) was found under `~/Downloads` at setup time but isn't installed to `/Applications` or on `PATH` — move it there (or `export GODOT_BIN=/path/to/Godot.app/Contents/MacOS/Godot`) so the script and MCP Godot tools work reliably.
+It auto-detects the Mono/.NET Godot binary (checks `$GODOT_BIN`, `godot4`/`godot` on PATH, then `~/Applications/Godot_mono.app`), sets `DOTNET_ROOT`/`PATH` to the correct `~/.dotnet` SDK (see Toolchain above), and runs `--headless --path .` against the project. Use `--quit-after <N>` style args or a dedicated headless test scene/autoload for automated checks. Remember: exit code 1 on quit is normal here, not a failure.
 
 ## Agents
 

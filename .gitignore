@@ -2,10 +2,16 @@
 .godot/
 .import/
 export.cfg
-export_presets.cfg
 *.translation
-.mono/
 data_*/
+
+# C#/.NET build output
+.mono/
+bin/
+obj/
+
+# Export output (not source)
+build/
 
 # Common
 .DS_Store
@@ -13,3 +19,4 @@ data_*/
 
 # OMC/session state
 .omc/
+.claude/scheduled_tasks.lock
