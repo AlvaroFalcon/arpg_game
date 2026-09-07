@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Combat/TargetDummy.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
+[ext_resource type="Script" path="res://scripts/Combat/Health.cs" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DamageNumber.tscn" id="4"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1"]
+radius = 16.0
+
+[node name="TargetDummy" type="Area2D"]
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("1")
+DamageNumberScene = ExtResource("4")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_1")
+
+[node name="Visual" type="Polygon2D" parent="."]
+color = Color(0.55, 0.55, 0.6, 1)
+polygon = PackedVector2Array(16, 0, 11.3, 11.3, 0, 16, -11.3, 11.3, -16, 0, -11.3, -11.3, 0, -16, 11.3, -11.3)
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("2")
+Faction = 2
+IgnoresResourceCosts = true
+BaseMaxLife = 30.0
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("3")

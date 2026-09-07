@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ProjectileSkillDefinition" load_steps=4 format=3 uid="uid://di3mkkrgahsu3"]
+
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="1_8hhes"]
+[ext_resource type="Script" path="res://scripts/Skills/ProjectileSkillDefinition.cs" id="2_hmgvk"]
+
+[sub_resource type="Resource" id="Resource_xvr4g"]
+script = ExtResource("1_8hhes")
+Resource = 0
+Amount = 8.0
+Mode = 0
+
+[resource]
+script = ExtResource("2_hmgvk")
+Speed = 600.0
+Range = 500.0
+SpawnOffset = 20.0
+Count = 5
+SpreadDegrees = 30.0
+Pierce = 0
+Forks = 2
+Chains = 0
+Bounces = 0
+HomingStrength = 0.0
+Size = 1.0
+OnHitExplode = false
+DisplayName = "Fireball"
+BaseDamage = 35.0
+BaseUseTime = 0.4
+Tags = 518
+Costs = [SubResource("Resource_xvr4g")]
+Cooldown = 0.0
+MaxCharges = 1
+MovementDuringUse = 0
+DerivesBaseFromWeapon = false

@@ -1,5 +1,7 @@
 #nullable enable
 
+using PathToExile.Combat;
+
 namespace PathToExile.Stats;
 
 /// <summary>
@@ -32,17 +34,28 @@ public enum ModifierType
 /// equipment item or talent node instance that granted this modifier) so that a
 /// future gear/talent system can call <see cref="Stat.RemoveModifiersFromSource"/>
 /// on unequip/unlearn without having to track modifier references itself.
+///
+/// <see cref="Condition"/> is the optional condition field required by
+/// docs/design/skills.md -> seam 4: a required-tag set, empty (<see
+/// cref="SkillTags.None"/>) meaning "always applies". Nothing constructs a
+/// non-default condition yet and nothing reads it outside of
+/// <see cref="Stats.ActorStats.GetModifiers"/>'s doc comment — it exists now
+/// because retrofitting it later means touching every call site that ever
+/// *constructs* a modifier, which by the time gear and passives exist is a large
+/// number of places.
 /// </summary>
 public sealed class StatModifier
 {
     public ModifierType Type { get; }
     public float Value { get; }
     public object? Source { get; }
+    public SkillTags Condition { get; }
 
-    public StatModifier(ModifierType type, float value, object? source = null)
+    public StatModifier(ModifierType type, float value, object? source = null, SkillTags condition = SkillTags.None)
     {
         Type = type;
         Value = value;
         Source = source;
+        Condition = condition;
     }
 }

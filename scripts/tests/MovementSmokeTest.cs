@@ -1,11 +1,12 @@
 using Godot;
+using PathToExile.Skills;
 
 namespace PathToExile.Tests;
 
 /// <summary>
 /// Headless functional smoke test for player movement. Run with:
 ///   dotnet build PathToExile.csproj
-///   ./scripts/run_headless.sh "res://scenes/tests/MovementSmokeTest.tscn" --quit-after 400
+///   ./scripts/run_headless.sh "res://scenes/tests/MovementSmokeTest.tscn" --quit-after 600
 /// Simulates input actions directly (Input.ActionPress/Release) rather than real
 /// OS key/mouse events, so it validates Player.cs's movement logic independent of
 /// window/editor state. Prints PASS/FAIL lines and quits itself.
@@ -16,6 +17,7 @@ public partial class MovementSmokeTest : Node2D
 
     private Player _player = null!;
     private NavigationAgent2D _agent = null!;
+    private SkillUser _skillUser = null!;
     private int _frame;
     private Vector2 _posAtStart;
     private Vector2 _posAfterWasd;
@@ -27,12 +29,22 @@ public partial class MovementSmokeTest : Node2D
     {
         _player = GetNode<Player>("Player");
         _agent = _player.GetNode<NavigationAgent2D>("NavigationAgent2D");
+        _skillUser = _player.GetNode<SkillUser>("SkillUser");
         GD.Print("[SMOKETEST] Ready. Player start position: " + _player.GlobalPosition);
 
         // Verify each action not only EXISTS but has real input events bound to it.
         // Input.ActionPress() works on an action with zero bindings, so the movement
         // test below can pass while real keyboard/mouse input does nothing.
-        foreach (string action in new[] { "move_up", "move_down", "move_left", "move_right", "move_to" })
+        // "move_to" was deleted by the combat pass (docs/design/skills.md -> "The
+        // right-click conflict — resolved"); click-to-move is now driven by the
+        // skill-slot/force_move actions checked here instead — see
+        // scripts/tests/SkillsSmokeTest.cs for behavioural coverage of those.
+        foreach (string action in new[]
+                 {
+                     "move_up", "move_down", "move_left", "move_right",
+                     "skill_slot_1", "skill_slot_2", "skill_slot_3", "skill_slot_4",
+                     "skill_slot_lmb", "skill_slot_rmb", "force_move",
+                 })
         {
             if (!InputMap.HasAction(action))
             {
@@ -128,7 +140,65 @@ public partial class MovementSmokeTest : Node2D
                 $"moved {resumed:0.00}px after releasing WASD (should be ~0; >40 means the old destination resumed)");
         }
 
-        if (_frame >= 95)
+        // Frame 100: LMB still defaults to the built-in Move occupant (nothing has
+        // equipped a skill over it yet) — pressing skill_slot_lmb should path-follow
+        // exactly like the old move_to did. Reset to a known baseline first so a
+        // "did it change at all" check is unambiguous.
+        if (_frame == 100)
+        {
+            _agent.TargetPosition = _player.GlobalPosition;
+            Input.ActionPress("skill_slot_lmb");
+        }
+
+        if (_frame == 101)
+        {
+            Vector2 expectedMouseWorld = _player.GetGlobalMousePosition();
+            float error = _agent.TargetPosition.DistanceTo(expectedMouseWorld);
+            // Small tolerance, not exact equality: the player (and therefore the
+            // camera it carries) may have drifted a sub-pixel amount between the
+            // frame Player.cs computed this and the frame this check re-computes
+            // it, since the previous check left it mid-path.
+            Check("LMB-DEFAULTS-TO-MOVE", error < 5f,
+                $"TargetPosition {_agent.TargetPosition} vs mouse world {expectedMouseWorld} (error {error:0.00}px)");
+            Input.ActionRelease("skill_slot_lmb");
+        }
+
+        // Frame 110: equip a real skill over the LMB slot (docs/design/skills.md ->
+        // "The right-click conflict — resolved": binding a skill there replaces
+        // click-to-move). Pressing skill_slot_lmb must now do nothing to movement.
+        if (_frame == 110)
+        {
+            _skillUser.EquipSkill(SkillSlotId.Lmb, new SkillInstance(new ProjectileSkillDefinition()));
+            _agent.TargetPosition = _player.GlobalPosition;
+            Input.ActionPress("skill_slot_lmb");
+        }
+
+        if (_frame == 111)
+        {
+            float drift = _agent.TargetPosition.DistanceTo(_player.GlobalPosition);
+            Check("SKILL-OVER-LMB-DISABLES-MOVE", drift < 0.01f,
+                $"TargetPosition drifted {drift:0.00}px from baseline (should be exactly 0 — LMB no longer holds Move)");
+            Input.ActionRelease("skill_slot_lmb");
+        }
+
+        // Frame 120: force_move is the escape hatch — it must still path-follow
+        // even though LMB now holds a skill instead of Move.
+        if (_frame == 120)
+        {
+            _agent.TargetPosition = _player.GlobalPosition;
+            Input.ActionPress("force_move");
+        }
+
+        if (_frame == 121)
+        {
+            Vector2 expectedMouseWorld = _player.GetGlobalMousePosition();
+            float error = _agent.TargetPosition.DistanceTo(expectedMouseWorld);
+            Check("FORCE-MOVE-BYPASSES-SKILL-SLOT", error < 5f,
+                $"TargetPosition {_agent.TargetPosition} vs mouse world {expectedMouseWorld} (error {error:0.00}px)");
+            Input.ActionRelease("force_move");
+        }
+
+        if (_frame >= 130)
         {
             GD.Print(_failed ? "[SMOKETEST] === RESULT: FAIL ===" : "[SMOKETEST] === RESULT: PASS ===");
             GetTree().Quit();

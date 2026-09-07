@@ -1,0 +1,48 @@
+using System.Collections.Generic;
+
+namespace PathToExile.Skills;
+
+/// <summary>
+/// The per-owner, mutable wrapper around a <see cref="SkillDefinition"/> that
+/// actually lives in a loadout slot — never a bare definition reference. See
+/// docs/design/skills.md -> "The three things that genuinely are blocking":
+///
+/// - <see cref="Definition"/> — the immutable authored data.
+/// - <see cref="Attached"/> — empty in the first slice, but every future
+///   per-skill upgrade shape (artifact, tree node, bound aspect) lives here.
+/// - The charge-shaped cooldown state — not a bare `float cooldownRemaining`,
+///   because charges change the *shape* of this state, not just its value. See
+///   "Charges — out of scope, but the state shape is decided".
+///
+/// <see cref="UseTimeRemaining"/> is a fourth, plain-float field. It is
+/// deliberately *not* part of the three schema-critical fields above: use time
+/// never grows charges (only cooldown recovery does), so there is no shape
+/// question for it to get wrong.
+/// </summary>
+public sealed class SkillInstance
+{
+    public SkillDefinition Definition { get; }
+
+    public List<ISkillUpgrade> Attached { get; } = new();
+
+    /// <summary>How many uses are currently banked. With MaxCharges = 1 this
+    /// behaves exactly like a plain "is it off cooldown" flag.</summary>
+    public int ChargesAvailable { get; set; }
+
+    /// <summary>Time remaining until the next charge becomes available. Only
+    /// meaningful while <see cref="ChargesAvailable"/> is below
+    /// <see cref="SkillDefinition.MaxCharges"/>.</summary>
+    public float RechargeTimer { get; set; }
+
+    /// <summary>Time remaining before this skill's use-time gate reopens. See
+    /// docs/design/skills.md -> "Cooldown and use time are independent levers".</summary>
+    public float UseTimeRemaining { get; set; }
+
+    public SkillInstance(SkillDefinition definition)
+    {
+        Definition = definition;
+        ChargesAvailable = definition.MaxCharges;
+        RechargeTimer = 0f;
+        UseTimeRemaining = 0f;
+    }
+}

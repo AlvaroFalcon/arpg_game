@@ -1,4 +1,5 @@
 using Godot;
+using PathToExile.Skills;
 using PathToExile.Stats;
 
 namespace PathToExile;
@@ -6,25 +7,36 @@ namespace PathToExile;
 /// <summary>
 /// Top-down player controller. Supports two input modes that share one velocity:
 /// - Direct (WASD): immediate directional movement, always takes priority.
-/// - PathFollow (hold right mouse button): retargets a NavigationAgent2D to the
-///   mouse position every physics frame while held, then coasts the existing
-///   path to completion after release (so a quick click-and-release still works).
+/// - PathFollow (hold a move input): retargets a NavigationAgent2D to the mouse
+///   position every physics frame while held, then coasts the existing path to
+///   completion after release (so a quick click-and-release still works).
 /// See docs/design/movement.md for the full rationale.
+///
+/// Path-follow's trigger changed with the combat pass (docs/design/skills.md ->
+/// "The right-click conflict — resolved"): it is no longer a hardcoded
+/// `move_to` action. LMB is now a loadout slot that *defaults* to the built-in
+/// Move occupant, and a separate `force_move` action is the escape hatch once a
+/// real skill is bound over LMB. This class asks <see cref="SkillUser"/> what's
+/// in the LMB slot rather than knowing loadout internals itself — see
+/// <see cref="PlayerSkillInput"/>'s doc comment for the matching split on the
+/// casting side.
 /// </summary>
 public partial class Player : CharacterBody2D
 {
     private NavigationAgent2D _navigationAgent = null!;
-    private PlayerStats _playerStats = null!;
+    private ActorStats _stats = null!;
+    private SkillUser _skillUser = null!;
 
     public override void _Ready()
     {
         _navigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
-        _playerStats = GetNode<PlayerStats>("PlayerStats");
+        _stats = GetNode<ActorStats>("Stats");
+        _skillUser = GetNode<SkillUser>("SkillUser");
     }
 
     public override void _PhysicsProcess(double delta)
     {
-        float speed = _playerStats.MovementSpeed.Value;
+        float speed = _stats.MovementSpeed.Value;
 
         Vector2 wasdDir = Input.GetVector("move_left", "move_right", "move_up", "move_down");
         if (wasdDir != Vector2.Zero)
@@ -44,7 +56,13 @@ public partial class Player : CharacterBody2D
             return;
         }
 
-        if (Input.IsActionPressed("move_to"))
+        // Path-follow triggers on either: the LMB slot still holds the built-in
+        // Move sentinel and skill_slot_lmb is held; or force_move is held
+        // regardless of what's bound. Both retarget to the same mouse world
+        // position, so this collapses to one boolean feeding one retarget line.
+        bool pathFollow = (_skillUser.SlotIsBuiltInMove(SkillSlotId.Lmb) && Input.IsActionPressed("skill_slot_lmb"))
+            || Input.IsActionPressed("force_move");
+        if (pathFollow)
         {
             _navigationAgent.TargetPosition = GetGlobalMousePosition();
         }
