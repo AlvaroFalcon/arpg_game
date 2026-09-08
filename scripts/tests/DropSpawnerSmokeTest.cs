@@ -46,7 +46,7 @@ public partial class DropSpawnerSmokeTest : Node2D
             _killed = true;
             var health = _dummy.GetNode<Health>("Health");
             health.TakeDamage(new DamagePayload(
-                9999f, null, Faction.Player, SkillTags.Spell, DamageDeliveryKind.Hit));
+                9999f, DamageType.Physical, null, Faction.Player, SkillTags.Spell, DamageDeliveryKind.Hit));
             Check("DUMMY-DIES", health.IsDead, "Health.IsDead after a lethal payload");
             return;
         }

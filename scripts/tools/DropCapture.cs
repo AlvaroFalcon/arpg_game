@@ -223,7 +223,7 @@ public partial class DropCapture : Node2D
         label.AddThemeColorOverride("font_color", new Color(0.62f, 0.62f, 0.68f));
 
         dummy.GetNode<Health>("Health").TakeDamage(new DamagePayload(
-            9999f, null, Faction.Player, SkillTags.Spell, DamageDeliveryKind.Hit));
+            9999f, DamageType.Physical, null, Faction.Player, SkillTags.Spell, DamageDeliveryKind.Hit));
     }
 
     private void SpawnPile(Vector2 position, long amount)

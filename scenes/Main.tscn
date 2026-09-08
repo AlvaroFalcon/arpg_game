@@ -1,9 +1,12 @@
-[gd_scene load_steps=6 format=3 uid="uid://bxvq0m8k7n5tq"]
+[gd_scene load_steps=9 format=3 uid="uid://bxvq0m8k7n5tq"]
 
 [ext_resource type="Script" path="res://scripts/Main.cs" id="1_0mn4x"]
 [ext_resource type="PackedScene" uid="uid://bs2np6tvmjmi8" path="res://scenes/Player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/combat/TargetDummy.tscn" id="3_dummy"]
 [ext_resource type="Script" path="res://scripts/Items/GroundLabelPool.cs" id="4_labels"]
+[ext_resource type="Resource" path="res://resources/stats/TargetDummy105.tres" id="5_stats105"]
+[ext_resource type="Resource" path="res://resources/stats/TargetDummy210.tres" id="6_stats210"]
+[ext_resource type="Resource" path="res://resources/stats/TargetDummy420.tres" id="7_stats420"]
 
 [sub_resource type="NavigationPolygon" id="NavigationPolygon_1"]
 vertices = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
@@ -34,7 +37,7 @@ position = Vector2(760, 180)
 position = Vector2(830, 350)
 
 [node name="Stats" parent="Dummy105" index="2"]
-BaseMaxLife = 105.0
+Bases = ExtResource("5_stats105")
 
 [node name="DropSpawner" parent="Dummy105" index="4"]
 MinAmount = 20
@@ -44,7 +47,7 @@ MaxAmount = 40
 position = Vector2(760, 520)
 
 [node name="Stats" parent="Dummy210" index="2"]
-BaseMaxLife = 210.0
+Bases = ExtResource("6_stats210")
 
 [node name="DropSpawner" parent="Dummy210" index="4"]
 MinAmount = 50
@@ -54,7 +57,7 @@ MaxAmount = 90
 position = Vector2(240, 350)
 
 [node name="Stats" parent="Dummy420" index="2"]
-BaseMaxLife = 420.0
+Bases = ExtResource("7_stats420")
 
 [node name="DropSpawner" parent="Dummy420" index="4"]
 MinAmount = 120

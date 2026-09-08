@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/Combat/TargetDummy.cs" id="1"]
 [ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/Items/DropSpawner.cs" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/items/CurrencyDrop.tscn" id="6"]
 [ext_resource type="Resource" path="res://resources/currency/Gold.tres" id="7"]
+[ext_resource type="Resource" path="res://resources/stats/TargetDummy30.tres" id="8"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 16.0
@@ -28,7 +29,7 @@ polygon = PackedVector2Array(16, 0, 11.3, 11.3, 0, 16, -11.3, 11.3, -16, 0, -11.
 script = ExtResource("2")
 Faction = 2
 IgnoresResourceCosts = true
-BaseMaxLife = 30.0
+Bases = ExtResource("8")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("3")
