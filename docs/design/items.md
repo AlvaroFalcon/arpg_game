@@ -228,6 +228,45 @@ dozens of times an hour between packs. It also breaks auto-placement: "pick it u
 it finds a slot" is trivially solvable for rects and NP-annoying for arbitrary shapes.
 D2 and PoE both stayed rectangular for exactly this reason.
 
+## Inventory interaction **[DECIDED]**
+
+The data and placement rules are above; this is how the player actually touches it.
+
+- **Grid is 12x5** — 60 cells. A 2x3 body armour costs six, a 1x2 wand two, so a full
+  bag is roughly 10-20 items. Matches PoE's dimensions, which is a well-tested
+  size: big enough not to nag between packs, small enough that clearing it is a
+  real decision.
+- **Toggled with `i`** (a new `toggle_inventory` input action). The world keeps
+  running behind it — this is an ARPG, not a menu game, and a pausing inventory
+  encourages mid-fight sorting.
+- **Pickup routes into the grid**, first free space in reading order. If nothing
+  fits, the item stays on the ground rather than being destroyed or silently
+  swallowed.
+- **No rotation.** D2 and PoE both omit it; it doubles placement search for a
+  cosmetic amount of extra packing.
+- **No stacking.** Nothing stackable exists — currency is a wallet counter, not a
+  grid item.
+
+### The equipment strip **[DECIDED]**
+
+Nine labelled cells beside the grid, one per slot. Deliberately not a paper-doll
+figure — that is art scope, and the strip conveys the same information.
+
+It exists because without it the feature is half a loop: milestone 2b let items be
+equipped but never taken off, so an inventory that could only equip would make
+swapping one-way and unequipping impossible. Shipping a grid without somewhere to
+drag out of would be shipping something the player cannot fully use.
+
+- **Drag** between grid and slots, and within the grid to rearrange.
+- **Right-click an item in the grid** equips it into the first valid free slot, or
+  swaps with the occupied one — the shortcut that carries the common case, since
+  dragging every upgrade across the screen gets old fast.
+- **A displaced item returns to the grid space the incoming item vacated**, which is
+  always free and always large enough, so a swap can never fail for lack of room.
+
+Removes the milestone-2b auto-equip-on-pickup bridge, which existed only so gear was
+usable before this screen existed.
+
 ## Currency **[DECIDED]**
 
 Gold is instance 1 of N, built generically from the start:
