@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://bs2np6tvmjmi8"]
+[gd_scene load_steps=10 format=3 uid="uid://bs2np6tvmjmi8"]
 
 [ext_resource type="Script" path="res://scripts/Player.cs" id="1"]
 [ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/UI/DebugReadout.cs" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/combat/Projectile.tscn" id="6"]
 [ext_resource type="Resource" uid="uid://di3mkkrgahsu3" path="res://resources/skills/Fireball.tres" id="7"]
+[ext_resource type="Script" path="res://scripts/Items/Wallet.cs" id="8"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 12.0
@@ -38,6 +39,9 @@ DefaultRmbSkill = ExtResource("7")
 
 [node name="PlayerSkillInput" type="Node" parent="."]
 script = ExtResource("4")
+
+[node name="Wallet" type="Node" parent="."]
+script = ExtResource("8")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 

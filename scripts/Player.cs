@@ -1,4 +1,5 @@
 using Godot;
+using PathToExile.Items;
 using PathToExile.Skills;
 using PathToExile.Stats;
 
@@ -27,11 +28,18 @@ public partial class Player : CharacterBody2D
     private ActorStats _stats = null!;
     private SkillUser _skillUser = null!;
 
+    /// <summary>docs/design/items.md -> "Currency": <c>Player.Wallet</c>. A sibling
+    /// component node, exposed here the same way <see cref="ActorStats"/>/
+    /// <see cref="SkillUser"/> are, so pickup code (<see cref="Items.CurrencyDrop"/>)
+    /// can reach it off the player it hit.</summary>
+    public Wallet Wallet { get; private set; } = null!;
+
     public override void _Ready()
     {
         _navigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
         _stats = GetNode<ActorStats>("Stats");
         _skillUser = GetNode<SkillUser>("SkillUser");
+        Wallet = GetNode<Wallet>("Wallet");
     }
 
     public override void _PhysicsProcess(double delta)
