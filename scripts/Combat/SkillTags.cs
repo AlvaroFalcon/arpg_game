@@ -41,4 +41,15 @@ public enum SkillTags
     /// SkillDefinition's authored Tags field.
     /// </summary>
     Triggered = 1 << 11,
+
+    /// <summary>
+    /// Added by docs/design/stats.md's second pass ("Damage types"), which added
+    /// the Lightning damage type alongside the pre-existing Fire/Cold. Appended
+    /// with a new bit rather than inserted alphabetically among the existing
+    /// values, per this file's own documented convention: existing bit values are
+    /// never renumbered. See <see cref="DamageTypeResolution"/>, which derives a
+    /// hit's <see cref="DamageType"/> from this tag (and Fire/Cold) the same way
+    /// docs/design/skills.md derives AttackSpeed/CastSpeed from Attack/Spell.
+    /// </summary>
+    Lightning = 1 << 12,
 }

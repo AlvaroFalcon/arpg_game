@@ -1,5 +1,39 @@
 # Stat System
 
+Status legend, matching `docs/design/skills.md`:
+- **[DECIDED]** — settled, implement as written.
+- **[PROPOSED]** — recommendation awaiting the project owner's confirmation.
+
+> **Second pass note.** The first pass built the modifier maths for one stat
+> (`MovementSpeed`) and left everything else open. This pass was forced by
+> `docs/design/items.md`: affixes need somewhere to attach, and with five stats —
+> none of which is Maximum Life — a 4-affix budget split 2 Temper / 2 Sigil rolls
+> near-duplicates on every Rare. Changes, in order of how much they move:
+>
+> 1. **`ActorStats` becomes a keyed registry.** The first pass said "revisit if the
+>    property list gets unwieldy… relevant well before fifteen." This pass lands
+>    around eighteen. See [The registry](#the-registry-decided).
+> 2. **`Life`/`Mana` maximums become modifiable stats.** They were `ResourcePool`
+>    fields with no modifier stack, which made "+40 to Maximum Life" — the single
+>    most common affix in the genre — inexpressible. See
+>    [Resource pools](#resource-pools-become-stat-backed-decided).
+> 3. **Damage gains types, and `DamagePayload` stops being one float.** Mitigation
+>    can't exist without knowing what kind of damage arrived. See
+>    [Damage types](#damage-types-decided).
+> 4. **A defensive layer**: Armour for physical, per-element resistances with a cap
+>    and overcap, and penetration as the counterplay. See
+>    [Mitigation](#mitigation-decided).
+> 5. **Critical strikes.** See [Crit](#critical-strikes-decided).
+> 6. **Evasion/accuracy and leech are explicitly deferred**, with reasons. See
+>    Open Questions.
+>
+> One thing this pass explicitly does *not* change, because the first pass got it
+> right: **"+30% increased Fire Damage" is not a stat.** It is a `StatModifier` on
+> `Damage` carrying `Condition = SkillTags.Fire`, resolved through the existing
+> `ModifierQuery.Tags`. Seam 4 was built for this and it works — adding
+> `FireDamage`, `ColdDamage`, … as separate stats would duplicate the whole
+> conditional-modifier mechanism badly.
+
 ## What it is
 
 A minimal modifier-stack system for numeric player stats, living under
@@ -73,6 +107,177 @@ to live in a combat entity's scene tree (a child named "Stats") so its
 Only `MovementSpeed` exists today (130 px/s placeholder base value). No other stat
 (damage, life, resistances, attack speed, etc.) has been wired up yet — there's no
 gear or talent system to feed modifiers in yet either.
+
+## The registry **[DECIDED]**
+
+`ActorStats` stores stats in a `Dictionary<StatId, Stat>` and exposes
+`Stat Get(StatId id)`. The named properties stay, but become thin accessors over
+the registry:
+
+```csharp
+public Stat MovementSpeed => Get(StatId.MovementSpeed);
+```
+
+Why both: the registry is what `GetModifiers(query)` needs (a stat identifier has
+to be passable as a value), while the named accessors keep existing call sites
+like `_stats.MovementSpeed.Value` readable and typo-proof, and cost one line each.
+This is the compromise the first pass deferred; at eighteen stats the storage has
+to be keyed, but nothing forces the *call sites* to become stringly-typed.
+
+### Base values move to a `StatBlock` resource
+
+One `[Export] float BaseX` per stat does not survive eighteen stats, and Godot
+4.1 cannot export a dictionary keyed by an enum. Base values come from a
+`StatBlock` Resource — an array of `(StatId, float)` entries — assigned per entity
+archetype:
+
+```
+StatBlock : Resource
+  Entries[] : { StatId Id, float BaseValue }
+```
+
+`ActorStats` keeps `[Export] StatBlock? Bases`, falls back to per-stat defaults
+for anything unlisted, and the existing `Faction` / `IgnoresResourceCosts`
+`[Export]`s stay as they are. A side benefit worth having: an enemy archetype
+becomes a `.tres` rather than a hand-tuned scene, which is what the "no enemy
+scene exists yet to prove ActorStats is entity-agnostic" open question needs.
+
+## Resource pools become stat-backed **[DECIDED]**
+
+`ResourcePool.Max` stops being a settable float and becomes a read of a backing
+`Stat`:
+
+| Pool | Max stat | Regen stat |
+|---|---|---|
+| Life | `MaxLife` | `LifeRegen` |
+| Mana | `MaxMana` | `ManaRegen` |
+
+`Current` stays a plain mutable float on the pool — it is state, not a modifier
+stack.
+
+### What happens to `Current` when `Max` changes
+
+**`Current` is preserved absolutely and clamped to the new `Max`.** Equipping
++40 Maximum Life does not heal you; unequipping it clamps you down, and can leave
+you at full life but lower.
+
+Rejected: preserving the *percentage*. It reads as friendlier, but it means
+swapping a life roll in and out is a free heal, and any gear-swap macro becomes a
+healing skill. D2 and PoE both preserve absolute current for exactly this reason.
+
+The clamp on unequip must never kill: it floors at 1, not 0. Dying from taking
+off a hat is a bug report, not a mechanic.
+
+## Damage types **[DECIDED]**
+
+Four: **Physical, Fire, Cold, Lightning**.
+
+`SkillTags` gains `Lightning` (it already has `Fire` and `Cold`). `Physical` is
+the untyped default and needs no tag.
+
+**Chaos is deliberately excluded.** In PoE, Chaos exists mainly to have a damage
+type that bypasses Energy Shield; with no ES in this project it would be a fifth
+colour with no mechanical identity. Adding it later costs one enum entry and one
+resistance, so there is nothing to buy by adding it now.
+
+Lightning earns its slot rather than padding: three elements is the genre-standard
+triangle, and it leaves room for a shock-style ailment to be distinct from
+ignite/chill when ailments are designed.
+
+### `DamagePayload` carries a breakdown, not a float
+
+```csharp
+public sealed class DamagePayload
+{
+    IReadOnlyList<(DamageType Type, float Amount)> Components { get; }
+    float Total { get; }        // computed, keeps damage numbers and existing callers working
+    ...
+}
+```
+
+Mitigation cannot be written without knowing what arrived, and a single float
+forces every mitigation decision to be made at the *source* instead of at the
+target — which is backwards, since the target owns armour and resistances.
+
+`Total` staying available means `TargetDummy`'s floating damage numbers and the
+existing tests keep working unchanged.
+
+## Mitigation **[DECIDED]**
+
+Applied in `Health.TakeDamage`, which is the right owner: the target knows its own
+defences, and this keeps every skill ignorant of who it is hitting.
+
+### Physical: Armour
+
+```
+reduction = armour / (armour + 10 * physicalDamageOfThisHit)
+```
+
+PoE's formula. Chosen over the alternatives because it is the only one that stays
+sane without a hard cap: armour is strong against many small hits and weak against
+single large ones, which is a real defensive-build decision rather than a number
+that either does nothing or trivialises everything.
+
+Rejected: **flat damage reduction** (unbounded — enough of it makes you immune to
+whole damage brackets), and **D2's AC-to-hit** (that is an evasion mechanic wearing
+armour's name, and evasion is deferred — see Open Questions).
+
+### Elemental: resistances
+
+```
+effective  = clamp(resistance - penetration, floor: -100%, cap: 75%)
+taken      = amount * (1 - effective)
+```
+
+- **Cap 75%**, the genre standard.
+- **Overcap is tracked, not discarded.** A character at 120% Fire Resistance shows
+  75% effective and 45% overcap. Penetration and future resistance-lowering effects
+  eat the overcap first. Without this, resistance above the cap is worthless and
+  players cannot prepare for content that lowers it — PoE's entire "cap your
+  resists, then overcap them" gearing loop depends on this being visible.
+- **Resistance can go negative**, floored at −100% (taking double damage). Floored
+  so a stack of penetration can never invert damage into healing.
+- **Penetration is per element** and is the counterplay to resistance. It applies
+  at hit time and is not itself capped.
+
+## Critical strikes **[DECIDED]**
+
+- `CritChance` — base 5%, additive percentage.
+- `CritMultiplier` — base 150%, a multiplier on the whole hit.
+
+Rolled once per hit, applied **before** mitigation, and stamped onto the payload so
+damage numbers and future on-crit effects can read it. Applying crit before
+mitigation is what makes armour meaningfully worse against crits, which is the
+interaction that gives crit builds and armour stacking something to say to each
+other.
+
+## The stat list after this pass **[DECIDED]**
+
+| Stat | Base | Notes |
+|---|---|---|
+| `MovementSpeed` | 130 | px/s |
+| `Damage` | — | modifier carrier; base comes from the skill |
+| `AttackSpeed` | 1.0 | multiplier, tag-derived per skill |
+| `CastSpeed` | 1.0 | multiplier, tag-derived per skill |
+| `CooldownRecovery` | 1.0 | divisor |
+| `MaxLife` | 50 | backs the Life pool |
+| `LifeRegen` | 0 | per second |
+| `MaxMana` | 50 | backs the Mana pool |
+| `ManaRegen` | 5 | per second |
+| `Armour` | 0 | physical mitigation |
+| `FireResistance` | 0 | cap 75%, floor −100% |
+| `ColdResistance` | 0 | |
+| `LightningResistance` | 0 | |
+| `FirePenetration` | 0 | uncapped |
+| `ColdPenetration` | 0 | |
+| `LightningPenetration` | 0 | |
+| `CritChance` | 0.05 | |
+| `CritMultiplier` | 1.5 | |
+
+Eighteen. That is the number that forces the registry, and it is also roughly the
+number of distinct affixes `docs/design/items.md` needs before a 2 Temper / 2 Sigil
+budget stops rolling duplicates.
+
 
 ## Open questions
 
@@ -169,3 +374,30 @@ gear or talent system to feed modifiers in yet either.
     can deal a hit *and* apply a burn, and a tag-only filter would wrongly buff both.
     Nothing in `scripts/Stats/` changes for this; it's noted here so the distinction
     isn't rediscovered later.
+
+### Open questions added by the second pass
+
+- **Evasion and accuracy — deferred, not rejected.** It is a second complete
+  mechanic: an accuracy stat, an evasion stat, a hit-chance roll on every attack,
+  and a decision about entropy-based versus pure-random hit determination (PoE uses
+  entropy specifically so players do not experience long miss streaks). It also puts
+  RNG in front of every hit, which interacts with everything else in this document.
+  Armour plus resistances is enough defensive layering to build gear on; add this
+  only if defences feel one-dimensional in play.
+- **Leech — deferred.** Instant leech is degenerate and every game that shipped it
+  later replaced it with a rate. Doing it correctly means a leech-rate system with
+  per-instance caps, which is its own design pass. Flask charges already cover
+  sustain for now.
+- **Ailments (ignite / chill / freeze / shock) — not designed.** The `Duration` tag
+  and `DamageDeliveryKind.OverTime` exist and are the seams these will use. Note
+  that the Hoarfront majestic in `docs/design/items.md` ("area skills leave chilled
+  ground") assumes a chill exists, so this blocks that item, not the milestone.
+- **Energy Shield — not planned.** Its absence is why Chaos damage is excluded; if
+  ES is ever added, revisit that together.
+- **Damage conversion** (physical → fire, etc.) — not designed. It is a
+  `CastModifier`-shaped transform on the payload rather than a stat, so it belongs
+  with the skills seams, not here.
+- **Does `Stat` need to compute against an externally supplied base?** The first
+  pass noted that four of five stats were "modifier carriers with no base of their
+  own". After this pass the ratio inverts — most stats have real bases — which
+  weakens that pressure rather than strengthening it. Left as-is.

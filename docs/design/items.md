@@ -171,6 +171,20 @@ Base stats scale by base type — "Iron Wand" vs "Ebony Wand" — and affixes si
 Without this, every wand is identical and the only progression is affix rolls. Small
 to add now, ugly to retrofit once items exist in saves.
 
+## Equipment slots **[DECIDED]**
+
+Nine: **Weapon, Offhand, Helmet, Body Armour, Gloves, Boots, Belt, Amulet, Ring x2.**
+
+Chosen over a leaner six because a 4-piece set has to leave room for the rest of a
+build — at six slots a set consumes two thirds of the character and there is
+nowhere left for a Majestic to matter. Chosen over a PoE-like eleven because every
+extra slot is more base items to author and more drops needed before a build feels
+filled out, and nothing in the design needs a quiver or gear-slotted flasks yet.
+
+Two ring slots specifically: rings are the natural home for the small, stackable
+affixes (resistances, flat damage), and having two of them is what lets resistance
+capping be a solvable puzzle rather than a single unlucky slot.
+
 ## Grid inventory **[DECIDED]**
 
 - **Item data stores `Width` × `Height` ints.** Wand 1×2, body armour 2×2, two-hander
@@ -404,6 +418,8 @@ Hold-key scales far better with loot volume and suits a filter-centric game.
 1. **Majestic effect pool** — the 10 effects above are [PROPOSED]; confirm, cut, or
    replace.
 2. **Slot-to-effect restriction mapping** — agreed in principle, not yet specified.
+   The slot list is now settled (see [Equipment slots](#equipment-slots-decided));
+   what remains is which effect conditions may roll on which slot.
 3. **Tag-rewriting majestic effects** — excluded for now; revisit once the cast
    pipeline has more consumers.
 4. **Junk/grey rarity** — cut for lack of a sink. Returns only alongside a
@@ -412,6 +428,10 @@ Hold-key scales far better with loot volume and suits a filter-centric game.
    deliberate choice, not a derivation.
 6. **Sockets** — `SocketCount` is reserved in the descriptor; no socket system is
    designed.
+7. **Affix targets** — resolved by the second pass of `docs/design/stats.md`, which
+   exists because this document needed somewhere for affixes to attach. Eighteen
+   stats, which is roughly the number a 2 Temper / 2 Sigil budget needs before it
+   stops rolling duplicates.
 7. **Crafting** — Temper/Sigil exists partly to give crafting a granularity to work
    with, but no crafting system is designed.
 8. **Character level cap vs item level 120** — item level range should exceed the

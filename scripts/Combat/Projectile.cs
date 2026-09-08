@@ -38,6 +38,7 @@ public partial class Projectile : Area2D
     private Node2D? _sourceActor;
     private SkillTags _tags;
     private float _damage;
+    private DamageType _damageType;
     private SkillUser? _ownerSkillUser;
 
     // Tracked even at Pierce = 0. Two lines now; load-bearing for pierce and
@@ -64,6 +65,14 @@ public partial class Projectile : Area2D
         _sourceActor = context.Caster;
         _tags = context.Tags;
         _damage = damage;
+
+        // docs/design/stats.md -> "Damage types": derived from the cast's tags
+        // once here, at spawn, rather than re-derived per hit — a fork child
+        // inherits it directly (see InitializeFork) rather than re-deriving from
+        // its own copy of the tags, so a CastModifier that adds a tag mid-flight
+        // (none exist yet) can't retroactively change an already-flying
+        // projectile's damage type.
+        _damageType = DamageTypeResolution.Resolve(_tags);
 
         Rotation = direction.Angle();
 
@@ -92,6 +101,7 @@ public partial class Projectile : Area2D
         _sourceActor = parent._sourceActor;
         _tags = parent._tags;
         _damage = parent._damage;
+        _damageType = parent._damageType;
 
         // Children inherit the parent's travelled distance, so a fork shares one
         // total range budget rather than resetting it — forking trades reach for
@@ -158,7 +168,7 @@ public partial class Projectile : Area2D
             return;
         }
 
-        var payload = new DamagePayload(_damage, _sourceActor, _sourceFaction, _tags, DamageDeliveryKind.Hit);
+        var payload = new DamagePayload(_damage, _damageType, _sourceActor, _sourceFaction, _tags, DamageDeliveryKind.Hit);
         health.TakeDamage(payload);
         _ownerSkillUser?.ReportHit(other, _damage);
 

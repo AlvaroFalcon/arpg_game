@@ -15,6 +15,8 @@ public partial class MovementSmokeTest : Node2D
 {
     private static readonly Vector2 FarTarget = new(900f, 350f);
 
+    private const string ResultFilePath = "user://movement_smoketest_result.txt";
+
     private Player _player = null!;
     private NavigationAgent2D _agent = null!;
     private SkillUser _skillUser = null!;
@@ -25,12 +27,42 @@ public partial class MovementSmokeTest : Node2D
     private Vector2 _posAtWasdInterrupt;
     private bool _failed;
 
+    /// <summary>
+    /// Mirrors the final PASS/FAIL line into a file, because in this scene stdout
+    /// alone is not readable from an automated run.
+    ///
+    /// Two documented behaviours combine badly here. Per root CLAUDE.md, quitting a
+    /// scene that used the NavigationServer can hang the process *after* everything
+    /// has run successfully — and this scene has a NavigationAgent2D. Meanwhile libc
+    /// block-buffers stdout when it is a file or pipe rather than a terminal, and
+    /// this test prints well under the 4 KB buffer, so nothing is ever flushed: the
+    /// process hangs holding its own output. A caller that kills the hung process
+    /// gets an empty log and cannot tell PASS from FAIL from crashed-on-startup.
+    ///
+    /// The file is written before Quit, so it is complete regardless of whether
+    /// shutdown then hangs. Check it with:
+    ///   cat "$(...)/user_data_dir/movement_smoketest_result.txt"
+    /// or read the globalized path this prints on startup.
+    /// </summary>
+    private void WriteResultFile(string result)
+    {
+        using FileAccess? file = FileAccess.Open(ResultFilePath, FileAccess.ModeFlags.Write);
+        if (file is null)
+        {
+            GD.Print($"[SMOKETEST] WARNING: could not write {ResultFilePath}: {FileAccess.GetOpenError()}");
+            return;
+        }
+
+        file.StoreLine(result);
+    }
+
     public override void _Ready()
     {
         _player = GetNode<Player>("Player");
         _agent = _player.GetNode<NavigationAgent2D>("NavigationAgent2D");
         _skillUser = _player.GetNode<SkillUser>("SkillUser");
         GD.Print("[SMOKETEST] Ready. Player start position: " + _player.GlobalPosition);
+        GD.Print($"[SMOKETEST] Result file: {ProjectSettings.GlobalizePath(ResultFilePath)}");
 
         // Verify each action not only EXISTS but has real input events bound to it.
         // Input.ActionPress() works on an action with zero bindings, so the movement
@@ -200,7 +232,11 @@ public partial class MovementSmokeTest : Node2D
 
         if (_frame >= 130)
         {
-            GD.Print(_failed ? "[SMOKETEST] === RESULT: FAIL ===" : "[SMOKETEST] === RESULT: PASS ===");
+            string result = _failed
+                ? "[SMOKETEST] === RESULT: FAIL ==="
+                : "[SMOKETEST] === RESULT: PASS ===";
+            GD.Print(result);
+            WriteResultFile(result);
             GetTree().Quit();
         }
     }
