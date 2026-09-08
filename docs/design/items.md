@@ -185,6 +185,31 @@ Two ring slots specifically: rings are the natural home for the small, stackable
 affixes (resistances, flat damage), and having two of them is what lets resistance
 capping be a solvable puzzle rather than a single unlucky slot.
 
+## The first base items **[PROPOSED]**
+
+One per slot. More bases are pure authoring once the rolling machinery works.
+
+| Base | Slot | Cells | Base stats | Req |
+|---|---|---|---|---|
+| Iron Wand | Weapon | 1×2 | +3–6 Damage *(Spell)* | 1 |
+| Oak Buckler | Offhand | 2×2 | 12 Armour | 1 |
+| Leather Cap | Helmet | 2×2 | 8 Armour | 1 |
+| Ringmail Vest | Body Armour | 2×3 | 30 Armour | 1 |
+| Rawhide Gloves | Gloves | 2×2 | 6 Armour | 1 |
+| Rawhide Boots | Boots | 2×2 | 6 Armour | 1 |
+| Rope Belt | Belt | 2×1 | — | 1 |
+| Copper Amulet | Amulet | 1×1 | — | 1 |
+| Copper Ring | Ring | 1×1 | — | 1 |
+
+Belt, amulet and ring carry no base stats deliberately — they are pure affix
+carriers, which is genre-standard and gives them a distinct role.
+
+**Weapon base damage is granted as a flat `Damage` modifier**, not read by attack
+skills. `docs/design/skills.md` puts base damage on the *skill*, so a weapon's own
+damage has no consumer today; granting a modifier works with what exists and needs
+no new machinery. The PoE model — attack skills reading weapon damage — remains
+available later and is a real path, not a patch on this one.
+
 ## Grid inventory **[DECIDED]**
 
 - **Item data stores `Width` × `Height` ints.** Wand 1×2, body armour 2×2, two-hander
@@ -428,7 +453,10 @@ Hold-key scales far better with loot volume and suits a filter-centric game.
    deliberate choice, not a derivation.
 6. **Sockets** — `SocketCount` is reserved in the descriptor; no socket system is
    designed.
-7. **Affix targets** — resolved by the second pass of `docs/design/stats.md`, which
+7. **Base item stats for body armour** — drafted as 2×3 rather than the 2×2 square
+   originally sketched, so body armour is the largest non-weapon item and slots
+   feel distinct from a 2×2 helmet. Revert if the square was deliberate.
+8. **Affix targets** — resolved by the second pass of `docs/design/stats.md`, which
    exists because this document needed somewhere for affixes to attach. Eighteen
    stats, which is roughly the number a 2 Temper / 2 Sigil budget needs before it
    stops rolling duplicates.

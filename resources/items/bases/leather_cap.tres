@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BaseItemDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/BaseItemStatEntry.cs" id="1_ic862"]
+[ext_resource type="Script" path="res://scripts/Items/BaseItemDefinition.cs" id="2_tdbjw"]
+
+[sub_resource type="Resource" id="Resource_lehbn"]
+script = ExtResource("1_ic862")
+Stat = 9
+Type = 0
+Min = 8.0
+Max = 8.0
+Condition = 0
+
+[resource]
+script = ExtResource("2_tdbjw")
+Id = "leather_cap"
+DisplayName = "Leather Cap"
+ItemClass = 3
+Width = 2
+Height = 2
+BaseStats = [SubResource("Resource_lehbn")]
+RequiredLevel = 1
+AllowedAffixTags = 0

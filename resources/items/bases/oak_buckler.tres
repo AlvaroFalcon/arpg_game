@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BaseItemDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/BaseItemStatEntry.cs" id="1_0v4df"]
+[ext_resource type="Script" path="res://scripts/Items/BaseItemDefinition.cs" id="2_y7fvv"]
+
+[sub_resource type="Resource" id="Resource_i4k1f"]
+script = ExtResource("1_0v4df")
+Stat = 9
+Type = 0
+Min = 12.0
+Max = 12.0
+Condition = 0
+
+[resource]
+script = ExtResource("2_y7fvv")
+Id = "oak_buckler"
+DisplayName = "Oak Buckler"
+ItemClass = 2
+Width = 2
+Height = 2
+BaseStats = [SubResource("Resource_i4k1f")]
+RequiredLevel = 1
+AllowedAffixTags = 0

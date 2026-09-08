@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_mvinm"]
+
+[resource]
+script = ExtResource("1_mvinm")
+Id = "of_ruin"
+DisplayWord = "of Ruin"
+Pool = 1
+Stat = 17
+Type = 0
+Condition = 0
+ConditionAny = 0
+MinIlvl = 20
+MaxIlvl = 0
+ValueAtT1Min = 0.08
+ValueAtT1Max = 0.12
+ValueAtT7Min = 0.3
+ValueAtT7Max = 0.38
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false

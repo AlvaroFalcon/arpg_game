@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_yyva8"]
+
+[resource]
+script = ExtResource("1_yyva8")
+Id = "titanic"
+DisplayWord = "Titanic"
+Pool = 0
+Stat = 5
+Type = 1
+Condition = 0
+ConditionAny = 0
+MinIlvl = 30
+MaxIlvl = 0
+ValueAtT1Min = 3.0
+ValueAtT1Max = 5.0
+ValueAtT7Min = 12.0
+ValueAtT7Max = 16.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false

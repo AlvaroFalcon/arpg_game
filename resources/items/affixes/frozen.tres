@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_5vu7b"]
+
+[resource]
+script = ExtResource("1_5vu7b")
+Id = "frozen"
+DisplayWord = "Frozen"
+Pool = 0
+Stat = 1
+Type = 0
+Condition = 1024
+ConditionAny = 0
+MinIlvl = 1
+MaxIlvl = 0
+ValueAtT1Min = 3.0
+ValueAtT1Max = 5.0
+ValueAtT7Min = 55.0
+ValueAtT7Max = 85.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false

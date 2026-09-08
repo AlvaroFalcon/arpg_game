@@ -251,6 +251,64 @@ mitigation is what makes armour meaningfully worse against crits, which is the
 interaction that gives crit builds and armour stacking something to say to each
 other.
 
+## Attributes and derived bonuses **[DECIDED — third pass]**
+
+Three attributes, base 10 each: **Strength, Dexterity, Intelligence**. They are
+ordinary registry stats, and they grant derived bonuses — an attribute that is
+only a number is a filler affix players learn to ignore.
+
+| Attribute | Grants, per point |
+|---|---|
+| Strength | +2 Maximum Life, +1 Armour |
+| Dexterity | +0.5% increased Critical Strike Chance *(temporary)* |
+| Intelligence | +2 Maximum Mana, +0.1 Mana Regeneration |
+
+Dexterity should grant **Evasion and Accuracy**, both of which this document
+defers. Rather than ship a dead stat, it grants crit chance until evasion lands,
+at which point the derivation moves and the crit association is dropped. Nothing
+else may come to depend on Dexterity granting crit.
+
+Derivations are recalculated at known moments (equip, unequip, anything that can
+change an attribute) and applied as ordinary `StatModifier`s under a shared
+attribute-derivation `Source`, so recompute is "remove by source, re-add".
+`Stat` has no change notification, so a live formula is not available; this reuses
+`RemoveModifiersFromSource` rather than adding a mechanism.
+
+## Adding a damage type **[DECIDED — third pass]**
+
+A fourth element is reserved and undesigned. Keeping it cheap is a structural
+requirement, not a hope.
+
+`DamageMitigation.MitigateElemental` already takes plain floats and knows nothing
+about which element it is mitigating, so the maths needs no change. The one
+hardcoded place is the per-type `switch` in `Health.TakeDamage`. **That switch
+becomes a table** — `DamageType → (resistStatId, penetrationStatId)` — so a new
+element costs: one `DamageType` entry, two `StatId`s, one table row, and one affix
+`.tres`.
+
+Physical stays outside the table: it mitigates through Armour, not a
+resistance/penetration pair.
+
+## Condition semantics: all-of and any-of **[DECIDED — third pass]**
+
+Seam 4 specified `StatModifier.Condition` as a *required-tag set* — all-of. That
+is right for "increased Fire Spell Damage" (Fire **and** Spell) and wrong for
+"increased Elemental Damage" (Fire **or** Cold **or** Lightning). Both are ordinary
+affixes, so `StatModifier` gains a second field:
+
+```
+applies = Condition ⊆ tags
+          AND (ConditionAny == None OR (ConditionAny ∩ tags) ≠ ∅)
+```
+
+Two fields rather than a mode flag, because one affix can need both at once
+("increased Elemental Spell Damage").
+
+**`ActorStats.GetModifiers` must now actually apply this.** It currently returns
+every modifier on the stat and ignores `query.Tags` — dormant rather than broken,
+since nothing constructs a conditional modifier yet. Implementing it is what
+switches seam 4 on for the first time.
+
 ## The stat list after this pass **[DECIDED]**
 
 | Stat | Base | Notes |
@@ -273,8 +331,13 @@ other.
 | `LightningPenetration` | 0 | |
 | `CritChance` | 0.05 | |
 | `CritMultiplier` | 1.5 | |
+| `Strength` | 10 | +2 life, +1 armour per point |
+| `Dexterity` | 10 | temporary derivation, see above |
+| `Intelligence` | 10 | +2 mana, +0.1 mana regen per point |
+| `ManaCostMultiplier` | 1.0 | reduced by negative Increased modifiers |
+| `ThornsDamage` | 0 | flat physical returned when hit |
 
-Eighteen. That is the number that forces the registry, and it is also roughly the
+Twenty-three after the third pass; the first eighteen. That is the number that forces the registry, and it is also roughly the
 number of distinct affixes `docs/design/items.md` needs before a 2 Temper / 2 Sigil
 budget stops rolling duplicates.
 
@@ -401,3 +464,13 @@ budget stops rolling duplicates.
   pass noted that four of five stats were "modifier carriers with no base of their
   own". After this pass the ratio inverts — most stats have real bases — which
   weakens that pressure rather than strengthening it. Left as-is.
+
+### Open questions added by the third pass
+
+- **Thorns needs a recursion guard.** Reflected damage must never itself reflect,
+  or two thorns-carrying entities hitting each other will hang the game. The
+  returned payload is stamped so `Health` skips the thorns step for it.
+- **Nothing is calibrated.** There is no character leveling system — no XP, no
+  level — and `MaxLife` base is a flat 50 placeholder. `docs/design/affixes.md`
+  assumes a curve that does not exist (base life ≈ 40 + 8/level). Every value in
+  both documents rescales when leveling is designed.

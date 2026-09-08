@@ -43,6 +43,9 @@ Bases = ExtResource("5_stats105")
 MinAmount = 20
 MaxAmount = 40
 
+[node name="EquipmentDropSpawner" parent="Dummy105" index="5"]
+ItemLevel = 15
+
 [node name="Dummy210" parent="." instance=ExtResource("3_dummy")]
 position = Vector2(760, 520)
 
@@ -53,6 +56,9 @@ Bases = ExtResource("6_stats210")
 MinAmount = 50
 MaxAmount = 90
 
+[node name="EquipmentDropSpawner" parent="Dummy210" index="5"]
+ItemLevel = 45
+
 [node name="Dummy420" parent="." instance=ExtResource("3_dummy")]
 position = Vector2(240, 350)
 
@@ -62,6 +68,9 @@ Bases = ExtResource("7_stats420")
 [node name="DropSpawner" parent="Dummy420" index="4"]
 MinAmount = 120
 MaxAmount = 200
+
+[node name="EquipmentDropSpawner" parent="Dummy420" index="5"]
+ItemLevel = 90
 
 [editable path="Dummy105"]
 [editable path="Dummy210"]

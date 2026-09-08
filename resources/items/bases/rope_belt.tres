@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BaseItemDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/BaseItemDefinition.cs" id="1_vi0xu"]
+
+[resource]
+script = ExtResource("1_vi0xu")
+Id = "rope_belt"
+DisplayName = "Rope Belt"
+ItemClass = 7
+Width = 2
+Height = 1
+BaseStats = []
+RequiredLevel = 1
+AllowedAffixTags = 0

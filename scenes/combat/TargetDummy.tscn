@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/Combat/TargetDummy.cs" id="1"]
 [ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
@@ -8,6 +8,18 @@
 [ext_resource type="PackedScene" path="res://scenes/items/CurrencyDrop.tscn" id="6"]
 [ext_resource type="Resource" path="res://resources/currency/Gold.tres" id="7"]
 [ext_resource type="Resource" path="res://resources/stats/TargetDummy30.tres" id="8"]
+[ext_resource type="Script" path="res://scripts/Items/EquipmentDropSpawner.cs" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/items/EquipmentDrop.tscn" id="10"]
+[ext_resource type="Resource" path="res://resources/items/AffixLibrary.tres" id="11"]
+[ext_resource type="Resource" path="res://resources/items/bases/iron_wand.tres" id="12"]
+[ext_resource type="Resource" path="res://resources/items/bases/oak_buckler.tres" id="13"]
+[ext_resource type="Resource" path="res://resources/items/bases/leather_cap.tres" id="14"]
+[ext_resource type="Resource" path="res://resources/items/bases/ringmail_vest.tres" id="15"]
+[ext_resource type="Resource" path="res://resources/items/bases/rawhide_gloves.tres" id="16"]
+[ext_resource type="Resource" path="res://resources/items/bases/rawhide_boots.tres" id="17"]
+[ext_resource type="Resource" path="res://resources/items/bases/rope_belt.tres" id="18"]
+[ext_resource type="Resource" path="res://resources/items/bases/copper_amulet.tres" id="19"]
+[ext_resource type="Resource" path="res://resources/items/bases/copper_ring.tres" id="20"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 16.0
@@ -40,3 +52,11 @@ DropScene = ExtResource("6")
 Currency = ExtResource("7")
 MinAmount = 5
 MaxAmount = 15
+
+[node name="EquipmentDropSpawner" type="Node" parent="."]
+script = ExtResource("9")
+DropScene = ExtResource("10")
+Bases = [ExtResource("12"), ExtResource("13"), ExtResource("14"), ExtResource("15"), ExtResource("16"), ExtResource("17"), ExtResource("18"), ExtResource("19"), ExtResource("20")]
+Affixes = ExtResource("11")
+ItemLevel = 1
+DropChance = 0.5

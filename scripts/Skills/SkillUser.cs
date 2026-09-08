@@ -245,6 +245,18 @@ public partial class SkillUser : Node
                 _ => cost.Amount,
             };
 
+            // docs/design/stats.md's third pass -> ManaCostMultiplier row ("reduced
+            // by negative Increased modifiers") and docs/design/affixes.md ->
+            // "of Efficiency": the multiplier is base 1.0, so this is a no-op for
+            // every skill until an affix like "of Efficiency" adds a negative
+            // Increased modifier to it. Not specified as a wiring point by either
+            // doc explicitly — this is the one place a mana cost is actually
+            // resolved, so it's where the stat has to apply to mean anything.
+            if (cost.Resource == ResourceType.Mana)
+            {
+                amount *= _stats.ManaCostMultiplier.Value;
+            }
+
             float floor = FloorFor(cost.Resource);
             if (pool.Current - amount < floor)
             {

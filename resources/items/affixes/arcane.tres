@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_5b8we"]
+
+[resource]
+script = ExtResource("1_5b8we")
+Id = "arcane"
+DisplayWord = "Arcane"
+Pool = 0
+Stat = 1
+Type = 1
+Condition = 2
+ConditionAny = 0
+MinIlvl = 5
+MaxIlvl = 0
+ValueAtT1Min = 10.0
+ValueAtT1Max = 15.0
+ValueAtT7Min = 55.0
+ValueAtT7Max = 75.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false

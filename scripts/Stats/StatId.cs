@@ -46,4 +46,15 @@ public enum StatId
     LightningPenetration = 15,
     CritChance = 16,
     CritMultiplier = 17,
+
+    // Third pass (docs/design/stats.md -> "Attributes and derived bonuses",
+    // docs/design/affixes.md -> "Attributes"): three real attributes plus two
+    // more modifier-carrier stats an affix pool needed to stop rolling
+    // near-duplicates. Appended, never inserted — see this enum's own doc
+    // comment on why values are pinned.
+    Strength = 18,
+    Dexterity = 19,
+    Intelligence = 20,
+    ManaCostMultiplier = 21,
+    ThornsDamage = 22,
 }
