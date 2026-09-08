@@ -14,6 +14,17 @@ if [[ -x "${HOME}/.dotnet/dotnet" ]]; then
   export PATH="${HOME}/.dotnet:${PATH}"
 fi
 
+# Godot locates its bundled GodotSharp API assemblies *relative to the executable
+# path it was invoked through*, not relative to the real binary. Invoking it via a
+# symlink (e.g. ~/bin/godot -> .../Godot_mono.app/Contents/MacOS/Godot) makes it
+# look for ~/bin/GodotSharp/, which does not exist, and C# dies at startup with
+# "The specified runtimeconfig.json ... does not exist" followed by a hostfxr
+# failure. Same binary, same flags — only the path it was reached by differs.
+# So whatever we resolve, canonicalise it before running it.
+canonicalise() {
+  python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1" 2>/dev/null || echo "$1"
+}
+
 find_godot() {
   if [[ -n "${GODOT_BIN:-}" && -x "${GODOT_BIN}" ]]; then
     echo "${GODOT_BIN}"
@@ -41,6 +52,7 @@ find_godot() {
 }
 
 GODOT="$(find_godot || true)"
+GODOT="$(canonicalise "${GODOT}")"
 if [[ -z "${GODOT}" ]]; then
   echo "error: no Godot 4 binary found." >&2
   echo "  set GODOT_BIN=/path/to/Godot, or put 'godot'/'godot4' on PATH," >&2
