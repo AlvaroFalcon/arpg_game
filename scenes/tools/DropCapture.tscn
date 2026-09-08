@@ -1,0 +1,25 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/DropCapture.cs" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/combat/TargetDummy.tscn" id="3_dummy"]
+[ext_resource type="PackedScene" path="res://scenes/items/CurrencyDrop.tscn" id="4_drop"]
+[ext_resource type="Resource" path="res://resources/currency/Gold.tres" id="5_gold"]
+[ext_resource type="Script" path="res://scripts/Items/GroundLabelPool.cs" id="6_labels"]
+
+[node name="DropCapture" type="Node2D"]
+script = ExtResource("1")
+DummyScene = ExtResource("3_dummy")
+DropScene = ExtResource("4_drop")
+GoldCurrency = ExtResource("5_gold")
+
+[node name="Floor" type="Polygon2D" parent="."]
+z_index = -10
+color = Color(0.16, 0.16, 0.18, 1)
+polygon = PackedVector2Array(0, 0, 1200, 0, 1200, 700, 0, 700)
+
+[node name="GroundLabelPool" type="CanvasLayer" parent="."]
+script = ExtResource("6_labels")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(140, 470)
