@@ -35,14 +35,17 @@ public enum ModifierType
 /// future gear/talent system can call <see cref="Stat.RemoveModifiersFromSource"/>
 /// on unequip/unlearn without having to track modifier references itself.
 ///
-/// <see cref="Condition"/> is the optional condition field required by
-/// docs/design/skills.md -> seam 4: a required-tag set, empty (<see
-/// cref="SkillTags.None"/>) meaning "always applies". Nothing constructs a
-/// non-default condition yet and nothing reads it outside of
-/// <see cref="Stats.ActorStats.GetModifiers"/>'s doc comment — it exists now
-/// because retrofitting it later means touching every call site that ever
-/// *constructs* a modifier, which by the time gear and passives exist is a large
-/// number of places.
+/// <see cref="Condition"/> is the required-tag-set field from
+/// docs/design/skills.md -> seam 4, empty (<see cref="SkillTags.None"/>) meaning
+/// "always applies" — <c>Condition ⊆ tags</c>. <see cref="ConditionAny"/> is the
+/// second field added by docs/design/affixes.md -> "Condition semantics": an
+/// any-of set, empty meaning "no any-of requirement" —
+/// <c>ConditionAny == None || (ConditionAny ∩ tags) != ∅</c>. Two fields rather
+/// than a mode enum because a single affix can legitimately need both at once
+/// ("increased Elemental Spell Damage": <c>Condition = Spell</c>,
+/// <c>ConditionAny = Fire|Cold|Lightning</c>). Both are actually applied now by
+/// <see cref="Stats.ActorStats.GetModifiers"/> — this is the pass that switches
+/// seam 4 on for the first time; see that method's doc comment.
 /// </summary>
 public sealed class StatModifier
 {
@@ -50,12 +53,28 @@ public sealed class StatModifier
     public float Value { get; }
     public object? Source { get; }
     public SkillTags Condition { get; }
+    public SkillTags ConditionAny { get; }
 
-    public StatModifier(ModifierType type, float value, object? source = null, SkillTags condition = SkillTags.None)
+    public StatModifier(
+        ModifierType type,
+        float value,
+        object? source = null,
+        SkillTags condition = SkillTags.None,
+        SkillTags conditionAny = SkillTags.None)
     {
         Type = type;
         Value = value;
         Source = source;
         Condition = condition;
+        ConditionAny = conditionAny;
+    }
+
+    /// <summary>The predicate from docs/design/affixes.md -> "Condition
+    /// semantics", applied against a cast/query's tag set.</summary>
+    public bool AppliesTo(SkillTags tags)
+    {
+        bool allOf = (Condition & tags) == Condition;
+        bool anyOf = ConditionAny == SkillTags.None || (ConditionAny & tags) != 0;
+        return allOf && anyOf;
     }
 }

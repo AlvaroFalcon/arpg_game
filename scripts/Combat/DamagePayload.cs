@@ -59,12 +59,23 @@ public sealed class DamagePayload
     /// </summary>
     public bool IsCrit;
 
+    /// <summary>
+    /// docs/design/affixes.md -> "Thorns needs a recursion guard": true only for
+    /// the payload <see cref="Health.TakeDamage"/> synthesizes to return Thorns
+    /// damage to an attacker. <see cref="Health.TakeDamage"/> checks this flag
+    /// before applying its own Thorns step, so a reflected hit never itself
+    /// reflects — without it, two Thorns-carrying entities hitting each other
+    /// would recurse forever and hang the game.
+    /// </summary>
+    public bool IsThornsReflection { get; }
+
     public DamagePayload(
         IReadOnlyList<(DamageType Type, float Amount)> components,
         Node2D? sourceActor,
         Faction sourceFaction,
         SkillTags tags,
-        DamageDeliveryKind kind)
+        DamageDeliveryKind kind,
+        bool isThornsReflection = false)
     {
         Components = components;
 
@@ -79,13 +90,21 @@ public sealed class DamagePayload
         SourceFaction = sourceFaction;
         Tags = tags;
         Kind = kind;
+        IsThornsReflection = isThornsReflection;
     }
 
     /// <summary>Convenience constructor for the overwhelmingly common case of a
     /// hit dealing a single damage type — avoids every call site building a
     /// one-element array by hand.</summary>
-    public DamagePayload(float amount, DamageType type, Node2D? sourceActor, Faction sourceFaction, SkillTags tags, DamageDeliveryKind kind)
-        : this(new[] { (type, amount) }, sourceActor, sourceFaction, tags, kind)
+    public DamagePayload(
+        float amount,
+        DamageType type,
+        Node2D? sourceActor,
+        Faction sourceFaction,
+        SkillTags tags,
+        DamageDeliveryKind kind,
+        bool isThornsReflection = false)
+        : this(new[] { (type, amount) }, sourceActor, sourceFaction, tags, kind, isThornsReflection)
     {
     }
 }

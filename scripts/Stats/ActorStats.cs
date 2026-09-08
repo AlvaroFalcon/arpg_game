@@ -132,6 +132,14 @@ public partial class ActorStats : Node
         StatId.LightningPenetration => 0f,
         StatId.CritChance => 0.05f,
         StatId.CritMultiplier => 1.5f,
+
+        // Third pass (docs/design/stats.md -> "The stat list after this pass").
+        // Attributes base 10 each, per docs/design/affixes.md -> "Attributes".
+        StatId.Strength => 10f,
+        StatId.Dexterity => 10f,
+        StatId.Intelligence => 10f,
+        StatId.ManaCostMultiplier => 1f,
+        StatId.ThornsDamage => 0f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 
@@ -162,6 +170,23 @@ public partial class ActorStats : Node
     public Stat CritChance => Get(StatId.CritChance);
     public Stat CritMultiplier => Get(StatId.CritMultiplier);
 
+    // Attributes — docs/design/stats.md's third pass -> "Attributes and derived
+    // bonuses". Real registry stats (affixes roll flat Strength/Dexterity/
+    // Intelligence directly), and each also grants a derived bonus elsewhere —
+    // see RecomputeAttributeDerivations.
+    public Stat Strength => Get(StatId.Strength);
+    public Stat Dexterity => Get(StatId.Dexterity);
+    public Stat Intelligence => Get(StatId.Intelligence);
+
+    // docs/design/affixes.md -> "of Efficiency": a negative Increased modifier on
+    // this base-1.0 multiplier, not a fourth ModifierType. Consumed by
+    // Skills.SkillUser's mana-cost resolution.
+    public Stat ManaCostMultiplier => Get(StatId.ManaCostMultiplier);
+
+    // docs/design/affixes.md -> "Thorns needs a recursion guard". Consumed by
+    // Health.TakeDamage.
+    public Stat ThornsDamage => Get(StatId.ThornsDamage);
+
     /// <summary>Looks up the resource pool for a cost/resource type. Null means
     /// this actor simply doesn't have that resource (see the class doc above).</summary>
     public ResourcePool? GetPool(ResourceType type) => type switch
@@ -174,16 +199,81 @@ public partial class ActorStats : Node
 
     /// <summary>
     /// Seam 3 (docs/design/skills.md): modifier lookup by query object rather than
-    /// a bare property read. The implementation still ignores
-    /// <see cref="ModifierQuery.Tags"/> and returns every modifier on the named
-    /// stat — this pass activates <see cref="StatModifier.Condition"/> as a real,
-    /// constructible field (mitigation reads Fire/Cold/Lightning-typed damage) but
-    /// deliberately does not wire tag-filtering into this method, since nothing in
-    /// this pass's scope constructs a conditional modifier yet. See
-    /// <see cref="ModifierQuery"/>'s doc comment.
+    /// a bare property read. <b>This is the pass that switches seam 4 on for the
+    /// first time</b> (docs/design/affixes.md -> "Condition semantics"): every
+    /// modifier on the named stat is now filtered through
+    /// <see cref="StatModifier.AppliesTo"/> against <see cref="ModifierQuery.Tags"/>
+    /// — <c>Condition</c> (all-of) and <c>ConditionAny</c> (any-of) both apply. A
+    /// modifier with the default empty Condition/ConditionAny always passes,
+    /// which is why every unconditional modifier authored before this pass (there
+    /// were none yet) keeps working unchanged.
     /// </summary>
     public IReadOnlyList<StatModifier> GetModifiers(ModifierQuery query)
     {
-        return Get(query.Stat).Modifiers;
+        IReadOnlyList<StatModifier> all = Get(query.Stat).Modifiers;
+        var matching = new List<StatModifier>(all.Count);
+        foreach (StatModifier modifier in all)
+        {
+            if (modifier.AppliesTo(query.Tags))
+            {
+                matching.Add(modifier);
+            }
+        }
+
+        return matching;
+    }
+
+    /// <summary>
+    /// Shared <see cref="StatModifier.Source"/> tag for every modifier this method
+    /// grants, so a recompute is "remove by source, re-add" through the existing
+    /// <see cref="Stat.RemoveModifiersFromSource"/> — docs/design/stats.md's third
+    /// pass -> "Derivations need a recompute hook": "no new mechanism."
+    /// </summary>
+    private static readonly object AttributeDerivationSource = new();
+
+    /// <summary>
+    /// Recomputes the derived bonuses attributes grant per
+    /// docs/design/affixes.md -> "Attributes" / docs/design/stats.md's third pass
+    /// -> "Attributes and derived bonuses": Strength +2 Maximum Life / +1 Armour
+    /// per point, Intelligence +2 Maximum Mana / +0.1 Mana Regeneration per point,
+    /// Dexterity +0.5% increased Critical Strike Chance per point.
+    ///
+    /// <b>Dexterity's crit-chance grant is explicitly temporary.</b> It belongs on
+    /// Evasion/Accuracy once that mechanic exists (deferred — see
+    /// docs/design/stats.md's Open Questions); until then, shipping Dexterity with
+    /// no grant at all would make it a dead stat players learn to ignore, so it
+    /// borrows crit chance. Nothing else should come to depend on Dexterity
+    /// granting crit — when evasion lands, this one branch moves and nothing else
+    /// needs to change.
+    ///
+    /// <see cref="Stat"/> has no change notification, so this cannot be a live
+    /// formula — it must be called explicitly at "known moments" (equip, unequip,
+    /// any event that changes an attribute stat). <b>Not called automatically
+    /// from <see cref="_Ready"/></b>: milestone 2a ships no equip system (items
+    /// roll fully but are never worn — see docs/design/affixes.md's scope), so
+    /// there is no "known moment" for a bare actor to recompute at yet, and
+    /// calling this unconditionally here would silently change every existing
+    /// dummy/player's baseline Armour/MaxLife/MaxMana away from the values
+    /// docs/design/stats.md's second pass already calibrated StatsSmokeTest
+    /// against. A future equip/unequip path is the real caller; today only tests
+    /// call this directly to prove the seam works.
+    /// </summary>
+    public void RecomputeAttributeDerivations()
+    {
+        Get(StatId.MaxLife).RemoveModifiersFromSource(AttributeDerivationSource);
+        Get(StatId.Armour).RemoveModifiersFromSource(AttributeDerivationSource);
+        Get(StatId.MaxMana).RemoveModifiersFromSource(AttributeDerivationSource);
+        Get(StatId.ManaRegen).RemoveModifiersFromSource(AttributeDerivationSource);
+        Get(StatId.CritChance).RemoveModifiersFromSource(AttributeDerivationSource);
+
+        float strength = Strength.Value;
+        float dexterity = Dexterity.Value;
+        float intelligence = Intelligence.Value;
+
+        Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Flat, strength * 2f, AttributeDerivationSource));
+        Get(StatId.Armour).AddModifier(new StatModifier(ModifierType.Flat, strength * 1f, AttributeDerivationSource));
+        Get(StatId.MaxMana).AddModifier(new StatModifier(ModifierType.Flat, intelligence * 2f, AttributeDerivationSource));
+        Get(StatId.ManaRegen).AddModifier(new StatModifier(ModifierType.Flat, intelligence * 0.1f, AttributeDerivationSource));
+        Get(StatId.CritChance).AddModifier(new StatModifier(ModifierType.Increased, dexterity * 0.5f, AttributeDerivationSource));
     }
 }

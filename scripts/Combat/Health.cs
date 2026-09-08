@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using Godot;
 using PathToExile.Stats;
 
@@ -32,6 +33,23 @@ public partial class Health : Node
 
     [Signal]
     public delegate void DamagedEventHandler(float amount);
+
+    /// <summary>
+    /// docs/design/stats.md's third pass -> "Adding a damage type": the per-type
+    /// switch that used to live inline in <see cref="TakeDamage"/> is now a table
+    /// — <c>DamageType -&gt; (resistStatId, penetrationStatId)</c> — so a fourth
+    /// element costs one <see cref="DamageType"/> entry, two <see cref="StatId"/>s,
+    /// one row here, and one affix `.tres`, not a new switch arm to hand-write.
+    /// <see cref="DamageType.Physical"/> is deliberately absent: it mitigates
+    /// through <see cref="ActorStats.Armour"/>, not a resistance/penetration pair,
+    /// so <see cref="TakeDamage"/> branches on it before ever consulting this table.
+    /// </summary>
+    private static readonly Dictionary<DamageType, (StatId Resistance, StatId Penetration)> ElementalMitigationStats = new()
+    {
+        { DamageType.Fire, (StatId.FireResistance, StatId.FirePenetration) },
+        { DamageType.Cold, (StatId.ColdResistance, StatId.ColdPenetration) },
+        { DamageType.Lightning, (StatId.LightningResistance, StatId.LightningPenetration) },
+    };
 
     private ActorStats _stats = null!;
 
@@ -84,17 +102,19 @@ public partial class Health : Node
             // docs/design/stats.md -> "Critical strikes": this is what makes
             // armour meaningfully worse against crits.
             float afterCrit = amount * critMultiplier;
-            totalTaken += type switch
+
+            if (type == DamageType.Physical)
             {
-                DamageType.Physical => DamageMitigation.MitigatePhysical(afterCrit, _stats.Armour.Value),
-                DamageType.Fire => DamageMitigation.MitigateElemental(
-                    afterCrit, _stats.FireResistance.Value, sourceStats?.FirePenetration.Value ?? 0f),
-                DamageType.Cold => DamageMitigation.MitigateElemental(
-                    afterCrit, _stats.ColdResistance.Value, sourceStats?.ColdPenetration.Value ?? 0f),
-                DamageType.Lightning => DamageMitigation.MitigateElemental(
-                    afterCrit, _stats.LightningResistance.Value, sourceStats?.LightningPenetration.Value ?? 0f),
-                _ => afterCrit,
-            };
+                totalTaken += DamageMitigation.MitigatePhysical(afterCrit, _stats.Armour.Value);
+                continue;
+            }
+
+            // Table lookup rather than a hand-written switch arm per element —
+            // see ElementalMitigationStats' doc comment.
+            (StatId resistId, StatId penetrationId) = ElementalMitigationStats[type];
+            float resistance = _stats.Get(resistId).Value;
+            float penetration = sourceStats?.Get(penetrationId).Value ?? 0f;
+            totalTaken += DamageMitigation.MitigateElemental(afterCrit, resistance, penetration);
         }
 
         ResourcePool life = _stats.Life!;
@@ -106,5 +126,47 @@ public partial class Health : Node
             IsDead = true;
             EmitSignal(SignalName.Died);
         }
+
+        ReflectThorns(payload);
+    }
+
+    /// <summary>
+    /// docs/design/affixes.md -> "Thorns needs a recursion guard": returns
+    /// <see cref="ActorStats.ThornsDamage"/> to the attacker as a fresh Physical
+    /// hit, stamped <see cref="DamagePayload.IsThornsReflection"/> so the
+    /// attacker's own <see cref="TakeDamage"/> call skips this step entirely —
+    /// <b>the guard is the early-return at the top of this method</b>, checked
+    /// before anything else runs. Without it, two Thorns-carrying entities
+    /// trading hits would reflect into each other forever and hang the game.
+    /// </summary>
+    private void ReflectThorns(DamagePayload payload)
+    {
+        if (payload.IsThornsReflection)
+        {
+            return;
+        }
+
+        float thorns = _stats.ThornsDamage.Value;
+        if (thorns <= 0f || payload.SourceActor is null || !IsInstanceValid(payload.SourceActor))
+        {
+            return;
+        }
+
+        Health? attackerHealth = payload.SourceActor.GetNodeOrNull<Health>("Health");
+        if (attackerHealth is null || attackerHealth.IsDead)
+        {
+            return;
+        }
+
+        var reflected = new DamagePayload(
+            thorns,
+            DamageType.Physical,
+            GetParent<Node2D>(),
+            _stats.Faction,
+            SkillTags.None,
+            DamageDeliveryKind.Hit,
+            isThornsReflection: true);
+
+        attackerHealth.TakeDamage(reflected);
     }
 }
