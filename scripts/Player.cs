@@ -34,12 +34,21 @@ public partial class Player : CharacterBody2D
     /// can reach it off the player it hit.</summary>
     public Wallet Wallet { get; private set; } = null!;
 
+    /// <summary>
+    /// Milestone 2b: another sibling component, same convention as
+    /// <see cref="Wallet"/>. Exposed publicly so <see cref="Items.EquipmentItem.OnPickup"/>
+    /// can reach the player's slots the same way <see cref="Items.CurrencyDrop.OnPickup"/>
+    /// reaches <see cref="Wallet"/>.
+    /// </summary>
+    public Items.Equipment Equipment { get; private set; } = null!;
+
     public override void _Ready()
     {
         _navigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
         _stats = GetNode<ActorStats>("Stats");
         _skillUser = GetNode<SkillUser>("SkillUser");
         Wallet = GetNode<Wallet>("Wallet");
+        Equipment = GetNode<Items.Equipment>("Equipment");
     }
 
     public override void _PhysicsProcess(double delta)

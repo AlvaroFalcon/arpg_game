@@ -12,10 +12,10 @@ namespace PathToExile.Items;
 /// The equipment <see cref="IDroppable"/> — docs/design/items.md -> "Drop
 /// pipeline": on-ground is "label + sprite" (shared with currency via
 /// <see cref="GroundLabelPool"/>/<see cref="FilterChain"/>), on-pickup is "into
-/// grid inventory." <b>No grid inventory exists yet</b> (explicitly out of scope
-/// for this milestone — see <see cref="OnPickup"/>'s doc comment), so this class
-/// rolls a fully-formed item and lets it be picked up, but nothing downstream can
-/// equip it yet.
+/// grid inventory." <b>No grid inventory exists yet</b> (still explicitly out of
+/// scope this milestone), so milestone 2b routes pickup through a temporary
+/// auto-equip bridge instead — see <see cref="OnPickup"/>'s doc comment for why
+/// that is scaffolding, not the design.
 ///
 /// Mirrors <see cref="CurrencyDrop"/>'s shape closely: a runtime
 /// <see cref="Initialize"/> entry point that computes one final, immutable
@@ -159,19 +159,35 @@ public partial class EquipmentItem : Area2D, IDroppable
     }
 
     /// <summary>
-    /// <b>Milestone 2a scope note:</b> grid inventory and equipping are
-    /// explicitly out of scope (see the milestone brief's "Explicitly NOT in
-    /// scope"). There is nowhere for a picked-up equipment item to go yet, so
-    /// this simply removes it from the ground — <see cref="Base"/>,
-    /// <see cref="RolledAffixes"/> and <see cref="RolledBaseStats"/> are fully
-    /// populated and ready for a future inventory to consume, but nothing reads
-    /// them today. A real inventory replaces this method's body, not its
-    /// signature or <see cref="IDroppable"/>'s contract.
+    /// <b>Milestone 2b bridge, not a design decision — see docs/design/items.md's
+    /// build order item 2c ("grid inventory") for what actually removes this.</b>
+    /// There is still no grid inventory or equipment panel UI, so walking over an
+    /// equipment drop auto-equips it into a free matching slot
+    /// (<see cref="Items.Equipment.TryAutoEquip"/>) so gear is playable before
+    /// that UI exists, rather than being a claim that pickup should always mean
+    /// equip. If no valid slot is free, the item is left exactly where it is —
+    /// still visible, still pickable once a slot frees up — instead of vanishing
+    /// or displacing whatever is worn. When the grid inventory lands, this
+    /// method's body goes back to "into the inventory," full stop, the same way
+    /// milestone 2a's version of this comment expected equipping itself to be the
+    /// eventual replacement.
     /// </summary>
     public void OnPickup(Player player)
     {
+        if (!player.Equipment.TryAutoEquip(this))
+        {
+            return;
+        }
+
         ReleaseLabel();
-        QueueFree();
+
+        // Ownership transfers to Equipment as pure data (Base/RolledAffixes/
+        // RolledBaseStats are still read from this same instance whenever a stat
+        // is recomputed) rather than as a ground presence. Detached, not freed:
+        // Equipment's dictionary is now the only remaining reference keeping this
+        // node alive, and QueueFree-ing it would collect the very object that
+        // reference points at.
+        GetParent()?.RemoveChild(this);
     }
 
     public override void _ExitTree() => ReleaseLabel();
