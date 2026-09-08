@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_4c0ds"]
+
+[resource]
+script = ExtResource("1_4c0ds")
+Id = "of_efficiency"
+DisplayWord = "of Efficiency"
+Pool = 1
+Stat = 21
+Type = 1
+Condition = 0
+ConditionAny = 0
+MinIlvl = 12
+MaxIlvl = 0
+ValueAtT1Min = -7.0
+ValueAtT1Max = -4.0
+ValueAtT7Min = -24.0
+ValueAtT7Max = -18.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false

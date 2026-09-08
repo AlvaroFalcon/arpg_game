@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_mmksc"]
+
+[resource]
+script = ExtResource("1_mmksc")
+Id = "savage"
+DisplayWord = "Savage"
+Pool = 0
+Stat = 1
+Type = 1
+Condition = 0
+ConditionAny = 0
+MinIlvl = 1
+MaxIlvl = 0
+ValueAtT1Min = 8.0
+ValueAtT1Max = 12.0
+ValueAtT7Min = 45.0
+ValueAtT7Max = 60.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false

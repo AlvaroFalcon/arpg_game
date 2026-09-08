@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_xwqd0"]
+
+[resource]
+script = ExtResource("1_xwqd0")
+Id = "of_swiftness"
+DisplayWord = "of Swiftness"
+Pool = 1
+Stat = 0
+Type = 1
+Condition = 0
+ConditionAny = 0
+MinIlvl = 15
+MaxIlvl = 0
+ValueAtT1Min = 3.0
+ValueAtT1Max = 5.0
+ValueAtT7Min = 12.0
+ValueAtT7Max = 15.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = [6]
+IsAllResistances = false

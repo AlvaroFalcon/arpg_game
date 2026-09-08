@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BaseItemDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/BaseItemStatEntry.cs" id="1_t7kpl"]
+[ext_resource type="Script" path="res://scripts/Items/BaseItemDefinition.cs" id="2_4t8tj"]
+
+[sub_resource type="Resource" id="Resource_x86om"]
+script = ExtResource("1_t7kpl")
+Stat = 1
+Type = 0
+Min = 3.0
+Max = 6.0
+Condition = 2
+
+[resource]
+script = ExtResource("2_4t8tj")
+Id = "iron_wand"
+DisplayName = "Iron Wand"
+ItemClass = 1
+Width = 1
+Height = 2
+BaseStats = [SubResource("Resource_x86om")]
+RequiredLevel = 1
+AllowedAffixTags = 0

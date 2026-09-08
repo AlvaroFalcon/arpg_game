@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_twl5g"]
+
+[resource]
+script = ExtResource("1_twl5g")
+Id = "plated"
+DisplayWord = "Plated"
+Pool = 0
+Stat = 9
+Type = 0
+Condition = 0
+ConditionAny = 0
+MinIlvl = 1
+MaxIlvl = 0
+ValueAtT1Min = 15.0
+ValueAtT1Max = 25.0
+ValueAtT7Min = 250.0
+ValueAtT7Max = 400.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = [2, 3, 4, 5, 6]
+IsAllResistances = false

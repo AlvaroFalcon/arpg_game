@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_yr2g1"]
+
+[resource]
+script = ExtResource("1_yr2g1")
+Id = "of_haste"
+DisplayWord = "of Haste"
+Pool = 1
+Stat = 2
+Type = 1
+Condition = 0
+ConditionAny = 0
+MinIlvl = 8
+MaxIlvl = 0
+ValueAtT1Min = 4.0
+ValueAtT1Max = 7.0
+ValueAtT7Min = 15.0
+ValueAtT7Max = 19.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false

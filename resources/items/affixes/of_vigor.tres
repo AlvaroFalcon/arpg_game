@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1_n88ii"]
+
+[resource]
+script = ExtResource("1_n88ii")
+Id = "of_vigor"
+DisplayWord = "of Vigor"
+Pool = 1
+Stat = 6
+Type = 0
+Condition = 0
+ConditionAny = 0
+MinIlvl = 1
+MaxIlvl = 0
+ValueAtT1Min = 1.0
+ValueAtT1Max = 2.0
+ValueAtT7Min = 14.0
+ValueAtT7Max = 20.0
+Curve = 1.0
+TierOverrides = []
+Weight = 1.0
+AllowedItemClasses = []
+IsAllResistances = false
