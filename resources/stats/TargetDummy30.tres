@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StatBlock" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="StatBlock" load_steps=7 format=3 uid="uid://b84xlrn3acs5o"]
 
 [ext_resource type="Script" path="res://scripts/Stats/StatBlockEntry.cs" id="1_fb8uv"]
 [ext_resource type="Script" path="res://scripts/Stats/StatBlock.cs" id="2_j8l77"]

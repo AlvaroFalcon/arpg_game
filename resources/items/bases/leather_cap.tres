@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="BaseItemDefinition" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="BaseItemDefinition" load_steps=4 format=3 uid="uid://1boupv8j21sy"]
 
 [ext_resource type="Script" path="res://scripts/Items/BaseItemStatEntry.cs" id="1_ic862"]
 [ext_resource type="Script" path="res://scripts/Items/BaseItemDefinition.cs" id="2_tdbjw"]
