@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StatBlock" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="StatBlock" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/Stats/StatBlockEntry.cs" id="1_q1otv"]
 [ext_resource type="Script" path="res://scripts/Stats/StatBlock.cs" id="2_asn5p"]
@@ -8,6 +8,21 @@ script = ExtResource("1_q1otv")
 Id = 5
 BaseValue = 105.0
 
+[sub_resource type="Resource" id="Resource_targetdummy105_strength"]
+script = ExtResource("1_q1otv")
+Id = 18
+BaseValue = 0.0
+
+[sub_resource type="Resource" id="Resource_targetdummy105_dexterity"]
+script = ExtResource("1_q1otv")
+Id = 19
+BaseValue = 0.0
+
+[sub_resource type="Resource" id="Resource_targetdummy105_intelligence"]
+script = ExtResource("1_q1otv")
+Id = 20
+BaseValue = 0.0
+
 [resource]
 script = ExtResource("2_asn5p")
-Entries = [SubResource("Resource_ebrbj")]
+Entries = [SubResource("Resource_ebrbj"), SubResource("Resource_targetdummy105_strength"), SubResource("Resource_targetdummy105_dexterity"), SubResource("Resource_targetdummy105_intelligence")]

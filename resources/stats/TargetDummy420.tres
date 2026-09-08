@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StatBlock" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="StatBlock" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/Stats/StatBlockEntry.cs" id="1_llcer"]
 [ext_resource type="Script" path="res://scripts/Stats/StatBlock.cs" id="2_p4etm"]
@@ -8,6 +8,21 @@ script = ExtResource("1_llcer")
 Id = 5
 BaseValue = 420.0
 
+[sub_resource type="Resource" id="Resource_targetdummy420_strength"]
+script = ExtResource("1_llcer")
+Id = 18
+BaseValue = 0.0
+
+[sub_resource type="Resource" id="Resource_targetdummy420_dexterity"]
+script = ExtResource("1_llcer")
+Id = 19
+BaseValue = 0.0
+
+[sub_resource type="Resource" id="Resource_targetdummy420_intelligence"]
+script = ExtResource("1_llcer")
+Id = 20
+BaseValue = 0.0
+
 [resource]
 script = ExtResource("2_p4etm")
-Entries = [SubResource("Resource_8jort")]
+Entries = [SubResource("Resource_8jort"), SubResource("Resource_targetdummy420_strength"), SubResource("Resource_targetdummy420_dexterity"), SubResource("Resource_targetdummy420_intelligence")]

@@ -87,6 +87,15 @@ public partial class ActorStats : Node
             }
         }
 
+        // Before the pools are built, not after: the pools seed Current from
+        // MaxLife/MaxMana's *value*, so deriving afterwards would leave every actor
+        // spawning at partial life. And before anything else can observe the actor
+        // at all — an actor whose attributes only take effect once it first equips
+        // something has two different baselines depending on its history, which is
+        // the bug this call closes. docs/design/affixes.md -> "Derivations need a
+        // recompute hook".
+        RecomputeAttributeDerivations();
+
         Life = new ResourcePool(Get(StatId.MaxLife), Get(StatId.LifeRegen), Get(StatId.MaxLife).Value);
         Mana = HasManaPool
             ? new ResourcePool(Get(StatId.MaxMana), Get(StatId.ManaRegen), Get(StatId.MaxMana).Value)
@@ -232,6 +241,27 @@ public partial class ActorStats : Node
     private static readonly object AttributeDerivationSource = new();
 
     /// <summary>
+    /// Registry-wide sibling of <see cref="Stat.RemoveModifiersFromSource"/>: an
+    /// equipment item can grant modifiers across many different stats (a Rare
+    /// item might touch Damage, MaxLife, Armour and Strength all at once), and
+    /// milestone 2b's equip system (docs/design/items.md -> "Equipment slots")
+    /// needs to strip every one of them on unequip <b>without tracking which
+    /// stats the item actually touched</b> — the whole point of tagging
+    /// modifiers with the item instance as <see cref="StatModifier.Source"/> is
+    /// that the caller never has to remember that. Iterating every registered
+    /// stat is deliberately unconditional (a stat the item never touched is just
+    /// a no-op <see cref="Stat.RemoveModifiersFromSource"/> call) rather than
+    /// trying to be clever about which stats to visit.
+    /// </summary>
+    public void RemoveModifiersFromSource(object source)
+    {
+        foreach (Stat stat in _stats.Values)
+        {
+            stat.RemoveModifiersFromSource(source);
+        }
+    }
+
+    /// <summary>
     /// Recomputes the derived bonuses attributes grant per
     /// docs/design/affixes.md -> "Attributes" / docs/design/stats.md's third pass
     /// -> "Attributes and derived bonuses": Strength +2 Maximum Life / +1 Armour
@@ -248,15 +278,20 @@ public partial class ActorStats : Node
     ///
     /// <see cref="Stat"/> has no change notification, so this cannot be a live
     /// formula — it must be called explicitly at "known moments" (equip, unequip,
-    /// any event that changes an attribute stat). <b>Not called automatically
-    /// from <see cref="_Ready"/></b>: milestone 2a ships no equip system (items
-    /// roll fully but are never worn — see docs/design/affixes.md's scope), so
-    /// there is no "known moment" for a bare actor to recompute at yet, and
-    /// calling this unconditionally here would silently change every existing
-    /// dummy/player's baseline Armour/MaxLife/MaxMana away from the values
-    /// docs/design/stats.md's second pass already calibrated StatsSmokeTest
-    /// against. A future equip/unequip path is the real caller; today only tests
-    /// call this directly to prove the seam works.
+    /// any event that changes an attribute stat). <b>Milestone 2b's
+    /// <see cref="Items.Equipment"/> is now that caller</b> — it invokes this
+    /// after applying (or removing) an item's own modifiers, per
+    /// docs/design/affixes.md -> "Derivations need a recompute hook": "an item
+    /// granting +20 Strength has to feed its derived life and armour in the same
+    /// operation."
+    ///
+    /// <b>Called from <see cref="_Ready"/> as well as on equip/unequip.</b> An
+    /// earlier pass deliberately skipped the _Ready call to keep already-calibrated
+    /// test numbers stable, which was the wrong trade: it left base Strength
+    /// granting nothing until an actor's first equip, and applying permanently
+    /// afterwards, so two otherwise identical actors had different stats depending
+    /// on whether either had ever equipped anything. The derived state is the
+    /// correct state; the tests were updated instead.
     /// </summary>
     public void RecomputeAttributeDerivations()
     {
