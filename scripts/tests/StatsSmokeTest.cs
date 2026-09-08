@@ -229,6 +229,14 @@ public partial class StatsSmokeTest : Node2D
                 Entries = new Array<StatBlockEntry>
                 {
                     new() { Id = StatId.MaxLife, BaseValue = 99f },
+
+                    // Attributes zeroed so this measures the StatBlock override
+                    // itself. ActorStats._Ready derives attribute bonuses now, so
+                    // base Strength 10 would silently add +20 life and +10 armour
+                    // to both expectations below.
+                    new() { Id = StatId.Strength, BaseValue = 0f },
+                    new() { Id = StatId.Dexterity, BaseValue = 0f },
+                    new() { Id = StatId.Intelligence, BaseValue = 0f },
                 },
             };
 

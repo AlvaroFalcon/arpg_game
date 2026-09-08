@@ -353,10 +353,12 @@ public partial class AffixSmokeTest : Node2D
 
     private void CheckAttributeDerivations()
     {
-        Check("ATTRIBUTES-NOT-AUTO-DERIVED-AT-READY",
-            _attributeStats.Armour.Value == 0f && _attributeStats.Get(StatId.MaxLife).Value == 50f,
-            $"Armour={_attributeStats.Armour.Value} (expected 0), MaxLife={_attributeStats.Get(StatId.MaxLife).Value} (expected 50) — " +
-            "RecomputeAttributeDerivations is not called automatically (see its doc comment); default Str/Dex/Int=10 grants nothing until called");
+        Check("ATTRIBUTES-DERIVED-AT-READY",
+            _attributeStats.Armour.Value == 10f && _attributeStats.Get(StatId.MaxLife).Value == 70f,
+            $"Armour={_attributeStats.Armour.Value} (expected 10), MaxLife={_attributeStats.Get(StatId.MaxLife).Value} (expected 70) — " +
+            "ActorStats._Ready calls RecomputeAttributeDerivations, so base Strength 10 grants its +1 armour and +2 life per point " +
+            "with nothing equipped. This assertion was previously inverted: derivations only ran on first equip, so an actor that had " +
+            "never equipped anything carried a different baseline from an identical one that had.");
 
         _attributeStats.Get(StatId.Strength).BaseValue = 20f;
         _attributeStats.Get(StatId.Intelligence).BaseValue = 30f;
