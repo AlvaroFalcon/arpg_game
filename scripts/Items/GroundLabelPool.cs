@@ -57,7 +57,7 @@ public partial class GroundLabelPool : CanvasLayer
 
     private sealed class Slot
     {
-        public Label Label = null!;
+        public GroundLabel Label = null!;
         public bool InUse;
         public bool Hidden;
         public Func<Vector2>? GetWorldPosition;
@@ -75,7 +75,7 @@ public partial class GroundLabelPool : CanvasLayer
 
     private Slot CreateSlot()
     {
-        var label = new Label { Visible = false };
+        var label = new GroundLabel { Visible = false };
         AddChild(label);
         return new Slot { Label = label };
     }
@@ -86,8 +86,23 @@ public partial class GroundLabelPool : CanvasLayer
     /// persists and may move — projection happens every frame in
     /// <see cref="_Process"/>, not once at acquire time. Returns an opaque handle
     /// for <see cref="Release"/>.
+    ///
+    /// <paramref name="onClicked"/>/<paramref name="onHoverChanged"/> are the
+    /// label half of manual pickup and tooltips (docs/design/items.md -&gt;
+    /// "Pickup is manual..." and "Item tooltips") — null for every
+    /// <see cref="CurrencyDrop"/> label, which has neither. When either is set,
+    /// the label switches to <see cref="Control.MouseFilterEnum.Stop"/> so it can
+    /// actually receive the click/hover; when both are null it stays
+    /// <see cref="Control.MouseFilterEnum.Ignore"/> so an inert currency label
+    /// never eats a click-to-move landing on it — see <see cref="GroundLabel"/>'s
+    /// class doc.
     /// </summary>
-    public int Acquire(Func<Vector2> worldPosition, string text, DisplayStyle style)
+    public int Acquire(
+        Func<Vector2> worldPosition,
+        string text,
+        DisplayStyle style,
+        Action? onClicked = null,
+        Action<bool>? onHoverChanged = null)
     {
         Slot? slot = _slots.FirstOrDefault(s => !s.InUse);
         if (slot is null)
@@ -106,6 +121,12 @@ public partial class GroundLabelPool : CanvasLayer
             slot.Label.AddThemeFontSizeOverride("font_size", fontSize);
         }
 
+        slot.Label.OnClicked = onClicked;
+        slot.Label.OnHoverChanged = onHoverChanged;
+        slot.Label.MouseFilter = onClicked is null && onHoverChanged is null
+            ? Control.MouseFilterEnum.Ignore
+            : Control.MouseFilterEnum.Stop;
+
         return _slots.IndexOf(slot);
     }
 
@@ -123,6 +144,13 @@ public partial class GroundLabelPool : CanvasLayer
         slot.InUse = false;
         slot.GetWorldPosition = null;
         slot.Label.Visible = false;
+
+        // Clear callbacks so a recycled label (or a stray late signal from this
+        // one) never fires a closure bound to the item that has already
+        // released it — see GroundLabel's class doc.
+        slot.Label.OnClicked = null;
+        slot.Label.OnHoverChanged = null;
+        slot.Label.MouseFilter = Control.MouseFilterEnum.Ignore;
     }
 
     public override void _Process(double delta)

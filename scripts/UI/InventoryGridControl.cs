@@ -35,13 +35,23 @@ public partial class InventoryGridControl : Control
     [Export]
     public NodePath EquipmentPath = new();
 
+    /// <summary>Optional explicit wiring to the shared hover tooltip
+    /// (docs/design/items.md -> "Item tooltips"), same fallback convention as
+    /// <see cref="Items.GroundLabelPool"/> — see
+    /// <see cref="ItemTooltipControl"/>'s class doc.</summary>
+    [Export]
+    public NodePath ItemTooltipPath = new();
+
     private Inventory _inventory = null!;
     private Equipment _equipment = null!;
+    private ItemTooltipControl? _tooltip;
 
     public override void _Ready()
     {
         _inventory = GetNode<Inventory>(InventoryPath);
         _equipment = GetNode<Equipment>(EquipmentPath);
+        _tooltip = GetNodeOrNull<ItemTooltipControl>(ItemTooltipPath)
+            ?? GetTree().CurrentScene.GetNodeOrNull<ItemTooltipControl>("ItemTooltip");
 
         CustomMinimumSize = new Vector2(Inventory.Width * CellPx, Inventory.Height * CellPx);
         MouseFilter = MouseFilterEnum.Stop;
@@ -56,6 +66,35 @@ public partial class InventoryGridControl : Control
         if (Visible)
         {
             QueueRedraw();
+            UpdateHoverTooltip();
+        }
+        else
+        {
+            _tooltip?.Hide();
+        }
+    }
+
+    /// <summary>
+    /// Polled every visible frame rather than driven by <c>MouseEntered</c>/
+    /// <c>MouseExited</c> signals, same "cheap-but-correct at 60 cells" call
+    /// this type's class doc already makes for redraw: a single Control covers
+    /// the whole grid, so "which item (if any) is under the cursor right now"
+    /// has to be recomputed per cell anyway, and doing it here piggybacks on
+    /// the redraw poll this method already runs alongside.
+    /// </summary>
+    private void UpdateHoverTooltip()
+    {
+        var gridRect = new Rect2(Vector2.Zero, new Vector2(Inventory.Width * CellPx, Inventory.Height * CellPx));
+        Vector2 mouseLocal = GetLocalMousePosition();
+
+        EquipmentItem? hovered = gridRect.HasPoint(mouseLocal) ? _inventory.GetItemAt(CellAt(mouseLocal)) : null;
+        if (hovered is not null)
+        {
+            _tooltip?.Show(hovered);
+        }
+        else
+        {
+            _tooltip?.Hide();
         }
     }
 

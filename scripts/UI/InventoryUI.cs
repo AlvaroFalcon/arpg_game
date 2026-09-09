@@ -17,9 +17,22 @@ namespace PathToExile.UI;
 /// "Inventory"/"Equipment" siblings via their own <c>[Export]</c>
 /// <see cref="NodePath"/>s) rather than this node brokering references between
 /// them — nothing here needs to know what its children actually do.
+///
+/// Also this project's one <see cref="PanelStack"/> participant today —
+/// docs/design/items.md -&gt; "Closing panels": "<c>i</c> still toggles the
+/// inventory specifically," so this keeps polling <c>toggle_inventory</c>
+/// itself, but joins the shared stack (<see cref="IClosablePanel"/>) so
+/// <c>Escape</c> can close it too without this class binding its own Escape
+/// handler. This is also the one place that polls <c>Escape</c>/<c>ui_cancel</c>
+/// at all — not because <see cref="PanelStack"/> requires a specific owner, but
+/// because a keyboard action needs exactly one poller to avoid double-handling,
+/// and this node already polls every frame for its own toggle key. A future
+/// second panel does not need to move this call: it only has to
+/// push/remove itself on <see cref="PanelStack"/>, same as this class does in
+/// <see cref="SetOpen"/>.
 /// </summary>
 [GlobalClass]
-public partial class InventoryUI : CanvasLayer
+public partial class InventoryUI : CanvasLayer, IClosablePanel
 {
     private Control _panel = null!;
 
@@ -33,7 +46,36 @@ public partial class InventoryUI : CanvasLayer
     {
         if (Input.IsActionJustPressed("toggle_inventory"))
         {
-            _panel.Visible = !_panel.Visible;
+            SetOpen(!_panel.Visible);
+        }
+
+        if (Input.IsActionJustPressed("ui_cancel"))
+        {
+            PanelStack.CloseTopmost();
         }
     }
+
+    /// <summary>The single place <see cref="_panel"/>'s visibility actually
+    /// changes, so it and <see cref="PanelStack"/> can never disagree about
+    /// whether this panel is open — both the toggle key and
+    /// <see cref="Close"/> (Escape, via <see cref="PanelStack.CloseTopmost"/>)
+    /// go through this one method.</summary>
+    private void SetOpen(bool open)
+    {
+        _panel.Visible = open;
+        if (open)
+        {
+            PanelStack.Push(this);
+        }
+        else
+        {
+            PanelStack.Remove(this);
+        }
+    }
+
+    /// <summary><see cref="IClosablePanel"/>'s contract, called only by
+    /// <see cref="PanelStack.CloseTopmost"/> — never bind this to a key
+    /// directly here; that is exactly the per-panel special case
+    /// docs/design/items.md's "Closing panels" section rejects.</summary>
+    public void Close() => SetOpen(false);
 }

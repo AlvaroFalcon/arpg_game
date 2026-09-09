@@ -28,6 +28,17 @@ public partial class Player : CharacterBody2D
     private ActorStats _stats = null!;
     private SkillUser _skillUser = null!;
 
+    /// <summary>
+    /// docs/design/items.md -&gt; "UI must consume its own input": the fix for
+    /// "dragging an item in the inventory also issues a move order" lives here,
+    /// not as an "is a panel open?" check bolted onto <see cref="_PhysicsProcess"/>
+    /// — see <see cref="MouseActionGate"/>'s class doc for why a raw
+    /// <c>Input.IsActionPressed</c> poll cannot tell a world click from a
+    /// GUI-consumed one, and why the fix belongs at the input-handling layer
+    /// instead.
+    /// </summary>
+    private readonly MouseActionGate _lmbGate = new("skill_slot_lmb");
+
     /// <summary>docs/design/items.md -> "Currency": <c>Player.Wallet</c>. A sibling
     /// component node, exposed here the same way <see cref="ActorStats"/>/
     /// <see cref="SkillUser"/> are, so pickup code (<see cref="Items.CurrencyDrop"/>)
@@ -60,6 +71,15 @@ public partial class Player : CharacterBody2D
         Inventory = GetNode<Items.Inventory>("Inventory");
     }
 
+    /// <summary>
+    /// Only the rising edge of <c>skill_slot_lmb</c> is fed here (see
+    /// <see cref="MouseActionGate"/>) — a press the GUI already consumed
+    /// (e.g. starting a drag over the inventory grid, which sets
+    /// <c>MouseFilter.Stop</c>) never reaches <c>_UnhandledInput</c> at all, so
+    /// <see cref="_lmbGate"/> never latches on for it.
+    /// </summary>
+    public override void _UnhandledInput(InputEvent @event) => _lmbGate.HandleUnhandledInput(@event);
+
     public override void _PhysicsProcess(double delta)
     {
         float speed = _stats.MovementSpeed.Value;
@@ -86,7 +106,7 @@ public partial class Player : CharacterBody2D
         // Move sentinel and skill_slot_lmb is held; or force_move is held
         // regardless of what's bound. Both retarget to the same mouse world
         // position, so this collapses to one boolean feeding one retarget line.
-        bool pathFollow = (_skillUser.SlotIsBuiltInMove(SkillSlotId.Lmb) && Input.IsActionPressed("skill_slot_lmb"))
+        bool pathFollow = (_skillUser.SlotIsBuiltInMove(SkillSlotId.Lmb) && _lmbGate.Poll())
             || Input.IsActionPressed("force_move");
         if (pathFollow)
         {
