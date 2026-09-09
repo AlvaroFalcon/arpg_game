@@ -100,8 +100,8 @@ public partial class EquipmentItem : Area2D, IDroppable
         // repeatedly as more items spawn.
         GetViewport().PhysicsObjectPicking = true;
         InputEvent += OnAreaInputEvent;
-        MouseEntered += () => _tooltip?.Show(this);
-        MouseExited += () => _tooltip?.Hide();
+        MouseEntered += () => _tooltip?.Show(this, this);
+        MouseExited += () => _tooltip?.Clear(this);
 
         _tooltip = GetNodeOrNull<UI.ItemTooltipControl>(ItemTooltipPath)
             ?? GetTree().CurrentScene.GetNodeOrNull<UI.ItemTooltipControl>("ItemTooltip");
@@ -189,11 +189,11 @@ public partial class EquipmentItem : Area2D, IDroppable
             {
                 if (hovering)
                 {
-                    _tooltip?.Show(this);
+                    _tooltip?.Show(this, this);
                 }
                 else
                 {
-                    _tooltip?.Hide();
+                    _tooltip?.Clear(this);
                 }
             });
     }

@@ -33,6 +33,9 @@ public partial class ItemTooltipControl : CanvasLayer
 
     private RichTextLabel _label = null!;
 
+    /// <summary>Whoever most recently called <see cref="Show"/>. See <see cref="Clear"/>.</summary>
+    private object? _owner;
+
     public override void _Ready()
     {
         // A tooltip is the topmost thing on screen by definition, so it sets its own
@@ -65,8 +68,10 @@ public partial class ItemTooltipControl : CanvasLayer
     /// the current mouse position. Safe to call every frame from a hover-polling
     /// <c>_Process</c> — it only ever overwrites the same label/position, never
     /// accumulates state.</summary>
-    public void Show(EquipmentItem item)
+    public void Show(EquipmentItem item, object requester)
     {
+        _owner = requester;
+
         _label.Text = ItemTooltipText.Build(item);
         Visible = true;
 
@@ -74,7 +79,29 @@ public partial class ItemTooltipControl : CanvasLayer
         panel.Position = GetViewport().GetMousePosition() + CursorOffset;
     }
 
-    // Hiding is just the inherited CanvasLayer.Hide() (Visible = false) — no
-    // override needed, so callers use that directly rather than this class
-    // shadowing it with an identical no-op wrapper.
+    /// <summary>
+    /// Hides the tooltip, but only if <paramref name="requester"/> is the source
+    /// that last showed it.
+    ///
+    /// Three things drive this tooltip — the inventory grid, the equipment strip,
+    /// and ground items — and the first two poll hover every frame. When each of
+    /// them called <c>Hide()</c> unconditionally on a miss, whichever ran last in a
+    /// frame won, and that was almost always a miss: the grid hid the tooltip every
+    /// frame while the inventory was closed, so a ground-item hover could never
+    /// survive, and with the panel open the grid and the strip undid each other.
+    /// The feature was completely dead in both cases.
+    ///
+    /// Ownership rather than call order is what fixes it: a source can only take
+    /// the tooltip away if it is the one currently holding it.
+    /// </summary>
+    public void Clear(object requester)
+    {
+        if (!ReferenceEquals(_owner, requester))
+        {
+            return;
+        }
+
+        _owner = null;
+        Visible = false;
+    }
 }

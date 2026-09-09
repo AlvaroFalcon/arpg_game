@@ -53,6 +53,13 @@ public partial class InventoryGridControl : Control
         _tooltip = GetNodeOrNull<ItemTooltipControl>(ItemTooltipPath)
             ?? GetTree().CurrentScene.GetNodeOrNull<ItemTooltipControl>("ItemTooltip");
 
+        // Every tooltip call site is null-conditional, so an unresolved tooltip
+        // disables the whole feature in total silence. Say so instead.
+        if (_tooltip is null)
+        {
+            GD.PushWarning("[grid] ItemTooltipControl not found: no 'ItemTooltip' node on the current scene, and ItemTooltipPath is unset. Tooltips are disabled.");
+        }
+
         CustomMinimumSize = new Vector2(Inventory.Width * CellPx, Inventory.Height * CellPx);
         MouseFilter = MouseFilterEnum.Stop;
     }
@@ -70,7 +77,7 @@ public partial class InventoryGridControl : Control
         }
         else
         {
-            _tooltip?.Hide();
+            _tooltip?.Clear(this);
         }
     }
 
@@ -90,11 +97,11 @@ public partial class InventoryGridControl : Control
         EquipmentItem? hovered = gridRect.HasPoint(mouseLocal) ? _inventory.GetItemAt(CellAt(mouseLocal)) : null;
         if (hovered is not null)
         {
-            _tooltip?.Show(hovered);
+            _tooltip?.Show(hovered, this);
         }
         else
         {
-            _tooltip?.Hide();
+            _tooltip?.Clear(this);
         }
     }
 
