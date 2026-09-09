@@ -33,12 +33,3 @@ Faction = 0
 
 [node name="Equipment" type="Node" parent="StrengthActor"]
 script = ExtResource("3")
-
-[node name="AutoEquipActor" type="Node2D" parent="."]
-
-[node name="Stats" type="Node" parent="AutoEquipActor"]
-script = ExtResource("2")
-Faction = 0
-
-[node name="Equipment" type="Node" parent="AutoEquipActor"]
-script = ExtResource("3")

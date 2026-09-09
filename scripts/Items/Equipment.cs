@@ -19,8 +19,10 @@ namespace PathToExile.Items;
 /// does.
 ///
 /// Owns <see cref="EquipmentSlot"/> -&gt; <see cref="EquipmentItem"/> and nothing
-/// else — no grid inventory, no equipment panel UI (both explicitly out of scope
-/// this milestone; see the milestone brief).
+/// else — the grid inventory (<see cref="Inventory"/>) and its UI are milestone
+/// 2c's job, and they orchestrate this component rather than duplicating its
+/// slot-validation or modifier bookkeeping (see <see cref="Inventory.TryRightClickEquip"/>
+/// and <see cref="Inventory.TryEquipFromGrid"/>).
 /// </summary>
 [GlobalClass]
 public partial class Equipment : Node
@@ -39,14 +41,17 @@ public partial class Equipment : Node
         _slots.TryGetValue(slot, out EquipmentItem? item) ? item : null;
 
     /// <summary>
-    /// Which slots <paramref name="itemClass"/> may occupy — docs/design/items.md
-    /// -> "Equipment slots": one slot per class, except Ring, which may go in
-    /// either of the two ring slots. The single source of truth for slot
-    /// validation (<see cref="IsValidSlot"/>) and auto-equip's candidate order
-    /// (<see cref="TryAutoEquip"/>) both read this, so the two can never disagree
-    /// about which slots a class is allowed into.
+    /// Which slots <paramref name="itemClass"/> may occupy, in preference order
+    /// — docs/design/items.md -> "Equipment slots": one slot per class, except
+    /// Ring, which may go in either of the two ring slots (Ring1 before Ring2).
+    /// The single source of truth for slot validation (<see cref="IsValidSlot"/>)
+    /// and <see cref="Inventory.TryRightClickEquip"/>'s "first free slot, else
+    /// swap with the first candidate" order, so the two can never disagree about
+    /// which slots a class is allowed into. Public because
+    /// <see cref="Inventory"/> (a different component; milestone 2c) is now the
+    /// caller that needs candidate order, not just this class internally.
     /// </summary>
-    private static IReadOnlyList<EquipmentSlot> CandidateSlots(ItemClass itemClass) => itemClass switch
+    public static IReadOnlyList<EquipmentSlot> CandidateSlots(ItemClass itemClass) => itemClass switch
     {
         ItemClass.Wand => new[] { EquipmentSlot.Weapon },
         ItemClass.Offhand => new[] { EquipmentSlot.Offhand },
@@ -62,7 +67,14 @@ public partial class Equipment : Node
         _ => Array.Empty<EquipmentSlot>(),
     };
 
-    private static bool IsValidSlot(ItemClass itemClass, EquipmentSlot slot) =>
+    /// <summary>
+    /// Whether <paramref name="itemClass"/> may occupy <paramref name="slot"/> —
+    /// public (not just used internally by <see cref="TryEquip"/>) so the
+    /// equipment-strip UI (<see cref="UI.EquipmentStripControl"/>) can validate a
+    /// prospective drag-and-drop target in <c>_CanDropData</c> without
+    /// committing an equip attempt just to find out it would fail.
+    /// </summary>
+    public static bool IsValidSlot(ItemClass itemClass, EquipmentSlot slot) =>
         CandidateSlots(itemClass).Contains(slot);
 
     /// <summary>
@@ -137,36 +149,6 @@ public partial class Equipment : Node
         ClampResourcePools();
 
         return item;
-    }
-
-    /// <summary>
-    /// Milestone-2b bridge (docs/design/items.md's build order item 2, ahead of
-    /// the grid inventory in item 2c's scope): equips <paramref name="item"/>
-    /// into the first free slot its <see cref="ItemClass"/> is valid for — Ring1
-    /// before Ring2, everything else has exactly one candidate — or does nothing
-    /// and returns false if every valid slot is already occupied. Never displaces
-    /// an existing item; auto-equip only ever fills a gap. See
-    /// <see cref="EquipmentItem.OnPickup"/> for the walk-over trigger and why this
-    /// whole method is marked for removal once a real inventory exists.
-    /// </summary>
-    public bool TryAutoEquip(EquipmentItem item)
-    {
-        if (item.Base is null)
-        {
-            return false;
-        }
-
-        foreach (EquipmentSlot slot in CandidateSlots(item.Base.ItemClass))
-        {
-            if (GetEquipped(slot) is not null)
-            {
-                continue;
-            }
-
-            return TryEquip(slot, item, out _);
-        }
-
-        return false;
     }
 
     /// <summary>

@@ -24,6 +24,15 @@ namespace PathToExile.Tests;
 /// not accumulating; and a Fire-conditioned affix applying only to a
 /// matching-tagged <see cref="ActorStats.GetModifiers"/> query.
 ///
+/// <b>The milestone-2b auto-equip-on-pickup bridge
+/// (<c>Equipment.TryAutoEquip</c>) this test used to cover no longer exists</b>
+/// — milestone 2c removed it per docs/design/items.md -&gt; "Inventory
+/// interaction": "Removes the milestone-2b auto-equip-on-pickup bridge, which
+/// existed only so gear was usable before this screen existed." Its
+/// replacement (pickup routes into the grid via <c>Inventory.TryAdd</c>, and
+/// the equipment strip's right-click/drag equip) is covered by
+/// <c>InventorySmokeTest</c> instead.
+///
 /// Loads the real seeded resources (<c>AffixLibrary.tres</c>, the base
 /// `.tres` files) the same way <c>AffixSmokeTest</c> does, and forces
 /// deterministic single-affix rolls by rolling against a one-entry pool — the
@@ -63,9 +72,6 @@ public partial class EquipSmokeTest : Node2D
     private ActorStats _strengthStats = null!;
     private Equipment _strengthEquipment = null!;
 
-    private ActorStats _autoEquipStats = null!;
-    private Equipment _autoEquipEquipment = null!;
-
     private bool _failed;
 
     public override void _Ready()
@@ -87,9 +93,6 @@ public partial class EquipSmokeTest : Node2D
         _strengthStats = GetNode<ActorStats>("StrengthActor/Stats");
         _strengthEquipment = GetNode<Equipment>("StrengthActor/Equipment");
 
-        _autoEquipStats = GetNode<ActorStats>("AutoEquipActor/Stats");
-        _autoEquipEquipment = GetNode<Equipment>("AutoEquipActor/Equipment");
-
         GD.Print("[EQUIPTEST] Ready.");
 
         (float baselineArmour, float baselineMaxLife) = WarmUpGearActorBaseline();
@@ -102,7 +105,6 @@ public partial class EquipSmokeTest : Node2D
 
         CheckUnequipLargeLifeRollClampsWithoutKilling();
         CheckStrengthItemGrantsDerivedLifeAndArmour();
-        CheckAutoEquipBridgeFillsFreeSlotElseLeavesItemUnequipped();
 
         GD.Print(_failed ? "[EQUIPTEST] === RESULT: FAIL ===" : "[EQUIPTEST] === RESULT: PASS ===");
         GetTree().Quit(_failed ? 1 : 0);
@@ -425,36 +427,5 @@ public partial class EquipSmokeTest : Node2D
             $"{expectedStrength} Strength * 2 Life/point)");
 
         _strengthEquipment.Unequip(EquipmentSlot.Ring1);
-    }
-
-    // ------------------------------------------------------------------
-    // Milestone 2b bridge: auto-equip on pickup fills a free matching slot,
-    // otherwise leaves the item unequipped (the ground-drop equivalent of
-    // "leaves it on the ground") — see EquipmentItem.OnPickup.
-    // ------------------------------------------------------------------
-
-    private void CheckAutoEquipBridgeFillsFreeSlotElseLeavesItemUnequipped()
-    {
-        EquipmentItem ringA = RollItem(_copperRing, Rarity.Common, 1, Array.Empty<AffixDefinition>());
-        EquipmentItem ringB = RollItem(_copperRing, Rarity.Common, 1, Array.Empty<AffixDefinition>());
-        EquipmentItem ringC = RollItem(_copperRing, Rarity.Common, 1, Array.Empty<AffixDefinition>());
-
-        bool fillsRing1 = _autoEquipEquipment.TryEquip(EquipmentSlot.Ring1, ringA, out _);
-        Check("AUTOEQUIP-SETUP-RING1-FILLED", fillsRing1, "setup: manually fill Ring1 first");
-
-        bool autoFillsRing2 = _autoEquipEquipment.TryAutoEquip(ringB);
-        Check("AUTOEQUIP-FILLS-REMAINING-FREE-RING-SLOT",
-            autoFillsRing2 && ReferenceEquals(_autoEquipEquipment.GetEquipped(EquipmentSlot.Ring2), ringB),
-            $"with Ring1 occupied, auto-equip must land a second ring in the still-free Ring2: succeeded={autoFillsRing2}");
-
-        bool autoEquipFailsWhenBothRingsFull = _autoEquipEquipment.TryAutoEquip(ringC);
-        Check("AUTOEQUIP-LEAVES-ITEM-UNEQUIPPED-WHEN-NO-SLOT-FREE",
-            !autoEquipFailsWhenBothRingsFull
-            && !ReferenceEquals(_autoEquipEquipment.GetEquipped(EquipmentSlot.Ring1), ringC)
-            && !ReferenceEquals(_autoEquipEquipment.GetEquipped(EquipmentSlot.Ring2), ringC),
-            $"with both ring slots occupied, auto-equip must fail rather than displace anything — succeeded={autoEquipFailsWhenBothRingsFull}");
-
-        _autoEquipEquipment.Unequip(EquipmentSlot.Ring1);
-        _autoEquipEquipment.Unequip(EquipmentSlot.Ring2);
     }
 }

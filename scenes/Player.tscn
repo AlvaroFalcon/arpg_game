@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://bs2np6tvmjmi8"]
+[gd_scene load_steps=15 format=3 uid="uid://bs2np6tvmjmi8"]
 
 [ext_resource type="Script" path="res://scripts/Player.cs" id="1"]
 [ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
@@ -9,6 +9,10 @@
 [ext_resource type="Resource" uid="uid://di3mkkrgahsu3" path="res://resources/skills/Fireball.tres" id="7"]
 [ext_resource type="Script" path="res://scripts/Items/Wallet.cs" id="8"]
 [ext_resource type="Script" path="res://scripts/Items/Equipment.cs" id="9"]
+[ext_resource type="Script" path="res://scripts/Items/Inventory.cs" id="10"]
+[ext_resource type="Script" path="res://scripts/UI/InventoryUI.cs" id="11"]
+[ext_resource type="Script" path="res://scripts/UI/InventoryGridControl.cs" id="12"]
+[ext_resource type="Script" path="res://scripts/UI/EquipmentStripControl.cs" id="13"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 12.0
@@ -47,6 +51,9 @@ script = ExtResource("8")
 [node name="Equipment" type="Node" parent="."]
 script = ExtResource("9")
 
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("10")
+
 [node name="Camera2D" type="Camera2D" parent="."]
 
 [node name="DebugReadout" type="CanvasLayer" parent="."]
@@ -63,3 +70,37 @@ text = "Life -/-
 Mana -/-
 Armour -
 Str -  Dex -  Int -"
+
+[node name="InventoryUI" type="CanvasLayer" parent="."]
+script = ExtResource("11")
+
+[node name="Panel" type="Control" parent="InventoryUI"]
+visible = false
+offset_left = 300.0
+offset_top = 120.0
+offset_right = 300.0
+offset_bottom = 120.0
+
+[node name="Background" type="ColorRect" parent="InventoryUI/Panel"]
+offset_right = 592.0
+offset_bottom = 352.0
+mouse_filter = 2
+color = Color(0.05, 0.05, 0.07, 0.85)
+
+[node name="GridControl" type="Control" parent="InventoryUI/Panel"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 16.0
+offset_bottom = 16.0
+script = ExtResource("12")
+InventoryPath = NodePath("../../../Inventory")
+EquipmentPath = NodePath("../../../Equipment")
+
+[node name="StripControl" type="Control" parent="InventoryUI/Panel"]
+offset_left = 416.0
+offset_top = 16.0
+offset_right = 416.0
+offset_bottom = 16.0
+script = ExtResource("13")
+InventoryPath = NodePath("../../../Inventory")
+EquipmentPath = NodePath("../../../Equipment")
