@@ -1,17 +1,29 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/tools/InventoryCapture.cs" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/items/EquipmentDrop.tscn" id="3_drop"]
+[ext_resource type="PackedScene" path="res://scenes/items/CurrencyDrop.tscn" id="4_gold"]
+[ext_resource type="Resource" path="res://resources/currency/Gold.tres" id="5_goldres"]
+[ext_resource type="Script" path="res://scripts/UI/ItemTooltipControl.cs" id="6_tooltip"]
+[ext_resource type="Script" path="res://scripts/Items/GroundLabelPool.cs" id="7_labels"]
 
 [node name="InventoryCapture" type="Node2D"]
 script = ExtResource("1")
 DropScene = ExtResource("3_drop")
+CurrencyDropScene = ExtResource("4_gold")
+GoldCurrency = ExtResource("5_goldres")
 
 [node name="Floor" type="Polygon2D" parent="."]
 z_index = -10
 color = Color(0.16, 0.16, 0.18, 1)
 polygon = PackedVector2Array(0, 0, 1200, 0, 1200, 700, 0, 700)
+
+[node name="ItemTooltip" type="CanvasLayer" parent="."]
+script = ExtResource("6_tooltip")
+
+[node name="GroundLabelPool" type="CanvasLayer" parent="."]
+script = ExtResource("7_labels")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(600, 350)

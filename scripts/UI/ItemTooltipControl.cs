@@ -35,6 +35,16 @@ public partial class ItemTooltipControl : CanvasLayer
 
     public override void _Ready()
     {
+        // A tooltip is the topmost thing on screen by definition, so it sets its own
+        // layer rather than depending on where it happens to sit in the tree. Every
+        // other CanvasLayer here defaults to layer 0, which makes draw order fall
+        // back to tree position — and in Main.tscn this node is declared *before*
+        // the Player instance that owns InventoryUI, so at layer 0 the inventory
+        // panel drew straight over it and hovering a grid item showed nothing at
+        // all. Anchoring the value here means no scene can reintroduce that by
+        // reordering nodes.
+        Layer = 100;
+
         var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         AddChild(panel);
 
