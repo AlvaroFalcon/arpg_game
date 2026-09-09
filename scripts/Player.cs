@@ -80,6 +80,70 @@ public partial class Player : CharacterBody2D
     /// </summary>
     public override void _UnhandledInput(InputEvent @event) => _lmbGate.HandleUnhandledInput(@event);
 
+    /// <summary>
+    /// The item a click asked for while it was out of reach. Set by
+    /// <see cref="RequestPickup"/>, honoured once the walk gets close enough, and
+    /// dropped the moment the player steers anywhere else.
+    /// </summary>
+    private Items.EquipmentItem? _pendingPickup;
+
+    /// <summary>
+    /// docs/design/items.md -> "Pickup has a reach": clicking an item you are too
+    /// far from walks you to it and picks it up on arrival, rather than doing
+    /// nothing. The intent lives on the player rather than on the item because the
+    /// player is what owns movement, and because only one such intent can be
+    /// outstanding — a second click replaces the first.
+    /// </summary>
+    public void RequestPickup(Items.EquipmentItem item)
+    {
+        _pendingPickup = item;
+        _navigationAgent.TargetPosition = item.GlobalPosition;
+    }
+
+    /// <summary>Abandons a queued pickup. Any deliberate movement counts: having
+    /// walked somewhere else and then being yanked back to an item you have
+    /// forgotten about is worse than the click having done nothing.</summary>
+    private void CancelPendingPickup() => _pendingPickup = null;
+
+    /// <summary>Test seam for the cancel rule — the production callers are input
+    /// paths, which a headless test cannot drive.</summary>
+    public void CancelPendingPickupForTest() => CancelPendingPickup();
+
+    /// <summary>Test seam: whether a queued pickup is outstanding.</summary>
+    public bool HasPendingPickupForTest => _pendingPickup is not null;
+
+    /// <summary>
+    /// Completes a queued pickup as soon as the walk brings the item into reach —
+    /// on proximity rather than on "navigation finished", since the path ends at
+    /// the item's centre and reach is satisfied well before that.
+    /// </summary>
+    private void TryCompletePendingPickup()
+    {
+        if (_pendingPickup is not { } item)
+        {
+            return;
+        }
+
+        // The item can vanish mid-walk: someone else's pickup, a despawn, or the
+        // scene changing under us.
+        if (!IsInstanceValid(item) || !item.IsInsideTree())
+        {
+            CancelPendingPickup();
+            return;
+        }
+
+        if (!item.IsWithinPickupReach(this))
+        {
+            return;
+        }
+
+        item.OnPickup(this);
+        CancelPendingPickup();
+
+        // Stop where we are rather than continuing to the item's exact centre.
+        _navigationAgent.TargetPosition = GlobalPosition;
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         float speed = _stats.MovementSpeed.Value;
@@ -97,6 +161,8 @@ public partial class Player : CharacterBody2D
                 _navigationAgent.TargetPosition = GlobalPosition;
             }
 
+            CancelPendingPickup();
+
             Velocity = wasdDir * speed;
             MoveAndSlide();
             return;
@@ -110,8 +176,14 @@ public partial class Player : CharacterBody2D
             || Input.IsActionPressed("force_move");
         if (pathFollow)
         {
+            CancelPendingPickup();
             _navigationAgent.TargetPosition = GetGlobalMousePosition();
         }
+
+        // Before the navigation guard below: reaching an item is a question of
+        // proximity, not of pathing, so a queued pickup on something already within
+        // reach must resolve even on a frame where the navigation map is not ready.
+        TryCompletePendingPickup();
 
         // Navigation map may not be active yet (e.g. first physics frame(s) after
         // the scene loads, before the NavigationRegion2D registers with the

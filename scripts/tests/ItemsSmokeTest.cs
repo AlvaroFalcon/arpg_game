@@ -343,6 +343,22 @@ public partial class ItemsSmokeTest : Node2D
         Check("PICKUP-REACH-ACCEPTS-ADJACENT-CLICK", nearAccepted,
             "a player 40px away must be within reach — otherwise the check above passes trivially");
 
+        // Out of reach must queue a walk rather than refusing outright, and any
+        // deliberate movement must drop that queue.
+        _player.GlobalPosition = itemPos + new Vector2(600f, 0f);
+        _player.RequestPickup(_equipmentForClick);
+        bool queued = _navAgent.TargetPosition.IsEqualApprox(itemPos);
+
+        _player.CancelPendingPickupForTest();
+        _player.GlobalPosition = itemPos + new Vector2(20f, 0f);
+        bool cancelledStaysCancelled = !_player.HasPendingPickupForTest;
+
+        Check("OUT-OF-REACH-CLICK-QUEUES-A-WALK", queued,
+            $"RequestPickup must retarget navigation at the item — target={_navAgent.TargetPosition}, item={itemPos}");
+        Check("PENDING-PICKUP-IS-CANCELLABLE", cancelledStaysCancelled,
+            "a cancelled pickup must stay cancelled even once the player is standing on the item — " +
+            "being yanked back to something you forgot about is worse than the click having done nothing");
+
         _player.GlobalPosition = playerHome;
 
         var tooltip = GetNode<UI.ItemTooltipControl>("ItemTooltip");

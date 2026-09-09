@@ -250,8 +250,12 @@ public partial class EquipmentItem : Area2D, IDroppable
         // it. Gated here rather than in OnPickup because OnPickup is also the
         // programmatic entry point tests and future systems use, and reach is a
         // property of *clicking* something, not of acquiring it.
+        // Out of reach walks there instead of refusing the click, per
+        // docs/design/items.md -> "Pickup has a reach". Silently ignoring a click
+        // on a thing the player can plainly see is its own small annoyance.
         if (!IsWithinPickupReach(player))
         {
+            player.RequestPickup(this);
             return;
         }
 

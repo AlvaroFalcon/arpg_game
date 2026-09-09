@@ -35,6 +35,18 @@ public partial class GroundLabelPool : CanvasLayer
     [Export]
     public bool LabelsVisible = true;
 
+    /// <summary>
+    /// When true, labels a filter hid are shown anyway. Left Alt toggles it.
+    ///
+    /// This is a different question from <see cref="LabelsVisible"/>, which is
+    /// "am I reading the floor right now". This one is "show me what my filter is
+    /// keeping from me" — the check you make when you suspect a rule is too
+    /// aggressive, or when you are about to leave an area and want one last look.
+    /// A filter that cannot be seen through is a filter you stop trusting.
+    /// </summary>
+    [Export]
+    public bool RevealFilteredLabels;
+
     [Export]
     public int InitialPoolSize = 24;
 
@@ -168,6 +180,13 @@ public partial class GroundLabelPool : CanvasLayer
         {
             LabelsVisible = !LabelsVisible;
             GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (@event.IsActionPressed("reveal_filtered_labels"))
+        {
+            RevealFilteredLabels = !RevealFilteredLabels;
+            GetViewport().SetInputAsHandled();
         }
     }
 
@@ -204,7 +223,7 @@ public partial class GroundLabelPool : CanvasLayer
                 float halfWidth = slot.Label.GetMinimumSize().X * 0.5f;
                 slot.Label.Position =
                     anchors[slot] - new Vector2(halfWidth, i * StackSpacingPx);
-                slot.Label.Visible = LabelsVisible && !slot.Hidden;
+                slot.Label.Visible = LabelsVisible && (!slot.Hidden || RevealFilteredLabels);
             }
         }
     }

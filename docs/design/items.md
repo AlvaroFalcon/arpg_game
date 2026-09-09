@@ -262,6 +262,27 @@ makes item pickup deliberate for exactly this reason.
 D2/PoE interaction. If the inventory has no room, the click fails and the item
 stays where it is.
 
+#### Pickup has a reach **[DECIDED]**
+
+A click only picks an item up when the player is within about three character
+widths of it (110px). Clicking a pile across the arena and having it teleport into
+the bag reads as a bug even when it is convenient — the character should be
+standing over what it picks up.
+
+**An out-of-range click walks you there and picks the item up on arrival**, rather
+than doing nothing. Silently ignoring a click on something the player can plainly
+see is its own small annoyance, and every ARPG in this lineage resolves it this
+way.
+
+The intent lives on the player, not on the item: the player owns movement, and
+only one such intent can be outstanding — a second click replaces the first.
+**Any deliberate movement cancels it**, because having walked somewhere else and
+then being yanked back to an item you had forgotten about is worse than the click
+having done nothing. It resolves on *proximity* rather than on "navigation
+finished", since the path ends at the item's centre and reach is satisfied well
+before that.
+
+
 #### How this interacts with filters
 
 `items.md`'s standing rule is that **filters control display, never behaviour**: a
@@ -517,6 +538,10 @@ filter on. Dropping the mechanic removes an entire class of problem.
 
 Dozens of labels appear at once when a pack dies. Required from day one: label
 pooling, world→screen projection, and vertical stacking to avoid overlap.
+
+**[DECIDED]** **Left Alt toggles revealing filter-hidden labels.** `Z` answers "am I reading the floor right now"; Alt answers "show me what my filter is keeping from me" — the check you make when you suspect a rule is too aggressive, or want one last look before leaving an area. They compose: `Z` off hides everything, and Alt only matters while labels are on.
+
+This is the release valve that makes an aggressive filter safe to write. A filter you cannot see through is a filter you stop trusting, and the standing rule that filters never change behaviour is far easier to hold when the player can check what was hidden at any moment.
 
 **[DECIDED]** **`Z` toggles all ground labels**, the genre-standard binding. It replaces an earlier [PROPOSED] hold-a-key-to-show: a toggle beats a held key once a screen has enough loot to be worth reading, because reading it should not cost you a finger for as long as you are looking.
 
