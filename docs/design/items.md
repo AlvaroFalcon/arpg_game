@@ -247,6 +247,59 @@ The data and placement rules are above; this is how the player actually touches 
 - **No stacking.** Nothing stackable exists — currency is a wallet counter, not a
   grid item.
 
+### Pickup is manual for items, automatic for currency **[DECIDED]**
+
+Walking over a piece of equipment must **not** pick it up. Only currency
+auto-collects, per each `CurrencyDefinition`'s own `AutoPickup` flag.
+
+This was wrong in milestone 2c and it is a genuine design bug, not a preference:
+auto-collecting gear fills a 60-cell grid with vendor trash within a couple of
+packs, and it takes the decision of *whether this is worth carrying* — the whole
+point of a limited grid — away from the player. Every ARPG with a grid inventory
+makes item pickup deliberate for exactly this reason.
+
+**Equipment is picked up by clicking it** — its ground label or its sprite, the
+D2/PoE interaction. If the inventory has no room, the click fails and the item
+stays where it is.
+
+#### How this interacts with filters
+
+`items.md`'s standing rule is that **filters control display, never behaviour**: a
+hidden gold pile is still auto-collected. Manual pickup puts pressure on that rule,
+because an item whose label is hidden has nothing obvious to click.
+
+The resolution: **the item's sprite stays clickable even when its label is
+hidden.** Hiding a label removes the reading clutter, not the item. A filter can
+never make loot unobtainable — it can only make it quieter.
+
+### Closing panels **[DECIDED]**
+
+`Escape` closes the topmost open panel, and `i` still toggles the inventory
+specifically. Any future panel joins the same stack rather than binding its own
+close key.
+
+### UI must consume its own input **[DECIDED]**
+
+Clicks and drags over an open panel must not reach the world. Dragging an item
+currently also issues a move order to the character underneath, which is a
+straightforward input-routing bug: the movement controller reads the mouse without
+first asking whether the UI wanted it.
+
+The fix belongs in the input layer, not in the movement code guessing about UI
+state — `Control` nodes consume what they handle, and the movement controller
+ignores clicks the GUI has taken.
+
+### Item tooltips **[DECIDED]**
+
+Hovering an item — in the grid, in an equipment slot, or on the ground — shows its
+name in its rarity colour, its base type, item level, and its rolled affixes with
+their tier numbers.
+
+Showing the tier is deliberate and matches `affixes.md`: PoE hides tiers and its
+entire playerbase installed third-party tools to see them. A cell that currently
+shows a colour and a clipped word ("Ringm", "Leath") is not enough to make a
+keep-or-drop decision, which is the decision the inventory exists to pose.
+
 ### The equipment strip **[DECIDED]**
 
 Nine labelled cells beside the grid, one per slot. Deliberately not a paper-doll
@@ -470,12 +523,19 @@ Hold-key scales far better with loot volume and suits a filter-centric game.
 
 ## Build order **[PROPOSED]**
 
+*(Milestones 1 through 2c are implemented. 2d and 2e were added from playtest
+feedback.)*
+
 1. **Drop pipeline** — `IDroppable`, `ItemDescriptor`, `FilterChain`, labels, and
    currency/gold. No equipment yet; currency alone proves the seam.
 2. **Equipment** — base items, Temper/Sigil rolling with tiers, grid inventory,
    equip → `ActorStats` modifiers via `Source` tagging.
-3. **Flasks** — charges, time regen, refill orbs.
-4. **Sets and Majestics** — `SetDefinition`, `CastModifier` subclasses.
+4. **Inventory usability (2d)** — UI input consumption, manual item pickup,
+   `Escape` to close, hover tooltips.
+5. **Inventory sort (2e)** — a sort button. Quality of life, and a natural home for
+   the packing logic the occupancy mask already provides.
+6. **Flasks** — charges, time regen, refill orbs.
+7. **Sets and Majestics** — `SetDefinition`, `CastModifier` subclasses.
 
 ## Open questions
 
