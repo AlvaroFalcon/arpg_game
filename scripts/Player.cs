@@ -35,12 +35,20 @@ public partial class Player : CharacterBody2D
     public Wallet Wallet { get; private set; } = null!;
 
     /// <summary>
-    /// Milestone 2b: another sibling component, same convention as
-    /// <see cref="Wallet"/>. Exposed publicly so <see cref="Items.EquipmentItem.OnPickup"/>
-    /// can reach the player's slots the same way <see cref="Items.CurrencyDrop.OnPickup"/>
+    /// Another sibling component, same convention as <see cref="Wallet"/>.
+    /// Exposed publicly so <see cref="Items.EquipmentItem.OnPickup"/> can reach
+    /// the player's slots the same way <see cref="Items.CurrencyDrop.OnPickup"/>
     /// reaches <see cref="Wallet"/>.
     /// </summary>
     public Items.Equipment Equipment { get; private set; } = null!;
+
+    /// <summary>
+    /// Milestone 2c: the grid inventory (docs/design/items.md -> "Grid
+    /// inventory"). Same sibling-component convention as
+    /// <see cref="Wallet"/>/<see cref="Equipment"/>; exposed publicly so
+    /// <see cref="Items.EquipmentItem.OnPickup"/> can route a pickup into it.
+    /// </summary>
+    public Items.Inventory Inventory { get; private set; } = null!;
 
     public override void _Ready()
     {
@@ -49,6 +57,7 @@ public partial class Player : CharacterBody2D
         _skillUser = GetNode<SkillUser>("SkillUser");
         Wallet = GetNode<Wallet>("Wallet");
         Equipment = GetNode<Items.Equipment>("Equipment");
+        Inventory = GetNode<Items.Inventory>("Inventory");
     }
 
     public override void _PhysicsProcess(double delta)

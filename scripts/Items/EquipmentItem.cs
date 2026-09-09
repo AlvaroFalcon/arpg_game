@@ -12,10 +12,8 @@ namespace PathToExile.Items;
 /// The equipment <see cref="IDroppable"/> — docs/design/items.md -> "Drop
 /// pipeline": on-ground is "label + sprite" (shared with currency via
 /// <see cref="GroundLabelPool"/>/<see cref="FilterChain"/>), on-pickup is "into
-/// grid inventory." <b>No grid inventory exists yet</b> (still explicitly out of
-/// scope this milestone), so milestone 2b routes pickup through a temporary
-/// auto-equip bridge instead — see <see cref="OnPickup"/>'s doc comment for why
-/// that is scaffolding, not the design.
+/// grid inventory." Milestone 2c wires that up for real — see
+/// <see cref="OnPickup"/>.
 ///
 /// Mirrors <see cref="CurrencyDrop"/>'s shape closely: a runtime
 /// <see cref="Initialize"/> entry point that computes one final, immutable
@@ -159,34 +157,32 @@ public partial class EquipmentItem : Area2D, IDroppable
     }
 
     /// <summary>
-    /// <b>Milestone 2b bridge, not a design decision — see docs/design/items.md's
-    /// build order item 2c ("grid inventory") for what actually removes this.</b>
-    /// There is still no grid inventory or equipment panel UI, so walking over an
-    /// equipment drop auto-equips it into a free matching slot
-    /// (<see cref="Items.Equipment.TryAutoEquip"/>) so gear is playable before
-    /// that UI exists, rather than being a claim that pickup should always mean
-    /// equip. If no valid slot is free, the item is left exactly where it is —
-    /// still visible, still pickable once a slot frees up — instead of vanishing
-    /// or displacing whatever is worn. When the grid inventory lands, this
-    /// method's body goes back to "into the inventory," full stop, the same way
-    /// milestone 2a's version of this comment expected equipping itself to be the
-    /// eventual replacement.
+    /// Milestone 2c, replacing milestone 2b's temporary auto-equip bridge (which
+    /// this method used to call and which no longer exists —
+    /// docs/design/items.md -> "Inventory interaction": "Removes the milestone-2b
+    /// auto-equip-on-pickup bridge, which existed only so gear was usable before
+    /// this screen existed."). Walking over an equipment drop now routes it into
+    /// <see cref="Player.Inventory"/> (<see cref="Items.Inventory.TryAdd"/>):
+    /// first free space in reading order. If nothing fits, the item is left
+    /// exactly where it is on the ground — still visible, still pickable once
+    /// space frees up — per "If nothing fits, the item stays on the ground
+    /// rather than being destroyed or silently swallowed."
     /// </summary>
     public void OnPickup(Player player)
     {
-        if (!player.Equipment.TryAutoEquip(this))
+        if (!player.Inventory.TryAdd(this))
         {
             return;
         }
 
         ReleaseLabel();
 
-        // Ownership transfers to Equipment as pure data (Base/RolledAffixes/
-        // RolledBaseStats are still read from this same instance whenever a stat
-        // is recomputed) rather than as a ground presence. Detached, not freed:
-        // Equipment's dictionary is now the only remaining reference keeping this
-        // node alive, and QueueFree-ing it would collect the very object that
-        // reference points at.
+        // Ownership transfers to Inventory as pure data (Base/RolledAffixes/
+        // RolledBaseStats are still read from this same instance whenever it's
+        // equipped or its stats are recomputed) rather than as a ground
+        // presence. Detached, not freed: Inventory's dictionary is now the only
+        // remaining reference keeping this node alive, and QueueFree-ing it
+        // would collect the very object that reference points at.
         GetParent()?.RemoveChild(this);
     }
 
