@@ -322,6 +322,14 @@ public partial class ItemsSmokeTest : Node2D
     private void CheckClickPicksUpEquipment()
     {
         bool hadRoomBefore = true; // fresh inventory, nothing added yet.
+
+        // Hovering before the click is the real sequence: you cannot click an item
+        // you are not pointing at, so the tooltip is always showing when pickup
+        // happens.
+        var tooltip = GetNode<UI.ItemTooltipControl>("ItemTooltip");
+        tooltip.Show(_equipmentForClick, _equipmentForClick);
+        bool tooltipShownBefore = tooltip.Visible;
+
         _equipmentForClick.OnPickup(_player);
 
         bool leftGround = !_equipmentForClick.IsInsideTree();
@@ -330,6 +338,11 @@ public partial class ItemsSmokeTest : Node2D
         Check("CLICK-PICKS-UP-EQUIPMENT", hadRoomBefore && leftGround && inInventory,
             $"OnPickup with room available must remove the item from the ground and place it in the grid — " +
             $"leftGround={leftGround}, inInventory={inInventory}");
+
+        Check("PICKUP-CLEARS-ITS-OWN-TOOLTIP", tooltipShownBefore && !tooltip.Visible,
+            $"the tooltip must not survive the item being picked up — shown before={tooltipShownBefore}, " +
+            $"still visible after={tooltip.Visible}. MouseExited never fires on pickup (the item leaves the tree " +
+            "in the same frame the click lands), so the tooltip sat on screen describing an item already in the bag.");
     }
 
     /// <summary>

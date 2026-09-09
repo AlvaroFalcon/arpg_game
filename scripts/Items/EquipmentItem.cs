@@ -205,6 +205,15 @@ public partial class EquipmentItem : Area2D, IDroppable
             _labelPool?.Release(handle);
             _labelHandle = null;
         }
+
+        // Surrendering the tooltip belongs here, with the label, because the two
+        // are lost for the same reasons. Tooltip ownership is normally released by
+        // MouseExited, and on pickup that signal never arrives: the item is
+        // detached from the tree in the same frame the click lands, so the cursor
+        // never "leaves" it. The tooltip then stayed on screen describing an item
+        // that was already in the player's bag. ReleaseLabel is the one chokepoint
+        // both pickup and _ExitTree already pass through.
+        _tooltip?.Clear(this);
     }
 
     /// <summary>
