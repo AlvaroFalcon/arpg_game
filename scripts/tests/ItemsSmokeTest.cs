@@ -326,6 +326,25 @@ public partial class ItemsSmokeTest : Node2D
         // Hovering before the click is the real sequence: you cannot click an item
         // you are not pointing at, so the tooltip is always showing when pickup
         // happens.
+        // Reach, per docs/design/items.md -> "Pickup has a reach". Checked before the
+        // pickup below moves the item, and from both sides: a radius that is always
+        // true would pass a near-only assertion.
+        Vector2 itemPos = _equipmentForClick.GlobalPosition;
+        Vector2 playerHome = _player.GlobalPosition;
+
+        _player.GlobalPosition = itemPos + new Vector2(600f, 0f);
+        bool farRejected = !_equipmentForClick.IsWithinPickupReach(_player);
+
+        _player.GlobalPosition = itemPos + new Vector2(40f, 0f);
+        bool nearAccepted = _equipmentForClick.IsWithinPickupReach(_player);
+
+        Check("PICKUP-REACH-REJECTS-DISTANT-CLICK", farRejected,
+            $"a player 600px away must be out of reach of a {_equipmentForClick.PickupRadiusPx}px radius");
+        Check("PICKUP-REACH-ACCEPTS-ADJACENT-CLICK", nearAccepted,
+            "a player 40px away must be within reach — otherwise the check above passes trivially");
+
+        _player.GlobalPosition = playerHome;
+
         var tooltip = GetNode<UI.ItemTooltipControl>("ItemTooltip");
         tooltip.Show(_equipmentForClick, _equipmentForClick);
         bool tooltipShownBefore = tooltip.Visible;

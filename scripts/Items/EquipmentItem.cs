@@ -76,6 +76,12 @@ public partial class EquipmentItem : Area2D, IDroppable
     public IReadOnlyList<(StatId Stat, ModifierType Type, float Value, SkillTags Condition)> RolledBaseStats { get; private set; }
         = Array.Empty<(StatId, ModifierType, float, SkillTags)>();
 
+    /// <summary>How close the player must be, in px, for a click to pick this up.
+    /// Roughly three character widths — close enough to read as "standing over it",
+    /// loose enough that you are not fighting the cursor.</summary>
+    [Export]
+    public float PickupRadiusPx = 110f;
+
     public ItemDescriptor Descriptor { get; private set; } = new();
 
     private GroundLabelPool? _labelPool;
@@ -225,12 +231,31 @@ public partial class EquipmentItem : Area2D, IDroppable
     /// misconfigured scene) is simply a no-op, same failure mode as any other
     /// rejected pickup.
     /// </summary>
+    /// <summary>Whether <paramref name="player"/> is close enough to click this up.
+    /// Public so the rule is testable without reaching through a click handler —
+    /// reach is a property of the item, not a private detail of one input path.</summary>
+    public bool IsWithinPickupReach(Player player) =>
+        player.GlobalPosition.DistanceTo(GlobalPosition) <= PickupRadiusPx;
+
     private void TryPickupByPlayer()
     {
-        if (GetTree().CurrentScene.GetNodeOrNull<Player>("Player") is { } player)
+        if (GetTree().CurrentScene.GetNodeOrNull<Player>("Player") is not { } player)
         {
-            OnPickup(player);
+            return;
         }
+
+        // Reach check, per docs/design/items.md -> "Pickup has a reach". Clicking a
+        // pile across the whole arena and having it teleport into the bag reads as
+        // a bug even when it is convenient — the character has to be standing over
+        // it. Gated here rather than in OnPickup because OnPickup is also the
+        // programmatic entry point tests and future systems use, and reach is a
+        // property of *clicking* something, not of acquiring it.
+        if (!IsWithinPickupReach(player))
+        {
+            return;
+        }
+
+        OnPickup(player);
     }
 
     /// <summary>The sprite half of manual pickup (docs/design/items.md ->

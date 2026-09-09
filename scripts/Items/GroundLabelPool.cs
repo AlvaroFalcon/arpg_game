@@ -153,6 +153,24 @@ public partial class GroundLabelPool : CanvasLayer
         slot.Label.MouseFilter = Control.MouseFilterEnum.Ignore;
     }
 
+    /// <summary>
+    /// Z toggles every ground label, the genre-standard binding. This replaces
+    /// docs/design/items.md's [PROPOSED] hold-a-key-to-show: a toggle beats a held
+    /// key once a screen has enough loot on it to be worth reading, because reading
+    /// it should not cost you a finger.
+    ///
+    /// Visibility only. A hidden label still belongs to a live item that is still
+    /// there and still clickable — the same rule filters follow.
+    /// </summary>
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event.IsActionPressed("toggle_ground_labels"))
+        {
+            LabelsVisible = !LabelsVisible;
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
     public override void _Process(double delta)
     {
         List<Slot> active = _slots.Where(s => s.InUse && s.GetWorldPosition is not null).ToList();

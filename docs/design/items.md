@@ -518,8 +518,9 @@ filter on. Dropping the mechanic removes an entire class of problem.
 Dozens of labels appear at once when a pack dies. Required from day one: label
 pooling, world→screen projection, and vertical stacking to avoid overlap.
 
-**[PROPOSED]** Labels are hold-a-key-to-show (D2/PoE) rather than always-on (D3).
-Hold-key scales far better with loot volume and suits a filter-centric game.
+**[DECIDED]** **`Z` toggles all ground labels**, the genre-standard binding. It replaces an earlier [PROPOSED] hold-a-key-to-show: a toggle beats a held key once a screen has enough loot to be worth reading, because reading it should not cost you a finger for as long as you are looking.
+
+Visibility only. A hidden label still belongs to a live item that is still there and still clickable — the same rule filters follow.
 
 ## Build order **[PROPOSED]**
 
@@ -563,4 +564,4 @@ feedback.)*
    with, but no crafting system is designed.
 8. **Character level cap vs item level 120** — item level range should exceed the
    character cap so endgame areas can drop above-level gear. Cap not yet decided.
-9. **Label visibility** — hold-key vs always-on is [PROPOSED].
+9. ~~**Label visibility**~~ — resolved: `Z` toggles ground labels.
