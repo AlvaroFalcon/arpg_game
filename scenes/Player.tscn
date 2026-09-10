@@ -99,6 +99,14 @@ script = ExtResource("12")
 InventoryPath = NodePath("../../../Inventory")
 EquipmentPath = NodePath("../../../Equipment")
 
+[node name="SortButton" type="Button" parent="InventoryUI/Panel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 196.0
+offset_right = 116.0
+offset_bottom = 226.0
+text = "Sort"
+
 [node name="StripControl" type="Control" parent="InventoryUI/Panel"]
 anchors_preset = 0
 offset_left = 416.0

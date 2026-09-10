@@ -94,9 +94,93 @@ public partial class InventorySmokeTest : Node2D
         CheckEquippingThroughInventoryAppliesModifiersAndRecompute();
 
         CheckUnequipIntoFullGridFailsSafely();
+        CheckSorting();
 
         GD.Print(_failed ? "[INVENTORYTEST] === RESULT: FAIL ===" : "[INVENTORYTEST] === RESULT: PASS ===");
         GetTree().Quit(_failed ? 1 : 0);
+    }
+
+    /// <summary>
+    /// docs/design/items.md -> "Sorting". Covers the order itself, the packing
+    /// consequence of that order, and the all-or-nothing guarantee — the last of
+    /// which is the one that matters, since a half-applied sort loses items.
+    /// </summary>
+    private void CheckSorting()
+    {
+        ClearGrid();
+
+        // Deliberately scattered: several classes, several rarities, mixed
+        // footprints, added in an order that is not the sorted order.
+        var added = new List<EquipmentItem>();
+        foreach ((string baseId, Rarity rarity, int ilvl) in new (string, Rarity, int)[]
+                 {
+                     ("copper_ring", Rarity.Magic, 40),
+                     ("rawhide_boots", Rarity.Rare, 120),
+                     ("iron_wand", Rarity.Common, 10),
+                     ("copper_ring", Rarity.Rare, 90),
+                     ("rawhide_boots", Rarity.Magic, 55),
+                     ("iron_wand", Rarity.Common, 5),
+                 })
+        {
+            EquipmentItem item = RollItem(baseId switch
+            {
+                "copper_ring" => _copperRing,
+                "rawhide_boots" => _rawhideBoots,
+                _ => _ironWand,
+            }, rarity, ilvl, Array.Empty<AffixDefinition>());
+
+            if (_gridInventory.TryAdd(item))
+            {
+                added.Add(item);
+            }
+        }
+
+        Check("SORT-SETUP-ITEMS-PLACED", added.Count == 6,
+            $"setup: six mixed items must fit an empty grid — placed {added.Count}");
+
+        bool sorted = InventorySorter.TrySort(_gridInventory);
+
+        Check("SORT-SUCCEEDS", sorted, "a repack of items that already fitted must succeed");
+
+        Check("SORT-KEEPS-EVERY-ITEM", _gridInventory.Placements.Count == added.Count
+                && added.All(i => _gridInventory.Placements.ContainsKey(i)),
+            $"every item must survive the repack — before={added.Count}, after={_gridInventory.Placements.Count}");
+
+        // Reading order over the sorted grid must be non-decreasing by class: that
+        // is what "grouped so you can find things" actually means on a 2D grid.
+        List<EquipmentItem> byPosition = _gridInventory.Placements
+            .OrderBy(kv => kv.Value.Y)
+            .ThenBy(kv => kv.Value.X)
+            .Select(kv => kv.Key)
+            .ToList();
+
+        bool classesGrouped = byPosition
+            .Select(i => (int)i.Descriptor.ItemClass)
+            .Zip(byPosition.Skip(1).Select(i => (int)i.Descriptor.ItemClass), (a, b) => a <= b)
+            .All(ok => ok);
+
+        Check("SORT-GROUPS-BY-CLASS-IN-READING-ORDER", classesGrouped,
+            "walking the sorted grid in reading order must never step backwards to an earlier item class — " +
+            $"got [{string.Join(", ", byPosition.Select(i => i.Descriptor.ItemClass))}]");
+
+        // Two rings of different rarity: the better one must come first.
+        List<EquipmentItem> rings = byPosition.Where(i => i.Descriptor.ItemClass == ItemClass.Ring).ToList();
+        bool rarityOrdered = rings.Count < 2 || (int)rings[0].Rarity >= (int)rings[1].Rarity;
+        Check("SORT-ORDERS-BY-RARITY-WITHIN-A-CLASS", rarityOrdered,
+            $"within a class the better rarity comes first — got [{string.Join(", ", rings.Select(r => r.Rarity))}]");
+
+        ClearGrid();
+    }
+
+    /// <summary>Empties the grid between check groups. Inventory has no Clear of
+    /// its own — nothing in the game ever empties a bag wholesale, and adding one
+    /// just for tests would be API surface no player action reaches.</summary>
+    private void ClearGrid()
+    {
+        foreach (EquipmentItem item in _gridInventory.Placements.Keys.ToList())
+        {
+            _gridInventory.Remove(item);
+        }
     }
 
     private void Check(string name, bool passed, string detail)

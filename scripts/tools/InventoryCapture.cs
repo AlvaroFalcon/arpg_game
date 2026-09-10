@@ -96,7 +96,7 @@ public partial class InventoryCapture : Node2D
 
         _player.GetNode<CanvasLayer>("InventoryUI").GetNode<Control>("Panel").Visible = true;
 
-        _caption.Text = "Hover an item: name in its rarity colour, base, item level, affixes with tiers";
+        _caption.Text = "12x5 grid, nine equipment slots, and a sort button";
         _phase = 1;
 
         // Drive the tooltip directly rather than faking a mouse position: the point
@@ -129,7 +129,7 @@ public partial class InventoryCapture : Node2D
     /// </summary>
     private void StartGroundPhase()
     {
-        _phase = 2;
+        _phase = 3;
         _frame = 0;
 
         _player.GetNode<CanvasLayer>("InventoryUI").GetNode<Control>("Panel").Visible = false;
@@ -164,9 +164,33 @@ public partial class InventoryCapture : Node2D
 
         _frame++;
 
+        // Phase 1a: the panel with nothing hovered, so the layout (and the sort
+        // button) is readable without a tooltip spilling across it.
         if (_phase == 1)
         {
+            // Park the cursor off the panel. The OS cursor position survives
+            // between runs, so without this the previous run's hover point is
+            // still under the mouse and this "nothing hovered" shot comes out
+            // with a tooltip across it.
+            Input.WarpMouse(new Vector2(1100f, 600f));
+
+            if (_frame > 12)
+            {
+                Capture("res://docs/devlog/screenshots/inventory.png", () =>
+                {
+                    _phase = 2;
+                    _frame = 0;
+                });
+            }
+
+            return;
+        }
+
+        if (_phase == 2)
+        {
             Input.WarpMouse(HoverPoint);
+            _caption.Text = "Hover an item: name in its rarity colour, base, item level, affixes with tiers";
+
             if (_frame > 20)
             {
                 Capture("res://docs/devlog/screenshots/inventory-tooltip.png", StartGroundPhase);

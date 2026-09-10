@@ -321,6 +321,24 @@ entire playerbase installed third-party tools to see them. A cell that currently
 shows a colour and a clipped word ("Ringm", "Leath") is not enough to make a
 keep-or-drop decision, which is the decision the inventory exists to pose.
 
+### Sorting **[DECIDED]**
+
+A sort button repacks the grid. Order is **item class, then rarity descending, then
+item level descending** — grouping by class first because the question a player
+asks a sorted bag is "where are my rings", not "what is my densest packing".
+
+Within a class, taller items are placed first. Repacking is first-fit in reading
+order, and placing tall-before-short is what stops a row of 1x1s stranding a
+column that a 2x3 then cannot use.
+
+**A sort that cannot fully repack must change nothing.** The items being placed
+are exactly the items that already fitted, so a failure means the new order
+fragmented worse than the old one — and a half-sorted bag with an item silently
+missing is far worse than an unsorted one. The implementation places into a
+scratch layout and only commits when every item has landed.
+
+Sorting never touches equipped items, and never picks anything up off the ground.
+
 ### The equipment strip **[DECIDED]**
 
 Nine labelled cells beside the grid, one per slot. Deliberately not a paper-doll

@@ -40,6 +40,26 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
     {
         _panel = GetNode<Control>("Panel");
         _panel.Visible = false;
+
+        // docs/design/items.md -> "Sorting". The button lives in the scene so its
+        // placement is an editor concern; the policy lives in InventorySorter.
+        _panel.GetNode<Button>("SortButton").Pressed += OnSortPressed;
+    }
+
+    /// <summary>
+    /// A sort that cannot fully repack leaves the grid untouched and says so,
+    /// rather than half-applying — see InventorySorter.TrySort. Failure should be
+    /// unreachable in practice (the items being packed are the ones that already
+    /// fitted), so it is worth a warning if it ever happens rather than a silent
+    /// no-op the player would read as a dead button.
+    /// </summary>
+    private void OnSortPressed()
+    {
+        var inventory = GetNode<Items.Inventory>("../Inventory");
+        if (!Items.InventorySorter.TrySort(inventory))
+        {
+            GD.PushWarning("Inventory sort could not repack every item; the grid was left unchanged.");
+        }
     }
 
     public override void _Process(double delta)
