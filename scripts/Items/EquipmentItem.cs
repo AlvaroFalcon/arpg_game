@@ -12,8 +12,25 @@ namespace PathToExile.Items;
 /// The equipment <see cref="IDroppable"/> — docs/design/items.md -> "Drop
 /// pipeline": on-ground is "label + sprite" (shared with currency via
 /// <see cref="GroundLabelPool"/>/<see cref="FilterChain"/>), on-pickup is "into
-/// grid inventory." Milestone 2c wires that up for real — see
-/// <see cref="OnPickup"/>.
+/// grid inventory."
+///
+/// <b>Pickup is click-based, not walk-over</b> — docs/design/items.md ->
+/// "Pickup is manual for items, automatic for currency": milestone 2c's
+/// walk-over auto-pickup for equipment was a genuine design bug (it fills a
+/// 60-cell grid with vendor trash and takes the is-this-worth-carrying decision
+/// away from the player), fixed in milestone 2d by retiring the
+/// <see cref="Area2D.BodyEntered"/> path entirely for this type (contrast
+/// <see cref="CurrencyDrop"/>, which keeps it — currency really is still
+/// auto-collected). The click affordance is wired two ways, both funnelling
+/// into the same <see cref="OnPickup"/> (via <see cref="TryPickupByPlayer"/>):
+/// the ground label (<see cref="RegisterLabel"/>, via
+/// <see cref="GroundLabel.OnClicked"/>) and this node's own sprite, via
+/// <see cref="Area2D.InputEvent"/> — see <see cref="_Ready"/>. "The sprite
+/// stays clickable even when its label is
+/// hidden" (same section) falls out for free: the two paths are entirely
+/// independent, and a hidden label is simply an invisible
+/// <see cref="Control"/> that Godot never routes input to, while the sprite's
+/// physics-based picking neither knows nor cares about label visibility.
 ///
 /// Mirrors <see cref="CurrencyDrop"/>'s shape closely: a runtime
 /// <see cref="Initialize"/> entry point that computes one final, immutable
@@ -27,6 +44,12 @@ public partial class EquipmentItem : Area2D, IDroppable
     /// <summary>Same optional-wiring convention as <see cref="CurrencyDrop.GroundLabelPoolPath"/>.</summary>
     [Export]
     public NodePath GroundLabelPoolPath = new();
+
+    /// <summary>Same optional-wiring convention, for the shared hover tooltip
+    /// (docs/design/items.md -> "Item tooltips") — see
+    /// <see cref="UI.ItemTooltipControl"/>'s class doc for the fallback lookup.</summary>
+    [Export]
+    public NodePath ItemTooltipPath = new();
 
     /// <summary>Which base this item rolled on. Null only in the brief window
     /// before <see cref="Initialize"/> runs.</summary>
@@ -53,14 +76,41 @@ public partial class EquipmentItem : Area2D, IDroppable
     public IReadOnlyList<(StatId Stat, ModifierType Type, float Value, SkillTags Condition)> RolledBaseStats { get; private set; }
         = Array.Empty<(StatId, ModifierType, float, SkillTags)>();
 
+    /// <summary>How close the player must be, in px, for a click to pick this up.
+    /// Roughly three character widths — close enough to read as "standing over it",
+    /// loose enough that you are not fighting the cursor.</summary>
+    [Export]
+    public float PickupRadiusPx = 110f;
+
     public ItemDescriptor Descriptor { get; private set; } = new();
 
     private GroundLabelPool? _labelPool;
     private int? _labelHandle;
+    private UI.ItemTooltipControl? _tooltip;
+
+    /// <summary>Public so a test can confirm a failed pickup left the label
+    /// intact (docs/design/items.md: "the click fails and leaves the item
+    /// exactly where it was, label intact") without reaching into the private
+    /// <see cref="_labelHandle"/> field itself.</summary>
+    public bool HasGroundLabel => _labelHandle is not null;
 
     public override void _Ready()
     {
-        BodyEntered += OnBodyEntered;
+        // Physics-based click/hover picking for the sprite half of manual
+        // pickup and hover tooltips — see this type's class doc. Off by default
+        // per-Viewport (Godot 4.1: physics_object_picking defaults false), and
+        // every EquipmentItem needs it, so each one turning it on here (rather
+        // than a one-off setting buried in Main.tscn or every test scene) is
+        // what makes "instance an EquipmentDrop anywhere and it's clickable"
+        // true without extra per-scene wiring. Idempotent: harmless to set true
+        // repeatedly as more items spawn.
+        GetViewport().PhysicsObjectPicking = true;
+        InputEvent += OnAreaInputEvent;
+        MouseEntered += () => _tooltip?.Show(this, this);
+        MouseExited += () => _tooltip?.Clear(this);
+
+        _tooltip = GetNodeOrNull<UI.ItemTooltipControl>(ItemTooltipPath)
+            ?? GetTree().CurrentScene.GetNodeOrNull<UI.ItemTooltipControl>("ItemTooltip");
     }
 
     /// <summary>
@@ -136,7 +186,22 @@ public partial class EquipmentItem : Area2D, IDroppable
         // docs/design/items.md -> "Rarity colour is filter output, not label
         // state".
         DisplayStyle style = FilterChain.Default.Evaluate(Descriptor);
-        _labelHandle = _labelPool.Acquire(() => GlobalPosition, Descriptor.DisplayName, style);
+        _labelHandle = _labelPool.Acquire(
+            () => GlobalPosition,
+            Descriptor.DisplayName,
+            style,
+            onClicked: () => TryPickupByPlayer(),
+            onHoverChanged: hovering =>
+            {
+                if (hovering)
+                {
+                    _tooltip?.Show(this, this);
+                }
+                else
+                {
+                    _tooltip?.Clear(this);
+                }
+            });
     }
 
     private void ReleaseLabel()
@@ -146,27 +211,82 @@ public partial class EquipmentItem : Area2D, IDroppable
             _labelPool?.Release(handle);
             _labelHandle = null;
         }
+
+        // Surrendering the tooltip belongs here, with the label, because the two
+        // are lost for the same reasons. Tooltip ownership is normally released by
+        // MouseExited, and on pickup that signal never arrives: the item is
+        // detached from the tree in the same frame the click lands, so the cursor
+        // never "leaves" it. The tooltip then stayed on screen describing an item
+        // that was already in the player's bag. ReleaseLabel is the one chokepoint
+        // both pickup and _ExitTree already pass through.
+        _tooltip?.Clear(this);
     }
 
-    private void OnBodyEntered(Node2D body)
+    /// <summary>
+    /// Resolves the single local player the same convention-over-configuration
+    /// way <see cref="RegisterLabel"/> resolves its <see cref="GroundLabelPool"/>
+    /// — a well-known name under the current scene root — and forwards to
+    /// <see cref="OnPickup"/> if found. The click handlers below are the only
+    /// callers; a click with no resolvable player (shouldn't happen outside a
+    /// misconfigured scene) is simply a no-op, same failure mode as any other
+    /// rejected pickup.
+    /// </summary>
+    /// <summary>Whether <paramref name="player"/> is close enough to click this up.
+    /// Public so the rule is testable without reaching through a click handler —
+    /// reach is a property of the item, not a private detail of one input path.</summary>
+    public bool IsWithinPickupReach(Player player) =>
+        player.GlobalPosition.DistanceTo(GlobalPosition) <= PickupRadiusPx;
+
+    private void TryPickupByPlayer()
     {
-        if (body is Player player)
+        if (GetTree().CurrentScene.GetNodeOrNull<Player>("Player") is not { } player)
         {
-            OnPickup(player);
+            return;
+        }
+
+        // Reach check, per docs/design/items.md -> "Pickup has a reach". Clicking a
+        // pile across the whole arena and having it teleport into the bag reads as
+        // a bug even when it is convenient — the character has to be standing over
+        // it. Gated here rather than in OnPickup because OnPickup is also the
+        // programmatic entry point tests and future systems use, and reach is a
+        // property of *clicking* something, not of acquiring it.
+        // Out of reach walks there instead of refusing the click, per
+        // docs/design/items.md -> "Pickup has a reach". Silently ignoring a click
+        // on a thing the player can plainly see is its own small annoyance.
+        if (!IsWithinPickupReach(player))
+        {
+            player.RequestPickup(this);
+            return;
+        }
+
+        OnPickup(player);
+    }
+
+    /// <summary>The sprite half of manual pickup (docs/design/items.md ->
+    /// "Pickup is manual...": "its ground label or its sprite") — requires
+    /// <see cref="CollisionObject2D.InputPickable"/> (true by default) and a
+    /// nonzero <see cref="CollisionObject2D.CollisionLayer"/>, both set on
+    /// <c>EquipmentDrop.tscn</c>, plus <see cref="Viewport.PhysicsObjectPicking"/>,
+    /// turned on in <see cref="_Ready"/>.</summary>
+    private void OnAreaInputEvent(Node viewport, InputEvent @event, long shapeIdx)
+    {
+        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
+        {
+            TryPickupByPlayer();
         }
     }
 
     /// <summary>
-    /// Milestone 2c, replacing milestone 2b's temporary auto-equip bridge (which
-    /// this method used to call and which no longer exists —
-    /// docs/design/items.md -> "Inventory interaction": "Removes the milestone-2b
-    /// auto-equip-on-pickup bridge, which existed only so gear was usable before
-    /// this screen existed."). Walking over an equipment drop now routes it into
-    /// <see cref="Player.Inventory"/> (<see cref="Items.Inventory.TryAdd"/>):
-    /// first free space in reading order. If nothing fits, the item is left
-    /// exactly where it is on the ground — still visible, still pickable once
-    /// space frees up — per "If nothing fits, the item stays on the ground
-    /// rather than being destroyed or silently swallowed."
+    /// <see cref="IDroppable.OnPickup"/> — milestone 2d changed only <i>what
+    /// triggers this</i> (a click, via <see cref="TryPickupByPlayer"/>), never
+    /// what it does. Routes into <see cref="Player.Inventory"/>
+    /// (<see cref="Items.Inventory.TryAdd"/>): first free space in reading
+    /// order. If nothing fits, the item is left exactly where it is on the
+    /// ground — still visible, still pickable once space frees up, label still
+    /// registered — per docs/design/items.md: "the click fails and leaves the
+    /// item exactly where it was, label intact." <b>Nothing below this check
+    /// runs on failure</b> — see this type's class doc on why a failed pickup
+    /// must never half-detach the item.
     /// </summary>
     public void OnPickup(Player player)
     {

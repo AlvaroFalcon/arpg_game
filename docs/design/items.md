@@ -247,6 +247,98 @@ The data and placement rules are above; this is how the player actually touches 
 - **No stacking.** Nothing stackable exists — currency is a wallet counter, not a
   grid item.
 
+### Pickup is manual for items, automatic for currency **[DECIDED]**
+
+Walking over a piece of equipment must **not** pick it up. Only currency
+auto-collects, per each `CurrencyDefinition`'s own `AutoPickup` flag.
+
+This was wrong in milestone 2c and it is a genuine design bug, not a preference:
+auto-collecting gear fills a 60-cell grid with vendor trash within a couple of
+packs, and it takes the decision of *whether this is worth carrying* — the whole
+point of a limited grid — away from the player. Every ARPG with a grid inventory
+makes item pickup deliberate for exactly this reason.
+
+**Equipment is picked up by clicking it** — its ground label or its sprite, the
+D2/PoE interaction. If the inventory has no room, the click fails and the item
+stays where it is.
+
+#### Pickup has a reach **[DECIDED]**
+
+A click only picks an item up when the player is within about three character
+widths of it (110px). Clicking a pile across the arena and having it teleport into
+the bag reads as a bug even when it is convenient — the character should be
+standing over what it picks up.
+
+**An out-of-range click walks you there and picks the item up on arrival**, rather
+than doing nothing. Silently ignoring a click on something the player can plainly
+see is its own small annoyance, and every ARPG in this lineage resolves it this
+way.
+
+The intent lives on the player, not on the item: the player owns movement, and
+only one such intent can be outstanding — a second click replaces the first.
+**Any deliberate movement cancels it**, because having walked somewhere else and
+then being yanked back to an item you had forgotten about is worse than the click
+having done nothing. It resolves on *proximity* rather than on "navigation
+finished", since the path ends at the item's centre and reach is satisfied well
+before that.
+
+
+#### How this interacts with filters
+
+`items.md`'s standing rule is that **filters control display, never behaviour**: a
+hidden gold pile is still auto-collected. Manual pickup puts pressure on that rule,
+because an item whose label is hidden has nothing obvious to click.
+
+The resolution: **the item's sprite stays clickable even when its label is
+hidden.** Hiding a label removes the reading clutter, not the item. A filter can
+never make loot unobtainable — it can only make it quieter.
+
+### Closing panels **[DECIDED]**
+
+`Escape` closes the topmost open panel, and `i` still toggles the inventory
+specifically. Any future panel joins the same stack rather than binding its own
+close key.
+
+### UI must consume its own input **[DECIDED]**
+
+Clicks and drags over an open panel must not reach the world. Dragging an item
+currently also issues a move order to the character underneath, which is a
+straightforward input-routing bug: the movement controller reads the mouse without
+first asking whether the UI wanted it.
+
+The fix belongs in the input layer, not in the movement code guessing about UI
+state — `Control` nodes consume what they handle, and the movement controller
+ignores clicks the GUI has taken.
+
+### Item tooltips **[DECIDED]**
+
+Hovering an item — in the grid, in an equipment slot, or on the ground — shows its
+name in its rarity colour, its base type, item level, and its rolled affixes with
+their tier numbers.
+
+Showing the tier is deliberate and matches `affixes.md`: PoE hides tiers and its
+entire playerbase installed third-party tools to see them. A cell that currently
+shows a colour and a clipped word ("Ringm", "Leath") is not enough to make a
+keep-or-drop decision, which is the decision the inventory exists to pose.
+
+### Sorting **[DECIDED]**
+
+A sort button repacks the grid. Order is **item class, then rarity descending, then
+item level descending** — grouping by class first because the question a player
+asks a sorted bag is "where are my rings", not "what is my densest packing".
+
+Within a class, taller items are placed first. Repacking is first-fit in reading
+order, and placing tall-before-short is what stops a row of 1x1s stranding a
+column that a 2x3 then cannot use.
+
+**A sort that cannot fully repack must change nothing.** The items being placed
+are exactly the items that already fitted, so a failure means the new order
+fragmented worse than the old one — and a half-sorted bag with an item silently
+missing is far worse than an unsorted one. The implementation places into a
+scratch layout and only commits when every item has landed.
+
+Sorting never touches equipped items, and never picks anything up off the ground.
+
 ### The equipment strip **[DECIDED]**
 
 Nine labelled cells beside the grid, one per slot. Deliberately not a paper-doll
@@ -465,17 +557,29 @@ filter on. Dropping the mechanic removes an entire class of problem.
 Dozens of labels appear at once when a pack dies. Required from day one: label
 pooling, world→screen projection, and vertical stacking to avoid overlap.
 
-**[PROPOSED]** Labels are hold-a-key-to-show (D2/PoE) rather than always-on (D3).
-Hold-key scales far better with loot volume and suits a filter-centric game.
+**[DECIDED]** **Left Alt toggles revealing filter-hidden labels.** `Z` answers "am I reading the floor right now"; Alt answers "show me what my filter is keeping from me" — the check you make when you suspect a rule is too aggressive, or want one last look before leaving an area. They compose: `Z` off hides everything, and Alt only matters while labels are on.
+
+This is the release valve that makes an aggressive filter safe to write. A filter you cannot see through is a filter you stop trusting, and the standing rule that filters never change behaviour is far easier to hold when the player can check what was hidden at any moment.
+
+**[DECIDED]** **`Z` toggles all ground labels**, the genre-standard binding. It replaces an earlier [PROPOSED] hold-a-key-to-show: a toggle beats a held key once a screen has enough loot to be worth reading, because reading it should not cost you a finger for as long as you are looking.
+
+Visibility only. A hidden label still belongs to a live item that is still there and still clickable — the same rule filters follow.
 
 ## Build order **[PROPOSED]**
+
+*(Milestones 1 through 2c are implemented. 2d and 2e were added from playtest
+feedback.)*
 
 1. **Drop pipeline** — `IDroppable`, `ItemDescriptor`, `FilterChain`, labels, and
    currency/gold. No equipment yet; currency alone proves the seam.
 2. **Equipment** — base items, Temper/Sigil rolling with tiers, grid inventory,
    equip → `ActorStats` modifiers via `Source` tagging.
-3. **Flasks** — charges, time regen, refill orbs.
-4. **Sets and Majestics** — `SetDefinition`, `CastModifier` subclasses.
+4. **Inventory usability (2d)** — UI input consumption, manual item pickup,
+   `Escape` to close, hover tooltips.
+5. **Inventory sort (2e)** — a sort button. Quality of life, and a natural home for
+   the packing logic the occupancy mask already provides.
+6. **Flasks** — charges, time regen, refill orbs.
+7. **Sets and Majestics** — `SetDefinition`, `CastModifier` subclasses.
 
 ## Open questions
 
@@ -503,4 +607,4 @@ Hold-key scales far better with loot volume and suits a filter-centric game.
    with, but no crafting system is designed.
 8. **Character level cap vs item level 120** — item level range should exceed the
    character cap so endgame areas can drop above-level gear. Cap not yet decided.
-9. **Label visibility** — hold-key vs always-on is [PROPOSED].
+9. ~~**Label visibility**~~ — resolved: `Z` toggles ground labels.

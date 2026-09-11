@@ -76,18 +76,21 @@ script = ExtResource("11")
 
 [node name="Panel" type="Control" parent="InventoryUI"]
 visible = false
+layout_mode = 3
+anchors_preset = 0
 offset_left = 300.0
 offset_top = 120.0
 offset_right = 300.0
 offset_bottom = 120.0
 
 [node name="Background" type="ColorRect" parent="InventoryUI/Panel"]
+layout_mode = 0
 offset_right = 592.0
 offset_bottom = 352.0
-mouse_filter = 2
 color = Color(0.05, 0.05, 0.07, 0.85)
 
 [node name="GridControl" type="Control" parent="InventoryUI/Panel"]
+anchors_preset = 0
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 16.0
@@ -96,7 +99,16 @@ script = ExtResource("12")
 InventoryPath = NodePath("../../../Inventory")
 EquipmentPath = NodePath("../../../Equipment")
 
+[node name="SortButton" type="Button" parent="InventoryUI/Panel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 196.0
+offset_right = 116.0
+offset_bottom = 226.0
+text = "Sort"
+
 [node name="StripControl" type="Control" parent="InventoryUI/Panel"]
+anchors_preset = 0
 offset_left = 416.0
 offset_top = 16.0
 offset_right = 416.0

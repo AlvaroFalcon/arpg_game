@@ -1,6 +1,7 @@
 #nullable enable
 using Godot;
 using PathToExile.Items;
+using PathToExile.UI;
 
 namespace PathToExile.Tools;
 
@@ -22,10 +23,23 @@ public partial class InventoryCapture : Node2D
     /// be instantiated from its scene and added to the tree before Initialize —
     /// `new EquipmentItem()` produces a detached node and throws. Same path
     /// EquipmentDropSpawner uses.</summary>
+    /// <summary>Centre of the top-left grid cell, where the first item lands.</summary>
+    private static readonly Vector2 HoverPoint = new(345f, 180f);
+
     [Export]
     public PackedScene DropScene = null!;
 
+    [Export]
+    public PackedScene CurrencyDropScene = null!;
+
+    [Export]
+    public CurrencyDefinition GoldCurrency = null!;
+
     private Player _player = null!;
+    private AffixLibrary _library = null!;
+    private RandomNumberGenerator _rng = null!;
+    private Label _caption = null!;
+    private int _phase;
     private int _frame;
     private bool _busy;
 
@@ -54,8 +68,15 @@ public partial class InventoryCapture : Node2D
             ("rope_belt", Rarity.Common, 5),
         };
 
-        var rng = new RandomNumberGenerator();
-        rng.Randomize();
+        _library = library;
+        _rng = new RandomNumberGenerator();
+        _rng.Randomize();
+        RandomNumberGenerator rng = _rng;
+
+        _caption = new Label { Position = new Vector2(40f, 40f) };
+        _caption.AddThemeFontSizeOverride("font_size", 20);
+        _caption.AddThemeColorOverride("font_color", new Color(0.92f, 0.92f, 0.95f));
+        AddChild(_caption);
 
         foreach ((string baseId, Rarity rarity, int ilvl) in loadout)
         {
@@ -74,6 +95,64 @@ public partial class InventoryCapture : Node2D
         }
 
         _player.GetNode<CanvasLayer>("InventoryUI").GetNode<Control>("Panel").Visible = true;
+
+        _caption.Text = "12x5 grid, nine equipment slots, and a sort button";
+        _phase = 1;
+
+        // Drive the tooltip directly rather than faking a mouse position: the point
+        // of the shot is what the tooltip renders, and warping the cursor makes the
+        // capture depend on where the window happens to sit on screen.
+        EquipmentItem? rare = null;
+        foreach (EquipmentItem candidate in inventory.Placements.Keys)
+        {
+            if (candidate.Rarity == Rarity.Rare)
+            {
+                rare = candidate;
+                break;
+            }
+        }
+
+        // Park the cursor over the first item's cell and let the real hover path
+        // run. An earlier version called tooltip.Show() directly and it never
+        // appeared: InventoryGridControl polls hover every frame and hides the
+        // tooltip whenever the cursor is not over an item, so a direct Show was
+        // being undone on the very next frame. Driving the actual cursor means the
+        // screenshot shows the feature working rather than a tooltip propped up by
+        // the capture tool.
+        Input.WarpMouse(HoverPoint);
+    }
+
+    /// <summary>
+    /// Phase 2: the manual-pickup rule from docs/design/items.md. The player walks
+    /// straight through a gold pile and two pieces of equipment; the gold is
+    /// collected on contact and the equipment is not.
+    /// </summary>
+    private void StartGroundPhase()
+    {
+        _phase = 3;
+        _frame = 0;
+
+        _player.GetNode<CanvasLayer>("InventoryUI").GetNode<Control>("Panel").Visible = false;
+        GetNode<ItemTooltipControl>("ItemTooltip").Hide();
+        _player.GlobalPosition = new Vector2(200f, 350f);
+
+        var gold = CurrencyDropScene.Instantiate<CurrencyDrop>();
+        AddChild(gold);
+        gold.GlobalPosition = new Vector2(480f, 350f);
+        gold.Initialize(GoldCurrency, 240);
+
+        foreach ((float x, Rarity rarity, string baseId) in new (float, Rarity, string)[]
+                 {
+                     (700f, Rarity.Rare, "leather_cap"),
+                     (900f, Rarity.Magic, "iron_wand"),
+                 })
+        {
+            var definition = GD.Load<BaseItemDefinition>($"res://resources/items/bases/{baseId}.tres");
+            var drop = DropScene.Instantiate<EquipmentItem>();
+            AddChild(drop);
+            drop.GlobalPosition = new Vector2(x, 350f);
+            drop.Initialize(definition, rarity, 100, _library.Entries, _rng);
+        }
     }
 
     public override void _Process(double delta)
@@ -84,13 +163,57 @@ public partial class InventoryCapture : Node2D
         }
 
         _frame++;
-        if (_frame > 20)
+
+        // Phase 1a: the panel with nothing hovered, so the layout (and the sort
+        // button) is readable without a tooltip spilling across it.
+        if (_phase == 1)
         {
-            Capture("res://docs/devlog/screenshots/inventory.png");
+            // Park the cursor off the panel. The OS cursor position survives
+            // between runs, so without this the previous run's hover point is
+            // still under the mouse and this "nothing hovered" shot comes out
+            // with a tooltip across it.
+            Input.WarpMouse(new Vector2(1100f, 600f));
+
+            if (_frame > 12)
+            {
+                Capture("res://docs/devlog/screenshots/inventory.png", () =>
+                {
+                    _phase = 2;
+                    _frame = 0;
+                });
+            }
+
+            return;
+        }
+
+        if (_phase == 2)
+        {
+            Input.WarpMouse(HoverPoint);
+            _caption.Text = "Hover an item: name in its rarity colour, base, item level, affixes with tiers";
+
+            if (_frame > 20)
+            {
+                Capture("res://docs/devlog/screenshots/inventory-tooltip.png", StartGroundPhase);
+            }
+
+            return;
+        }
+
+        // Walk right, straight over everything on the ground.
+        _player.GlobalPosition = new Vector2(
+            Mathf.Min(200f + (_frame * 9f), 1040f), 350f);
+
+        _caption.Text =
+            "Walked over all three. Gold auto-collected; equipment was not.\n" +
+            $"Wallet: {_player.Wallet.GetBalance("gold")} Gold   -   equipment still on the ground, waiting to be clicked.";
+
+        if (_frame > 110)
+        {
+            Capture("res://docs/devlog/screenshots/pickup-manual.png", () => GetTree().Quit());
         }
     }
 
-    private async void Capture(string resPath)
+    private async void Capture(string resPath, System.Action onDone)
     {
         _busy = true;
 
@@ -104,6 +227,7 @@ public partial class InventoryCapture : Node2D
             ? $"[CAPTURE] Saved {absolutePath}"
             : $"[CAPTURE] FAILED to save {absolutePath}: {err}");
 
-        GetTree().Quit();
+        _busy = false;
+        onDone();
     }
 }

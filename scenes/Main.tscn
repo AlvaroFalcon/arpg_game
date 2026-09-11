@@ -1,12 +1,13 @@
-[gd_scene load_steps=9 format=3 uid="uid://bxvq0m8k7n5tq"]
+[gd_scene load_steps=10 format=3 uid="uid://bxvq0m8k7n5tq"]
 
 [ext_resource type="Script" path="res://scripts/Main.cs" id="1_0mn4x"]
 [ext_resource type="PackedScene" uid="uid://bs2np6tvmjmi8" path="res://scenes/Player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/combat/TargetDummy.tscn" id="3_dummy"]
 [ext_resource type="Script" path="res://scripts/Items/GroundLabelPool.cs" id="4_labels"]
-[ext_resource type="Resource" path="res://resources/stats/TargetDummy105.tres" id="5_stats105"]
-[ext_resource type="Resource" path="res://resources/stats/TargetDummy210.tres" id="6_stats210"]
-[ext_resource type="Resource" path="res://resources/stats/TargetDummy420.tres" id="7_stats420"]
+[ext_resource type="Resource" uid="uid://bemwcjmkk41qn" path="res://resources/stats/TargetDummy105.tres" id="5_stats105"]
+[ext_resource type="Resource" uid="uid://yparq5u5531q" path="res://resources/stats/TargetDummy210.tres" id="6_stats210"]
+[ext_resource type="Resource" uid="uid://c7l3odcyskuvq" path="res://resources/stats/TargetDummy420.tres" id="7_stats420"]
+[ext_resource type="Script" path="res://scripts/UI/ItemTooltipControl.cs" id="8_tooltip"]
 
 [sub_resource type="NavigationPolygon" id="NavigationPolygon_1"]
 vertices = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
@@ -26,6 +27,9 @@ polygon = PackedVector2Array(0, 0, 1000, 0, 1000, 700, 0, 700)
 
 [node name="GroundLabelPool" type="CanvasLayer" parent="."]
 script = ExtResource("4_labels")
+
+[node name="ItemTooltip" type="CanvasLayer" parent="."]
+script = ExtResource("8_tooltip")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 position = Vector2(500, 350)

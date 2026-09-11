@@ -68,13 +68,29 @@ public partial class EquipmentStripControl : Control
     [Export]
     public NodePath EquipmentPath = new();
 
+    /// <summary>Same optional-wiring convention as
+    /// <see cref="InventoryGridControl.ItemTooltipPath"/> — see
+    /// <see cref="ItemTooltipControl"/>'s class doc.</summary>
+    [Export]
+    public NodePath ItemTooltipPath = new();
+
     private Inventory _inventory = null!;
     private Equipment _equipment = null!;
+    private ItemTooltipControl? _tooltip;
 
     public override void _Ready()
     {
         _inventory = GetNode<Inventory>(InventoryPath);
         _equipment = GetNode<Equipment>(EquipmentPath);
+        _tooltip = GetNodeOrNull<ItemTooltipControl>(ItemTooltipPath)
+            ?? GetTree().CurrentScene.GetNodeOrNull<ItemTooltipControl>("ItemTooltip");
+
+        // Every tooltip call site is null-conditional, so an unresolved tooltip
+        // disables the whole feature in total silence. Say so instead.
+        if (_tooltip is null)
+        {
+            GD.PushWarning("[strip] ItemTooltipControl not found: no 'ItemTooltip' node on the current scene, and ItemTooltipPath is unset. Tooltips are disabled.");
+        }
 
         CustomMinimumSize = new Vector2(WidthPx, Order.Length * RowPx);
         MouseFilter = MouseFilterEnum.Stop;
@@ -85,6 +101,41 @@ public partial class EquipmentStripControl : Control
         if (Visible)
         {
             QueueRedraw();
+            UpdateHoverTooltip();
+        }
+        else
+        {
+            _tooltip?.Clear(this);
+        }
+    }
+
+    /// <summary>Same per-frame poll shape as
+    /// <see cref="InventoryGridControl.UpdateHoverTooltip"/>, and the same
+    /// reason: one Control per row is drawn by hand already, so hit-testing the
+    /// mouse against a row here piggybacks on this method's existing redraw
+    /// poll rather than adding a signal per row.
+    ///
+    /// <b>Unlike <see cref="_GuiInput"/>'s use of <see cref="SlotAt"/></b>, this
+    /// runs unconditionally every visible frame rather than only when Godot has
+    /// already confirmed the mouse is over this Control — so it must check the
+    /// horizontal bound itself. <see cref="SlotAt"/> only tests the row (Y);
+    /// Godot's own dispatch supplies the X bound for free to
+    /// <see cref="_GuiInput"/>, but nothing supplies it here.</summary>
+    private void UpdateHoverTooltip()
+    {
+        var stripRect = new Rect2(Vector2.Zero, new Vector2(WidthPx, Order.Length * RowPx));
+        Vector2 mouseLocal = GetLocalMousePosition();
+
+        EquipmentItem? hovered = stripRect.HasPoint(mouseLocal) && SlotAt(mouseLocal) is { } slot
+            ? _equipment.GetEquipped(slot)
+            : null;
+        if (hovered is not null)
+        {
+            _tooltip?.Show(hovered, this);
+        }
+        else
+        {
+            _tooltip?.Clear(this);
         }
     }
 

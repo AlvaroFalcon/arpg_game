@@ -28,6 +28,17 @@ public partial class Player : CharacterBody2D
     private ActorStats _stats = null!;
     private SkillUser _skillUser = null!;
 
+    /// <summary>
+    /// docs/design/items.md -&gt; "UI must consume its own input": the fix for
+    /// "dragging an item in the inventory also issues a move order" lives here,
+    /// not as an "is a panel open?" check bolted onto <see cref="_PhysicsProcess"/>
+    /// — see <see cref="MouseActionGate"/>'s class doc for why a raw
+    /// <c>Input.IsActionPressed</c> poll cannot tell a world click from a
+    /// GUI-consumed one, and why the fix belongs at the input-handling layer
+    /// instead.
+    /// </summary>
+    private readonly MouseActionGate _lmbGate = new("skill_slot_lmb");
+
     /// <summary>docs/design/items.md -> "Currency": <c>Player.Wallet</c>. A sibling
     /// component node, exposed here the same way <see cref="ActorStats"/>/
     /// <see cref="SkillUser"/> are, so pickup code (<see cref="Items.CurrencyDrop"/>)
@@ -60,6 +71,79 @@ public partial class Player : CharacterBody2D
         Inventory = GetNode<Items.Inventory>("Inventory");
     }
 
+    /// <summary>
+    /// Only the rising edge of <c>skill_slot_lmb</c> is fed here (see
+    /// <see cref="MouseActionGate"/>) — a press the GUI already consumed
+    /// (e.g. starting a drag over the inventory grid, which sets
+    /// <c>MouseFilter.Stop</c>) never reaches <c>_UnhandledInput</c> at all, so
+    /// <see cref="_lmbGate"/> never latches on for it.
+    /// </summary>
+    public override void _UnhandledInput(InputEvent @event) => _lmbGate.HandleUnhandledInput(@event);
+
+    /// <summary>
+    /// The item a click asked for while it was out of reach. Set by
+    /// <see cref="RequestPickup"/>, honoured once the walk gets close enough, and
+    /// dropped the moment the player steers anywhere else.
+    /// </summary>
+    private Items.EquipmentItem? _pendingPickup;
+
+    /// <summary>
+    /// docs/design/items.md -> "Pickup has a reach": clicking an item you are too
+    /// far from walks you to it and picks it up on arrival, rather than doing
+    /// nothing. The intent lives on the player rather than on the item because the
+    /// player is what owns movement, and because only one such intent can be
+    /// outstanding — a second click replaces the first.
+    /// </summary>
+    public void RequestPickup(Items.EquipmentItem item)
+    {
+        _pendingPickup = item;
+        _navigationAgent.TargetPosition = item.GlobalPosition;
+    }
+
+    /// <summary>Abandons a queued pickup. Any deliberate movement counts: having
+    /// walked somewhere else and then being yanked back to an item you have
+    /// forgotten about is worse than the click having done nothing.</summary>
+    private void CancelPendingPickup() => _pendingPickup = null;
+
+    /// <summary>Test seam for the cancel rule — the production callers are input
+    /// paths, which a headless test cannot drive.</summary>
+    public void CancelPendingPickupForTest() => CancelPendingPickup();
+
+    /// <summary>Test seam: whether a queued pickup is outstanding.</summary>
+    public bool HasPendingPickupForTest => _pendingPickup is not null;
+
+    /// <summary>
+    /// Completes a queued pickup as soon as the walk brings the item into reach —
+    /// on proximity rather than on "navigation finished", since the path ends at
+    /// the item's centre and reach is satisfied well before that.
+    /// </summary>
+    private void TryCompletePendingPickup()
+    {
+        if (_pendingPickup is not { } item)
+        {
+            return;
+        }
+
+        // The item can vanish mid-walk: someone else's pickup, a despawn, or the
+        // scene changing under us.
+        if (!IsInstanceValid(item) || !item.IsInsideTree())
+        {
+            CancelPendingPickup();
+            return;
+        }
+
+        if (!item.IsWithinPickupReach(this))
+        {
+            return;
+        }
+
+        item.OnPickup(this);
+        CancelPendingPickup();
+
+        // Stop where we are rather than continuing to the item's exact centre.
+        _navigationAgent.TargetPosition = GlobalPosition;
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         float speed = _stats.MovementSpeed.Value;
@@ -77,6 +161,8 @@ public partial class Player : CharacterBody2D
                 _navigationAgent.TargetPosition = GlobalPosition;
             }
 
+            CancelPendingPickup();
+
             Velocity = wasdDir * speed;
             MoveAndSlide();
             return;
@@ -86,12 +172,18 @@ public partial class Player : CharacterBody2D
         // Move sentinel and skill_slot_lmb is held; or force_move is held
         // regardless of what's bound. Both retarget to the same mouse world
         // position, so this collapses to one boolean feeding one retarget line.
-        bool pathFollow = (_skillUser.SlotIsBuiltInMove(SkillSlotId.Lmb) && Input.IsActionPressed("skill_slot_lmb"))
+        bool pathFollow = (_skillUser.SlotIsBuiltInMove(SkillSlotId.Lmb) && _lmbGate.Poll())
             || Input.IsActionPressed("force_move");
         if (pathFollow)
         {
+            CancelPendingPickup();
             _navigationAgent.TargetPosition = GetGlobalMousePosition();
         }
+
+        // Before the navigation guard below: reaching an item is a question of
+        // proximity, not of pathing, so a queued pickup on something already within
+        // reach must resolve even on a frame where the navigation map is not ready.
+        TryCompletePendingPickup();
 
         // Navigation map may not be active yet (e.g. first physics frame(s) after
         // the scene loads, before the NavigationRegion2D registers with the

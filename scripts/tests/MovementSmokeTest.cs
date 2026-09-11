@@ -176,9 +176,36 @@ public partial class MovementSmokeTest : Node2D
         // equipped a skill over it yet) — pressing skill_slot_lmb should path-follow
         // exactly like the old move_to did. Reset to a known baseline first so a
         // "did it change at all" check is unambiguous.
+        //
+        // This one specifically needs a real InputEventMouseButton rather than
+        // plain Input.ActionPress — docs/design/items.md -> "UI must consume its
+        // own input": Player's LMB gate (MouseActionGate) only latches on from an
+        // event that actually reaches Node._UnhandledInput, precisely so a click
+        // the GUI already consumed never reaches movement. Input.ActionPress
+        // alone mutates the Input singleton directly without ever producing an
+        // event, so it no longer trips the gate on its own — see
+        // MouseActionGate's class doc.
+        //
+        // Viewport.PushInput, not Input.ParseInputEvent: headless mode never
+        // runs the OS input pump ParseInputEvent queues onto, so that event
+        // silently never reaches _UnhandledInput and Input.IsActionPressed never
+        // reflects it either — a check built on it would "pass" whether or not
+        // the gate actually works. PushInput feeds the viewport's own dispatch
+        // directly and does reach _UnhandledInput headless, but — unlike a real
+        // click — doesn't also update the Input singleton's held-state, so
+        // Input.ActionPress runs alongside it to keep skill_slot_lmb reading
+        // "pressed" for Player's own follow-up poll, the same way a real press
+        // does both at once.
+        //
+        // skill_slot_rmb/force_move checks elsewhere in this file don't need the
+        // same change: force_move is keyboard-bound (no GUI-consumption gap to
+        // fall into) and the frame-110 check below only asserts that LMB does
+        // NOT move the player once a skill occupies the slot, which holds
+        // regardless of which input method is used to "press" it.
         if (_frame == 100)
         {
             _agent.TargetPosition = _player.GlobalPosition;
+            GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
             Input.ActionPress("skill_slot_lmb");
         }
 
