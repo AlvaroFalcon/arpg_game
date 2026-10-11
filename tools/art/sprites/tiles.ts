@@ -119,4 +119,58 @@ export const arenaTiles: SpriteSpec = {
   tileset: { tileWidth: 16, tileHeight: 16 },
 };
 
-export const tiles = [arenaTiles];
+// --- Altered Reality tilesets (same 4x2 layout, so LayoutBuilder treats them alike) ---
+
+/** Scatters a decoration colour over a floor tile (bones, puddles...). */
+function decorate(g: string[][], seed: number, char: string, count: number, size: number): string[][] {
+  const rnd = mulberry32(seed * 31 + 7);
+  for (let i = 0; i < count; i++) {
+    const x = Math.floor(rnd() * (T - size));
+    const y = Math.floor(rnd() * (T - 1));
+    const horizontal = rnd() < 0.5;
+    for (let k = 0; k < size; k++) g[horizontal ? y : Math.min(T - 1, y + k)][horizontal ? x + k : x] = char;
+  }
+  return g;
+}
+
+export const cryptTiles: SpriteSpec = {
+  name: 'bone_crypt',
+  dir: 'assets/tiles',
+  legend: {
+    a: '#1f2329', b: '#262b32', c: '#2e343c', d: '#383f48', e: '#14171c', // cold stone
+    l: '#1d3a12', m: '#2f6a1a', n: '#58a82a', o: '#a8e05a', // ichor pit
+    w: '#3d424c', W: '#5c6370', x: '#22252b', k: '#0c0e11', // carved wall
+    r: '#24303a', R: '#7d93a8', // pale sigil
+    B: '#c9c0a8', // bones
+  },
+  frames: [{
+    rows: atlas([
+      decorate(floorTile(11), 1, 'B', 2, 3), floorTile(12), decorate(floorTile(13), 3, 'B', 1, 2), floorTile(14),
+      lavaTile(15), lavaTile(19), wallTile(), runeTile(),
+    ], 4),
+    duration: 100,
+  }],
+  tileset: { tileWidth: 16, tileHeight: 16 },
+};
+
+export const drownedTiles: SpriteSpec = {
+  name: 'drowned_mirror',
+  dir: 'assets/tiles',
+  legend: {
+    a: '#14262b', b: '#1a2f35', c: '#21393f', d: '#2a454b', e: '#0c1a1e', // wet stone
+    l: '#061a33', m: '#0b3460', n: '#1c5f95', o: '#6fb7d9', // deep water
+    w: '#29434a', W: '#3f6a6e', x: '#16282c', k: '#071114', // barnacled wall
+    r: '#1d3c48', R: '#a9d8e8', // silver mirror glyph
+    P: '#2f5a63', // puddles
+  },
+  frames: [{
+    rows: atlas([
+      decorate(floorTile(21), 4, 'P', 3, 3), floorTile(22), decorate(floorTile(23), 6, 'P', 2, 4), floorTile(24),
+      lavaTile(25), lavaTile(29), wallTile(), runeTile(),
+    ], 4),
+    duration: 100,
+  }],
+  tileset: { tileWidth: 16, tileHeight: 16 },
+};
+
+export const tiles = [arenaTiles, cryptTiles, drownedTiles];

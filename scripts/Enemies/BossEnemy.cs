@@ -165,9 +165,9 @@ public abstract partial class BossEnemy : Enemy
         return burst;
     }
 
-    protected LineStrike Lane(Vector2 origin, Vector2 direction, float length, float width, float delay, float damage)
+    protected LineStrike Lane(Vector2 origin, Vector2 direction, float length, float width, float delay, float damage, DamageType type = DamageType.Fire)
     {
-        LineStrike strike = LineStrike.Spawn(GetTree().CurrentScene, origin, direction, length, width, delay, MakeHit(damage, DamageType.Fire));
+        LineStrike strike = LineStrike.Spawn(GetTree().CurrentScene, origin, direction, length, width, delay, MakeHit(damage, type));
         strike.Impacted += () => Core.Sfx.Play(this, "explode", -6f);
         return strike;
     }
@@ -182,5 +182,40 @@ public abstract partial class BossEnemy : Enemy
 
     protected Run.Arena? Arena => GetTree().CurrentScene.GetNodeOrNull<Run.Arena>("Arena");
 
-    protected Vector2 ClampToArena(Vector2 p, float margin = 60f) => Arena?.Clamp(p, margin) ?? p;
+    /// <summary>Keeps a point inside the fight: the survival arena's bounds, or in
+    /// a reality the nearest walkable cell of the flow field.</summary>
+    protected Vector2 ClampToArena(Vector2 p, float margin = 60f)
+    {
+        if (Arena is { } arena)
+        {
+            return arena.Clamp(p, margin);
+        }
+
+        if (World.FlowField.Current is not { } field)
+        {
+            return p;
+        }
+
+        Vector2I cell = field.CellOf(p);
+        if (field.IsWalkable(cell))
+        {
+            return p;
+        }
+
+        for (int r = 1; r <= 6; r++)
+        {
+            for (int dx = -r; dx <= r; dx++)
+            {
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) == r && field.IsWalkable(cell + new Vector2I(dx, dy)))
+                    {
+                        return field.CenterOf(cell + new Vector2I(dx, dy));
+                    }
+                }
+            }
+        }
+
+        return GlobalPosition;
+    }
 }

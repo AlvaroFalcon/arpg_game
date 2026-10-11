@@ -111,7 +111,9 @@ public partial class BoneHerald : BossEnemy
         }
 
         if (!await Wait(1f)) return;
-        if (MinionScene is not null && GetTree().GetFirstNodeInGroup(Run.RunState.Group) is Run.RunState state)
+        var state = GetTree().GetFirstNodeInGroup(Run.RunState.Group) as Run.RunState;
+        World.RealityController? reality = World.RealityController.Of(this);
+        if (MinionScene is not null && (state is not null || reality is not null))
         {
             foreach (Vector2 at in marks)
             {
@@ -119,7 +121,14 @@ public partial class BoneHerald : BossEnemy
                 GetTree().CurrentScene.AddChild(minion);
                 minion.GlobalPosition = at;
                 minion.ExperienceValue = 0;
-                state.RegisterEnemy(minion);
+                if (state is not null)
+                {
+                    state.RegisterEnemy(minion);
+                }
+                else
+                {
+                    reality!.AdoptMonster(minion);
+                }
             }
         }
 

@@ -320,6 +320,20 @@ public partial class RunCapture : Node
         reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.BossCell) + new Vector2(0f, 200f);
         await Wait(5f);
         await Snap($"reality-{name}-boss.png");
+        if (name == "drowned" && reality.Boss is { Stats.Life: { } life } nereth)
+        {
+            nereth.Health.IgnoreDamage = true;
+            life.Current = life.Max * 0.5f;
+            await WaitForRealityAttack(reality, "Mirror Images", 40f);
+            await Wait(0.9f);
+            await Snap("boss-nereth-mirror.png");
+            life.Current = life.Max * 0.2f;
+            await WaitForRealityAttack(reality, "Rising Tide", 50f);
+            await Wait(1.4f);
+            await Snap("boss-nereth-tide.png");
+            nereth.Health.IgnoreDamage = false;
+        }
+
         if (reality.Boss is { } boss)
         {
             reality.Player.GlobalPosition = boss.GlobalPosition + new Vector2(0f, -200f);
@@ -328,6 +342,21 @@ public partial class RunCapture : Node
 
         await Wait(1.6f);
         await Snap($"reality-{name}-cleared.png");
+    }
+
+    private async Task WaitForRealityAttack(RealityController reality, string attack, float timeout)
+    {
+        for (float waited = 0f; waited < timeout; waited += 0.1f)
+        {
+            if (IsInstanceValid(reality) && reality.Boss is { } b && IsInstanceValid(b) && b.CurrentAttack == attack)
+            {
+                return;
+            }
+
+            await Wait(0.1f);
+        }
+
+        GD.Print($"[CAPTURE] timed out waiting for {attack}");
     }
 
     private static T? FindChild<T>(Node node) where T : Node

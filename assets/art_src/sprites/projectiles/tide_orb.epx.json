@@ -1,0 +1,54 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "tide_orb",
+  "width": 8,
+  "height": 8,
+  "palette": [
+    "#0a2a44",
+    "#3fa0e0",
+    "#a8e8ff",
+    "#ffffff"
+  ],
+  "layers": [
+    {
+      "id": "layer_n6xmj0j",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_k3oob0k",
+      "duration": 120
+    },
+    {
+      "id": "frame_2jomg0l",
+      "duration": 120
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_c0ww50m",
+      "name": "fly",
+      "from": 0,
+      "to": 1,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_n6xmj0j",
+      "frame": "frame_k3oob0k",
+      "data": "AAAAAAAAAAAKKkT/CipE/woqRP8KKkT/AAAAAAAAAAAAAAAACipE/z+g4P8/oOD/qOj//6jo//8KKkT/AAAAAAoqRP8/oOD/P6Dg/6jo//+o6P///////6jo//8KKkT/CipE/z+g4P+o6P//qOj/////////////qOj//woqRP8KKkT/P6Dg/6jo//+o6P//qOj//6jo//8/oOD/CipE/woqRP8/oOD/P6Dg/6jo//+o6P//P6Dg/z+g4P8KKkT/AAAAAAoqRP8/oOD/P6Dg/z+g4P8/oOD/CipE/wAAAAAAAAAAAAAAAAoqRP8KKkT/CipE/woqRP8AAAAAAAAAAA=="
+    },
+    {
+      "layer": "layer_n6xmj0j",
+      "frame": "frame_2jomg0l",
+      "data": "AAAAAAAAAAAKKkT/CipE/woqRP8KKkT/AAAAAAAAAAAAAAAACipE/6jo//+o6P////////////8KKkT/AAAAAAoqRP+o6P//qOj///////////////////////8KKkT/CipE/6jo/////////////////////////////woqRP8KKkT/qOj///////////////////////+o6P//CipE/woqRP+o6P//qOj/////////////qOj//6jo//8KKkT/AAAAAAoqRP+o6P//qOj//6jo//+o6P//CipE/wAAAAAAAAAAAAAAAAoqRP8KKkT/CipE/woqRP8AAAAAAAAAAA=="
+    }
+  ]
+}

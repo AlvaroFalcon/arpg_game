@@ -192,7 +192,9 @@ public partial class EmberColossus : BossEnemy
     private async Task Summon()
     {
         Announce("Call the Brood");
-        if (AddScene is null || GetTree().GetFirstNodeInGroup(Run.RunState.Group) is not Run.RunState state)
+        var state = GetTree().GetFirstNodeInGroup(Run.RunState.Group) as Run.RunState;
+        World.RealityController? reality = World.RealityController.Of(this);
+        if (AddScene is null || (state is null && reality is null))
         {
             AttackCooldown = 0.5f;
             return;
@@ -213,7 +215,14 @@ public partial class EmberColossus : BossEnemy
             GetTree().CurrentScene.AddChild(add);
             add.GlobalPosition = at;
             add.ExperienceValue = 1;
-            state.RegisterEnemy(add);
+            if (state is not null)
+            {
+                state.RegisterEnemy(add);
+            }
+            else
+            {
+                reality!.AdoptMonster(add);
+            }
         }
 
         AttackCooldown = 1.5f;

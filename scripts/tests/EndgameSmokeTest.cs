@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using PathToExile.Characters;
+using PathToExile.Combat;
 using PathToExile.Core;
 using PathToExile.Enemies;
 using PathToExile.Skills;
@@ -378,5 +379,32 @@ public partial class EndgameSmokeTest : Node2D
 
         reality.QueueFree();
         await Frames(2);
+
+        // The other two realities: built, populated with their own roster, and
+        // their boss fights (Bone Herald, Nereth) produce telegraphs once woken
+        // (telegraphs spawn under the current scene, which is this test).
+        foreach (string id in new[] { "bone_crypt", "drowned_mirror" })
+        {
+            RealityLaunch.Tier = 8;
+            RealityLaunch.LayoutId = id;
+            RealityLaunch.Modifiers = new List<string>();
+            var r = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+            AddChild(r);
+            await Frames(5);
+            var roster = r.GetChildren().OfType<Enemy>().Where(e => !e.IsBoss).Select(e => e.DisplayName).Distinct().ToList();
+            r.Player.Health!.IgnoreDamage = true;
+            r.Player.GlobalPosition = RasterLayout.World(r.Raster.BossCell) + new Vector2(0f, 150f);
+            int telegraphs = 0;
+            for (int i = 0; i < 360 && telegraphs == 0; i++)
+            {
+                await Frames(1);
+                telegraphs = GetChildren().Count(n => n is AreaBurst or LineStrike or BossBullet);
+            }
+
+            Check($"REALITY-{id}", r.MonstersTotal >= 20 && r.Boss is not null && r.BossFightActive && telegraphs > 0,
+                $"{r.MonstersTotal} monsters ({string.Join(", ", roster)}), boss {r.Boss?.DisplayName}, first attack '{r.Boss?.CurrentAttack}' with {telegraphs} telegraphs");
+            r.QueueFree();
+            await Frames(2);
+        }
     }
 }

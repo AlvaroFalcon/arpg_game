@@ -294,6 +294,14 @@ public partial class RealityController : Node2D, IPickupHandler
         return enemy;
     }
 
+    /// <summary>A monster spawned mid-fight (boss adds): scaled to the tier and counted.</summary>
+    public void AdoptMonster(Enemy enemy)
+    {
+        enemy.MonsterLevel = MonsterLevel;
+        enemy.ApplyTierScaling(RealityTiers.LifeMultiplier(Tier), RealityTiers.DamageMultiplier(Tier));
+        RegisterMonster(enemy);
+    }
+
     private void RegisterMonster(Enemy enemy)
     {
         MonstersTotal++;

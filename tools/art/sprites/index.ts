@@ -8,6 +8,7 @@ import { projectiles } from './projectiles';
 import { props } from './props';
 import { arcanistLooks, classes } from './classes';
 import { endgame } from './endgame';
+import { realms } from './realms';
 import { tiles } from './tiles';
 
-export const all: SpriteSpec[] = [player, ...enemies, ...bosses, ...projectiles, ...pickups, ...icons, ...props, ...classes, ...arcanistLooks(player), ...endgame, ...tiles];
+export const all: SpriteSpec[] = [player, ...enemies, ...bosses, ...projectiles, ...pickups, ...icons, ...props, ...classes, ...arcanistLooks(player), ...endgame, ...realms, ...tiles];
