@@ -1,3 +1,4 @@
+#nullable enable
 using Godot;
 using Godot.Collections;
 using PathToExile.Combat;
@@ -84,4 +85,19 @@ public abstract partial class SkillDefinition : Resource
     /// </summary>
     [Export]
     public bool DerivesBaseFromWeapon;
+
+    /// <summary>Card/skill-bar text. Purely presentational.</summary>
+    [Export(PropertyHint.MultilineText)]
+    public string Description = "";
+
+    /// <summary>Skill-bar / level-up card icon (docs/design/progression.md).
+    /// Presentation data, like <see cref="DisplayName"/>: knowing what a skill
+    /// looks like is still true regardless of who casts it.</summary>
+    [Export]
+    public Texture2D? Icon;
+
+    /// <summary>Animated visual for whatever this skill spawns (a projectile, an
+    /// orbiting blade). Null keeps the archetype's placeholder polygon.</summary>
+    [Export]
+    public SpriteFrames? Frames;
 }

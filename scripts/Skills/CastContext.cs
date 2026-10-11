@@ -39,6 +39,39 @@ public sealed class CastContext
 
     public MovementDuringUse MovementDuringUse;
 
+    // --- Run-layer per-cast knobs (docs/design/progression.md -> "Supports") ---
+    // Every support gem and keystone is a CastModifier that writes into these,
+    // never into the shared definition. Defaults are all "no change".
+
+    /// <summary>Product of every More/Less damage multiplier a CastModifier
+    /// applied to this cast (1 = unchanged). Applied on top of the caster's
+    /// own Damage stat resolution.</summary>
+    public float DamageMultiplier = 1f;
+
+    /// <summary>Radius multiplier for area archetypes (nova, burst, orbit).</summary>
+    public float AreaMultiplier = 1f;
+
+    /// <summary>Duration multiplier for archetypes that persist (orbit).</summary>
+    public float DurationMultiplier = 1f;
+
+    /// <summary>Multiplier on the use time this cast commits (less = faster).</summary>
+    public float UseTimeMultiplier = 1f;
+
+    /// <summary>How many extra times the cast repeats ("Spell Echo").</summary>
+    public int Repeats;
+
+    /// <summary>Extra summoned/orbiting objects for archetypes that have a count
+    /// but no projectile params (orbit).</summary>
+    public int ExtraCount;
+
+    public float IgniteChanceBonus;
+    public float ShockChanceBonus;
+    public bool CanInflictAilments = true;
+
+    /// <summary>World point a targeted archetype lands on (meteor). Defaults to
+    /// <see cref="Origin"/> plus the aim direction.</summary>
+    public Vector2 TargetPoint;
+
     public CastContext(Node2D caster, ActorStats casterStats, Faction casterFaction, Vector2 origin, Vector2 aimDirection)
     {
         Caster = caster;
@@ -46,5 +79,6 @@ public sealed class CastContext
         CasterFaction = casterFaction;
         Origin = origin;
         AimDirection = aimDirection;
+        TargetPoint = origin + aimDirection * 200f;
     }
 }

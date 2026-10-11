@@ -40,6 +40,11 @@ public partial class Projectile : Area2D
     private float _damage;
     private DamageType _damageType;
     private SkillUser? _ownerSkillUser;
+    private int _chainsRemaining;
+    private HitProfile? _hit;
+
+    /// <summary>Max distance a chain may jump to its next target.</summary>
+    private const float ChainRange = 300f;
 
     // Tracked even at Pierce = 0. Two lines now; load-bearing for pierce and
     // split later (a pierce/chain projectile must never hit the same target
@@ -61,6 +66,7 @@ public partial class Projectile : Area2D
         _range = context.Projectile.Range;
         _pierceRemaining = context.Projectile.Pierce;
         _forksRemaining = context.Projectile.Forks;
+        _chainsRemaining = context.Projectile.Chains;
         _sourceFaction = context.CasterFaction;
         _sourceActor = context.Caster;
         _tags = context.Tags;
@@ -75,6 +81,7 @@ public partial class Projectile : Area2D
         _damageType = DamageTypeResolution.Resolve(_tags);
 
         Rotation = direction.Angle();
+        Scale = Vector2.One * Mathf.Max(0.2f, context.Projectile.Size);
 
         // Layers/mask resolved here, at spawn, from the caster's faction — never
         // authored on the definition. This is what lets one Fireball.tres be cast
@@ -97,6 +104,13 @@ public partial class Projectile : Area2D
         _range = parent._range;
         _pierceRemaining = parent._pierceRemaining;
         _forksRemaining = parent._forksRemaining - 1;
+        _chainsRemaining = parent._chainsRemaining;
+        _hit = parent._hit;
+        Scale = parent.Scale;
+        if (parent.GetNodeOrNull<AnimatedSprite2D>("Sprite") is { SpriteFrames: { } frames })
+        {
+            CallDeferred(nameof(UseFrames), frames);
+        }
         _sourceFaction = parent._sourceFaction;
         _sourceActor = parent._sourceActor;
         _tags = parent._tags;
@@ -116,6 +130,37 @@ public partial class Projectile : Area2D
         Rotation = direction.Angle();
         CollisionLayer = parent.CollisionLayer;
         CollisionMask = parent.CollisionMask;
+    }
+
+    /// <summary>
+    /// Run-layer hit data (ailment chances, knockback) and the skill's own
+    /// animated visual — docs/design/progression.md. Optional: a projectile
+    /// that never receives one behaves exactly as before.
+    /// </summary>
+    public void ApplyHitProfile(HitProfile hit, SpriteFrames? frames)
+    {
+        _hit = hit;
+        _damageType = hit.Type;
+        if (frames is not null)
+        {
+            UseFrames(frames);
+        }
+    }
+
+    private void UseFrames(SpriteFrames frames)
+    {
+        if (GetNodeOrNull<AnimatedSprite2D>("Sprite") is not { } sprite)
+        {
+            return;
+        }
+
+        sprite.SpriteFrames = frames;
+        sprite.Play();
+        sprite.Visible = true;
+        if (GetNodeOrNull<Polygon2D>("Visual") is { } visual)
+        {
+            visual.Visible = false;
+        }
     }
 
     public override void _Ready()
@@ -168,7 +213,9 @@ public partial class Projectile : Area2D
             return;
         }
 
-        var payload = new DamagePayload(_damage, _damageType, _sourceActor, _sourceFaction, _tags, DamageDeliveryKind.Hit);
+        DamagePayload payload = _hit is not null
+            ? _hit.BuildPayload(_direction)
+            : new DamagePayload(_damage, _damageType, _sourceActor, _sourceFaction, _tags, DamageDeliveryKind.Hit);
         health.TakeDamage(payload);
         _ownerSkillUser?.ReportHit(other, _damage);
 
@@ -183,6 +230,12 @@ public partial class Projectile : Area2D
                 break;
             case OnHitOutcomeKind.Redirect:
                 _direction = outcome.NewDirection;
+                Rotation = _direction.Angle();
+                _chainsRemaining--;
+
+                // A chain is a fresh leg: it gets a fresh range budget, or a
+                // long first flight would leave nothing to chain with.
+                _traveled = 0f;
                 break;
             case OnHitOutcomeKind.Fork:
                 SpawnForkChildren();
@@ -227,6 +280,19 @@ public partial class Projectile : Area2D
             return OnHitOutcome.ContinueOutcome;
         }
 
-        return _forksRemaining > 0 ? OnHitOutcome.ForkOutcome : OnHitOutcome.DespawnOutcome;
+        if (_forksRemaining > 0)
+        {
+            return OnHitOutcome.ForkOutcome;
+        }
+
+        // Chain: redirect toward the nearest hostile this projectile has not
+        // already hit. PoE's order — pierce, then fork, then chain.
+        if (_chainsRemaining > 0
+            && CombatQuery.NearestHostile(GetTree(), GlobalPosition, _sourceFaction, ChainRange, _alreadyHit) is { } next)
+        {
+            return OnHitOutcome.Redirect(GlobalPosition.DirectionTo(next.GlobalPosition));
+        }
+
+        return OnHitOutcome.DespawnOutcome;
     }
 }

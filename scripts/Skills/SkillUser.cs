@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using PathToExile.Combat;
 using PathToExile.Stats;
@@ -48,11 +49,19 @@ public partial class SkillUser : Node
     [Export]
     public SkillDefinition? DefaultRmbSkill;
 
-    // Seam 6's collect-and-apply stage runs over this list every cast. It is
-    // always empty in the first slice — zero CastModifier subclasses exist, and
-    // nothing can attach one yet — but the stage itself is real, not a comment,
-    // so wiring in the first artifact later touches CollectCastModifiers only.
-    private static readonly List<CastModifier> EmptyModifiers = new();
+    /// <summary>
+    /// Caster-wide behaviour transforms that apply to every skill this caster
+    /// uses — docs/design/progression.md -> "Keystones" ("Echoing Mind",
+    /// "Avatar of Fire", "Blood Magic"). Per-skill supports live on
+    /// <see cref="SkillInstance.Attached"/> instead; both are collected by
+    /// <see cref="CollectCastModifiers"/>, the stage seam 6 reserved for exactly
+    /// this.
+    /// </summary>
+    public List<CastModifier> GlobalModifiers { get; } = new();
+
+    /// <summary>Fired when a slot's contents change (HUD refresh). Not a Godot
+    /// signal so it can carry a plain C# reference.</summary>
+    public event System.Action<SkillInstance?>? SkillEquipped;
 
     private readonly LoadoutSlot[] _loadout = new LoadoutSlot[SlotCount];
 
@@ -108,6 +117,40 @@ public partial class SkillUser : Node
     public void EquipSkill(SkillSlotId slot, SkillInstance instance)
     {
         _loadout[(int)slot] = new LoadoutSlot { Skill = instance };
+        SkillEquipped?.Invoke(instance);
+    }
+
+    /// <summary>Empties a slot entirely (no skill, no built-in).</summary>
+    public void ClearSlot(SkillSlotId slot)
+    {
+        _loadout[(int)slot] = new LoadoutSlot();
+        SkillEquipped?.Invoke(null);
+    }
+
+    /// <summary>The skill instance in a slot, or null.</summary>
+    public SkillInstance? GetSkill(SkillSlotId slot) => _loadout[(int)slot].Skill;
+
+    /// <summary>Every equipped skill instance, in slot order.</summary>
+    public IEnumerable<(SkillSlotId Slot, SkillInstance Skill)> EquippedSkills()
+    {
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (_loadout[i].Skill is { } skill)
+            {
+                yield return ((SkillSlotId)i, skill);
+            }
+        }
+    }
+
+    /// <summary>Fraction (0..1) of the current recharge remaining, for HUD
+    /// cooldown sweeps. Uses whichever gate (use time or charge) is longer.</summary>
+    public float CooldownFraction(SkillInstance instance)
+    {
+        float useFrac = instance.UseTimeRemaining > 0f ? instance.UseTimeRemaining / Mathf.Max(0.01f, EffectiveUseTime(instance.Definition)) : 0f;
+        float chargeFrac = instance.ChargesAvailable <= 0 && instance.RechargeTimer > 0f
+            ? instance.RechargeTimer / Mathf.Max(0.01f, EffectiveCooldown(instance))
+            : 0f;
+        return Mathf.Clamp(Mathf.Max(useFrac, chargeFrac), 0f, 1f);
     }
 
     /// <summary>
@@ -117,7 +160,12 @@ public partial class SkillUser : Node
     /// happens. Returns null on success, or a typed reason on failure (nothing
     /// consumes the failure yet).
     /// </summary>
-    public CastFailure? TryCast(SkillSlotId slotId, Vector2 aimDirection)
+    public CastFailure? TryCast(SkillSlotId slotId, Vector2 aimDirection) =>
+        TryCast(slotId, aimDirection, null);
+
+    /// <summary>Overload carrying an explicit world target point, for targeted
+    /// archetypes (<see cref="AreaSkillDefinition.AtTarget"/>).</summary>
+    public CastFailure? TryCast(SkillSlotId slotId, Vector2 aimDirection, Vector2? targetPoint)
     {
         LoadoutSlot slot = _loadout[(int)slotId];
         if (slot.Skill is not { } instance)
@@ -134,6 +182,10 @@ public partial class SkillUser : Node
 
         SkillDefinition definition = instance.Definition;
         CastContext context = BuildCastContext(definition, aimDirection);
+        if (targetPoint is { } point)
+        {
+            context.TargetPoint = point;
+        }
 
         // Seam 6: collect -> apply, in priority order, over an empty list today.
         List<CastModifier> modifiers = CollectCastModifiers(instance, context);
@@ -152,7 +204,7 @@ public partial class SkillUser : Node
         // start". Committing here, after costs are confirmed payable, is what
         // keeps the whole operation atomic: a failed cost check never partially
         // consumes a charge.
-        instance.UseTimeRemaining = EffectiveUseTime(definition);
+        instance.UseTimeRemaining = EffectiveUseTime(definition) * context.UseTimeMultiplier;
         instance.ChargesAvailable--;
         if (instance.RechargeTimer <= 0f)
         {
@@ -161,10 +213,33 @@ public partial class SkillUser : Node
 
         EmitSignal(SignalName.CastStarted, (int)slotId);
 
-        Execute(definition, context);
+        Execute(instance, context);
+        ScheduleRepeats(instance, context);
 
         EmitSignal(SignalName.CastFired, (int)slotId);
         return null;
+    }
+
+    /// <summary>
+    /// "Spell Echo"-style repeats (docs/design/progression.md -> "Supports"):
+    /// the same resolved context executes again, staggered, at the caster's
+    /// position at that moment. Costs and cooldowns were paid once, at cast start.
+    /// </summary>
+    private void ScheduleRepeats(SkillInstance instance, CastContext context)
+    {
+        for (int i = 1; i <= context.Repeats; i++)
+        {
+            SceneTreeTimer timer = GetTree().CreateTimer(0.18 * i, processAlways: false, processInPhysics: true);
+            timer.Timeout += () =>
+            {
+                if (!IsInstanceValid(this) || !IsInstanceValid(_caster))
+                {
+                    return;
+                }
+
+                Execute(instance, context);
+            };
+        }
     }
 
     /// <summary>Called by a spawned projectile (or any future archetype) when it
@@ -194,11 +269,13 @@ public partial class SkillUser : Node
         return context;
     }
 
-    private static List<CastModifier> CollectCastModifiers(SkillInstance instance, CastContext context)
+    private List<CastModifier> CollectCastModifiers(SkillInstance instance, CastContext context)
     {
-        // Always empty today: no CastModifier subclass exists, and nothing
-        // (artifact, tree node, item aspect) can attach to instance.Attached yet.
-        return EmptyModifiers;
+        // Per-skill supports first, then caster-wide keystones; the stable
+        // priority sort in ApplyCastModifiers decides the real order.
+        var modifiers = new List<CastModifier>(instance.Attached.OfType<CastModifier>());
+        modifiers.AddRange(GlobalModifiers);
+        return modifiers;
     }
 
     private static void ApplyCastModifiers(CastContext context, List<CastModifier> modifiers)
@@ -321,20 +398,86 @@ public partial class SkillUser : Node
         }
     }
 
-    private void Execute(SkillDefinition definition, CastContext context)
+    private void Execute(SkillInstance instance, CastContext context)
     {
-        switch (definition)
+        switch (instance.Definition)
         {
             case ProjectileSkillDefinition:
-                ExecuteProjectile(definition, context);
+                ExecuteProjectile(instance, context);
+                break;
+            case AreaSkillDefinition area:
+                ExecuteArea(instance, area, context);
+                break;
+            case OrbitSkillDefinition orbit:
+                ExecuteOrbit(instance, orbit, context);
                 break;
             default:
-                GD.PushWarning($"SkillUser: no executor implemented for {definition.GetType().Name}");
+                GD.PushWarning($"SkillUser: no executor implemented for {instance.Definition.GetType().Name}");
                 break;
         }
     }
 
-    private void ExecuteProjectile(SkillDefinition definition, CastContext context)
+    /// <summary>
+    /// Resolved once per cast: the skill supplies the base, the caster supplies
+    /// the modifier stack (docs/design/skills.md -> "How skills interact with
+    /// the stat system"), then the instance's level and any per-cast
+    /// More/Less from supports multiply on top.
+    /// </summary>
+    private HitProfile BuildHitProfile(SkillInstance instance, CastContext context, float knockback = 0f)
+    {
+        IReadOnlyList<StatModifier> damageMods = _stats.GetModifiers(new ModifierQuery(StatId.Damage, context.Tags));
+        float damage = Stat.ComputeFormula(instance.Definition.BaseDamage, damageMods)
+            * instance.LevelDamageMultiplier
+            * context.DamageMultiplier;
+
+        return new HitProfile
+        {
+            Damage = damage,
+            Type = DamageTypeResolution.Resolve(context.Tags),
+            Source = _caster,
+            Faction = context.CasterFaction,
+            Tags = context.Tags,
+            IgniteChance = _stats.Get(StatId.IgniteChance).Value + context.IgniteChanceBonus,
+            ShockChance = _stats.Get(StatId.ShockChance).Value + context.ShockChanceBonus,
+            CanInflictAilments = context.CanInflictAilments,
+            KnockbackForce = knockback,
+        };
+    }
+
+    private void ExecuteArea(SkillInstance instance, AreaSkillDefinition definition, CastContext context)
+    {
+        float radius = definition.Radius * context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
+        Vector2 centre = _caster.GlobalPosition;
+        if (definition.AtTarget)
+        {
+            Vector2 offset = context.TargetPoint - _caster.GlobalPosition;
+            centre = _caster.GlobalPosition + offset.LimitLength(definition.MaxRange);
+        }
+
+        HitProfile hit = BuildHitProfile(instance, context, definition.Knockback);
+        AreaBurst.Spawn(GetTree().CurrentScene, centre, radius, definition.Delay, definition.Tint, hit);
+    }
+
+    private void ExecuteOrbit(SkillInstance instance, OrbitSkillDefinition definition, CastContext context)
+    {
+        float area = context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
+        var blades = new OrbitBlades
+        {
+            Anchor = _caster,
+            Count = definition.Count + context.ExtraCount + Mathf.RoundToInt(_stats.Get(StatId.ExtraProjectiles).Value),
+            Radius = definition.Radius * area,
+            Duration = definition.Duration * context.DurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.SkillDuration).Value),
+            AngularSpeed = definition.AngularSpeed,
+            HitRadius = definition.HitRadius * Mathf.Sqrt(area),
+            HitCooldown = definition.HitCooldown,
+            Hit = BuildHitProfile(instance, context, 60f),
+            Frames = definition.Frames,
+        };
+        GetTree().CurrentScene.AddChild(blades);
+        blades.GlobalPosition = _caster.GlobalPosition;
+    }
+
+    private void ExecuteProjectile(SkillInstance instance, CastContext context)
     {
         if (ProjectileScene is null || context.Projectile is null)
         {
@@ -342,19 +485,53 @@ public partial class SkillUser : Node
             return;
         }
 
-        // Resolved once per cast: the skill supplies the base, the caster
-        // supplies the modifier stack (docs/design/skills.md -> "How skills
-        // interact with the stat system").
-        IReadOnlyList<StatModifier> damageMods = _stats.GetModifiers(new ModifierQuery(StatId.Damage, context.Tags));
-        float damage = Stat.ComputeFormula(definition.BaseDamage, damageMods);
+        ApplyProjectileStats(context.Projectile);
+        HitProfile hit = BuildHitProfile(instance, context, 40f);
 
         foreach (ProjectileSpawnRequest request in GenerateProjectileSpawnRequests(context))
         {
             var projectile = ProjectileScene.Instantiate<Projectile>();
             GetTree().CurrentScene.AddChild(projectile);
             projectile.GlobalPosition = context.Origin + request.Direction * request.ForwardOffset;
-            projectile.Initialize(this, context, request.Direction, damage);
+            projectile.Initialize(this, context, request.Direction, hit.Damage);
+            projectile.ApplyHitProfile(hit, instance.Definition.Frames);
         }
+    }
+
+    /// <summary>
+    /// The run layer's actor-level projectile stats (docs/design/progression.md
+    /// -> "Run stats"): extra projectiles/pierce/chains and projectile speed,
+    /// folded into the per-cast params after supports have run. Zero-valued for
+    /// every actor that never takes a run upgrade, so the sandbox and the
+    /// existing tests are unaffected.
+    /// </summary>
+    private void ApplyProjectileStats(ProjectileParams p)
+    {
+        int authoredCount = p.Count;
+        p.Count += Mathf.RoundToInt(_stats.Get(StatId.ExtraProjectiles).Value);
+        p.Pierce += Mathf.RoundToInt(_stats.Get(StatId.ExtraPierce).Value);
+        p.Chains += Mathf.RoundToInt(_stats.Get(StatId.ExtraChains).Value);
+        p.Speed *= Mathf.Max(0.1f, _stats.Get(StatId.ProjectileSpeed).Value);
+        if (p.Count > authoredCount)
+        {
+            EnsureSpreadForCount(p);
+        }
+    }
+
+    /// <summary>
+    /// An authored 0° spread with Count &gt; 1 is a deliberate "slug" (see
+    /// <see cref="ProjectileSkillDefinition.SpreadDegrees"/>), but a skill that
+    /// <i>gained</i> projectiles from the run layer should fan out, not stack.
+    /// Only ever widens; never narrows an authored spread.
+    /// </summary>
+    public static void EnsureSpreadForCount(ProjectileParams p)
+    {
+        if (p.Count <= 1 || Mathf.Abs(p.SpreadDegrees) >= 360f)
+        {
+            return;
+        }
+
+        p.SpreadDegrees = Mathf.Max(p.SpreadDegrees, Mathf.Min(90f, 12f * (p.Count - 1)));
     }
 
     /// <summary>

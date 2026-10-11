@@ -60,6 +60,77 @@ public partial class Health : Node
 
     public bool IsDead { get; private set; }
 
+    /// <summary>
+    /// docs/design/dodge.md -> "Invulnerability": seconds of remaining
+    /// immunity. While above zero, <see cref="TakeDamage"/> ignores hits
+    /// entirely — no damage, no ailments, no thorns. A timer rather than a bool
+    /// so overlapping grants (a dodge during a post-hit grace window) simply
+    /// take the longer of the two instead of one clearing the other.
+    /// </summary>
+    public float InvulnerableTime { get; private set; }
+
+    public bool IsInvulnerable => InvulnerableTime > 0f;
+
+    public void GrantInvulnerability(float seconds) => InvulnerableTime = Mathf.Max(InvulnerableTime, seconds);
+
+    /// <summary>
+    /// Fired after a hit has been fully resolved and applied, with the
+    /// post-mitigation amount. A plain C# event rather than a Godot signal
+    /// because the payload is a C# class; consumed by
+    /// <see cref="Ailments"/> and on-hit feedback (flash, damage numbers).
+    /// </summary>
+    public event System.Action<DamagePayload, float>? HitResolved;
+
+    /// <summary>Who landed the killing blow (or the last hit), for on-kill
+    /// effects such as Life on Kill. Null when the hit had no attribution.</summary>
+    public Node2D? LastHitSource { get; private set; }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        if (InvulnerableTime > 0f)
+        {
+            InvulnerableTime -= (float)delta;
+        }
+    }
+
+    /// <summary>
+    /// Damage that has already been resolved elsewhere — an ignite tick, a
+    /// keystone explosion — and must not roll crit or mitigation a second time.
+    /// Still respects invulnerability and death, and still counts as a hit for
+    /// <see cref="Damaged"/>/<see cref="Died"/>.
+    /// </summary>
+    public void ApplyResolvedDamage(float amount, Node2D? source)
+    {
+        if (IsDead || IsInvulnerable || amount <= 0f || _stats.Life is not { } life)
+        {
+            return;
+        }
+
+        if (source is not null && IsInstanceValid(source))
+        {
+            LastHitSource = source;
+        }
+
+        life.Current = Mathf.Max(0f, life.Current - amount);
+        EmitSignal(SignalName.Damaged, amount);
+        if (life.Current <= 0f)
+        {
+            IsDead = true;
+            EmitSignal(SignalName.Died);
+        }
+    }
+
+    /// <summary>Restores life, clamped to Max. Never revives the dead.</summary>
+    public void Heal(float amount)
+    {
+        if (IsDead || amount <= 0f || _stats.Life is not { } life)
+        {
+            return;
+        }
+
+        life.Current = Mathf.Min(life.Max, life.Current + amount);
+    }
+
     public Faction Faction => _stats.Faction;
 
     public override void _Ready()
@@ -79,6 +150,11 @@ public partial class Health : Node
         // ever reaching here in the normal case, but this check is what makes
         // correctness independent of getting the physics layers exactly right.
         if (payload.SourceFaction == _stats.Faction)
+        {
+            return;
+        }
+
+        if (IsInvulnerable)
         {
             return;
         }
@@ -117,9 +193,20 @@ public partial class Health : Node
             totalTaken += DamageMitigation.MitigateElemental(afterCrit, resistance, penetration);
         }
 
+        // docs/design/progression.md -> "Run stats": a single base-1.0
+        // multiplier for "less/more damage taken" (keystones, shock), applied
+        // after mitigation so it scales what actually lands.
+        totalTaken *= Mathf.Max(0f, _stats.Get(StatId.DamageTaken).Value);
+
+        if (payload.SourceActor is not null && IsInstanceValid(payload.SourceActor))
+        {
+            LastHitSource = payload.SourceActor;
+        }
+
         ResourcePool life = _stats.Life!;
         life.Current = Mathf.Max(0f, life.Current - totalTaken);
         EmitSignal(SignalName.Damaged, totalTaken);
+        HitResolved?.Invoke(payload, totalTaken);
 
         if (life.Current <= 0f)
         {

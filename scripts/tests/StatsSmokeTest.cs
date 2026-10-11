@@ -84,9 +84,9 @@ public partial class StatsSmokeTest : Node2D
             _targetStats.Armour.Value == 50f,
             $"named accessor Armour.Value={_targetStats.Armour.Value} after Get(Armour).BaseValue=50 (expected 50 — same Stat instance)");
 
-        Check("REGISTRY-TWENTYTHREE-STATS",
-            System.Enum.GetValues<StatId>().Length == 23,
-            $"StatId has {System.Enum.GetValues<StatId>().Length} entries, expected 23 per docs/design/stats.md's third-pass stat table");
+        Check("REGISTRY-STAT-COUNT",
+            System.Enum.GetValues<StatId>().Length == 37,
+            $"StatId has {System.Enum.GetValues<StatId>().Length} entries, expected 37 (23 from docs/design/stats.md's third pass + 14 run stats from docs/design/progression.md)");
 
         // Reset for the mitigation checks below, which assume a clean Armour.
         _targetStats.Get(StatId.Armour).BaseValue = 0f;

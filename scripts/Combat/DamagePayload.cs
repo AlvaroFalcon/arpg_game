@@ -69,6 +69,26 @@ public sealed class DamagePayload
     /// </summary>
     public bool IsThornsReflection { get; }
 
+    /// <summary>
+    /// docs/design/progression.md -> "Ailments": the chance this hit ignites
+    /// (Fire) or shocks (Lightning) its target, already resolved from the
+    /// attacker's stats plus any per-cast support bonuses. Cold hits always
+    /// chill, so there is no chill chance. Mutable-after-construction for the
+    /// same reason <see cref="IsCrit"/> is: the executor that builds the payload
+    /// knows these, the constructor's many call sites do not.
+    /// </summary>
+    public float IgniteChance;
+
+    public float ShockChance;
+
+    /// <summary>False for a hit from a skill supported by "Elemental Focus"-style
+    /// supports (trade ailments for damage).</summary>
+    public bool CanInflictAilments = true;
+
+    /// <summary>Optional knockback impulse (px/s) applied to a target that can be
+    /// knocked back. Zero for most hits.</summary>
+    public Vector2 Knockback;
+
     public DamagePayload(
         IReadOnlyList<(DamageType Type, float Amount)> components,
         Node2D? sourceActor,
