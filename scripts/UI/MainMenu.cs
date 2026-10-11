@@ -33,21 +33,21 @@ public partial class MainMenu : Node2D
 		_center = UiTheme.Center(_menuRoot);
 		_menu = UiTheme.VBox(_center, 14);
 		_menu.AddChild(UiTheme.Label("PATH TO EXILE", 72, UiTheme.Gold, HorizontalAlignment.Center));
-		_menu.AddChild(UiTheme.Label("— the Ashen Arena —", 24, UiTheme.Ember, HorizontalAlignment.Center));
+		_menu.AddChild(UiTheme.Label("— Altered Realities —", 24, UiTheme.Ember, HorizontalAlignment.Center));
 		_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 24f) });
 
-		Button play = AddButton("Enter the Hideout", () => Scenes.Go(this, Scenes.Hideout));
-		AddButton("Quick Run", () => Scenes.Go(this, Scenes.Run));
+		Button play = AddButton("Play", OpenCharacters);
 		AddButton("Settings", OpenSettings);
 		AddButton("Training Grounds (sandbox)", () => Scenes.Go(this, Scenes.Sandbox));
 		AddButton("Quit", () => GetTree().Quit());
 
 		Profile? profile = Profile.Get(this);
-		if (profile is not null && profile.RunsPlayed > 0)
+		if (profile is not null && profile.HasCharacters)
 		{
+			Characters.CharacterData c = profile.Active;
 			_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 12f) });
 			_menu.AddChild(UiTheme.Label(
-				$"Runs {profile.RunsPlayed}  ·  Victories {profile.Victories}  ·  Best {UiTheme.FormatTime(profile.BestTime)}  ·  Best level {profile.BestLevel}  ·  Gold {profile.Gold}",
+				$"{profile.Characters.Count} character{(profile.Characters.Count == 1 ? "" : "s")}  ·  last played: {c.Name}, level {c.Level} {c.AscendancyDef?.Name ?? c.Class.Name}, best tier {c.HighestTierCleared}",
 				16, UiTheme.TextDim, HorizontalAlignment.Center));
 		}
 
@@ -69,6 +69,22 @@ public partial class MainMenu : Node2D
 		return b;
 	}
 
+	private void OpenCharacters()
+	{
+		_menu.Visible = false;
+		var select = new CharacterSelect();
+		_center.AddChild(select);
+		select.Back += () =>
+		{
+			select.QueueFree();
+			_menu.Visible = true;
+			((Button)_menu.GetChild(3)).CallDeferred(Control.MethodName.GrabFocus);
+		};
+	}
+
+	/// <summary>Capture tool hook.</summary>
+	public void OpenCharactersForCapture() => OpenCharacters();
+
 	/// <summary>Capture tool hook.</summary>
 	public void OpenSettingsForCapture() => OpenSettings();
 
@@ -79,7 +95,7 @@ public partial class MainMenu : Node2D
 		panel.Closed += () =>
 		{
 			_menu.Visible = true;
-			((Button)_menu.GetChild(3)).CallDeferred(Control.MethodName.GrabFocus);
+			((Button)_menu.GetChild(4)).CallDeferred(Control.MethodName.GrabFocus);
 		};
 	}
 

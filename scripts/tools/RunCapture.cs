@@ -5,7 +5,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using PathToExile.Enemies;
+using PathToExile.Characters;
+using PathToExile.Core;
 using PathToExile.Run;
+using PathToExile.UI;
+using PathToExile.World;
 
 namespace PathToExile.Tools;
 
@@ -25,6 +29,7 @@ public partial class RunCapture : Node
     private bool _autoPick = true;
     private bool _steer = true;
     private float _steerAngle;
+    private string _only = "";
 
     public override void _Ready()
     {
@@ -33,6 +38,10 @@ public partial class RunCapture : Node
             if (arg.StartsWith("--out="))
             {
                 _outDir = arg[6..];
+            }
+            else if (arg.StartsWith("--only="))
+            {
+                _only = arg[7..];
             }
         }
 
@@ -47,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = Script();
+        _ = _only == "endgame" ? EndgameScript() : Script();
     }
 
     private async Task Script()
@@ -147,6 +156,196 @@ public partial class RunCapture : Node
 
         GD.Print("[CAPTURE] done");
         GetTree().Quit();
+    }
+
+    // --- endgame ------------------------------------------------------------------
+
+    /// <summary>Demo characters, in memory only (the real profile is never touched).</summary>
+    private void SetupDemoProfile()
+    {
+        if (Profile.Get(this) is not { } profile)
+        {
+            return;
+        }
+
+        profile.Persist = false;
+        while (profile.Characters.Count > 0)
+        {
+            profile.DeleteCharacter(0);
+        }
+
+        CharacterData nyx = profile.CreateCharacter("Nyx", "rogue");
+        nyx.Level = 9;
+        nyx.HighestTierCleared = 2;
+        CharacterData ilva = profile.CreateCharacter("Ilva", "arcanist");
+        ilva.Level = 3;
+
+        CharacterData k = profile.CreateCharacter("Kaelen", "warrior");
+        k.Level = 24;
+        k.Gold = 900;
+        k.HighestTierCleared = 5;
+        k.RealitiesCleared = 11;
+        k.Gems[0].Level = 9;
+        k.AddGem("ground_slam", false, 6);
+        k.AddGem("sunder", false, 4);
+        k.AddGem("throwing_knives", false, 2);
+        foreach (string sup in new[] { "melee_splash", "brutality", "multistrike", "increased_area", "pierce", "faster_casting" })
+        {
+            k.AddGem(sup, true);
+        }
+
+        GemData slam = k.Gems.First(g => g.Id == "ground_slam");
+        k.Loadout[1].SkillUid = slam.Uid;
+        k.Loadout[1].SupportUids.Add(k.Gems.First(g => g.Id == "brutality").Uid);
+        k.Loadout[0].SupportUids.Add(k.Gems.First(g => g.Id == "melee_splash").Uid);
+        foreach ((int tier, int n) in new[] { (2, 1), (3, 2), (4, 1), (5, 3), (6, 1), (7, 1) })
+        {
+            k.AddShards(tier, n);
+        }
+
+        // Spend the passive points by walking outward from the start.
+        var frontier = new Queue<string>(new[] { k.Class.TreeStart });
+        while (k.PassivePointsFree > 0 && frontier.Count > 0)
+        {
+            foreach (string next in PassiveTree.Get(frontier.Dequeue())!.Links)
+            {
+                if (k.PassivePointsFree > 0 && PassiveTree.CanAllocate(k, next) && PassiveTree.Get(next)!.Kind != PassiveKind.Keystone)
+                {
+                    k.Passives.Add(next);
+                    frontier.Enqueue(next);
+                }
+            }
+        }
+
+        k.Ascendancy = "samurai";
+        k.AscendancyPoints = 4;
+        foreach (AscendancyNode node in AscendancyCatalog.For("samurai").Take(3))
+        {
+            k.AscendancyNodes.Add(node.Id);
+        }
+    }
+
+    private async Task EndgameScript()
+    {
+        SetupDemoProfile();
+        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.MainMenu);
+        await Wait(0.8f);
+        if (GetTree().CurrentScene is MainMenu menu)
+        {
+            menu.OpenCharactersForCapture();
+            await Wait(0.4f);
+            await Snap("menu-characters.png");
+            if (FindChild<CharacterSelect>(menu) is { } select)
+            {
+                select.ShowCreate();
+                await Wait(0.3f);
+                await Snap("menu-create.png");
+            }
+        }
+
+        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.Hideout);
+        await Wait(1.0f);
+        Node hideout = GetTree().CurrentScene;
+        var player = hideout.GetNode<Player>("Player");
+        player.GlobalPosition = hideout.GetNode<Node2D>("Mirror").GlobalPosition + new Vector2(30f, 60f);
+        await Wait(0.6f);
+        await Snap("hideout.png");
+
+        var mirror = hideout.GetNode<MirrorPanel>("MirrorPanel");
+        mirror.Open();
+        await Wait(0.3f);
+        mirror.Select(5);
+        mirror.Empower();
+        await Wait(0.3f);
+        await Snap("mirror-panel.png");
+        mirror.Close();
+
+        var panels = hideout.GetNode<CharacterPanels>("CharacterPanels");
+        panels.Skills.Open();
+        await Wait(0.3f);
+        await Snap("panel-skills.png");
+        panels.Skills.Close();
+        panels.Tree.Open();
+        await Wait(0.3f);
+        await Snap("panel-passives.png");
+        panels.Tree.Close();
+        var altar = hideout.GetNode<AscendancyPanel>("AscendancyPanel");
+        altar.Open();
+        await Wait(0.3f);
+        await Snap("panel-ascendancy.png");
+        altar.Close();
+        await Wait(0.2f);
+
+        foreach ((string layout, int tier, string name) in new[] { ("ashen_halls", 5, "ashen"), ("bone_crypt", 8, "crypt"), ("drowned_mirror", 12, "drowned") })
+        {
+            if (!ResourceLoader.Exists(RealityTheme.Get(LayoutCatalog.Find(layout)!.ThemeId).TilesetPath))
+            {
+                GD.Print($"[CAPTURE] skipping {layout}: tileset missing");
+                continue;
+            }
+
+            await CaptureReality(layout, tier, name);
+        }
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    private async Task CaptureReality(string layout, int tier, string name)
+    {
+        RealityLaunch.Tier = tier;
+        RealityLaunch.LayoutId = layout;
+        RealityLaunch.Modifiers = new List<string> { "elite", "hordes" };
+        GetTree().Paused = false;
+        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.Reality);
+        await Wait(0.5f);
+        if (GetTree().CurrentScene is not RealityController reality)
+        {
+            return;
+        }
+
+        reality.Player.Health!.IgnoreDamage = true;
+        await Wait(1.0f);
+        await Snap($"reality-{name}-start.png");
+
+        // The richest pack: a rare or unique-rare if the layout rolled one.
+        Enemy? best = reality.GetChildren().OfType<Enemy>().Where(e => !e.IsBoss).OrderByDescending(e => (int)e.Rarity).FirstOrDefault();
+        if (best is not null)
+        {
+            reality.Player.GlobalPosition = best.GlobalPosition + new Vector2(-220f, 40f);
+            await Wait(3.5f);
+            await Snap($"reality-{name}-pack.png");
+        }
+
+        reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.BossCell) + new Vector2(0f, 200f);
+        await Wait(5f);
+        await Snap($"reality-{name}-boss.png");
+        if (reality.Boss is { } boss)
+        {
+            reality.Player.GlobalPosition = boss.GlobalPosition + new Vector2(0f, -200f);
+            boss.Health.ApplyResolvedDamage(1e9f, reality.Player);
+        }
+
+        await Wait(1.6f);
+        await Snap($"reality-{name}-cleared.png");
+    }
+
+    private static T? FindChild<T>(Node node) where T : Node
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            if (child is T t)
+            {
+                return t;
+            }
+
+            if (FindChild<T>(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static string Scenes(bool main) => PathToExile.Core.Scenes.MainMenu;

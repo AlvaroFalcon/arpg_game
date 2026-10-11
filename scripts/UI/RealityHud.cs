@@ -75,9 +75,11 @@ public partial class RealityHud : CanvasLayer
         info.OffsetLeft = -330f;
         info.OffsetRight = -16f;
         info.OffsetTop = 16f;
+        info.GrowHorizontal = Control.GrowDirection.Begin;
         _titleLabel = UiTheme.Label("", 20, RealityTiers.ShardColor(Reality.Tier), HorizontalAlignment.Right);
         info.AddChild(_titleLabel);
         _infoLabel = UiTheme.Label("", 15, UiTheme.Text, HorizontalAlignment.Right);
+        _infoLabel.CustomMinimumSize = new Vector2(314f, 0f);
         info.AddChild(_infoLabel);
         _modsLabel = UiTheme.Label("", 13, UiTheme.Ember, HorizontalAlignment.Right);
         _modsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -254,7 +256,7 @@ public partial class RealityHud : CanvasLayer
 
         int portals = Reality.PortalsLeft;
         string cleared = Reality.MonstersTotal > 0 ? $"{Mathf.RoundToInt(100f * Reality.Kills / Reality.MonstersTotal)}%" : "-";
-        _infoLabel.Text = $"Monster lvl {Reality.MonsterLevel}  ·  {portals} portal{(portals == 1 ? "" : "s")}  ·  cleared {cleared}  ·  {UiTheme.FormatTime(Reality.Elapsed)}";
+        _infoLabel.Text = $"Monster level {Reality.MonsterLevel}  ·  {portals} portal{(portals == 1 ? "" : "s")} left\nCleared {cleared}  ·  {UiTheme.FormatTime(Reality.Elapsed)}";
 
         if (Player.Stats.Life is { } life)
         {
@@ -414,7 +416,7 @@ public partial class RealityHud : CanvasLayer
         public override void _Draw()
         {
             RasterLayout r = Reality.Raster;
-            DrawRect(new Rect2(Vector2.Zero, Size), new Color(0f, 0f, 0f, 0.45f));
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color(0.02f, 0.01f, 0.04f, 0.72f));
             float px = Mathf.Min(Size.X / r.Width, Size.Y / r.Height);
             Vector2 origin = (Size - new Vector2(r.Width, r.Height) * px) / 2f;
             var floor = new Color(0.75f, 0.72f, 0.85f, 0.55f);

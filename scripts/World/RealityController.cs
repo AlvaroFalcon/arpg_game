@@ -107,6 +107,7 @@ public partial class RealityController : Node2D, IPickupHandler
         AddChild(Hud);
         Pause = new PauseMenu { LeaveText = "Abandon reality", OnLeave = Abandon, Summary = Summary };
         AddChild(Pause);
+        AddChild(new CharacterPanels { Player = Player, Name = "CharacterPanels" });
         Enemy.SplitSpawned += OnSplitSpawned;
 
         Sfx.Music(this, Theme.Music);

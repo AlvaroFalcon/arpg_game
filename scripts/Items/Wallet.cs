@@ -38,4 +38,16 @@ public partial class Wallet : Node
         _balances[id] = newBalance;
         EmitSignal(SignalName.BalanceChanged, id.Value, newBalance);
     }
+
+    /// <summary>Spends <paramref name="amount"/> if the balance covers it.</summary>
+    public bool TrySpend(CurrencyId id, long amount)
+    {
+        if (amount < 0 || GetBalance(id) < amount)
+        {
+            return false;
+        }
+
+        Add(id, -amount);
+        return true;
+    }
 }
