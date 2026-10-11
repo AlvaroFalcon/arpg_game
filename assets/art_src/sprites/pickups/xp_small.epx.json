@@ -1,0 +1,54 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "xp_small",
+  "width": 5,
+  "height": 7,
+  "palette": [
+    "#101018",
+    "#ffffff",
+    "#5fe36b",
+    "#2a9a3a"
+  ],
+  "layers": [
+    {
+      "id": "layer_kjh4d1t",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_ub4jb1u",
+      "duration": 500
+    },
+    {
+      "id": "frame_s1cyw1v",
+      "duration": 300
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_4k2l91w",
+      "name": "idle",
+      "from": 0,
+      "to": 1,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_kjh4d1t",
+      "frame": "frame_ub4jb1u",
+      "data": "AAAAAAAAAAAQEBj/AAAAAAAAAAAAAAAAEBAY//////8QEBj/AAAAABAQGP//////X+Nr//////8QEBj/EBAY/1/ja/9f42v/X+Nr/xAQGP8QEBj/X+Nr/yqaOv9f42v/EBAY/wAAAAAQEBj/Kpo6/xAQGP8AAAAAAAAAAAAAAAAQEBj/AAAAAAAAAAA="
+    },
+    {
+      "layer": "layer_kjh4d1t",
+      "frame": "frame_s1cyw1v",
+      "data": "AAAAAAAAAAAQEBj/AAAAAAAAAAAAAAAAEBAY/1/ja/8QEBj/AAAAABAQGP9f42v/X+Nr/1/ja/8QEBj/EBAY/1/ja/9f42v/X+Nr/xAQGP8QEBj/X+Nr/yqaOv9f42v/EBAY/wAAAAAQEBj/Kpo6/xAQGP8AAAAAAAAAAAAAAAAQEBj/AAAAAAAAAAA="
+    }
+  ]
+}

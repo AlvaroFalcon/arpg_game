@@ -1,0 +1,55 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "fireball",
+  "width": 10,
+  "height": 8,
+  "palette": [
+    "#5a1a08",
+    "#e8401c",
+    "#ff8a2a",
+    "#ffd23f",
+    "#fff6d0"
+  ],
+  "layers": [
+    {
+      "id": "layer_ghg3819",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_z4b1v1a",
+      "duration": 80
+    },
+    {
+      "id": "frame_goas91b",
+      "duration": 80
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_twvhr1c",
+      "name": "fly",
+      "from": 0,
+      "to": 1,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_ghg3819",
+      "frame": "frame_z4b1v1a",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA6EAc/+hAHP8AAAAA/4oq//+KKv8AAAAAAAAAAAAAAAAAAAAA6EAc/+hAHP//iir//4oq///SP///0j///4oq//+KKv8AAAAA6EAc/+hAHP//iir//9I////SP///9tD///bQ///SP///iir/AAAAAOhAHP/oQBz//4oq///SP///0j////bQ///20P//0j///4oq/wAAAAAAAAAA6EAc/+hAHP//iir//4oq///SP///0j///4oq//+KKv8AAAAAAAAAAAAAAADoQBz/6EAc/wAAAAD/iir//4oq/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    },
+    {
+      "layer": "layer_ghg3819",
+      "frame": "frame_goas91b",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADoQBz/AAAAAAAAAAD/iir//4oq//+KKv8AAAAAAAAAAAAAAADoQBz/6EAc/+hAHP//iir//4oq///SP///0j///4oq//+KKv8AAAAAAAAAAOhAHP//iir//9I////20P//9tD///bQ///SP///iir/AAAAAOhAHP/oQBz//4oq///SP///0j////bQ///20P//0j///4oq/wAAAAAAAAAA6EAc/+hAHP//iir//4oq///SP///0j///4oq//+KKv8AAAAAAAAAAAAAAAAAAAAA6EAc/wAAAAD/iir//4oq/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    }
+  ]
+}

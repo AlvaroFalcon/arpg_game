@@ -1,0 +1,53 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "enemy_bolt",
+  "width": 8,
+  "height": 8,
+  "palette": [
+    "#6a2aa0",
+    "#b060ff",
+    "#f0d8ff"
+  ],
+  "layers": [
+    {
+      "id": "layer_ldwea1l",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_nfb4t1m",
+      "duration": 100
+    },
+    {
+      "id": "frame_ygc1s1n",
+      "duration": 100
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_mbuek1o",
+      "name": "fly",
+      "from": 0,
+      "to": 1,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_ldwea1l",
+      "frame": "frame_nfb4t1m",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGoqoP9qKqD/AAAAALBg//+wYP//AAAAAAAAAABqKqD/aiqg/7Bg//+wYP//8Nj//7Bg//+wYP//aiqg/2oqoP+wYP//8Nj///DY///w2P//8Nj//7Bg//9qKqD/aiqg/7Bg///w2P//8Nj///DY///w2P//sGD//wAAAABqKqD/aiqg/7Bg//+wYP//8Nj//7Bg//+wYP//AAAAAAAAAABqKqD/aiqg/wAAAACwYP//sGD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    },
+    {
+      "layer": "layer_ldwea1l",
+      "frame": "frame_ygc1s1n",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGoqoP9qKqD/AAAAAPDY///w2P//AAAAAAAAAABqKqD/aiqg//DY///w2P//sGD///DY///w2P//aiqg/2oqoP/w2P//sGD//7Bg//+wYP//sGD///DY//9qKqD/aiqg//DY//+wYP//sGD//7Bg//+wYP//8Nj//wAAAABqKqD/aiqg//DY///w2P//sGD///DY///w2P//AAAAAAAAAABqKqD/aiqg/wAAAADw2P//8Nj//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    }
+  ]
+}

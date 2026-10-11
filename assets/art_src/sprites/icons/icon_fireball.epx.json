@@ -1,0 +1,39 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "icon_fireball",
+  "width": 16,
+  "height": 16,
+  "palette": [
+    "#0e0c14",
+    "#2a2438",
+    "#3a3350",
+    "#e8401c",
+    "#ff8a2a",
+    "#ffd23f",
+    "#fff6d0"
+  ],
+  "layers": [
+    {
+      "id": "layer_646tl29",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_19rr92a",
+      "duration": 100
+    }
+  ],
+  "tags": [],
+  "cels": [
+    {
+      "layer": "layer_646tl29",
+      "frame": "frame_19rr92a",
+      "data": "DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8qJDj/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj/KiQ4/w4MFP8ODBT/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj/KiQ4//+KKv//iir/KiQ4/yokOP8ODBT/DgwU/yokOP8qJDj/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj//4oq//+KKv/oQBz/6EAc/yokOP8qJDj/DgwU/w4MFP8qJDj/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj//4oq//+KKv/oQBz/6EAc/yokOP8qJDj/KiQ4/w4MFP8ODBT/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj//4oq///SP///0j//6EAc/yokOP8qJDj/KiQ4/yokOP8ODBT/DgwU/yokOP8qJDj/KiQ4/yokOP8qJDj//4oq///SP///0j///9I///+KKv/oQBz/KiQ4/yokOP8qJDj/DgwU/w4MFP8qJDj/KiQ4/yokOP8qJDj//4oq///SP///9tD///bQ///SP///0j///4oq/+hAHP8qJDj/KiQ4/w4MFP8ODBT/KiQ4/yokOP8qJDj//4oq///SP///9tD///bQ///20P//0j///9I///+KKv/oQBz/KiQ4/yokOP8ODBT/DgwU/yokOP8qJDj/KiQ4//+KKv//0j////bQ///20P//0j///9I////SP///iir/KiQ4/yokOP86M1D/DgwU/w4MFP8qJDj/KiQ4/yokOP//iir//9I////SP///0j///9I////SP///iir//4oq/yokOP86M1D/OjNQ/w4MFP8ODBT/KiQ4/yokOP8qJDj/KiQ4//+KKv//iir//9I////SP///iir//4oq/yokOP86M1D/OjNQ/zozUP8ODBT/DgwU/yokOP8qJDj/KiQ4/yokOP8qJDj//4oq//+KKv//iir//4oq/yokOP86M1D/OjNQ/zozUP86M1D/DgwU/w4MFP8qJDj/KiQ4/yokOP8qJDj/KiQ4/yokOP8qJDj/KiQ4/zozUP86M1D/OjNQ/zozUP86M1D/OjNQ/w4MFP8ODBT/KiQ4/yokOP8qJDj/KiQ4/yokOP86M1D/OjNQ/zozUP86M1D/OjNQ/zozUP86M1D/OjNQ/zozUP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w4MFP8ODBT/DgwU/w=="
+    }
+  ]
+}

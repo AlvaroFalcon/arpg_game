@@ -1,0 +1,36 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "life_orb",
+  "width": 8,
+  "height": 7,
+  "palette": [
+    "#2a0a10",
+    "#e8304a",
+    "#ff7a8a",
+    "#ffffff"
+  ],
+  "layers": [
+    {
+      "id": "layer_dpm3025",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_umxql26",
+      "duration": 100
+    }
+  ],
+  "tags": [],
+  "cels": [
+    {
+      "layer": "layer_dpm3025",
+      "frame": "frame_umxql26",
+      "data": "AAAAACoKEP8qChD/AAAAAAAAAAAqChD/KgoQ/wAAAAAqChD//3qK//////8qChD/KgoQ////////eor/KgoQ/yoKEP//eor//3qK/+gwSv/oMEr//3qK//96iv8qChD/KgoQ/+gwSv/oMEr/6DBK/+gwSv/oMEr/6DBK/yoKEP8AAAAAKgoQ/+gwSv/oMEr/6DBK/+gwSv8qChD/AAAAAAAAAAAAAAAAKgoQ/+gwSv/oMEr/KgoQ/wAAAAAAAAAAAAAAAAAAAAAAAAAAKgoQ/yoKEP8AAAAAAAAAAAAAAAA="
+    }
+  ]
+}

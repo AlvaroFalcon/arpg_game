@@ -1,0 +1,54 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "spark",
+  "width": 8,
+  "height": 8,
+  "palette": [
+    "#3a5aff",
+    "#8ab4ff",
+    "#ffffff",
+    "#fff27a"
+  ],
+  "layers": [
+    {
+      "id": "layer_n69lb1f",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_93hbs1g",
+      "duration": 60
+    },
+    {
+      "id": "frame_ipwgx1h",
+      "duration": 60
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_huu6l1i",
+      "name": "fly",
+      "from": 0,
+      "to": 1,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_n69lb1f",
+      "frame": "frame_93hbs1g",
+      "data": "AAAAAAAAAAAAAAAAirT//wAAAAAAAAAAAAAAAAAAAAAAAAAAirT//wAAAACKtP///////wAAAACKtP//AAAAAAAAAAAAAAAAirT/////////////irT//wAAAAAAAAAAirT//4q0//////////J6///yev//////irT//4q0//8AAAAAAAAAAIq0/////////////4q0//8AAAAAAAAAAAAAAACKtP//AAAAAP////+KtP//AAAAAIq0//8AAAAAAAAAAAAAAAAAAAAAAAAAAIq0//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    },
+    {
+      "layer": "layer_n69lb1f",
+      "frame": "frame_ipwgx1h",
+      "data": "irT//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIq0//8AAAAAAAAAAIq0//8AAAAAirT//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//////////irT//4q0//8AAAAAAAAAAIq0//////////J6///yev//////irT//wAAAAAAAAAAirT/////////8nr///J6//////8AAAAAAAAAAAAAAAAAAAAAirT/////////////irT//wAAAACKtP//AAAAAIq0//8AAAAAAAAAAAAAAAAAAAAAirT//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    }
+  ]
+}

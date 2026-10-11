@@ -1,0 +1,36 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "blade",
+  "width": 10,
+  "height": 10,
+  "palette": [
+    "#2a2a33",
+    "#b8c0cc",
+    "#f2f6ff",
+    "#8a6a3a"
+  ],
+  "layers": [
+    {
+      "id": "layer_kaq901j",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_lgsjp1k",
+      "duration": 100
+    }
+  ],
+  "tags": [],
+  "cels": [
+    {
+      "layer": "layer_kaq901j",
+      "frame": "frame_lgsjp1k",
+      "data": "AAAAAAAAAAAAAAAAAAAAACoqM/8qKjP/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqKjP/uMDM/yoqM/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKioz/7jAzP/y9v//Kioz/wAAAAAAAAAAKioz/yoqM/8qKjP/AAAAACoqM/+4wMz/8vb//yoqM/8AAAAAAAAAACoqM/+4wMz/uMDM/7jAzP8qKjP/imo6/4pqOv8qKjP/Kioz/yoqM/8qKjP/Kioz/yoqM/+Kajr/imo6/yoqM/+4wMz/uMDM/7jAzP+4wMz/AAAAAAAAAAAqKjP/8vb//7jAzP8qKjP/AAAAACoqM/8qKjP/Kioz/wAAAAAAAAAAKioz//L2//+4wMz/Kioz/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqKjP/uMDM/yoqM/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACoqM/8qKjP/AAAAAAAAAAAAAAAAAAAAAA=="
+    }
+  ]
+}
