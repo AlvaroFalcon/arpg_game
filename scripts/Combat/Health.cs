@@ -135,6 +135,16 @@ public partial class Health : Node
         }
     }
 
+    /// <summary>Brings a dead actor back at full life (a reality's portal respawn).</summary>
+    public void Revive()
+    {
+        IsDead = false;
+        if (_stats.Life is { } life)
+        {
+            life.Current = life.Max;
+        }
+    }
+
     /// <summary>Restores life, clamped to Max. Never revives the dead.</summary>
     public void Heal(float amount)
     {

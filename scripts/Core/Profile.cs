@@ -419,6 +419,12 @@ public partial class Profile : Node
         }
     }
 
+    /// <summary>One character as JSON and back — the exact save-file format (tests use it).</summary>
+    public static string SerializeCharacter(CharacterData c) => JsonSerializer.Serialize(ToSave(c));
+
+    public static CharacterData? DeserializeCharacter(string json) =>
+        JsonSerializer.Deserialize<SaveCharacter>(json) is { } s ? FromSave(s) : null;
+
     public void Save()
     {
         if (!Persist)

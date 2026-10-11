@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using Godot;
 using PathToExile.Stats;
 
@@ -9,6 +10,19 @@ public enum PickupKind
     Experience,
     Life,
     Gold,
+
+    /// <summary>A Mirror Shard; <see cref="Pickup.Value"/> is its tier.</summary>
+    Shard,
+
+    /// <summary>A skill or support gem; see <see cref="Pickup.GemId"/>.</summary>
+    Gem,
+}
+
+/// <summary>Whoever runs the current activity (survival run, reality) and
+/// knows what a collected pickup does.</summary>
+public interface IPickupHandler
+{
+    void OnPickup(Pickup pickup, Player player);
 }
 
 /// <summary>
@@ -27,11 +41,28 @@ public partial class Pickup : Node2D
 
     public PickupKind Kind;
     public float Value;
+    public string GemId = "";
+    public bool GemSupport;
+
+    public const string HandlerGroup = "pickup_handler";
 
     private static readonly SpriteFrames? SmallFrames = Load("xp_small");
     private static readonly SpriteFrames? MediumFrames = Load("xp_medium");
     private static readonly SpriteFrames? LargeFrames = Load("xp_large");
     private static readonly SpriteFrames? LifeFrames = Load("life_orb");
+    private static readonly Dictionary<string, SpriteFrames?> ShardFrames = new();
+
+    private static SpriteFrames? ShardFramesFor(int tier)
+    {
+        string name = World.RealityTiers.ShardSprite(tier);
+        if (!ShardFrames.TryGetValue(name, out SpriteFrames? frames))
+        {
+            frames = Load(name);
+            ShardFrames[name] = frames;
+        }
+
+        return frames;
+    }
 
     private static SpriteFrames? Load(string name) =>
         ResourceLoader.Exists($"res://assets/sprites/pickups/{name}.tres")
@@ -72,6 +103,8 @@ public partial class Pickup : Node2D
         {
             PickupKind.Life => LifeFrames,
             PickupKind.Gold => null,
+            PickupKind.Gem => null,
+            PickupKind.Shard => ShardFramesFor(Mathf.RoundToInt(Value)),
             _ => Value >= 20f ? LargeFrames : Value >= 4f ? MediumFrames : SmallFrames,
         };
         _sprite.SpriteFrames = frames;
@@ -86,6 +119,26 @@ public partial class Pickup : Node2D
 
     public override void _Draw()
     {
+        if (Kind is PickupKind.Shard or PickupKind.Gem)
+        {
+            // A light beam so rare drops are seen from across a room.
+            Color beam = Kind == PickupKind.Shard
+                ? World.RealityTiers.ShardColor(Mathf.RoundToInt(Value))
+                : GemSupport ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.55f, 0.3f);
+            DrawRect(new Rect2(-3f, -90f, 6f, 90f), beam with { A = 0.18f });
+            DrawRect(new Rect2(-1f, -90f, 2f, 90f), beam with { A = 0.35f });
+        }
+
+        if (Kind == PickupKind.Gem)
+        {
+            Color c = GemSupport ? new Color(0.35f, 0.9f, 0.45f) : new Color(1f, 0.5f, 0.25f);
+            Vector2[] d = { new(0, -9), new(7, 0), new(0, 9), new(-7, 0) };
+            DrawColoredPolygon(d, c);
+            DrawPolyline(new[] { d[0], d[1], d[2], d[3], d[0] }, Colors.White, 1.5f);
+            DrawCircle(new Vector2(-2f, -3f), 2f, new Color(1f, 1f, 1f, 0.8f));
+            return;
+        }
+
         if (Kind != PickupKind.Gold)
         {
             return;
@@ -131,9 +184,9 @@ public partial class Pickup : Node2D
 
     private void Collect(Player player)
     {
-        if (GetTree().GetFirstNodeInGroup(RunState.Group) is RunState state)
+        if (GetTree().GetFirstNodeInGroup(HandlerGroup) is IPickupHandler handler)
         {
-            state.OnPickup(this, player);
+            handler.OnPickup(this, player);
         }
 
         QueueFree();

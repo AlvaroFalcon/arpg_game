@@ -14,7 +14,7 @@ radius = 22.0
 
 [node name="BoneHerald" type="CharacterBody2D"]
 collision_layer = 4
-collision_mask = 1
+collision_mask = 17
 motion_mode = 1
 script = ExtResource("1")
 DisplayName = "The Bone Herald"

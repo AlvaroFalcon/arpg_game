@@ -42,12 +42,26 @@ for scene in "${PROJECT_DIR}"/scenes/tests/*.tscn; do
   fi
   log="${LOG_DIR}/${name}.log"
   : > "${log}"
+  # Tests that may hang at shutdown mirror their output to
+  # user://test_results/<name>.txt (stdout is block-buffered; see CLAUDE.md).
+  mirror=""
+  for dir in "${HOME}/.local/share/godot/app_userdata/Path to Exile" "${HOME}/Library/Application Support/Godot/app_userdata/Path to Exile"; do
+    if [[ -d "${dir}" ]]; then
+      mirror="${dir}/test_results/${name}.txt"
+      rm -f "${mirror}"
+    fi
+  done
   "${PROJECT_DIR}/scripts/run_headless.sh" "res://scenes/tests/${name}.tscn" --quit-after 6000 > "${log}" 2>&1 &
   pid=$!
   verdict=""
   for ((i = 0; i < TIMEOUT_S * 4; i++)); do
     if grep -qE "RESULT: (PASS|FAIL)" "${log}" 2>/dev/null; then
       verdict="$(grep -oE "RESULT: (PASS|FAIL)" "${log}" | tail -1)"
+      break
+    fi
+    if [[ -n "${mirror}" ]] && grep -qE "RESULT: (PASS|FAIL)" "${mirror}" 2>/dev/null; then
+      verdict="$(grep -oE "RESULT: (PASS|FAIL)" "${mirror}" | tail -1)"
+      cat "${mirror}" >> "${log}"
       break
     fi
     if ! kill -0 "${pid}" 2>/dev/null; then

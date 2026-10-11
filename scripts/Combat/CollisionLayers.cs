@@ -17,4 +17,8 @@ public static class CollisionLayers
     public const uint PlayerFaction = 1 << 1;
     public const uint EnemyFaction = 1 << 2;
     public const uint Projectile = 1 << 3;
+
+    /// <summary>Liquid hazards in a reality (water, lava): they stop bodies but
+    /// not projectiles (docs/design/endgame.md -> "Layout").</summary>
+    public const uint Hazard = 1 << 4;
 }

@@ -15,7 +15,7 @@ namespace PathToExile.Run;
 /// screen), which pauses the run while the player chooses.
 /// </summary>
 [GlobalClass]
-public partial class RunState : Node
+public partial class RunState : Node, IPickupHandler
 {
     public const string Group = "run_state";
     public const string PickupGroup = "pickups";
@@ -51,6 +51,7 @@ public partial class RunState : Node
     public override void _Ready()
     {
         AddToGroup(Group);
+        AddToGroup(Pickup.HandlerGroup);
         _rng.Randomize();
     }
 

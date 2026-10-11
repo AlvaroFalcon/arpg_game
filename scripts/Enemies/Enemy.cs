@@ -165,10 +165,15 @@ public partial class Enemy : CharacterBody2D
     /// late enemies get tankier faster than they get deadlier — the player's
     /// damage scales with their build, their life mostly does not.
     /// </summary>
-    public void ApplyScaling(float lifeMultiplier, float damageMultiplier)
+    public void ApplyScaling(float lifeMultiplier, float damageMultiplier) =>
+        ApplyTierScaling(Mathf.Pow(lifeMultiplier, LifeScalingExponent), Mathf.Pow(damageMultiplier, DamageScalingExponent));
+
+    /// <summary>
+    /// Raw scaling without the survival-mode exponents: realities (docs/design/endgame.md
+    /// -> "Tiers 1-20") already compute the exact multiplier per tier, bosses included.
+    /// </summary>
+    public void ApplyTierScaling(float lifeMultiplier, float damageMultiplier)
     {
-        lifeMultiplier = Mathf.Pow(lifeMultiplier, LifeScalingExponent);
-        damageMultiplier = Mathf.Pow(damageMultiplier, DamageScalingExponent);
         if (lifeMultiplier != 1f)
         {
             Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.More, (lifeMultiplier - 1f) * 100f, this));
