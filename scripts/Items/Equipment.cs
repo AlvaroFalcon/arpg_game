@@ -53,7 +53,7 @@ public partial class Equipment : Node
     /// </summary>
     public static IReadOnlyList<EquipmentSlot> CandidateSlots(ItemClass itemClass) => itemClass switch
     {
-        ItemClass.Wand => new[] { EquipmentSlot.Weapon },
+        ItemClass.Wand or ItemClass.Sword or ItemClass.Axe or ItemClass.Dagger => new[] { EquipmentSlot.Weapon },
         ItemClass.Offhand => new[] { EquipmentSlot.Offhand },
         ItemClass.Helmet => new[] { EquipmentSlot.Helmet },
         ItemClass.BodyArmour => new[] { EquipmentSlot.BodyArmour },

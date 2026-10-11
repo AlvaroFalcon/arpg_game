@@ -42,7 +42,7 @@ function contactSheet(specs: SpriteSpec[], scale = 4, pad = 4): Buffer {
 const args = process.argv.slice(2);
 const previewAt = args.indexOf('--preview');
 const only = args.find((a) => !a.startsWith('--') && (previewAt < 0 || a !== args[previewAt + 1]));
-const specs = only ? all.filter((s) => s.name.includes(only)) : all;
+const specs = only ? all.filter((s) => only.split(',').some((o) => s.name.includes(o))) : all;
 
 if (previewAt >= 0) {
   writeFileSync(args[previewAt + 1], contactSheet(specs));

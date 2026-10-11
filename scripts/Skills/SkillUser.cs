@@ -415,6 +415,9 @@ public partial class SkillUser : Node
             case OrbitSkillDefinition orbit:
                 ExecuteOrbit(instance, orbit, context);
                 break;
+            case MeleeSkillDefinition melee:
+                ExecuteMelee(instance, melee, context);
+                break;
             default:
                 GD.PushWarning($"SkillUser: no executor implemented for {instance.Definition.GetType().Name}");
                 break;
@@ -444,6 +447,7 @@ public partial class SkillUser : Node
             IgniteChance = _stats.Get(StatId.IgniteChance).Value + context.IgniteChanceBonus,
             ShockChance = _stats.Get(StatId.ShockChance).Value + context.ShockChanceBonus,
             CanInflictAilments = context.CanInflictAilments,
+            IgniteDamageMultiplier = context.IgniteDamageMultiplier,
             KnockbackForce = knockback,
         };
     }
@@ -460,6 +464,60 @@ public partial class SkillUser : Node
 
         HitProfile hit = BuildHitProfile(instance, context, definition.Knockback);
         AreaBurst.Spawn(GetTree().CurrentScene, centre, radius, definition.Delay, definition.Tint, hit);
+    }
+
+    private void ExecuteMelee(SkillInstance instance, MeleeSkillDefinition definition, CastContext context)
+    {
+        float area = context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
+        HitProfile hit = BuildHitProfile(instance, context, definition.Knockback);
+        Vector2 aim = context.AimDirection == Vector2.Zero ? Vector2.Right : context.AimDirection.Normalized();
+
+        if (definition.Line)
+        {
+            float length = definition.Range * area;
+            LineStrike lane = LineStrike.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, aim, length, definition.LineWidth * Mathf.Sqrt(area), definition.LineDelay, hit);
+            lane.Impacted += () => ReportHit(_caster, hit.Damage);
+            return;
+        }
+
+        for (int i = 0; i < Mathf.Max(1, definition.Strikes); i++)
+        {
+            if (i == 0)
+            {
+                Strike(definition, hit, aim, area);
+                continue;
+            }
+
+            SceneTreeTimer timer = GetTree().CreateTimer(0.09 * i, processAlways: false, processInPhysics: true);
+            timer.Timeout += () =>
+            {
+                if (IsInstanceValid(this) && IsInstanceValid(_caster))
+                {
+                    Strike(definition, hit, aim, area);
+                }
+            };
+        }
+    }
+
+    /// <summary>One melee swing: every hostile inside the arc takes the hit.</summary>
+    private void Strike(MeleeSkillDefinition definition, HitProfile hit, Vector2 aim, float area)
+    {
+        float range = definition.Range * area;
+        float halfArc = Mathf.DegToRad(definition.ArcDegrees) / 2f;
+        Vector2 origin = _caster.GlobalPosition;
+        SlashEffect.Spawn(GetTree().CurrentScene, origin, aim, range, definition.ArcDegrees, definition.Tint);
+        Core.Sfx.Play(this, "hit", -4f);
+        foreach (Health health in CombatQuery.HostilesInRadius(GetTree(), origin, range, hit.Faction, 16f))
+        {
+            Vector2 to = health.GetParent<Node2D>().GlobalPosition - origin;
+            if (to.LengthSquared() > 1f && Mathf.Abs(aim.AngleTo(to)) > halfArc + 0.15f)
+            {
+                continue;
+            }
+
+            health.TakeDamage(hit.BuildPayload(to.Normalized()));
+            ReportHit(health.GetParent<Node2D>(), hit.Damage);
+        }
     }
 
     private void ExecuteOrbit(SkillInstance instance, OrbitSkillDefinition definition, CastContext context)

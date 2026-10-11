@@ -20,6 +20,7 @@ public sealed class HitProfile
     public float ShockChance;
     public bool CanInflictAilments = true;
     public float KnockbackForce;
+    public float IgniteDamageMultiplier = 1f;
 
     public DamagePayload BuildPayload(Vector2 knockbackDirection)
     {
@@ -29,6 +30,7 @@ public sealed class HitProfile
             IgniteChance = IgniteChance,
             ShockChance = ShockChance,
             CanInflictAilments = CanInflictAilments,
+            IgniteDamageMultiplier = IgniteDamageMultiplier,
             Knockback = knockbackDirection * KnockbackForce,
         };
     }

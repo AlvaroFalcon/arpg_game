@@ -82,13 +82,17 @@ public partial class LineStrike : Node2D
             }
         }
 
-        Core.CameraShake.Request(this, 4f);
+        if (Hit.Faction != Faction.Player)
+        {
+            Core.CameraShake.Request(this, 4f);
+        }
         Impacted?.Invoke();
     }
 
     public override void _Draw()
     {
-        var red = new Color(1f, 0.15f, 0.1f);
+        // Hostile lanes are always red; the player's own (Sunder) use warm white.
+        var red = Hit.Faction == Faction.Player ? new Color(1f, 0.85f, 0.55f) : new Color(1f, 0.15f, 0.1f);
         float hw = Width / 2f;
         if (!_fired)
         {

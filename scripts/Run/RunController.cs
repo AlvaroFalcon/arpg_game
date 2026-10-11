@@ -86,6 +86,13 @@ public partial class RunController : Node2D
             ApplyAutoLevels(autoLevels);
             BeginRun();
         }
+        else if (Build.Skills.Any())
+        {
+            // The persistent character brings its own gems (docs/design/endgame.md
+            // -> "Survival Rift"); the card pick only exists for a character with none.
+            ApplyAutoLevels(autoLevels);
+            BeginRun();
+        }
         else
         {
             LevelUp.OpenStartPick(BeginRun);
@@ -98,14 +105,11 @@ public partial class RunController : Node2D
         Build = new RunBuild { Name = "RunBuild" };
         Player.AddChild(Build);
 
-        // Run casting: slots 1-4 are the build, LMB/RMB are free (no
-        // click-to-move in a run: WASD + dodge is the whole movement kit).
+        // Run casting: slots 1-4 are the character's gems (equipped by
+        // CharacterBuild in ApplyTo below), LMB/RMB are free (no click-to-move
+        // in a run: WASD + dodge is the whole movement kit).
         Player.SkillUser.ClearSlot(SkillSlotId.Lmb);
         Player.SkillUser.ClearSlot(SkillSlotId.Rmb);
-        foreach (SkillSlotId slot in new[] { SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 })
-        {
-            Player.SkillUser.ClearSlot(slot);
-        }
 
         Player.GetNode<PlayerSkillInput>("PlayerSkillInput").RunMode = true;
         Player.GetNodeOrNull<CanvasLayer>("DebugReadout")?.Hide();
@@ -141,7 +145,7 @@ public partial class RunController : Node2D
     /// <summary>"Phase Dancer" keystone: dodging releases a frost nova.</summary>
     private void OnPlayerDodged()
     {
-        if (!Build.PhaseDancer)
+        if (!Progression.BuildQuery.Any(Player, b => b.PhaseDancer))
         {
             return;
         }
@@ -185,11 +189,7 @@ public partial class RunController : Node2D
     private void BeginRun()
     {
         Director.Spawning = true;
-        Hud.ShowBanner("Survive", "Reach the Ember Colossus — and break it", UiTheme.Gold);
-        if (Build.Skills.FirstOrDefault() is { } first)
-        {
-            Profile.Get(this)!.LastStartingSkill = UpgradeCatalog.SkillIdOf(first.Definition);
-        }
+        Hud.ShowBanner("Survival Rift", "Reach the Ember Colossus — and break it", UiTheme.Gold);
     }
 
     private async void OnRunEnded(bool victory)

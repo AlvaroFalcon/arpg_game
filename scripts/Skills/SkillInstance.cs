@@ -46,7 +46,7 @@ public sealed class SkillInstance
     /// </summary>
     public int Level { get; set; } = 1;
 
-    public const float DamagePerLevel = 0.2f;
+    public const float DamagePerLevel = 0.12f;
 
     public float LevelDamageMultiplier => 1f + DamagePerLevel * (Level - 1);
 

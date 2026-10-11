@@ -50,7 +50,7 @@ public sealed class UpgradeOffer
 /// A child of the player in the run scene; expects the player as its parent.
 /// </summary>
 [GlobalClass]
-public partial class RunBuild : Node
+public partial class RunBuild : Node, IBuildContext
 {
     public const int MaxSkills = 4;
     public const int MaxSupportsPerSkill = 3;

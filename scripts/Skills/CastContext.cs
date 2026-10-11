@@ -72,6 +72,9 @@ public sealed class CastContext
     public float LifeCostFloorFraction;
 
     public float IgniteChanceBonus;
+
+    /// <summary>Multiplier on ignite damage (Warlock's Hellfire).</summary>
+    public float IgniteDamageMultiplier = 1f;
     public float ShockChanceBonus;
     public bool CanInflictAilments = true;
 

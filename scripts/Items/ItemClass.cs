@@ -25,4 +25,10 @@ public enum ItemClass
     Belt,
     Amulet,
     Ring,
+
+    // docs/design/classes.md: melee weapons for the Warrior and the Rogue.
+    // Appended, never inserted: base .tres files store this enum as an int.
+    Sword,
+    Axe,
+    Dagger,
 }

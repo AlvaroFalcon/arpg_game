@@ -85,6 +85,8 @@ public sealed class DamagePayload
     /// supports (trade ailments for damage).</summary>
     public bool CanInflictAilments = true;
 
+    public float IgniteDamageMultiplier = 1f;
+
     /// <summary>Optional knockback impulse (px/s) applied to a target that can be
     /// knocked back. Zero for most hits.</summary>
     public Vector2 Knockback;

@@ -85,6 +85,17 @@ public partial class Health : Node
     /// </summary>
     public event System.Action<DamagePayload, float>? HitResolved;
 
+    /// <summary>
+    /// Every resolved hit on any actor, globally — for attacker-side reactions
+    /// that must work whatever delivered the hit (projectile, area, orbit, melee):
+    /// class resources, leech, ascendancy triggers (docs/design/classes.md).
+    /// Subscribers must unsubscribe when they leave the tree.
+    /// </summary>
+    public static event System.Action<Health, DamagePayload, float>? AnyHitResolved;
+
+    /// <summary>A hit that invulnerability (a dodge) or a hook (block, evasion) negated.</summary>
+    public static event System.Action<Health, DamagePayload, bool>? AnyHitNegated;
+
     /// <summary>Who landed the killing blow (or the last hit), for on-kill
     /// effects such as Life on Kill. Null when the hit had no attribution.</summary>
     public Node2D? LastHitSource { get; private set; }
@@ -160,6 +171,14 @@ public partial class Health : Node
 
         if (IsInvulnerable)
         {
+            AnyHitNegated?.Invoke(this, payload, true);
+            return;
+        }
+
+        float hookMultiplier = DamageHooks.Multiplier(this, payload);
+        if (hookMultiplier <= 0f)
+        {
+            AnyHitNegated?.Invoke(this, payload, false);
             return;
         }
 
@@ -200,7 +219,7 @@ public partial class Health : Node
         // docs/design/progression.md -> "Run stats": a single base-1.0
         // multiplier for "less/more damage taken" (keystones, shock), applied
         // after mitigation so it scales what actually lands.
-        totalTaken *= Mathf.Max(0f, _stats.Get(StatId.DamageTaken).Value);
+        totalTaken *= Mathf.Max(0f, _stats.Get(StatId.DamageTaken).Value) * hookMultiplier;
 
         if (payload.SourceActor is not null && IsInstanceValid(payload.SourceActor))
         {
@@ -211,6 +230,7 @@ public partial class Health : Node
         life.Current = Mathf.Max(0f, life.Current - totalTaken);
         EmitSignal(SignalName.Damaged, totalTaken);
         HitResolved?.Invoke(payload, totalTaken);
+        AnyHitResolved?.Invoke(this, payload, totalTaken);
 
         if (life.Current <= 0f)
         {

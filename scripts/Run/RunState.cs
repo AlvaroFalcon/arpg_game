@@ -133,6 +133,10 @@ public partial class RunState : Node
         }
 
         Core.Sfx.Play(this, "death", -6f);
+        if (byPlayer)
+        {
+            Characters.CharacterBuild.Of(Player)?.GrantExperience(CharacterExperienceFor(enemy));
+        }
         Vector2 at = enemy.GlobalPosition;
         if (enemy.ExperienceValue > 0)
         {
@@ -164,7 +168,7 @@ public partial class RunState : Node
                 Player.Health?.Heal(lifeOnKill);
             }
 
-            if (Build is { ChainReaction: true })
+            if (Progression.BuildQuery.Any(Player, b => b.ChainReaction))
             {
                 float maxLife = enemy.Stats.Life?.Max ?? 0f;
                 var hit = new HitProfile
@@ -199,6 +203,11 @@ public partial class RunState : Node
         Items.Rarity rarity = roll > 1.05f ? Items.Rarity.Rare : roll > 0.5f ? Items.Rarity.Magic : Items.Rarity.Common;
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, itemLevel, Items.ItemFactory.Affixes.Entries, _rng);
     }
+
+    /// <summary>Persistent-character experience for a kill (docs/design/endgame.md ->
+    /// "Persistent character"): grows with monster level and rarity.</summary>
+    public static float CharacterExperienceFor(Enemy enemy) =>
+        enemy.ExperienceValue * (2f + enemy.MonsterLevel * 0.35f) * (enemy.IsBoss ? 3f : 1f);
 
     private Vector2 RandomOffset(float r) => new(_rng.RandfRange(-r, r), _rng.RandfRange(-r, r));
 

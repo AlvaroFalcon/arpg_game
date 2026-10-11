@@ -35,6 +35,17 @@ public partial class Ailments : Node
     public const float ShockPercent = 25f;
 
     private static readonly object ChillSource = new();
+    private static readonly object CurseSource = new();
+
+    /// <summary>Poison stacks: each is (damage per second, seconds left).
+    /// Independent and stacking, unlike ignite (docs/design/classes.md -> Assassin).</summary>
+    private readonly System.Collections.Generic.List<(float Dps, float Left)> _poisons = new();
+    private float _poisonTick;
+    private Node2D? _poisonSource;
+
+    public float CurseRemaining { get; private set; }
+    public bool IsCursed => CurseRemaining > 0f;
+    public int PoisonStacks => _poisons.Count;
     private static readonly object ShockSource = new();
 
     private ActorStats _stats = null!;
@@ -65,6 +76,8 @@ public partial class Ailments : Node
     /// Ignite outranks shock outranks chill: the one doing damage reads first.</summary>
     public Color Tint =>
         IsIgnited ? new Color(1f, 0.6f, 0.35f)
+        : PoisonStacks > 0 ? new Color(0.55f, 1f, 0.5f)
+        : IsCursed ? new Color(0.8f, 0.5f, 1f)
         : IsShocked ? new Color(1f, 1f, 0.45f)
         : IsChilled ? new Color(0.55f, 0.8f, 1f)
         : Colors.White;
@@ -89,7 +102,7 @@ public partial class Ailments : Node
                     ApplyChill();
                     break;
                 case DamageType.Fire when _rng.Randf() < payload.IgniteChance:
-                    ApplyIgnite(taken * IgniteDamageRatio, payload.SourceActor);
+                    ApplyIgnite(taken * IgniteDamageRatio * payload.IgniteDamageMultiplier, payload.SourceActor);
                     break;
                 case DamageType.Lightning when _rng.Randf() < payload.ShockChance:
                     ApplyShock();
@@ -122,6 +135,29 @@ public partial class Ailments : Node
         _igniteSource = source;
     }
 
+    /// <summary>Adds a poison stack (max 12) dealing <paramref name="total"/> over <paramref name="duration"/> s.</summary>
+    public void AddPoison(float total, float duration, Node2D? source)
+    {
+        if (_poisons.Count >= 12)
+        {
+            _poisons.RemoveAt(0);
+        }
+
+        _poisons.Add((total / duration, duration));
+        _poisonSource = source;
+    }
+
+    /// <summary>Vulnerability curse: <paramref name="percent"/>% more damage taken (Warlock).</summary>
+    public void ApplyCurse(float percent, float duration)
+    {
+        if (CurseRemaining <= 0f)
+        {
+            _stats.Get(StatId.DamageTaken).AddModifier(new StatModifier(ModifierType.More, percent, CurseSource));
+        }
+
+        CurseRemaining = Mathf.Max(CurseRemaining, duration);
+    }
+
     public void ApplyShock()
     {
         if (ShockRemaining <= 0f)
@@ -151,6 +187,42 @@ public partial class Ailments : Node
             if (ShockRemaining <= 0f)
             {
                 _stats.Get(StatId.DamageTaken).RemoveModifiersFromSource(ShockSource);
+            }
+        }
+
+        if (CurseRemaining > 0f)
+        {
+            CurseRemaining -= dt;
+            if (CurseRemaining <= 0f)
+            {
+                _stats.Get(StatId.DamageTaken).RemoveModifiersFromSource(CurseSource);
+            }
+        }
+
+        if (_poisons.Count > 0)
+        {
+            _poisonTick -= dt;
+            if (_poisonTick <= 0f)
+            {
+                _poisonTick = 0.5f;
+                float dps = 0f;
+                for (int i = _poisons.Count - 1; i >= 0; i--)
+                {
+                    (float d, float left) = _poisons[i];
+                    dps += d;
+                    left -= 0.5f;
+                    if (left <= 0f)
+                    {
+                        _poisons.RemoveAt(i);
+                    }
+                    else
+                    {
+                        _poisons[i] = (d, left);
+                    }
+                }
+
+                Node2D? source = _poisonSource is not null && IsInstanceValid(_poisonSource) ? _poisonSource : null;
+                _health.ApplyResolvedDamage(dps * 0.5f, source);
             }
         }
 

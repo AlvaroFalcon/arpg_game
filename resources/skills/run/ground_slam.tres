@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="AreaSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AreaSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_ground_slam.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 4.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Ground Slam"
+Description = "Smashes the ground just ahead, knocking enemies back."
+BaseDamage = 20.0
+BaseUseTime = 0.8
+Tags = 25
+Radius = 85.0
+Delay = 0.12
+AtTarget = true
+MaxRange = 130.0
+Knockback = 220.0
+Tint = Color(0.85, 0.65, 0.4, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

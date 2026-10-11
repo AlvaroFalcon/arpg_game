@@ -57,6 +57,28 @@ public partial class Dodge : Node
 
     public bool IsDashing => _dashRemaining > 0f;
 
+    /// <summary>Engine time (s) the last dodge started — ascendancy timing windows.</summary>
+    public double LastDodgeTime { get; private set; } = -100.0;
+
+    /// <summary>Gives a charge back (Samurai's Perfect Parry).</summary>
+    public void AddCharge() => Charges = Mathf.Min(MaxCharges, Charges + 1);
+
+    /// <summary>Advances the refilling charge by a fraction (Ninja's Fleeting Kill).</summary>
+    public void AdvanceRecharge(float fraction)
+    {
+        if (Charges >= MaxCharges)
+        {
+            return;
+        }
+
+        RechargeProgress += fraction;
+        if (RechargeProgress >= 1f)
+        {
+            RechargeProgress = 0f;
+            Charges++;
+        }
+    }
+
     public Vector2 DashVelocity => _dashVelocity;
 
     /// <summary>When false (menus, cutscenes, the hideout's dialogue), input is ignored.</summary>
@@ -111,6 +133,7 @@ public partial class Dodge : Node
         }
 
         Charges--;
+        LastDodgeTime = Time.GetTicksMsec() / 1000.0;
         _dashRemaining = DashTime;
         _dashVelocity = direction.Normalized() * (DashDistance / DashTime);
         _health?.GrantInvulnerability(DashTime + InvulnerabilityTail);

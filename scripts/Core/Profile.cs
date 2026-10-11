@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Godot;
+using PathToExile.Characters;
 using PathToExile.Combat;
 using PathToExile.Items;
 using PathToExile.Stats;
@@ -11,55 +12,102 @@ using PathToExile.Stats;
 namespace PathToExile.Core;
 
 /// <summary>
-/// The persistent character — docs/design/menus.md -> "Profile". Everything
-/// that survives between runs lives here: equipped gear, the inventory grid,
-/// gold, and a handful of records. Runs themselves are disposable (the
-/// survivor half of the game); gear is the part that carries over (the ARPG
-/// half), which is why the level-up build resets every run but your items do not.
+/// The save file: a list of persistent characters and which one is active —
+/// docs/design/endgame.md / classes.md. (First pass, docs/design/menus.md ->
+/// "Profile", held a single character's gear; version 1 files are migrated into
+/// one Arcanist.)
 ///
-/// The live <see cref="Player"/> owns its <see cref="Inventory"/>/
-/// <see cref="Items.Equipment"/> while a scene is running. Scenes call
-/// <see cref="ApplyTo"/> when a player spawns and <see cref="CaptureFrom"/>
-/// before leaving, and the profile is written to <c>user://profile.json</c> on
-/// every capture.
+/// The live <see cref="Player"/> owns its inventory/equipment while a scene is
+/// running. Scenes call <see cref="ApplyTo"/> when a player spawns (gear, gold
+/// and the character build: class, passives, ascendancy, gems) and
+/// <see cref="CaptureFrom"/> before leaving; the profile is written to
+/// <c>user://profile.json</c> on every capture.
 /// </summary>
 [GlobalClass]
 public partial class Profile : Node
 {
     public const string SavePath = "user://profile.json";
+    public const int MaxCharacters = 6;
 
     /// <summary>Matches <c>resources/currency/Gold.tres</c>'s Id.</summary>
     public static readonly CurrencyId GoldId = "gold";
 
-    private readonly List<(EquipmentItem Item, Vector2I Cell)> _inventory = new();
-    private readonly Dictionary<EquipmentSlot, EquipmentItem> _equipped = new();
+    public List<CharacterData> Characters { get; } = new();
 
-    public long Gold { get; private set; }
-    public int RunsPlayed { get; private set; }
-    public int Victories { get; private set; }
-    public float BestTime { get; private set; }
-    public int BestLevel { get; private set; }
-    public int TotalKills { get; private set; }
+    public int ActiveIndex { get; private set; }
 
-    /// <summary>Skill id the player picked last time, preselected next run.</summary>
-    public string LastStartingSkill { get; set; } = "fireball";
+    /// <summary>When false, nothing is written to disk (tests).</summary>
+    public bool Persist { get; set; } = true;
 
     public static Profile? Get(Node context) =>
         context.IsInsideTree() ? context.GetTree().Root.GetNodeOrNull<Profile>("Profile") : null;
+
+    /// <summary>The active character, creating a default one if there is none
+    /// (quick paths like the sandbox must always have someone to play).</summary>
+    public CharacterData Active
+    {
+        get
+        {
+            if (Characters.Count == 0)
+            {
+                Characters.Add(CharacterData.Create("Exile", "arcanist"));
+                ActiveIndex = 0;
+            }
+
+            return Characters[Mathf.Clamp(ActiveIndex, 0, Characters.Count - 1)];
+        }
+    }
+
+    public bool HasCharacters => Characters.Count > 0;
+
+    // Legacy accessors used by the survivor-run screens.
+    public long Gold => Active.Gold;
+    public int RunsPlayed => Active.SurvivalRuns;
+    public int Victories => Active.RealitiesCleared;
+    public float BestTime => Active.BestSurvivalTime;
+    public int BestLevel => Active.Level;
 
     public override void _Ready()
     {
         Load();
     }
 
+    public void Select(int index)
+    {
+        ActiveIndex = Mathf.Clamp(index, 0, Mathf.Max(0, Characters.Count - 1));
+        Save();
+    }
+
+    public CharacterData CreateCharacter(string name, string classId)
+    {
+        CharacterData data = CharacterData.Create(string.IsNullOrWhiteSpace(name) ? "Exile" : name.Trim(), classId);
+        Characters.Add(data);
+        ActiveIndex = Characters.Count - 1;
+        Save();
+        return data;
+    }
+
+    public void DeleteCharacter(int index)
+    {
+        if (index < 0 || index >= Characters.Count)
+        {
+            return;
+        }
+
+        Characters.RemoveAt(index);
+        ActiveIndex = Mathf.Clamp(ActiveIndex >= index ? ActiveIndex - 1 : ActiveIndex, 0, Mathf.Max(0, Characters.Count - 1));
+        Save();
+    }
+
     public void ApplyTo(Player player)
     {
-        foreach ((EquipmentSlot slot, EquipmentItem item) in _equipped)
+        CharacterData c = Active;
+        foreach ((EquipmentSlot slot, EquipmentItem item) in c.Equipped)
         {
             player.Equipment.TryEquip(slot, item, out _);
         }
 
-        foreach ((EquipmentItem item, Vector2I cell) in _inventory)
+        foreach ((EquipmentItem item, Vector2I cell) in c.Inventory)
         {
             if (!player.Inventory.TryPlaceAt(item, cell))
             {
@@ -67,45 +115,57 @@ public partial class Profile : Node
             }
         }
 
-        if (Gold > 0)
+        if (c.Gold > 0)
         {
-            player.Wallet.Add(GoldId, Gold);
+            player.Wallet.Add(GoldId, c.Gold);
         }
 
+        CharacterBuild.Attach(player, c);
+
         // Equipping must never leave the character spawning hurt.
-        if (player.GetNodeOrNull<ActorStats>("Stats") is { Life: { } life })
+        if (player.GetNodeOrNull<ActorStats>("Stats") is { } stats)
         {
-            life.Current = life.Max;
+            if (stats.Life is { } life)
+            {
+                life.Current = life.Max;
+            }
+
+            if (stats.Mana is { } mana)
+            {
+                mana.Current = mana.Max;
+            }
         }
     }
 
     public void CaptureFrom(Player player)
     {
-        _equipped.Clear();
+        CharacterData c = Active;
+        c.Equipped.Clear();
         foreach (EquipmentSlot slot in Enum.GetValues<EquipmentSlot>())
         {
             if (player.Equipment.GetEquipped(slot) is { } item)
             {
-                _equipped[slot] = item;
+                c.Equipped[slot] = item;
             }
         }
 
-        _inventory.Clear();
+        c.Inventory.Clear();
         foreach ((EquipmentItem item, Vector2I cell) in player.Inventory.Placements)
         {
-            _inventory.Add((item, cell));
+            c.Inventory.Add((item, cell));
         }
 
-        Gold = player.Wallet.GetBalance(GoldId);
+        c.Gold = player.Wallet.GetBalance(GoldId);
         Save();
     }
 
-    /// <summary>Adds an item straight into the stored inventory (end-of-run reward
-    /// claimed while no player owns the grid). Returns false if nothing fits.</summary>
+    /// <summary>Adds an item straight into the stored inventory (a reward claimed
+    /// while no player owns the grid). Returns false if nothing fits.</summary>
     public bool AddToStash(EquipmentItem item)
     {
+        CharacterData c = Active;
         var occupancy = new bool[Inventory.Width, Inventory.Height];
-        foreach ((EquipmentItem it, Vector2I cell) in _inventory)
+        foreach ((EquipmentItem it, Vector2I cell) in c.Inventory)
         {
             Mark(occupancy, it, cell);
         }
@@ -118,7 +178,7 @@ public partial class Profile : Node
             {
                 if (Fits(occupancy, x, y, w, h))
                 {
-                    _inventory.Add((item, new Vector2I(x, y)));
+                    c.Inventory.Add((item, new Vector2I(x, y)));
                     return true;
                 }
             }
@@ -157,21 +217,15 @@ public partial class Profile : Node
         return true;
     }
 
+    /// <summary>Records a Survival Rift run.</summary>
     public void RecordRun(float time, int level, int kills, bool victory)
     {
-        RunsPlayed++;
-        if (victory)
-        {
-            Victories++;
-        }
-
-        BestTime = Mathf.Max(BestTime, time);
-        BestLevel = Mathf.Max(BestLevel, level);
-        TotalKills += kills;
+        CharacterData c = Active;
+        c.SurvivalRuns++;
+        c.BestSurvivalTime = Mathf.Max(c.BestSurvivalTime, time);
+        c.TotalKills += kills;
         Save();
     }
-
-    public int StashCount => _inventory.Count;
 
     // --- persistence ----------------------------------------------------------
 
@@ -195,17 +249,38 @@ public partial class Profile : Node
         public float Value { get; set; }
     }
 
+    private sealed class SaveCharacter
+    {
+        public string Name { get; set; } = "Exile";
+        public string ClassId { get; set; } = "arcanist";
+        public int Level { get; set; } = 1;
+        public float Experience { get; set; }
+        public List<string> Passives { get; set; } = new();
+        public string? Ascendancy { get; set; }
+        public List<string> AscendancyNodes { get; set; } = new();
+        public int AscendancyPoints { get; set; }
+        public List<GemData> Gems { get; set; } = new();
+        public List<LoadoutSlot> Loadout { get; set; } = new();
+        public Dictionary<string, int> Shards { get; set; } = new();
+        public long Gold { get; set; }
+        public int HighestTierCleared { get; set; }
+        public int RealitiesCleared { get; set; }
+        public int Deaths { get; set; }
+        public int TotalKills { get; set; }
+        public int SurvivalRuns { get; set; }
+        public float BestSurvivalTime { get; set; }
+        public List<SaveItem> Items { get; set; } = new();
+    }
+
     private sealed class SaveFile
     {
-        public int Version { get; set; } = 1;
+        public int Version { get; set; } = 2;
+        public int Active { get; set; }
+        public List<SaveCharacter> Characters { get; set; } = new();
+
+        // Version 1 fields (single character), read for migration only.
         public long Gold { get; set; }
-        public int RunsPlayed { get; set; }
-        public int Victories { get; set; }
-        public float BestTime { get; set; }
-        public int BestLevel { get; set; }
-        public int TotalKills { get; set; }
-        public string LastStartingSkill { get; set; } = "fireball";
-        public List<SaveItem> Items { get; set; } = new();
+        public List<SaveItem>? Items { get; set; }
     }
 
     private static SaveItem ToSave(EquipmentItem item) => new()
@@ -244,39 +319,121 @@ public partial class Profile : Node
         return item;
     }
 
+    private static SaveCharacter ToSave(CharacterData c)
+    {
+        var s = new SaveCharacter
+        {
+            Name = c.Name,
+            ClassId = c.ClassId,
+            Level = c.Level,
+            Experience = c.Experience,
+            Passives = c.Passives.ToList(),
+            Ascendancy = c.Ascendancy,
+            AscendancyNodes = c.AscendancyNodes.ToList(),
+            AscendancyPoints = c.AscendancyPoints,
+            Gems = c.Gems,
+            Loadout = c.Loadout.ToList(),
+            Shards = c.Shards.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
+            Gold = c.Gold,
+            HighestTierCleared = c.HighestTierCleared,
+            RealitiesCleared = c.RealitiesCleared,
+            Deaths = c.Deaths,
+            TotalKills = c.TotalKills,
+            SurvivalRuns = c.SurvivalRuns,
+            BestSurvivalTime = c.BestSurvivalTime,
+        };
+        foreach ((EquipmentSlot slot, EquipmentItem item) in c.Equipped)
+        {
+            SaveItem si = ToSave(item);
+            si.Slot = slot.ToString();
+            s.Items.Add(si);
+        }
+
+        foreach ((EquipmentItem item, Vector2I cell) in c.Inventory)
+        {
+            SaveItem si = ToSave(item);
+            si.X = cell.X;
+            si.Y = cell.Y;
+            s.Items.Add(si);
+        }
+
+        return s;
+    }
+
+    private static CharacterData FromSave(SaveCharacter s)
+    {
+        var c = new CharacterData
+        {
+            Name = s.Name,
+            ClassId = s.ClassId,
+            Level = Mathf.Clamp(s.Level, 1, CharacterData.MaxLevel),
+            Experience = s.Experience,
+            Passives = new HashSet<string>(s.Passives),
+            Ascendancy = s.Ascendancy,
+            AscendancyNodes = new HashSet<string>(s.AscendancyNodes),
+            AscendancyPoints = s.AscendancyPoints,
+            Gems = s.Gems ?? new List<GemData>(),
+            Gold = s.Gold,
+            HighestTierCleared = s.HighestTierCleared,
+            RealitiesCleared = s.RealitiesCleared,
+            Deaths = s.Deaths,
+            TotalKills = s.TotalKills,
+            SurvivalRuns = s.SurvivalRuns,
+            BestSurvivalTime = s.BestSurvivalTime,
+        };
+        for (int i = 0; i < CharacterData.LoadoutSlots && i < s.Loadout.Count; i++)
+        {
+            c.Loadout[i] = s.Loadout[i] ?? new LoadoutSlot();
+        }
+
+        foreach ((string tier, int n) in s.Shards)
+        {
+            if (int.TryParse(tier, out int t))
+            {
+                c.Shards[t] = n;
+            }
+        }
+
+        c.Passives.Add(c.Class.TreeStart);
+        LoadItems(c, s.Items);
+        return c;
+    }
+
+    private static void LoadItems(CharacterData c, IEnumerable<SaveItem> items)
+    {
+        foreach (SaveItem si in items)
+        {
+            if (FromSave(si) is not { } item)
+            {
+                continue;
+            }
+
+            if (si.Slot is not null && Enum.TryParse(si.Slot, out EquipmentSlot slot))
+            {
+                c.Equipped[slot] = item;
+            }
+            else
+            {
+                c.Inventory.Add((item, new Vector2I(si.X, si.Y)));
+            }
+        }
+    }
+
     public void Save()
     {
-        var file = new SaveFile
+        if (!Persist)
         {
-            Gold = Gold,
-            RunsPlayed = RunsPlayed,
-            Victories = Victories,
-            BestTime = BestTime,
-            BestLevel = BestLevel,
-            TotalKills = TotalKills,
-            LastStartingSkill = LastStartingSkill,
-        };
-        foreach ((EquipmentSlot slot, EquipmentItem item) in _equipped)
-        {
-            SaveItem s = ToSave(item);
-            s.Slot = slot.ToString();
-            file.Items.Add(s);
+            return;
         }
 
-        foreach ((EquipmentItem item, Vector2I cell) in _inventory)
-        {
-            SaveItem s = ToSave(item);
-            s.X = cell.X;
-            s.Y = cell.Y;
-            file.Items.Add(s);
-        }
-
+        var file = new SaveFile { Active = ActiveIndex, Characters = Characters.Select(ToSave).ToList() };
         using FileAccess? f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         f?.StoreString(JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     public void Load()
     {
+        Characters.Clear();
         if (!FileAccess.FileExists(SavePath))
         {
             return;
@@ -290,30 +447,21 @@ public partial class Profile : Node
                 return;
             }
 
-            Gold = file.Gold;
-            RunsPlayed = file.RunsPlayed;
-            Victories = file.Victories;
-            BestTime = file.BestTime;
-            BestLevel = file.BestLevel;
-            TotalKills = file.TotalKills;
-            LastStartingSkill = file.LastStartingSkill;
-            _equipped.Clear();
-            _inventory.Clear();
-            foreach (SaveItem s in file.Items)
+            if (file.Characters.Count > 0)
             {
-                if (FromSave(s) is not { } item)
-                {
-                    continue;
-                }
+                Characters.AddRange(file.Characters.Select(FromSave));
+                ActiveIndex = Mathf.Clamp(file.Active, 0, Characters.Count - 1);
+                return;
+            }
 
-                if (s.Slot is not null && Enum.TryParse(s.Slot, out EquipmentSlot slot))
-                {
-                    _equipped[slot] = item;
-                }
-                else
-                {
-                    _inventory.Add((item, new Vector2I(s.X, s.Y)));
-                }
+            // Version 1: one implicit character with gear and gold.
+            if (file.Items is { Count: > 0 } || file.Gold > 0)
+            {
+                CharacterData migrated = CharacterData.Create("Exile", "arcanist");
+                migrated.Gold = file.Gold;
+                LoadItems(migrated, file.Items ?? new List<SaveItem>());
+                Characters.Add(migrated);
+                ActiveIndex = 0;
             }
         }
         catch (Exception e)
@@ -322,17 +470,11 @@ public partial class Profile : Node
         }
     }
 
-    /// <summary>Wipes the profile (settings menu "Reset progress").</summary>
+    /// <summary>Wipes every character.</summary>
     public void Reset()
     {
-        _equipped.Clear();
-        _inventory.Clear();
-        Gold = 0;
-        RunsPlayed = 0;
-        Victories = 0;
-        BestTime = 0;
-        BestLevel = 0;
-        TotalKills = 0;
+        Characters.Clear();
+        ActiveIndex = 0;
         Save();
     }
 }

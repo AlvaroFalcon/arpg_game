@@ -46,7 +46,7 @@ public sealed class KeystoneDefinition
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
     public string Description { get; init; } = "";
-    public Action<RunBuild> Apply { get; init; } = _ => { };
+    public Action<IBuildContext> Apply { get; init; } = _ => { };
 }
 
 /// <summary>
@@ -66,6 +66,11 @@ public static class UpgradeCatalog
         new SkillEntry { Id = "frost_nova", ResourcePath = "res://resources/skills/run/frost_nova.tres" },
         new SkillEntry { Id = "blades", ResourcePath = "res://resources/skills/run/blades.tres" },
         new SkillEntry { Id = "meteor", ResourcePath = "res://resources/skills/run/meteor.tres" },
+        new SkillEntry { Id = "cleave", ResourcePath = "res://resources/skills/run/cleave.tres" },
+        new SkillEntry { Id = "ground_slam", ResourcePath = "res://resources/skills/run/ground_slam.tres" },
+        new SkillEntry { Id = "sunder", ResourcePath = "res://resources/skills/run/sunder.tres" },
+        new SkillEntry { Id = "double_strike", ResourcePath = "res://resources/skills/run/double_strike.tres" },
+        new SkillEntry { Id = "throwing_knives", ResourcePath = "res://resources/skills/run/throwing_knives.tres" },
     };
 
     public static SkillEntry? FindSkill(string id)
@@ -166,21 +171,21 @@ public static class UpgradeCatalog
         {
             Id = "cold_conversion", Name = "Cold Conversion",
             Description = "Converts the skill's damage to Cold.\nCold hits chill (slow) enemies.",
-            RequiresAny = SkillTags.Spell, Excludes = SkillTags.Cold, Priority = 5,
+            RequiresAny = SkillTags.Spell | SkillTags.Attack, Excludes = SkillTags.Cold, Priority = 5,
             Apply = c => Convert(c, SkillTags.Cold),
         },
         new SupportDefinition
         {
             Id = "fire_conversion", Name = "Fire Conversion",
             Description = "Converts the skill's damage to Fire.\n+15% chance to ignite.",
-            RequiresAny = SkillTags.Spell, Excludes = SkillTags.Fire, Priority = 5,
+            RequiresAny = SkillTags.Spell | SkillTags.Attack, Excludes = SkillTags.Fire, Priority = 5,
             Apply = c => { Convert(c, SkillTags.Fire); c.IgniteChanceBonus += 0.15f; },
         },
         new SupportDefinition
         {
             Id = "lightning_conversion", Name = "Lightning Conversion",
             Description = "Converts the skill's damage to Lightning.\n+15% chance to shock.",
-            RequiresAny = SkillTags.Spell, Excludes = SkillTags.Lightning, Priority = 5,
+            RequiresAny = SkillTags.Spell | SkillTags.Attack, Excludes = SkillTags.Lightning, Priority = 5,
             Apply = c => { Convert(c, SkillTags.Lightning); c.ShockChanceBonus += 0.15f; },
         },
         new SupportDefinition
@@ -197,6 +202,24 @@ public static class UpgradeCatalog
         {
             Id = "elemental_focus", Name = "Elemental Focus", Description = "45% more damage.\nCannot inflict ailments.",
             Priority = 30, Apply = c => { c.DamageMultiplier *= 1.45f; c.CanInflictAilments = false; },
+        },
+        new SupportDefinition
+        {
+            Id = "multistrike", Name = "Multistrike", Description = "Melee strikes repeat twice more.\n25% less damage.",
+            RequiresAny = SkillTags.Melee, Priority = 20,
+            Apply = c => { c.Repeats += 2; c.DamageMultiplier *= 0.75f; c.UseTimeMultiplier *= 1.1f; },
+        },
+        new SupportDefinition
+        {
+            Id = "melee_splash", Name = "Melee Splash", Description = "40% more area for melee strikes.\n10% less damage.",
+            RequiresAny = SkillTags.Melee, Priority = 30,
+            Apply = c => { c.AreaMultiplier *= 1.4f; c.DamageMultiplier *= 0.9f; },
+        },
+        new SupportDefinition
+        {
+            Id = "brutality", Name = "Brutality", Description = "40% more damage with attacks.\nCannot inflict ailments.",
+            RequiresAny = SkillTags.Attack, Priority = 30,
+            Apply = c => { c.DamageMultiplier *= 1.4f; c.CanInflictAilments = false; },
         },
         new SupportDefinition
         {
@@ -368,6 +391,16 @@ public static class UpgradeCatalog
             {
                 b.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(20, c => c.Repeats += 1));
                 b.Stats.CastSpeed.AddModifier(new StatModifier(ModifierType.More, -35f, b.Source));
+            },
+        },
+        new KeystoneDefinition
+        {
+            Id = "iron_will", Name = "Iron Will",
+            Description = "20% less damage taken.\n15% less movement speed.",
+            Apply = b =>
+            {
+                b.Stats.Get(StatId.DamageTaken).AddModifier(new StatModifier(ModifierType.More, -20f, b.Source));
+                b.Stats.MovementSpeed.AddModifier(new StatModifier(ModifierType.More, -15f, b.Source));
             },
         },
         new KeystoneDefinition
