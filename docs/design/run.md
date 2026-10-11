@@ -1,5 +1,10 @@
 # The Run (survivor layer)
 
+> **Superseded as the core loop (2026-10-11)** by the Mirror Shard endgame —
+> see [endgame.md](endgame.md). Everything below still describes the code as it
+> is; whether the survivor mode survives as an optional "Survival Rift" is an open
+> question there.
+
 Status: **implemented** (first pass). Owner decision this builds on: *"a game like
 Vampire Survivors but with Path of Exile-style character progression: enter an
 area, enemies and bosses spawn, gain experience, level up, pick upgrades that change
