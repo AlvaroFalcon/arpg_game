@@ -36,6 +36,19 @@ Status: **implemented** (first roster). All art drawn with EasyPixel
 | Ember Brute | Lumbers in; within 280 px **draws its charge lane on the ground for 0.8 s**, then charges 380 px (1.6× contact damage while charging). | 95 (40 armour) | 56 | 9 / 14 | 1:55 |
 | Volatile Imp | Sprints in; within 70 px stops and **draws its blast radius for 0.9 s**, then explodes (22 fire, 80 px). Killing it while primed cancels the blast. | 15 | 150 | 22 blast | 2:30 |
 
+Added for the endgame realities (docs/design/endgame.md), same scenes/classes:
+
+| Enemy | Reality | Behaviour | Life | Speed | Threat |
+|---|---|---|---|---|---|
+| Crypt Skeleton | Bone Crypt | Chaser with a slight weave; rattles in fast. | 24 | 92 | 7 contact |
+| Drowned Thrall | Drowned Mirror | Slow bloated chaser, armoured, resists knockback. | 46 (20 armour) | 58 | 11 contact |
+| Siren | Drowned Mirror | Ranged like the Caster, fires a cold **Tide Bolt**. | 24 | 84 | 9 cold bolt |
+
+In realities every monster also has a **rarity** (normal/magic/rare/unique-rare,
+with mods), a **monster level** from the tier, and starts **dormant** with its
+pack until the player comes close; movement follows the reality's flow field
+around walls (docs/design/endgame.md -> "Navigation").
+
 Design rule shared with the bosses: **every big hit is drawn where it will land
 before it lands.** Slimes and bats are the exception — their "telegraph" is their
 body.

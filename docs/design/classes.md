@@ -1,8 +1,7 @@
 # Classes and ascendancies
 
-Status: **[DECIDED]** class structure from the owner (2026-10-11); names and
-mechanics **[PROPOSED]**. Depends on the persistent-character decision in
-docs/design/endgame.md → "What happens to the survivor run".
+Status: **[IMPLEMENTED]** (2026-10-11). Structure from the owner; names and
+mechanics were proposed and accepted ("go with your recommendations").
 
 Owner brief: *"A starting class that later evolves into Assassin or Ninja; a
 warrior starting class that evolves into Barbarian, Paladin or Samurai; a starting
@@ -10,106 +9,137 @@ mage — what would you call it? — that evolves into Ascendant, Warlock or Sag
 
 ## Structure
 
-Three base classes, each with a home attribute (the attributes already exist:
-Strength, Dexterity, Intelligence — docs/design/stats.md), a starting skill, a
-starting weapon type, and a compact passive tree. At an endgame milestone the
-character picks **one ascendancy** of its class, which adds a small, powerful set
-of nodes on top — PoE's ascendancy model.
+Three base classes with a home attribute, a starting skill and support, a class
+resource, and a start on **one shared passive tree**. After the tier-5 reality
+boss the character picks **one ascendancy** of its class — PoE's model.
 
 | Base class | Attribute | Ascendancies |
 |---|---|---|
-| **Rogue** *(name proposed)* | Dexterity | Assassin · Ninja |
+| **Rogue** | Dexterity | Assassin · Ninja |
 | **Warrior** | Strength | Barbarian · Paladin · Samurai |
-| **Arcanist** *(name proposed)* | Intelligence | Ascendant · Warlock · Sage |
+| **Arcanist** | Intelligence | Ascendant · Warlock · Sage |
+
+Code: `ClassCatalog` (definitions), `CharacterData` (the persistent character),
+`CharacterBuild` (applies everything to the player), `PassiveTree`,
+`AscendancyCatalog` + `AscendancyEffects`, `ClassResource` — all in
+scripts/Characters/.
 
 ## Naming the base classes
 
-**Mage → recommended: "Arcanist"** (*Arcanista*). It is a student of raw arcane
-power, which sits well under all three paths: the Ascendant transcends it, the
-Warlock bargains for darker power, the Sage masters it through knowledge.
-Alternatives considered: *Initiate* (good "beginner" feel but weak as a class name
-you play for 100 hours), *Adept*, *Occultist* (pre-empts the Warlock),
+**Mage → "Arcanist"** (*Arcanista*): a student of raw arcane power, which sits
+under all three paths — the Ascendant transcends it, the Warlock bargains for
+darker power, the Sage masters it through knowledge. Rejected: *Initiate* (weak as
+a name you play for 100 hours), *Adept*, *Occultist* (pre-empts the Warlock),
 *Sorcerer* (generic), *Erudite* (too close to Sage).
 
-**Dex starter → recommended: "Rogue"** (*Pícaro*), the natural root of both a
-poison-and-crits Assassin and a mobility-and-shadow Ninja. Alternative: *Shade*
-(more flavour, less instantly readable).
+**Dex starter → "Rogue"** (*Pícaro*), the natural root of both a poison-and-crits
+Assassin and a mobility-and-shadow Ninja. Rejected: *Shade*.
 
-**Strength starter: "Warrior"** (*Guerrero*), as given.
-
-## The base classes **[PROPOSED]**
+## The base classes
 
 | | Rogue | Warrior | Arcanist |
 |---|---|---|---|
 | Fantasy | quick, precise, evasive | tough, close-range, heavy hits | ranged spells, elements |
-| Base life / mana | medium / medium | high / low | low / high |
-| Starting skill | Twin Daggers (fast melee) or Throwing Knives (projectile) | Cleave (melee arc) | Fireball (existing) |
-| Weapon types | daggers, claws, bows | axes, maces, swords, shields | wands, staves, offhand foci |
-| Class mechanic | **Combo**: consecutive hits build stacks that empower the next skill | **Rage**: taking and dealing damage fills Rage, which grants damage and reduces damage taken | **Charges**: spells grant arcane charges that boost cast speed/damage; spent by finishers |
-| Dodge | 3 charges (best mobility) | 2 charges, longer i-frames | 2 charges |
+| STR / DEX / INT | 12 / 22 / 10 | 22 / 10 / 8 | 8 / 10 / 22 |
+| Bonus | +10 life, **+1 dodge charge** | +35 life | +25 mana |
+| Starting gems | Double Strike + Faster Casting | Cleave + Increased Area | Fireball + Spell Echo |
+| Class resource | **Combo** (max 10): consecutive hits build stacks of attack speed and crit; they fall away when you stop hitting | **Rage** (max 30): dealing and taking hits fills it; grants damage and damage reduction; fades out of combat | **Arcane Charges** (max 5): each spell cast grants one (cast speed, spell damage); drain slowly |
 
-Melee is new: the skill system has a `Melee` tag and `DerivesBaseFromWeapon` flag
-reserved since the first combat slice (docs/design/skills.md) — Warrior and Rogue
-are where they get implemented, as a new `MeleeSkillDefinition` archetype (an arc
-or line hitbox in front of the caster) reusing the hit-profile pipeline.
+Per level: +4 life, +1.5 mana on top of the attributes.
 
-## Ascendancies **[PROPOSED identities]**
+**Melee** was new: `MeleeSkillDefinition` (an arc or a delayed line in front of
+the caster, optional multiple strikes and knockback) reusing the hit-profile
+pipeline. Five melee/dex skills were added — Cleave, Double Strike, Sunder (line),
+Ground Slam (big arc, knockback), Throwing Knives (projectile) — plus three
+supports (Multistrike, Melee Splash, Brutality) and three weapon bases (sword,
+axe, dagger). Melee hits harder than ranged per cast to pay for the risk (see the
+tuning table in docs/design/endgame.md).
 
-Each ascendancy: ~6 nodes, 2 of them notable keystone-like effects, and one
-signature skill or mechanic. Proposed identities, chosen so the three paths of a
-class feel different rather than three flavours of "more damage":
+## Persistent character
+
+- Level 1–70, experience 40·L^1.6 per level, from kills in realities and the
+  Survival Rift. Each level: one passive point.
+- Up to 6 characters per profile (`Profile`, user://profile.json, version 2;
+  version-1 saves migrate into one Arcanist).
+- **Gems**: skills and supports are owned items (`GemData`). Skill gems level
+  (to 20, 60·L^1.8 experience) from half the experience of the kills made while
+  equipped; supports never level. Duplicate skill drops melt into gem experience.
+- **Loadout**: 4 slots, each one skill gem plus support sockets — 2, +1 at level
+  12, +1 at level 28 (+1 more for the Sage). The skills panel (**K**) sockets gems;
+  supports only list when they fit the targeted skill.
+
+## Passive tree (P)
+
+One tree, three starts (PoE: any class can go anywhere; less content to author):
+
+- **92 nodes** generated from data: the three class starts on an inner circle, an
+  18-node attribute ring, **nine themed branches** (Elemental, Spellcraft, Mana,
+  Precision, Agility, Projectiles, Brawn, Melee, Fortitude) and **three hybrid
+  branches** (Ailments, Duelist, Battlemage), each a run of small nodes, a notable
+  and (for the nine) a **keystone**, plus cross-links so the outer tree is a web.
+- Keystones are the old level-up keystones: Avatar of Fire, Echoing Mind, Blood
+  Magic, Phase Dancer, Chain Reaction, Vampiric Pact, Glass Cannon, and the new
+  Iron Will.
+- Allocation needs adjacency; **refunds cost gold** (5 + 3·level) and are refused
+  if they would orphan other nodes. The panel pans (drag) and zooms (wheel).
+
+## Ascendancies
+
+Eight nodes each, **4 points from the tier-5 trial, +2 from tier 12** — every
+character skips two nodes, so two Assassins can still differ. Chosen at the
+**Altar of Ascension** in the hideout (permanent choice); nodes refund for gold.
+Each ascendancy has its own sprite variant.
 
 **Rogue**
-- **Assassin** — crits and poison. Executes low-life enemies, critical strikes
-  apply stacking poison, bonus damage against rares and bosses. *Single-target
-  specialist.*
-- **Ninja** — mobility and shadow clones. Dodging leaves a clone that taunts and
-  explodes, extra dodge charges, smoke bomb skill. *Evasion and area through movement.*
+- **Assassin** — Executioner (more damage to low-life enemies), Venom (crits
+  poison, stacking), Mark the Prey, Deadly, Toxic Blades, Ruthless, Cold Blood,
+  Predator. *Single-target specialist.*
+- **Ninja** — Shadow Clone (dodging leaves a decoy monsters attack), Shadowstep,
+  Evasive, Endless Roll (+dodge charge), Light Feet, Swift, Shuriken Rain, Fleeting
+  Kill. *Evasion and area through movement.*
 
 **Warrior**
-- **Barbarian** — two-handed fury. More Rage, life leech at high Rage, slams leave
-  fissures. *Glass-ish berserker.*
-- **Paladin** — holy defence. Auras that buff and heal, block chance, holy damage
-  conversion, a consecration area. *The tank / sustain path.*
-- **Samurai** — precision and timing. Parry window on the dodge (dodging an attack
-  just in time empowers the next strike), iaido-style charged strikes. *Skill-
-  expressive melee, built on the dodge system.*
+- **Barbarian** — Unending Rage, Bloodthirst (leech), Fissures (slams leave
+  fissures), Bloodlust, Thick Skin, Frenzy, Wrath (Rage grants attack speed), War
+  Cry. *Berserker.*
+- **Paladin** — Bulwark of Faith (block), Consecration (healing ground), Radiance,
+  Fortress, Purity, Holy Aura, Renewal, Martyr. *The tank / sustain path.*
+- **Samurai** — Perfect Parry (dodging a hit early in the roll refunds the charge
+  and empowers the next hit), Iaido (first strike after a pause), Bushido,
+  Focus, Discipline, Wide Arc, Folded Steel, Flowing Water. *Skill-expressive
+  melee built on the dodge.*
 
 **Arcanist**
-- **Ascendant** — elemental mastery. Elemental conversion freedom, element
-  overload (alternating elements stack bonuses), higher resistance caps. *Pure
+- **Ascendant** — Elemental Overload (alternating elements stack), Prismatic,
+  Piercing Elements, Mastery, Attunement, Conflux, Battery, Surge. *Pure
   elemental caster.*
-- **Warlock** — curses and dark pacts. Curses on enemies, life-for-power trades
-  (Blood Magic grows from here), minion-like summoned familiars. *Damage over time
-  and debuffs.*
-- **Sage** — knowledge and control. Extra support slots per skill, spell echo and
-  cooldown mastery, time-slow fields. *The build-enabler: more supports, more tricks.*
+- **Warlock** — Hex (curses), Familiar (a summoned caster), Hellfire, Dark Pact,
+  Siphon, Decay, Wither, Soul Hunger. *Damage over time and debuffs.*
+- **Sage** — Insight (+1 support socket), Resonance (echoes), Time Field, Patience,
+  Wisdom, Focus, Clarity, Ward. *The build-enabler.*
 
-## How it plugs into what exists
-
-- **Passive tree**: the card system's passives and keystones
-  (`Progression/UpgradeCatalog.cs`) are the content library for the trees. Keystones
-  like Glass Cannon, Blood Magic, Phase Dancer move into the relevant class tree
-  or ascendancy (Blood Magic → Warlock, Phase Dancer → Ninja).
-- **Stats**: every node is a `StatModifier` with the character as source (same
-  mechanism as gear), so respecs are "remove by source, re-apply".
-- **Skills**: available from class + gear (skill gems or skill slots) instead of
-  level-up cards; supports attach exactly as now (`SkillInstance.Attached`).
-- **Ascendancy unlock**: **[PROPOSED]** defeat a tier-5 reality boss to unlock the
-  choice; a second trial at tier 12 grants the remaining ascendancy points.
+Behaviour nodes plug into the combat code through `DamageHooks` (hit
+multipliers, 0 = avoided), the global hit/kill events, and per-frame effects;
+stat nodes are plain `StatModifier`s with the build as source, so a respec is
+"remove by source, re-apply".
 
 ## Art (EasyPixel)
 
-Three base-class sprites (idle/walk/attack) plus a palette/accessory variant per
-ascendancy (cape, mask, halo, horns) rather than eight full sprites — cheap with
-the `recolor`/`patch` helpers in `tools/art`.
+Sprites for the three classes and the eight ascendancies (tools/art/sprites/
+classes.ts) — palette and accessory variants (hood, horns, halo, mask) built with
+the `recolor`/`patch` helpers rather than eight unrelated sprites.
 
-## Open questions for the owner
+## Decisions
 
-1. Names: Arcanist and Rogue OK? (Spanish UI later: Arcanista / Pícaro / Guerrero.)
-2. Should a class be **locked** to its attribute/weapons, or only *start* there
-   (PoE: any class can go anywhere on the tree)? Recommendation: one shared tree
-   with three starting points — maximum build freedom, less content to author.
-3. Respec cost: free, gold, or a currency item? Recommendation: gold (gives gold its
-   first sink).
-4. Unlock moment for ascendancies (tier 5 proposed).
+- Names: Arcanist and Rogue.
+- One shared tree with three starts (not class-locked trees).
+- Respecs cost gold — gold's first sink.
+- Ascendancy unlock at the tier-5 boss, second trial at tier 12.
+
+## Open questions
+
+1. Spanish UI (Arcanista / Pícaro / Guerrero) — the UI is English for now.
+2. Weapon-type restrictions per skill (melee skills currently work with any
+   weapon; `DerivesBaseFromWeapon` is still reserved).
+3. Class balance beyond the bot's floor: Rogue is the weakest gearless starter,
+   Arcanist the strongest; revisit with real play and gear.

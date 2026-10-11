@@ -6,13 +6,13 @@ basic settings — and pause with Escape mid-run."*
 ## Flow
 
 ```
-Main menu ──► Hideout ──(portal)──► Run ──► Results ──► Hideout / Main menu
-    │             ▲                   │
-    │             └──── pause: Abandon run ─┘
-    ├──► Quick Run (straight into a run)
-    ├──► Settings
-    └──► Training Grounds (the original dummy sandbox, Main.tscn)
+Main menu ──► Play: character select / create ──► Hideout
+    ├──► Settings                                   ├──(Mirror, E)──► Altered Reality ──(exit portal / collapse / abandon)──► Hideout
+    └──► Training Grounds (sandbox, Main.tscn)      └──(portal)────► Survival Rift ──► Results ──► Hideout
 ```
+
+(Updated for the endgame, 2026-10-11: "Quick Run" is gone — the Survival Rift is
+entered from the hideout.)
 
 `project.godot`'s main scene is now `scenes/menus/MainMenu.tscn`. Scene changes
 go through `Core/Scenes.Go`, which also unpauses and clears the panel stack.
@@ -23,6 +23,14 @@ The arena, bosses and enemies drawn behind the title (the camera drifts), the me
 and a line of lifetime records once there are any (runs, victories, best time, best
 level, gold). Keyboard/gamepad focus works on every button.
 
+## Characters
+
+**Play** opens character select: each character with portrait (class or
+ascendancy sprite), level, class, best tier, realities cleared and deaths; Play,
+Delete (asks to confirm), New character. Creation: a name and one of three class
+cards (sprite, attributes, description, class mechanic, starting gems,
+ascendancies). Up to 6 characters.
+
 ## Hideout
 
 PoE's hideout, minimal: your persistent character with its gear, the inventory and
@@ -30,6 +38,24 @@ equipment strip (**I**), three unkillable training dummies (5000 life, 2500 rege
 to try skills on, the debug stat readout as a character sheet, and a **portal** —
 walk into it to start a run. Click-to-move works here (LMB), and RMB is Fireball as
 in the sandbox.
+
+Endgame additions: the **Mirror of Realities** (E: tier picker with shard counts,
+empower for gold, step through, or enter the Survival Rift), the **Altar of
+Ascension** (E: choose an ascendancy, spend its points), and the character line at
+the top (name, level, class, gold, best tier, unspent points). The debug readout is
+hidden here now that the panels exist.
+
+## Character panels (K / P)
+
+Available in the hideout and inside realities, built on `ModalPanel` (pauses the
+game, joins the panel stack, Escape or the button closes):
+
+- **Skills (K)**: the 4 loadout slots with their support sockets; click a slot or
+  socket, then a gem from the collection. A gem moves if it was socketed elsewhere;
+  right-click empties. Only supports that fit the targeted skill are listed.
+- **Passive tree (P)**: pan by dragging, zoom with the wheel, LMB allocate, RMB
+  refund (gold); hover reads a node.
+- **Altar**: see docs/design/classes.md -> "Ascendancies".
 
 ## Pause (Escape)
 

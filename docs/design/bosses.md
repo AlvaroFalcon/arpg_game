@@ -75,6 +75,32 @@ bursts out every 5 s, and it adds:
 |---|---|---|
 | **Flame Beams** | 4 lanes from its body across the arena, 1.25 s, then again rotated 45°, three waves. | Stand between beams; move one slot each wave. |
 
+## Nereth, the Drowned Reflection — boss of the Drowned Mirror
+
+Added with the endgame (docs/design/endgame.md). A mirror-faced sea spirit that
+keeps a middle distance; **cold damage throughout**, so cold resistance matters
+for the first time. Phases at 60 % and 30 %.
+
+| Attack | Telegraph | Answer |
+|---|---|---|
+| **Tidal Lanes** | 7 parallel lanes across your position with **one gap**, 1.2 s; two or three waves, horizontal or vertical. | Find the gap each wave. |
+| **Whirlpool** | A ring closes on you (1.0 s, the eye is safe) — then the eye erupts a beat later ("THE EYE ERUPTS"). | Stay in the eye for the ring, step out for the eruption. |
+| **Orb Spiral** | 3–4 arms of orbs spinning out for ~2 s. | Walk with the spin through the gaps. |
+| **Mirror Images** (phase 2+) | Two translucent reflections appear mirrored around you; each of the three fires a lane at you plus two side lanes, 1.25 s ("WATCH THE REFLECTIONS"). | Read three sources at once; leave the crossing. |
+| **Rising Tide** (phase 3) | The whole room washes blue; three gold circles mark shelter, 2.4 s ("FIND THE LIGHT!"). | Stand in a circle — or roll through the wave the instant it lands. |
+
+Rising Tide is the first "safe zone" mechanic (the inverse of a slam): the
+danger is everywhere except the marked spots. It is implemented as a check at
+impact time, so the dodge's invulnerability still saves a late player.
+
+## Bosses inside realities
+
+The Colossus and the Herald became reality bosses: asleep in their room until you
+enter, then the gate closes. Their summons register with the reality (scaled to
+its tier) and their target points clamp to walkable cells, since there is no
+arena rectangle. Reality boss life = authored life × tier multiplier × a
+per-theme factor (Colossus 0.45, Herald 2.6, Nereth 0.5) tuned with the bot.
+
 ## Why it is shaped like this
 
 The fight is a *reading* test more than a reflex test: every attack is visible

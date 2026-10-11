@@ -42,15 +42,17 @@ Godot game project. This file orients any agent (or future-you) working here.
 ## Scripts
 
 - `scripts/run_all_tests.sh [filter]` — builds C#, runs every `scenes/tests/*.tscn` headless, judges by the `RESULT:` line (never by exit codes or absence of FAIL), kills leftovers between runs.
-- `scripts/autoplay.sh --runs=3 [--skill=spark] [--report=30]` — the autoplay bot plays full runs headless at ~3× speed for balance work; lines are mirrored to `user://autoplay.log` (stdout is block-buffered).
-- `scenes/tools/RunCapture.tscn` — scripted windowed run that saves devlog/PR screenshots (menu, skill pick, mid-run, level-up, pause, both bosses and their mechanics, results).
+- `scripts/autoplay.sh --runs=3 [--skill=spark] [--report=30]` — the autoplay bot plays full runs headless at ~3× speed for balance work; lines are mirrored to `user://autoplay.log` (stdout is block-buffered). `--mode=reality --class=warrior|rogue|arcanist --tier=1 [--level=N] --runs=6` plays Altered Realities back to back with an in-memory character (the real profile is untouched).
+- Tests that can hang at shutdown mirror their lines to `user://test_results/<Name>.txt`; `run_all_tests.sh` reads that file too (see `EndgameSmokeTest`).
+- `scenes/tools/RunCapture.tscn` — scripted windowed run that saves devlog/PR screenshots (menu, skill pick, mid-run, level-up, pause, both bosses and their mechanics, results). `-- --only=endgame` captures character select/create, hideout, Mirror, skills/tree/altar panels, all three realities and Nereth's mechanics with demo characters.
 - `tools/art/` — the EasyPixel art pipeline (see `docs/design/art-pipeline.md`): `npm install && npm run setup && npm run build`.
 
-## Game structure (survivor run + ARPG character)
+## Game structure (PoE-style endgame + persistent characters)
 
-- Main scene `scenes/menus/MainMenu.tscn` → `scenes/Hideout.tscn` → portal → `scenes/run/Run.tscn` → results → hideout. `scenes/Main.tscn` is the original dummy sandbox ("Training Grounds").
+- Main scene `scenes/menus/MainMenu.tscn` → Play (character select/create) → `scenes/Hideout.tscn` → Mirror (E) → `scenes/reality/Reality.tscn` (an Altered Reality: room-graph layout, packs, boss behind a gate) → exit portal → hideout. The hideout portal is the Survival Rift (`scenes/run/Run.tscn`, the original survivor mode). `scenes/Main.tscn` is the original dummy sandbox ("Training Grounds").
+- Persistent character code lives in `scripts/Characters/` (classes, passive tree, gems/loadout, ascendancies, class resources); realities in `scripts/World/` (layouts, flow field, tiers, controller). Design: `docs/design/endgame.md`, `classes.md`.
 - Autoloads (`scenes/core/`): `GameSettings` (user://settings.cfg), `Profile` (persistent gear, user://profile.json), `Sfx` (procedural sounds/music). Code must tolerate their absence: tests run scenes directly.
-- Design docs per system: run, progression, dodge, enemies, bosses, menus, art-pipeline (plus the earlier movement, skills, stats, items, affixes).
+- Design docs per system: endgame, classes, run, progression, dodge, enemies, bosses, menus, art-pipeline (plus the earlier movement, skills, stats, items, affixes).
 
 ## Repo layout (create as needed, keep consistent)
 
