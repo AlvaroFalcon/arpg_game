@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/Hideout.cs" id="1"]
 [ext_resource type="Script" path="res://scripts/Run/Arena.cs" id="2"]
@@ -8,6 +8,7 @@
 [ext_resource type="Resource" path="res://resources/stats/TrainingDummy.tres" id="6"]
 [ext_resource type="Script" path="res://scripts/Items/GroundLabelPool.cs" id="7"]
 [ext_resource type="Script" path="res://scripts/UI/ItemTooltipControl.cs" id="8"]
+[ext_resource type="PackedScene" path="res://assets/sprites/props/training_dummy.tscn" id="9"]
 
 [sub_resource type="NavigationPolygon" id="Nav"]
 vertices = PackedVector2Array(40, 40, 920, 40, 920, 600, 40, 600)
@@ -40,17 +41,29 @@ position = Vector2(200, 300)
 [node name="Stats" parent="Dummy0" index="2"]
 Bases = ExtResource("6")
 
+[node name="Sprite" parent="Dummy0" instance=ExtResource("9")]
+position = Vector2(0, -12)
+scale = Vector2(2.5, 2.5)
+
 [node name="Dummy1" parent="." instance=ExtResource("5")]
 position = Vector2(760, 300)
 
 [node name="Stats" parent="Dummy1" index="2"]
 Bases = ExtResource("6")
 
+[node name="Sprite" parent="Dummy1" instance=ExtResource("9")]
+position = Vector2(0, -12)
+scale = Vector2(2.5, 2.5)
+
 [node name="Dummy2" parent="." instance=ExtResource("5")]
 position = Vector2(760, 480)
 
 [node name="Stats" parent="Dummy2" index="2"]
 Bases = ExtResource("6")
+
+[node name="Sprite" parent="Dummy2" instance=ExtResource("9")]
+position = Vector2(0, -12)
+scale = Vector2(2.5, 2.5)
 
 [node name="GroundLabelPool" type="CanvasLayer" parent="."]
 script = ExtResource("7")

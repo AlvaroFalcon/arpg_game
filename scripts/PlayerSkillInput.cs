@@ -117,6 +117,32 @@ public partial class PlayerSkillInput : Node
         }
     }
 
+    /// <summary>
+    /// Auto-aim target: the nearest enemy, except that a boss in range wins
+    /// unless something is already on top of the player (docs/design/run.md
+    /// -> "Controls"). Without the boss preference, auto-aim spends a whole boss
+    /// fight shooting the adds between you and it.
+    /// </summary>
+    private Node2D? AutoAimTarget()
+    {
+        Vector2 from = _caster.GlobalPosition;
+        Node2D? nearest = Combat.CombatQuery.NearestHostile(GetTree(), from, Combat.Faction.Player, 650f);
+        if (nearest is null || nearest.GlobalPosition.DistanceTo(from) < 110f)
+        {
+            return nearest;
+        }
+
+        foreach (Node node in GetTree().GetNodesInGroup(Combat.CombatQuery.EnemyGroup))
+        {
+            if (node is Enemies.Enemy { IsBoss: true } boss && !boss.Health.IsDead && boss.GlobalPosition.DistanceTo(from) < 700f)
+            {
+                return boss;
+            }
+        }
+
+        return nearest;
+    }
+
     private void RunModeCast()
     {
         Core.GameSettings? settings = Core.GameSettings.Get(this);
@@ -125,9 +151,9 @@ public partial class PlayerSkillInput : Node
 
         Vector2 mouse = _caster.GetGlobalMousePosition();
         Vector2 target = mouse;
-        if (autoAim && Combat.CombatQuery.NearestHostile(GetTree(), _caster.GlobalPosition, Combat.Faction.Player, 650f) is { } nearest)
+        if (autoAim && AutoAimTarget() is { } aimed)
         {
-            target = nearest.GlobalPosition;
+            target = aimed.GlobalPosition;
         }
 
         Vector2 aim = _caster.GlobalPosition.DirectionTo(target);

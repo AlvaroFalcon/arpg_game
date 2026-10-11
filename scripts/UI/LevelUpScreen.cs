@@ -128,6 +128,9 @@ public partial class LevelUpScreen : CanvasLayer
         Core.Sfx.Play(this, "levelup");
     }
 
+    /// <summary>Picks a card programmatically (autoplay bot, capture tool).</summary>
+    public void ChooseIndex(int index) => _cards.ChooseIndex(Mathf.Clamp(index, 0, Mathf.Max(0, _cards.OfferCount - 1)));
+
     private void RefreshReroll()
     {
         _reroll.Text = $"Reroll (R) — {Build.RerollsLeft} left";

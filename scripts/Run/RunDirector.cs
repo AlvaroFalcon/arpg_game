@@ -64,16 +64,21 @@ public partial class RunDirector : Node
     public Enemy? ActiveBoss => _colossus is not null && IsInstanceValid(_colossus) ? _colossus
         : _herald is not null && IsInstanceValid(_herald) ? _herald : null;
 
+    /// <summary>The first elite waits until the player has a few levels.</summary>
+    [Export] public float FirstEliteTime = 90f;
+
     public override void _Ready()
     {
         _rng.Randomize();
+        _nextElite = FirstEliteTime;
+        _nextSwarm = SwarmInterval;
     }
 
     /// <summary>Re-aligns event timers after <see cref="RunState.SkipTo"/>.</summary>
     public void SyncTimers()
     {
         float t = State.Elapsed;
-        _nextElite = Mathf.Ceil((t + 1f) / EliteInterval) * EliteInterval;
+        _nextElite = Mathf.Max(FirstEliteTime, Mathf.Ceil((t + 1f) / EliteInterval) * EliteInterval);
         _nextSwarm = Mathf.Ceil((t + 1f) / SwarmInterval) * SwarmInterval;
         _heraldSpawned = t > HeraldTime + 1f;
     }
@@ -107,10 +112,20 @@ public partial class RunDirector : Node
             _herald = SpawnBoss(Herald, "The Bone Herald", "A herald of the dead answers the slaughter");
         }
 
-        float rate = SpawnRate(t) * (HeraldAlive ? 0.3f : 1f);
+        float rate = SpawnRate(t) * (HeraldAlive ? 0.15f : 1f);
         _budget += rate * dt;
         int cap = Mathf.RoundToInt(110 + t / 60f * 18f);
-        int alive = GetTree().GetNodesInGroup(CombatQuery.EnemyGroup).Count;
+        Godot.Collections.Array<Node> enemies = GetTree().GetNodesInGroup(CombatQuery.EnemyGroup);
+        int alive = enemies.Count;
+        _rangedAlive = 0;
+        foreach (Node n in enemies)
+        {
+            if (n is RangedEnemy)
+            {
+                _rangedAlive++;
+            }
+        }
+
         while (_budget >= 1f)
         {
             _budget -= 1f;
@@ -120,7 +135,13 @@ public partial class RunDirector : Node
                 break;
             }
 
-            SpawnAtEdge(PickEnemy(t));
+            PackedScene? next = PickEnemy(t);
+            if (next == Caster)
+            {
+                _rangedAlive++;
+            }
+
+            SpawnAtEdge(next);
             alive++;
         }
 
@@ -140,10 +161,21 @@ public partial class RunDirector : Node
 
     /// <summary>Spawns per second: gentle ramp, roughly 1.4/s at the start and
     /// ~8/s by the six-minute mark.</summary>
-    public static float SpawnRate(float t) => 1.4f + t / 60f * 1.15f;
+    public static float SpawnRate(float t) => 1.1f + t / 60f * 1.15f;
 
     /// <summary>Life and damage multipliers for an enemy spawned at time t.</summary>
     public static (float Life, float Damage) Scaling(float t) => (1f + t / 60f * 0.38f, 1f + t / 60f * 0.13f);
+
+    /// <summary>Ranged enemies alive right now (refreshed once per spawning frame).</summary>
+    private int _rangedAlive;
+
+    /// <summary>
+    /// docs/design/enemies.md -> "Bone Caster": ranged enemies are capped. Every
+    /// caster adds an unmarked projectile stream, and the first autoplay pass
+    /// showed a field of 30 casters doing most of a run's damage. A handful
+    /// at a time keeps them a priority target rather than artillery.
+    /// </summary>
+    public static int MaxRanged(float t) => 5 + Mathf.FloorToInt(t / 60f) * 2;
 
     private PackedScene? PickEnemy(float t)
     {
@@ -152,8 +184,8 @@ public partial class RunDirector : Node
             (Slime, Mathf.Max(3f, 10f - t / 30f)),
         };
         if (t > 25f) table.Add((Bat, 6f));
-        if (t > 70f) table.Add((Caster, 2.5f + t / 120f));
-        if (t > 115f) table.Add((Brute, 1.5f + t / 150f));
+        if (t > 70f && _rangedAlive < MaxRanged(t)) table.Add((Caster, 1.4f + t / 240f));
+        if (t > 115f) table.Add((Brute, 1.0f + t / 240f));
         if (t > 150f) table.Add((Imp, 2f + t / 120f));
 
         float total = 0f;

@@ -26,6 +26,9 @@ public partial class LineStrike : Node2D
     public bool Harmless;
 
     private float _elapsed;
+
+    /// <summary>Seconds until impact (0 once it has landed).</summary>
+    public float TimeToImpact => _fired ? 0f : Mathf.Max(0f, Delay - _elapsed);
     private bool _fired;
 
     public static LineStrike Spawn(Node parent, Vector2 origin, Vector2 direction, float length, float width, float delay, HitProfile hit)

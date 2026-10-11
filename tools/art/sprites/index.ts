@@ -5,6 +5,7 @@ import { icons } from './icons';
 import { pickups } from './pickups';
 import { player } from './player';
 import { projectiles } from './projectiles';
+import { props } from './props';
 import { tiles } from './tiles';
 
-export const all: SpriteSpec[] = [player, ...enemies, ...bosses, ...projectiles, ...pickups, ...icons, ...tiles];
+export const all: SpriteSpec[] = [player, ...enemies, ...bosses, ...projectiles, ...pickups, ...icons, ...props, ...tiles];

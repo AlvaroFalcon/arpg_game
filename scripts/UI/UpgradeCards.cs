@@ -131,6 +131,17 @@ public partial class UpgradeCards : HBoxContainer
         }
     }
 
+    /// <summary>Picks the card at <paramref name="index"/> as if clicked (tools, tests).</summary>
+    public void ChooseIndex(int index)
+    {
+        if (index >= 0 && index < _offers.Count)
+        {
+            Choose(_offers[index]);
+        }
+    }
+
+    public int OfferCount => _offers.Count;
+
     public void FocusFirst()
     {
         if (GetChildCount() > 0 && GetChild(0) is Control c)

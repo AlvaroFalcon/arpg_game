@@ -153,8 +153,8 @@ public partial class Enemy : CharacterBody2D
         KnockbackResistance = Mathf.Max(KnockbackResistance, 0.6f);
         Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.More, 300f, "elite"));
         Stats.MovementSpeed.AddModifier(new StatModifier(ModifierType.More, 15f, "elite"));
-        _damageMultiplier *= 1.4f;
-        Stats.Damage.AddModifier(new StatModifier(ModifierType.More, 40f, "elite"));
+        _damageMultiplier *= 1.25f;
+        Stats.Damage.AddModifier(new StatModifier(ModifierType.More, 25f, "elite"));
         _eliteTint = new Color(1f, 0.85f, 0.4f);
         RefillLife();
     }

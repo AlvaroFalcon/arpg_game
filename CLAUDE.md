@@ -36,13 +36,31 @@ Godot game project. This file orients any agent (or future-you) working here.
 - **Pass scene paths as `res://...`, not a relative path.** `godot --headless --path . scenes/foo.tscn` resolves the scene against the *cwd*, not the project, silently falls back to the main scene, and then runs forever if that scene has no quit condition. Use `res://scenes/foo.tscn` and add `--quit-after <frames>` as a safety net.
 - Quitting a scene that used the NavigationServer can emit `FATAL: Condition "!rc_owner" is true.` at shutdown and leave the process hanging *after* everything ran successfully. Read the captured stdout to judge the result; kill the leftover process rather than treating the hang as a failure.
 
+- **Linux (cloud sessions):** the same toolchain works on Linux. Godot 4.1.1 mono for Linux unzipped anywhere (e.g. `/opt/godot/...`), .NET 6 via `dotnet-install.sh --channel 6.0 --install-dir ~/.dotnet`, and `GODOT_BIN` pointed at the real binary. A fresh checkout must be imported once with `"$GODOT_BIN" --headless --path . --editor --quit` (with `DOTNET_ROOT`/`PATH` set — without them the editor crashes on a missing hostfxr). Re-run that import after adding a new C# script that a scene references for the first time, and after re-exporting art (changed PNGs are only re-imported by the editor). Windowed captures work under Xvfb with the compatibility renderer: `xvfb-run -a -s "-screen 0 1280x720x24" "$GODOT_BIN" --path . --rendering-driver opengl3 res://scenes/tools/RunCapture.tscn -- --out=/tmp/shots`.
+- **`pkill -f` patterns match your own shell.** A pattern like `pkill -f "Godot_v4"` also matches the bash command line that contains it and kills the very shell running it. Use a bracket trick: `pkill -9 -f "[G]odot_v4.1.1"`.
+
+## Scripts
+
+- `scripts/run_all_tests.sh [filter]` — builds C#, runs every `scenes/tests/*.tscn` headless, judges by the `RESULT:` line (never by exit codes or absence of FAIL), kills leftovers between runs.
+- `scripts/autoplay.sh --runs=3 [--skill=spark] [--report=30]` — the autoplay bot plays full runs headless at ~3× speed for balance work; lines are mirrored to `user://autoplay.log` (stdout is block-buffered).
+- `scenes/tools/RunCapture.tscn` — scripted windowed run that saves devlog/PR screenshots (menu, skill pick, mid-run, level-up, pause, both bosses and their mechanics, results).
+- `tools/art/` — the EasyPixel art pipeline (see `docs/design/art-pipeline.md`): `npm install && npm run setup && npm run build`.
+
+## Game structure (survivor run + ARPG character)
+
+- Main scene `scenes/menus/MainMenu.tscn` → `scenes/Hideout.tscn` → portal → `scenes/run/Run.tscn` → results → hideout. `scenes/Main.tscn` is the original dummy sandbox ("Training Grounds").
+- Autoloads (`scenes/core/`): `GameSettings` (user://settings.cfg), `Profile` (persistent gear, user://profile.json), `Sfx` (procedural sounds/music). Code must tolerate their absence: tests run scenes directly.
+- Design docs per system: run, progression, dodge, enemies, bosses, menus, art-pipeline (plus the earlier movement, skills, stats, items, affixes).
+
 ## Repo layout (create as needed, keep consistent)
 
 ```
 project.godot
 scenes/            # .tscn, organized by feature/area
 scripts/           # .gd / .cs, mirrors scenes/ structure where sensible
-assets/            # art, audio, fonts
+assets/            # art, audio, fonts (sprites/tiles exported by EasyPixel)
+assets/art_src/    # editable EasyPixel .epx.json sources of every sprite
+tools/art/         # EasyPixel-core art pipeline (Node/TypeScript)
 addons/            # third-party plugins
 docs/
   design/          # design decisions, written AFTER a system is decided/implemented (see below)

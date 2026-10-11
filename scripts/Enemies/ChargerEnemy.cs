@@ -36,7 +36,16 @@ public partial class ChargerEnemy : Enemy
     private float _cooldown = 1.5f;
     private Vector2 _lane;
 
-    protected override float ContactDamageScale() => _state == State.Charge ? 2f : 1f;
+    protected override float ContactDamageScale() => _state == State.Charge ? 1.6f : 1f;
+
+    /// <summary>True while the charge lane is drawn (AI/tools can read it).</summary>
+    public bool IsWindingUp => _state == State.Windup;
+
+    public bool IsCharging => _state == State.Charge;
+
+    public Vector2 LaneDirection => _lane;
+
+    public float TimeToCharge => _state == State.Windup ? Mathf.Max(0f, _timer) : 0f;
 
     protected override void Think(float delta)
     {

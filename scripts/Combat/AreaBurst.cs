@@ -39,6 +39,9 @@ public partial class AreaBurst : Node2D
     public System.Action<int>? Impacted;
 
     private float _elapsed;
+
+    /// <summary>Seconds until impact (0 once it has landed).</summary>
+    public float TimeToImpact => _detonated ? 0f : Mathf.Max(0f, Delay - _elapsed);
     private bool _detonated;
 
     public static AreaBurst Spawn(Node parent, Vector2 position, float radius, float delay, Color tint, HitProfile hit, float innerRadius = 0f, bool harmless = false)

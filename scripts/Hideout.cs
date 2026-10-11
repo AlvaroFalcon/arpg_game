@@ -31,11 +31,15 @@ public partial class Hideout : Node2D
         var layer = new CanvasLayer { Layer = 4 };
         AddChild(layer);
         Control root = UiTheme.FullRect(layer);
+        var hintBack = new ColorRect { Color = new Color(0.03f, 0.02f, 0.05f, 0.75f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        root.AddChild(hintBack);
+        hintBack.SetAnchorsPreset(Control.LayoutPreset.BottomWide, true);
+        hintBack.OffsetTop = -72f;
         Label hint = UiTheme.Label(
             "HIDEOUT — walk into the portal to begin a run\nI: inventory & equipment · RMB: Fireball on the dummies · Space: dodge · Esc: menu",
-            17, UiTheme.TextDim, HorizontalAlignment.Center);
+            17, UiTheme.Text, HorizontalAlignment.Center);
         root.AddChild(hint);
-        hint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
+        hint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
         hint.OffsetLeft = -520f;
         hint.OffsetRight = 520f;
         hint.OffsetTop = -64f;

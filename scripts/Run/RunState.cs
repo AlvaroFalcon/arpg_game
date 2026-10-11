@@ -70,7 +70,7 @@ public partial class RunState : Node
     public static float ExperienceToNext(int level)
     {
         int l = level - 1;
-        return 5f + 4f * l + 0.6f * l * l;
+        return 5f + 3f * l + 0.55f * l * l;
     }
 
     public float ExperienceFraction => Experience / ExperienceToNext(Level);

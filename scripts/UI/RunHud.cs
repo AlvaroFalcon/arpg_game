@@ -42,6 +42,7 @@ public partial class RunHud : CanvasLayer
     private Label _banner = null!;
     private Label _bannerSub = null!;
     private Label _callout = null!;
+    private Label _controlsHint = null!;
     private float _bannerTime;
     private float _calloutTime;
     private BossEnemy? _boss;
@@ -141,6 +142,14 @@ public partial class RunHud : CanvasLayer
         _callout.OffsetRight = 500f;
         _callout.OffsetTop = 90f;
 
+        // First-seconds controls reminder, above the skill bar.
+        _controlsHint = UiTheme.Label("WASD move  ·  Space dodge (charges refill)  ·  skills cast themselves  ·  Esc pause", 17, UiTheme.TextDim, HorizontalAlignment.Center);
+        root.AddChild(_controlsHint);
+        _controlsHint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
+        _controlsHint.OffsetLeft = -480f;
+        _controlsHint.OffsetRight = 480f;
+        _controlsHint.OffsetTop = -130f;
+
         Director.Announced += ShowBanner;
         Director.BossSpawned += OnBossSpawned;
     }
@@ -217,6 +226,10 @@ public partial class RunHud : CanvasLayer
             _manaBar.Value = mana.Max > 0 ? mana.Current / mana.Max : 0;
             _manaLabel.Text = $"{Mathf.FloorToInt(mana.Current)} / {Mathf.RoundToInt(mana.Max)}";
         }
+
+        float hintAlpha = Mathf.Clamp((25f - State.Elapsed) / 3f, 0f, 1f);
+        _controlsHint.Visible = hintAlpha > 0f;
+        _controlsHint.Modulate = new Color(1f, 1f, 1f, hintAlpha);
 
         UpdateDodge();
         UpdateSkills();

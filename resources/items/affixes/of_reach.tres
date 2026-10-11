@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="AffixDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/AffixDefinition.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Id = "of_reach"
+DisplayWord = "of Reach"
+Pool = 1
+Stat = 24
+Type = 1
+Condition = 0
+ConditionAny = 0
+MinIlvl = 1
+MaxIlvl = 0
+ValueAtT1Min = 10.0
+ValueAtT1Max = 15.0
+ValueAtT7Min = 35.0
+ValueAtT7Max = 45.0
+Curve = 1.0
+TierOverrides = []
+Weight = 0.8
+AllowedItemClasses = []
+IsAllResistances = false

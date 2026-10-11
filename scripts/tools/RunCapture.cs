@@ -53,6 +53,14 @@ public partial class RunCapture : Node
     private async Task Script()
     {
         await Shot(Scenes(main: true), "menu-main.png", 1.0f);
+        if (GetTree().CurrentScene is UI.MainMenu menu)
+        {
+            menu.OpenSettingsForCapture();
+            await Wait(0.4f);
+            await Snap("menu-settings.png");
+        }
+
+        await Shot(PathToExile.Core.Scenes.Hideout, "hideout.png", 1.2f);
 
         // Start-of-run skill pick.
         RunLaunchOptions.Reset();
@@ -118,16 +126,21 @@ public partial class RunCapture : Node
         await WaitForAttack("Seismic Slam", 25f);
         await Wait(0.6f);
         await Snap("boss-colossus-slam.png");
-        SetBossLife(0.6f);
+        SetBossLife(0.6f, immune: true);
         await WaitForAttack("Inferno Ring", 40f);
         await Wait(1.0f);
         await Snap("boss-colossus-inferno.png");
-        SetBossLife(0.25f);
+        SetBossLife(0.25f, immune: true);
         await WaitForAttack("Flame Beams", 40f);
         await Wait(0.8f);
         await Snap("boss-colossus-beams.png");
 
         // Results.
+        if (Run()?.Director.ActiveBoss is { } finalBoss)
+        {
+            finalBoss.Health.IgnoreDamage = false;
+        }
+
         Run()?.State.EndRun(true);
         await Wait(1.5f);
         await Snap("run-results.png");
@@ -183,18 +196,14 @@ public partial class RunCapture : Node
         }
     }
 
-    private void PickFirstCard()
-    {
-        var ev = new InputEventKey { PhysicalKeycode = Key.Key1, Pressed = true };
-        Input.ParseInputEvent(ev);
-        Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = Key.Key1, Pressed = false });
-    }
+    private void PickFirstCard() => Run()?.LevelUp.ChooseIndex(0);
 
-    private void SetBossLife(float fraction)
+    private void SetBossLife(float fraction, bool immune = false)
     {
-        if (Run()?.Director.ActiveBoss is { Stats.Life: { } life })
+        if (Run()?.Director.ActiveBoss is { Stats.Life: { } life } boss)
         {
             life.Current = life.Max * fraction;
+            boss.Health.IgnoreDamage = immune;
         }
     }
 

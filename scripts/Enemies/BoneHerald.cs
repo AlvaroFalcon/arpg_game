@@ -34,7 +34,7 @@ public partial class BoneHerald : BossEnemy
         // Keeps a casting distance, circling slowly.
         float d = DistanceToTarget;
         Vector2 dir = DirectionToTarget;
-        DesiredVelocity = d > 330f ? dir * Speed : d < 200f ? -dir * Speed : new Vector2(-dir.Y, dir.X) * Speed * 0.4f;
+        DesiredVelocity = d > 280f ? dir * Speed : d < 170f ? -dir * Speed : new Vector2(-dir.Y, dir.X) * Speed * 0.4f;
     }
 
     protected override Task ChooseAttack()

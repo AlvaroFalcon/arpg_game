@@ -342,6 +342,30 @@ number of distinct affixes `docs/design/items.md` needs before a 2 Temper / 2 Si
 budget stops rolling duplicates.
 
 
+## Fourth pass: run stats **[DECIDED — implemented]**
+
+The survivor run (docs/design/run.md, docs/design/progression.md) appended 14
+stats, values 23–36, following this enum's rule of never renumbering:
+
+| Stat | Base | Consumed by |
+|---|---|---|
+| DamageTaken | 1.0 | `Health.TakeDamage`, after mitigation (keystones, shock) |
+| PickupRadius | 80 | `Run/Pickup` |
+| ExperienceGain | 1.0 | `RunState.AddExperience` |
+| AreaOfEffect | 1.0 | area and orbit executors |
+| ProjectileSpeed | 1.0 | projectile executor |
+| DodgeCharges | 2 | `Dodge` |
+| DodgeRecovery | 1.0 | `Dodge` |
+| ExtraProjectiles | 0 | projectile and orbit executors |
+| IgniteChance / ShockChance | 0 | hit profiles → `Ailments` |
+| SkillDuration | 1.0 | orbit executor |
+| LifeOnKill | 0 | `RunState` on kill |
+| ExtraChains / ExtraPierce | 0 | projectile executor |
+
+The multiplier-shaped ones are base 1.0 so "no bonuses" is a no-op, the same
+convention ManaCostMultiplier uses. None of them is rolled by an affix yet; adding
+one is a single affix `.tres`.
+
 ## Open questions
 
 - ~~Which stat comes online next~~ — **answered** by the combat design pass, see

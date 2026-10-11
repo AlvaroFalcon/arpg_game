@@ -26,7 +26,7 @@ public partial class RangedEnemy : Enemy
     public float PreferredMax = 320f;
 
     [Export]
-    public float AttackInterval = 2.6f;
+    public float AttackInterval = 3.2f;
 
     [Export]
     public float WindupTime = 0.45f;

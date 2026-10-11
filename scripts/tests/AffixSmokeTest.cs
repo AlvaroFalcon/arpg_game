@@ -59,8 +59,9 @@ public partial class AffixSmokeTest : Node2D
 
         GD.Print("[AFFIXTEST] Ready.");
 
-        Check("LIBRARY-LOADED-28-AFFIXES", _library.Entries.Count == 28,
-            $"AffixLibrary.Entries.Count={_library.Entries.Count}, expected 28");
+        // 28 from docs/design/affixes.md + 5 run-stat affixes (docs/design/progression.md).
+        Check("LIBRARY-LOADED-33-AFFIXES", _library.Entries.Count == 33,
+            $"AffixLibrary.Entries.Count={_library.Entries.Count}, expected 33");
 
         CheckAffixCountPerRarity();
         CheckTemperSigilCap();
