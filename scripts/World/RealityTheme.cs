@@ -27,7 +27,7 @@ public sealed class RealityTheme
         {
             Id = "ashen", TilesetPath = "res://assets/tiles/ashen_arena_tileset.tres",
             Roster = new[] { "Slime", "Bat", "Imp", "Brute", "Caster" }, Boss = "EmberColossus",
-            BossLifeMultiplier = 0.8f, Ambient = new Color(1f, 0.92f, 0.86f), Void = new Color(0.06f, 0.02f, 0.01f),
+            BossLifeMultiplier = 0.45f, Ambient = new Color(1f, 0.92f, 0.86f), Void = new Color(0.06f, 0.02f, 0.01f),
         },
         new RealityTheme
         {
@@ -39,7 +39,7 @@ public sealed class RealityTheme
         {
             Id = "drowned", TilesetPath = "res://assets/tiles/drowned_mirror_tileset.tres",
             Roster = new[] { "Thrall", "Siren", "Thrall", "Bat", "Imp" }, Boss = "Nereth",
-            BossLifeMultiplier = 1f, Ambient = new Color(0.8f, 0.92f, 1f), Void = new Color(0.01f, 0.03f, 0.05f),
+            BossLifeMultiplier = 0.5f, Ambient = new Color(0.8f, 0.92f, 1f), Void = new Color(0.01f, 0.03f, 0.05f),
             Music = "music_boss",
         },
     };

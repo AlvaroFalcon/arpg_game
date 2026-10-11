@@ -348,7 +348,7 @@ public partial class AscendancyEffects : Node, IDamageHook
 
         float damage = Stat.ComputeFormula(skill.Definition.BaseDamage, Player.Stats.GetModifiers(new ModifierQuery(StatId.Damage, tags))) * skill.LevelDamageMultiplier * 0.6f;
         Vector2 aim = Player.GlobalPosition.DirectionTo(Player.GetGlobalMousePosition());
-        if (Core.GameSettings.Get(this)?.AutoAim == true && CombatQuery.NearestHostile(GetTree(), Player.GlobalPosition, Faction.Player, 500f) is { } t)
+        if (Core.GameSettings.Get(this)?.AutoAim == true && CombatQuery.NearestHostile(GetTree(), Player.GlobalPosition, Faction.Player, 500f, requireSight: true) is { } t)
         {
             aim = Player.GlobalPosition.DirectionTo(t.GlobalPosition);
         }
@@ -450,7 +450,7 @@ public partial class AscendancyEffects : Node, IDamageHook
         if (Has("war_familiar") && _familiar is not null)
         {
             _familiarTimer -= dt;
-            if (_familiarTimer <= 0f && CombatQuery.NearestHostile(GetTree(), Player.GlobalPosition, Faction.Player, 500f) is { } target)
+            if (_familiarTimer <= 0f && CombatQuery.NearestHostile(GetTree(), Player.GlobalPosition, Faction.Player, 500f, requireSight: true) is { } target)
             {
                 _familiarTimer = 1f;
                 var tags = SkillTags.Spell | SkillTags.Projectile;

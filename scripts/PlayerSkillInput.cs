@@ -126,7 +126,7 @@ public partial class PlayerSkillInput : Node
     private Node2D? AutoAimTarget()
     {
         Vector2 from = _caster.GlobalPosition;
-        Node2D? nearest = Combat.CombatQuery.NearestHostile(GetTree(), from, Combat.Faction.Player, 650f);
+        Node2D? nearest = Combat.CombatQuery.NearestHostile(GetTree(), from, Combat.Faction.Player, 650f, requireSight: true);
         if (nearest is null || nearest.GlobalPosition.DistanceTo(from) < 110f)
         {
             return nearest;
@@ -134,7 +134,8 @@ public partial class PlayerSkillInput : Node
 
         foreach (Node node in GetTree().GetNodesInGroup(Combat.CombatQuery.EnemyGroup))
         {
-            if (node is Enemies.Enemy { IsBoss: true } boss && !boss.Health.IsDead && boss.GlobalPosition.DistanceTo(from) < 700f)
+            if (node is Enemies.Enemy { IsBoss: true, Dormant: false } boss && !boss.Health.IsDead && boss.GlobalPosition.DistanceTo(from) < 700f
+                && (World.FlowField.Current is not { } field || field.HasLineOfSight(from, boss.GlobalPosition)))
             {
                 return boss;
             }

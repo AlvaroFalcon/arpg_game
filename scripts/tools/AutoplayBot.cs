@@ -47,6 +47,10 @@ public partial class AutoplayBot : Node
             if (kv.Length == 2 && kv[0] == "skill") _skill = kv[1];
             if (kv.Length == 2 && kv[0] == "runs") _runs = kv[1].ToInt();
             if (kv.Length == 2 && kv[0] == "report") ReportEvery = kv[1].ToFloat();
+            if (kv.Length == 2 && kv[0] == "mode") _mode = kv[1];
+            if (kv.Length == 2 && kv[0] == "class") _classId = kv[1];
+            if (kv.Length == 2 && kv[0] == "tier") _startTier = kv[1].ToInt();
+            if (kv.Length == 2 && kv[0] == "level") _startLevel = kv[1].ToInt();
         }
 
         _rng.Randomize();
@@ -60,7 +64,7 @@ public partial class AutoplayBot : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = Loop();
+        _ = _mode == "reality" ? RealityLoop() : Loop();
     }
 
     /// <summary>Godot block-buffers stdout when it is not a terminal (see
@@ -125,6 +129,12 @@ public partial class AutoplayBot : Node
 
     public override void _PhysicsProcess(double delta)
     {
+        if (GetTree().CurrentScene is World.RealityController reality)
+        {
+            RealityTick(reality, (float)delta);
+            return;
+        }
+
         if (Run() is not { } run || run.State.Ended)
         {
             return;
@@ -182,18 +192,11 @@ public partial class AutoplayBot : Node
         run.LevelUp.ChooseIndex(pick);
     }
 
-    private void Steer(RunController run, Player player)
+    /// <summary>Everything that pushes the bot away: enemies by range, telegraphs
+    /// about to land, charges, bullets. Shared by survival and reality play.</summary>
+    private Vector2 Threats(Vector2 pos, ref bool inDanger, ref Vector2 escape, ref int crowd, ref Vector2 crowdCentre)
     {
-        Vector2 pos = player.GlobalPosition;
-
-        // A melee-range build (Frost Nova, Blades) has to let enemies close in.
-        _shortRange = !run.Build.HasTag(SkillTags.Projectile) && !run.Build.Skills.Any(s => s.Definition is Skills.AreaSkillDefinition { AtTarget: true });
         Vector2 push = Vector2.Zero;
-        bool inDanger = false;
-        Vector2 escape = Vector2.Zero;
-
-        int crowd = 0;
-        Vector2 crowdCentre = Vector2.Zero;
         foreach (Node node in GetTree().GetNodesInGroup(CombatQuery.EnemyGroup))
         {
             if (node is not Enemy e)
@@ -225,7 +228,7 @@ public partial class AutoplayBot : Node
 
             Vector2 away = pos - e.GlobalPosition;
             float d = Mathf.Max(8f, away.Length());
-            float reach = e.IsBoss ? 300f : _shortRange ? 95f : 170f;
+            float reach = e.IsBoss ? (_shortRange ? 110f : 300f) : _shortRange ? 95f : 170f;
             if (d < reach)
             {
                 push += away.Normalized() * (reach - d) / reach * (e.IsBoss ? 3f : 1f);
@@ -292,6 +295,21 @@ public partial class AutoplayBot : Node
                 }
             }
         }
+
+        return push;
+    }
+
+    private void Steer(RunController run, Player player)
+    {
+        Vector2 pos = player.GlobalPosition;
+
+        // A melee-range build (Frost Nova, Blades) has to let enemies close in.
+        _shortRange = !run.Build.HasTag(SkillTags.Projectile) && !run.Build.Skills.Any(s => s.Definition is Skills.AreaSkillDefinition { AtTarget: true });
+        bool inDanger = false;
+        Vector2 escape = Vector2.Zero;
+        int crowd = 0;
+        Vector2 crowdCentre = Vector2.Zero;
+        Vector2 push = Threats(pos, ref inDanger, ref escape, ref crowd, ref crowdCentre);
 
         // Gems: go for the nearest one when not under pressure.
         if (push.Length() < 0.8f)

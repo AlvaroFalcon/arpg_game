@@ -65,6 +65,22 @@ public sealed class FlowField
         }
     }
 
+    /// <summary>True if the straight line between two points crosses only walkable
+    /// cells (sampled every 12 px): what auto-aim and the bot use as line of sight.</summary>
+    public bool HasLineOfSight(Vector2 a, Vector2 b)
+    {
+        int steps = Mathf.CeilToInt(a.DistanceTo(b) / 12f);
+        for (int i = 1; i < steps; i++)
+        {
+            if (!IsWalkable(CellOf(a.Lerp(b, i / (float)steps))))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public int DistanceAt(Vector2 world)
     {
         Vector2I c = CellOf(world);
