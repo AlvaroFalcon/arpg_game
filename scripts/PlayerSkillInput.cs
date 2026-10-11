@@ -54,6 +54,21 @@ public partial class PlayerSkillInput : Node
     private SkillUser _skillUser = null!;
     private Node2D _caster = null!;
 
+    /// <summary>
+    /// docs/design/progression.md -> "Controls": in a run, slots 1-4 hold the
+    /// build's skills and fire on their own (<see cref="Core.GameSettings.AutoCast"/>)
+    /// or while LMB is held; aim follows the cursor or the nearest enemy
+    /// (<see cref="Core.GameSettings.AutoAim"/>). Off (the hideout, the old
+    /// sandbox), the original hold-a-slot-key behaviour is untouched.
+    /// </summary>
+    [Export]
+    public bool RunMode;
+
+    /// <summary>False suspends all casting (level-up screen, results, death).</summary>
+    public bool InputEnabled { get; set; } = true;
+
+    private static readonly SkillSlotId[] RunSlots = { SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
+
     public override void _Ready()
     {
         _caster = GetParent<Node2D>();
@@ -70,6 +85,17 @@ public partial class PlayerSkillInput : Node
 
     public override void _PhysicsProcess(double delta)
     {
+        if (!InputEnabled || (_caster.GetNodeOrNull<Combat.Health>("Health")?.IsDead ?? false))
+        {
+            return;
+        }
+
+        if (RunMode)
+        {
+            RunModeCast();
+            return;
+        }
+
         Vector2 aimDirection = _caster.GlobalPosition.DirectionTo(_caster.GetGlobalMousePosition());
 
         foreach ((SkillSlotId slot, string action) in Bindings)
@@ -88,6 +114,36 @@ public partial class PlayerSkillInput : Node
             // The failure reason is intentionally discarded — nothing in the
             // first slice consumes it (no UI/sound/flash exists yet).
             _skillUser.TryCast(slot, aimDirection);
+        }
+    }
+
+    private void RunModeCast()
+    {
+        Core.GameSettings? settings = Core.GameSettings.Get(this);
+        bool autoCast = settings?.AutoCast ?? true;
+        bool autoAim = settings?.AutoAim ?? false;
+
+        Vector2 mouse = _caster.GetGlobalMousePosition();
+        Vector2 target = mouse;
+        if (autoAim && Combat.CombatQuery.NearestHostile(GetTree(), _caster.GlobalPosition, Combat.Faction.Player, 650f) is { } nearest)
+        {
+            target = nearest.GlobalPosition;
+        }
+
+        Vector2 aim = _caster.GlobalPosition.DirectionTo(target);
+        if (aim == Vector2.Zero)
+        {
+            aim = Vector2.Right;
+        }
+
+        bool lmbHeld = _mouseGates["skill_slot_lmb"].Poll();
+        for (int i = 0; i < RunSlots.Length; i++)
+        {
+            bool wants = autoCast || lmbHeld || Input.IsActionPressed(Bindings[i].Action);
+            if (wants && _skillUser.GetSkill(RunSlots[i]) is not null)
+            {
+                _skillUser.TryCast(RunSlots[i], aim, target);
+            }
         }
     }
 }

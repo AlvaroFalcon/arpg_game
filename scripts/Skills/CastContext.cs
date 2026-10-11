@@ -57,12 +57,19 @@ public sealed class CastContext
     /// <summary>Multiplier on the use time this cast commits (less = faster).</summary>
     public float UseTimeMultiplier = 1f;
 
+    /// <summary>Multiplier on the cooldown this cast starts (less = faster).</summary>
+    public float CooldownMultiplier = 1f;
+
     /// <summary>How many extra times the cast repeats ("Spell Echo").</summary>
     public int Repeats;
 
     /// <summary>Extra summoned/orbiting objects for archetypes that have a count
     /// but no projectile params (orbit).</summary>
     public int ExtraCount;
+
+    /// <summary>A Life cost never takes the caster below this fraction of max
+    /// Life ("Blood Magic" with auto-cast would otherwise pin you at 1 Life).</summary>
+    public float LifeCostFloorFraction;
 
     public float IgniteChanceBonus;
     public float ShockChanceBonus;

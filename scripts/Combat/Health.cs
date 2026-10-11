@@ -69,7 +69,11 @@ public partial class Health : Node
     /// </summary>
     public float InvulnerableTime { get; private set; }
 
-    public bool IsInvulnerable => InvulnerableTime > 0f;
+    public bool IsInvulnerable => InvulnerableTime > 0f || IgnoreDamage;
+
+    /// <summary>Capture tools and tests only: every hit is ignored, with none of
+    /// the visual flicker real invulnerability shows.</summary>
+    public bool IgnoreDamage { get; set; }
 
     public void GrantInvulnerability(float seconds) => InvulnerableTime = Mathf.Max(InvulnerableTime, seconds);
 

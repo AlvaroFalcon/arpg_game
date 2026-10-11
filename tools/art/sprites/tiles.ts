@@ -9,7 +9,7 @@ const legend = {
   a: '#211c22', b: '#29232b', c: '#322b34', d: '#3b333c', e: '#17131a', // stone
   l: '#7a1a0a', m: '#c0350f', n: '#ff6a1a', o: '#ffb347', // lava
   w: '#4a3f3a', W: '#6e605a', x: '#2e2522', k: '#120c0e', // wall
-  r: '#5a2a1a', R: '#ff7a2a', // runes
+  r: '#3a1e16', R: '#9a4420', // runes (dim: they sit under the fight)
 };
 
 const T = 16;

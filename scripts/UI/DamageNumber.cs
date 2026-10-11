@@ -28,6 +28,14 @@ public partial class DamageNumber : Node2D
         _label.Text = Mathf.RoundToInt(amount).ToString();
     }
 
+    /// <summary>Same as <see cref="Display(float)"/> with a custom colour
+    /// (red for damage the player takes).</summary>
+    public void Display(float amount, Color color)
+    {
+        Display(amount);
+        _label.AddThemeColorOverride("font_color", color);
+    }
+
     public override void _Process(double delta)
     {
         _elapsed += (float)delta;

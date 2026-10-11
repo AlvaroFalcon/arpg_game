@@ -31,16 +31,21 @@ public partial class AreaBurst : Node2D
     /// than this to the centre are not hit.</summary>
     public float InnerRadius;
 
+    /// <summary>Telegraph only: draws and "lands" but deals no damage (spawn
+    /// markers for summons).</summary>
+    public bool Harmless;
+
     /// <summary>Emitted at impact with the number of targets hit.</summary>
     public System.Action<int>? Impacted;
 
     private float _elapsed;
     private bool _detonated;
 
-    public static AreaBurst Spawn(Node parent, Vector2 position, float radius, float delay, Color tint, HitProfile hit, float innerRadius = 0f)
+    public static AreaBurst Spawn(Node parent, Vector2 position, float radius, float delay, Color tint, HitProfile hit, float innerRadius = 0f, bool harmless = false)
     {
         var burst = new AreaBurst
         {
+            Harmless = harmless,
             Radius = radius,
             Delay = delay,
             Tint = tint,
@@ -53,7 +58,7 @@ public partial class AreaBurst : Node2D
         return burst;
     }
 
-    private bool IsHostileTelegraph => Hit.Faction != Faction.Player;
+    private bool IsHostileTelegraph => Hit.Faction != Faction.Player && !Harmless;
 
     public override void _PhysicsProcess(double delta)
     {
@@ -75,6 +80,12 @@ public partial class AreaBurst : Node2D
     {
         _detonated = true;
         int hits = 0;
+        if (Harmless)
+        {
+            Impacted?.Invoke(0);
+            return;
+        }
+
         foreach (Health health in CombatQuery.HostilesInRadius(GetTree(), GlobalPosition, Radius, Hit.Faction))
         {
             var target = health.GetParent<Node2D>();

@@ -191,7 +191,7 @@ public partial class SkillUser : Node
         List<CastModifier> modifiers = CollectCastModifiers(instance, context);
         ApplyCastModifiers(context, modifiers);
 
-        if (!_stats.IgnoresResourceCosts && !TryPayCosts(context.Costs, out ResourceType insufficientResource))
+        if (!_stats.IgnoresResourceCosts && !TryPayCosts(context.Costs, context.LifeCostFloorFraction, out ResourceType insufficientResource))
         {
             // Atomic: nothing was spent, and the cast never commits (no cooldown
             // or use-time is started) — see docs/design/skills.md -> "All-or-
@@ -208,7 +208,7 @@ public partial class SkillUser : Node
         instance.ChargesAvailable--;
         if (instance.RechargeTimer <= 0f)
         {
-            instance.RechargeTimer = EffectiveCooldown(instance);
+            instance.RechargeTimer = EffectiveCooldown(instance) * context.CooldownMultiplier;
         }
 
         EmitSignal(SignalName.CastStarted, (int)slotId);
@@ -299,7 +299,7 @@ public partial class SkillUser : Node
         }
     }
 
-    private bool TryPayCosts(List<CostEntry> costs, out ResourceType insufficient)
+    private bool TryPayCosts(List<CostEntry> costs, float lifeFloorFraction, out ResourceType insufficient)
     {
         insufficient = default;
         var pending = new List<(ResourcePool pool, float amount)>();
@@ -335,6 +335,10 @@ public partial class SkillUser : Node
             }
 
             float floor = FloorFor(cost.Resource);
+            if (cost.Resource == ResourceType.Life)
+            {
+                floor = Mathf.Max(floor, pool.Max * lifeFloorFraction);
+            }
             if (pool.Current - amount < floor)
             {
                 insufficient = cost.Resource;

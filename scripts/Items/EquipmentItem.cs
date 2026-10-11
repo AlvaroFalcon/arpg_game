@@ -174,6 +174,13 @@ public partial class EquipmentItem : Area2D, IDroppable
     {
         ReleaseLabel();
 
+        // Items created as pure data (an end-of-run reward, a save being loaded)
+        // are never on the ground, so there is no label to register.
+        if (!IsInsideTree())
+        {
+            return;
+        }
+
         _labelPool = GetNodeOrNull<GroundLabelPool>(GroundLabelPoolPath)
             ?? GetTree().CurrentScene.GetNodeOrNull<GroundLabelPool>("GroundLabelPool");
         if (_labelPool is null || Base is null)
@@ -204,6 +211,42 @@ public partial class EquipmentItem : Area2D, IDroppable
             });
     }
 
+    /// <summary>
+    /// Rebuilds an item from saved data — docs/design/menus.md -> "Profile".
+    /// The inverse of <see cref="Initialize"/>'s rolling: every value is given,
+    /// nothing is rolled, so a loaded item is exactly the item that was saved.
+    /// The item is left detached (data only), the same state an item in the
+    /// inventory is always in.
+    /// </summary>
+    public void Restore(
+        BaseItemDefinition baseItem,
+        Rarity rarity,
+        int itemLevel,
+        string displayName,
+        IReadOnlyList<(StatId Stat, ModifierType Type, float Value, SkillTags Condition)> baseStats,
+        IReadOnlyList<AffixRoller.RolledAffix> affixes)
+    {
+        Base = baseItem;
+        Rarity = rarity;
+        RolledBaseStats = baseStats;
+        RolledAffixes = affixes;
+        List<int> tiers = affixes.Select(a => a.Tier).ToList();
+        Descriptor = new ItemDescriptor
+        {
+            ItemClass = baseItem.ItemClass,
+            BaseTypeId = baseItem.Id,
+            Rarity = rarity,
+            ItemLevel = itemLevel,
+            AreaLevel = itemLevel,
+            AffixCount = affixes.Count,
+            AffixTiers = tiers,
+            HighestAffixTier = tiers.Count > 0 ? tiers.Max() : (int?)null,
+            Width = baseItem.Width,
+            Height = baseItem.Height,
+            DisplayName = displayName,
+        };
+    }
+
     private void ReleaseLabel()
     {
         if (_labelHandle is { } handle)
@@ -219,7 +262,10 @@ public partial class EquipmentItem : Area2D, IDroppable
         // never "leaves" it. The tooltip then stayed on screen describing an item
         // that was already in the player's bag. ReleaseLabel is the one chokepoint
         // both pickup and _ExitTree already pass through.
-        _tooltip?.Clear(this);
+        if (_tooltip is not null && IsInstanceValid(_tooltip))
+        {
+            _tooltip.Clear(this);
+        }
     }
 
     /// <summary>

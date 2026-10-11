@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="AreaSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AreaSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_meteor.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 10.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Meteor"
+Description = "Calls down a meteor at the target after a short delay. Huge damage, small area."
+BaseDamage = 42.0
+BaseUseTime = 0.5
+Cooldown = 2.8
+Tags = 530
+Radius = 85.0
+Delay = 0.7
+AtTarget = true
+MaxRange = 420.0
+Knockback = 160.0
+Tint = Color(1, 0.45, 0.15, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

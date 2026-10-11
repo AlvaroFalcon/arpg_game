@@ -1,0 +1,47 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/Enemies/EmberColossus.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
+[ext_resource type="Script" path="res://scripts/Combat/Health.cs" id="3"]
+[ext_resource type="Script" path="res://scripts/Combat/Ailments.cs" id="4"]
+[ext_resource type="PackedScene" path="res://assets/sprites/bosses/ember_colossus.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DamageNumber.tscn" id="6"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/projectiles/boss_orb.tres" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/Imp.tscn" id="8"]
+
+[sub_resource type="CircleShape2D" id="Shape"]
+radius = 36.0
+
+[node name="EmberColossus" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1")
+DisplayName = "The Ember Colossus"
+BaseLife = 4500.0
+BaseSpeed = 62.0
+BaseArmour = 60.0
+ContactDamage = 16.0
+ContactRadius = 52.0
+ExperienceValue = 0
+DamageNumberScene = ExtResource("6")
+OrbFrames = ExtResource("7")
+AddScene = ExtResource("8")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Shape")
+
+[node name="Sprite" parent="." instance=ExtResource("5")]
+position = Vector2(0, -21.599999999999998)
+scale = Vector2(3.5, 3.5)
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("2")
+Faction = 2
+IgnoresResourceCosts = true
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="Ailments" type="Node" parent="."]
+script = ExtResource("4")

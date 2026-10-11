@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="StatBlock" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/Stats/StatBlockEntry.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Stats/StatBlock.cs" id="2"]
+
+[sub_resource type="Resource" id="Life"]
+script = ExtResource("1")
+Id = 5
+BaseValue = 5000.0
+
+[sub_resource type="Resource" id="Regen"]
+script = ExtResource("1")
+Id = 6
+BaseValue = 2500.0
+
+[sub_resource type="Resource" id="Str"]
+script = ExtResource("1")
+Id = 18
+BaseValue = 0.0
+
+[sub_resource type="Resource" id="Dex"]
+script = ExtResource("1")
+Id = 19
+BaseValue = 0.0
+
+[sub_resource type="Resource" id="Int"]
+script = ExtResource("1")
+Id = 20
+BaseValue = 0.0
+
+[resource]
+script = ExtResource("2")
+Entries = [SubResource("Life"), SubResource("Regen"), SubResource("Str"), SubResource("Dex"), SubResource("Int")]

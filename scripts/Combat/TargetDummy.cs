@@ -27,6 +27,9 @@ public partial class TargetDummy : Area2D
         _visual = GetNodeOrNull<Polygon2D>("Visual");
         _baseColor = _visual?.Color ?? Colors.White;
 
+        // Targetable by chains/auto-aim like any enemy (docs/design/progression.md).
+        AddToGroup(CombatQuery.EnemyGroup);
+
         _health.Damaged += OnDamaged;
         _health.Died += OnDied;
     }

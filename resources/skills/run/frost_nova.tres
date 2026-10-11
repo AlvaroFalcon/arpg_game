@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="AreaSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AreaSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_frost_nova.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 6.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Frost Nova"
+Description = "A ring of ice bursts around you, chilling and pushing enemies back."
+BaseDamage = 15.0
+BaseUseTime = 0.35
+Cooldown = 2.2
+Tags = 1042
+Radius = 115.0
+Knockback = 260.0
+Tint = Color(0.45, 0.8, 1, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")
