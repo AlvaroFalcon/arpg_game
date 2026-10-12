@@ -83,7 +83,7 @@ public partial class TutorialGuide : CanvasLayer
         _steps.Add(new Step
         {
             Title = "First blood",
-            Body = $"Monsters ahead in the yard. Aim with the mouse and press {Key("LMB")} to use {lmb}.\nSkills are bound to {Key("LMB")} {Key("RMB")} {Key("1")}-{Key("4")}; mana refills over time.",
+            Body = $"Monsters ahead in the yard. Aim with the mouse and press {Key("LMB")} to use {lmb}.\nSkills are bound to {Key("LMB")} {Key("RMB")} {Key("1")}-{Key("4")}.\nHurt? {Key("Q")} drinks a life flask, {Key("R")} a mana flask; red orbs from monsters refill them.",
             Enter = () => _killsAtStart = Reality.Kills,
             Done = () => Reality.Kills >= _killsAtStart + 3 || RoomCleared("yard"),
         });

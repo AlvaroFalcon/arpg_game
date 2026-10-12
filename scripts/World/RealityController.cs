@@ -518,7 +518,9 @@ public partial class RealityController : Node2D, IPickupHandler
             Pickup.Spawn(this, PickupKind.Gold, (2 + Tier) * (enemy.Rarity >= MonsterRarity.Rare ? 6 : 1), at + Jitter(12f));
         }
 
-        if (enemy.Rarity == MonsterRarity.Normal && _rng.Randf() < 0.02f)
+        // Flask refill orbs (docs/design/items.md -> "Flasks and refill orbs").
+        float orb = enemy.Rarity switch { MonsterRarity.Normal => 0.05f, MonsterRarity.Magic => 0.15f, _ => 0.6f };
+        if (_rng.Randf() < orb)
         {
             Pickup.Spawn(this, PickupKind.Life, 0.2f, at + Jitter(10f));
         }
@@ -564,7 +566,7 @@ public partial class RealityController : Node2D, IPickupHandler
         {
             case PickupKind.Life:
                 Sfx.Play(this, "pickup");
-                player.Health?.Heal((player.Stats.Life?.Max ?? 0f) * pickup.Value);
+                Flasks.CollectOrb(player, pickup.Value);
                 break;
             case PickupKind.Gold:
                 Sfx.Play(this, "pickup");

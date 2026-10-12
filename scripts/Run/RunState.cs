@@ -240,7 +240,7 @@ public partial class RunState : Node, IPickupHandler
                 break;
             case PickupKind.Life:
                 Core.Sfx.Play(this, "pickup");
-                player.Health?.Heal((player.Stats.Life?.Max ?? 0f) * pickup.Value);
+                Items.Flasks.CollectOrb(player, pickup.Value);
                 break;
             case PickupKind.Gold:
                 Core.Sfx.Play(this, "pickup");

@@ -5,6 +5,7 @@ using Godot;
 using ArpgGame.Characters;
 using ArpgGame.Core;
 using ArpgGame.Enemies;
+using ArpgGame.Items;
 using ArpgGame.Skills;
 using ArpgGame.World;
 
@@ -23,19 +24,11 @@ public partial class RealityHud : CanvasLayer
 
     private Player Player => Reality.Player;
 
-    private ProgressBar _xpBar = null!;
+    private PlayerHudBar _bar = null!;
     private Label _levelLabel = null!;
     private Label _titleLabel = null!;
     private Label _infoLabel = null!;
     private Label _modsLabel = null!;
-    private ProgressBar _lifeBar = null!;
-    private ProgressBar _manaBar = null!;
-    private ProgressBar _staminaBar = null!;
-    private Label _lifeLabel = null!;
-    private Label _manaLabel = null!;
-    private HBoxContainer _dodgeRow = null!;
-    private HBoxContainer _resourceRow = null!;
-    private Label _resourceLabel = null!;
     private HBoxContainer _skillRow = null!;
     private Control _bossBox = null!;
     private Label _bossName = null!;
@@ -58,11 +51,6 @@ public partial class RealityHud : CanvasLayer
     {
         Layer = 10;
         Control root = UiTheme.FullRect(this);
-
-        _xpBar = UiTheme.Bar(UiTheme.Experience, 10f);
-        root.AddChild(_xpBar);
-        _xpBar.SetAnchorsPreset(Control.LayoutPreset.TopWide, true);
-        _xpBar.OffsetBottom = 10f;
 
         _levelLabel = UiTheme.Label("", 20, UiTheme.Gold);
         root.AddChild(_levelLabel);
@@ -109,36 +97,20 @@ public partial class RealityHud : CanvasLayer
         _bossAttack = UiTheme.Label("", 18, UiTheme.Text, HorizontalAlignment.Center);
         _bossBox.AddChild(_bossAttack);
 
-        // --- bottom-left: vitals, dodge, class resource ---
-        var vitals = new VBoxContainer();
-        vitals.AddThemeConstantOverride("separation", 4);
-        root.AddChild(vitals);
-        vitals.SetAnchorsPreset(Control.LayoutPreset.BottomLeft, true);
-        vitals.OffsetLeft = 16f;
-        vitals.OffsetTop = -150f;
-        vitals.OffsetRight = 336f;
-        vitals.OffsetBottom = -16f;
-        vitals.Alignment = BoxContainer.AlignmentMode.End;
-        _resourceRow = UiTheme.HBox(vitals, 4);
-        _resourceLabel = UiTheme.Label("", 14, UiTheme.TextDim);
-        vitals.AddChild(_resourceLabel);
-        vitals.MoveChild(_resourceLabel, 0);
-        (_lifeBar, _lifeLabel) = AddVital(vitals, UiTheme.Life);
-        (_manaBar, _manaLabel) = AddVital(vitals, UiTheme.Mana);
-        _staminaBar = UiTheme.Bar(new Color(0.85f, 0.8f, 0.3f), 7f);
-        _staminaBar.CustomMinimumSize = new Vector2(320f, 7f);
-        vitals.AddChild(_staminaBar);
-        _dodgeRow = UiTheme.HBox(vitals, 6);
-
-        // --- skill bar ---
-        _skillRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        _skillRow.AddThemeConstantOverride("separation", 10);
-        root.AddChild(_skillRow);
-        _skillRow.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
-        _skillRow.OffsetLeft = -200f;
-        _skillRow.OffsetRight = 200f;
-        _skillRow.OffsetTop = -96f;
-        _skillRow.OffsetBottom = -16f;
+        // --- bottom centre: life, mana, level badge, flasks, skills ---
+        _bar = new PlayerHudBar
+        {
+            Player = Player,
+            Progress = () => _build is null ? (Profile.Get(this)?.Active.Level ?? 1, 0f) : (_build.Data.Level, _build.ExperienceFraction),
+            Resource = () => _build?.Resource,
+        };
+        root.AddChild(_bar);
+        _bar.Dock();
+        _skillRow = _bar.SkillRow;
+        if (Flasks.Of(Player) is { } flasks)
+        {
+            flasks.Refused += reason => ShowToast(reason, UiTheme.TextDim);
+        }
 
         // --- toasts (left, under the level) ---
         _toasts = new VBoxContainer();
@@ -183,20 +155,6 @@ public partial class RealityHud : CanvasLayer
         string mods = string.Join("\n", Reality.Modifiers.Select(m => RealityModifier.Find(m)?.Text ?? m));
         _modsLabel.Text = mods;
         _titleLabel.Text = $"{Reality.Layout.Name}  ·  T{Reality.Tier}";
-    }
-
-    private static (ProgressBar, Label) AddVital(VBoxContainer parent, Color color)
-    {
-        var holder = new Control { CustomMinimumSize = new Vector2(320f, 22f) };
-        parent.AddChild(holder);
-        ProgressBar bar = UiTheme.Bar(color, 22f);
-        holder.AddChild(bar);
-        bar.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        Label label = UiTheme.Label("", 15, UiTheme.Text, HorizontalAlignment.Center);
-        holder.AddChild(label);
-        label.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        label.VerticalAlignment = VerticalAlignment.Center;
-        return (bar, label);
     }
 
     public void ShowBanner(string title, string subtitle, Color color)
@@ -250,7 +208,6 @@ public partial class RealityHud : CanvasLayer
         CharacterData? c = Profile.Get(this)?.Active;
         if (_build is not null)
         {
-            _xpBar.Value = _build.ExperienceFraction;
             _levelLabel.Text = $"{_build.Data.Name}  ·  Lv {_build.Data.Level} {_build.Data.AscendancyDef?.Name ?? _build.Data.Class.Name}";
         }
         else if (c is not null)
@@ -262,26 +219,6 @@ public partial class RealityHud : CanvasLayer
         string cleared = Reality.MonstersTotal > 0 ? $"{Mathf.RoundToInt(100f * Reality.Kills / Reality.MonstersTotal)}%" : "-";
         _infoLabel.Text = $"Monster level {Reality.MonsterLevel}  ·  {portals} portal{(portals == 1 ? "" : "s")} left\nCleared {cleared}  ·  {UiTheme.FormatTime(Reality.Elapsed)}";
 
-        if (Player.Stats.Life is { } life)
-        {
-            _lifeBar.Value = life.Max > 0 ? life.Current / life.Max : 0;
-            _lifeLabel.Text = $"{Mathf.CeilToInt(Mathf.Min(life.Current, life.Max))} / {Mathf.RoundToInt(life.Max)}";
-        }
-
-        if (Player.Stats.Mana is { } mana)
-        {
-            _manaBar.Value = mana.Max > 0 ? mana.Current / mana.Max : 0;
-            _manaLabel.Text = $"{Mathf.FloorToInt(mana.Current)} / {Mathf.RoundToInt(mana.Max)}";
-        }
-
-        if (Player.MaxStamina > 0f)
-        {
-            _staminaBar.Value = Mathf.Max(0f, Player.Stamina) / Player.MaxStamina;
-            _staminaBar.Modulate = Player.Exhausted ? new Color(1f, 0.45f, 0.4f) : Colors.White;
-        }
-
-        UpdateDodge();
-        UpdateResource();
         UpdateSkills();
         UpdateBoss();
         UpdateToasts(dt);
@@ -329,51 +266,6 @@ public partial class RealityHud : CanvasLayer
             {
                 label.QueueFree();
             }
-        }
-    }
-
-    private void UpdateDodge()
-    {
-        if (Player.Dodge is not { } dodge)
-        {
-            return;
-        }
-
-        int max = dodge.MaxCharges;
-        while (_dodgeRow.GetChildCount() < max)
-        {
-            _dodgeRow.AddChild(new DodgePip());
-        }
-
-        for (int i = 0; i < _dodgeRow.GetChildCount(); i++)
-        {
-            var pip = (DodgePip)_dodgeRow.GetChild(i);
-            pip.Visible = i < max;
-            pip.Fill = i < dodge.Charges ? 1f : i == dodge.Charges ? dodge.RechargeProgress : 0f;
-        }
-    }
-
-    private void UpdateResource()
-    {
-        ClassResource? res = _build?.Resource;
-        _resourceRow.Visible = res is not null;
-        _resourceLabel.Visible = res is not null;
-        if (res is null)
-        {
-            return;
-        }
-
-        _resourceLabel.Text = $"{res.Label} {res.Value}/{res.Max}";
-        while (_resourceRow.GetChildCount() < res.Max)
-        {
-            _resourceRow.AddChild(new ColorRect { CustomMinimumSize = new Vector2(14f, 8f) });
-        }
-
-        for (int i = 0; i < _resourceRow.GetChildCount(); i++)
-        {
-            var pip = (ColorRect)_resourceRow.GetChild(i);
-            pip.Visible = i < res.Max;
-            pip.Color = i < res.Value ? res.Color : new Color(0.2f, 0.2f, 0.25f, 0.8f);
         }
     }
 

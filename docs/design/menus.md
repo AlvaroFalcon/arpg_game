@@ -137,3 +137,22 @@ audio assets yet; replacing any sound with a real file is a one-line change.
 - Key rebinding UI (the actions exist in `project.godot`).
 - A stash and a vendor in the hideout (gold has no sink yet).
 - Controller support pass (focus works; dodge/aim on sticks does not yet).
+
+
+## In-game HUD: the bottom-centre cluster **[IMPLEMENTED 2026-10-12]**
+
+Modelled on the owner's reference (AION 2). `UI/PlayerHudBar.cs`, shared by the
+reality and Survival Rift HUDs:
+
+- A long red **life bar** on the left and a cyan **mana bar** on the right, slanted
+  at their outer ends, both draining towards the centre, with a lighter trail that
+  shows recent damage before catching up. Values sit by the inner ends.
+- A **hexagonal level badge** where they meet, ringed by an **experience arc**
+  (with the percentage under the level).
+- Under the bars: stamina (left), class-resource pips (right), the **flasks** as
+  bottles with their key (Q, R) and charges, dodge charges as diamonds under the
+  badge, and the **skill row** (LMB, RMB, 1-4) below everything.
+
+It replaced bottom-left progress bars and a separate skill row: one cluster at the
+bottom centre keeps the eye near the character. Custom-drawn rather than built
+from ProgressBars so the bars can be slanted, mirrored and trail.

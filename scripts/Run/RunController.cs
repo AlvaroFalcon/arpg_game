@@ -111,6 +111,10 @@ public partial class RunController : Node2D
         // (docs/design/run.md -> "Controls"). No click-to-move either.
         Player.GetNode<PlayerSkillInput>("PlayerSkillInput").Mode = PlayerSkillInput.CastMode.Survival;
         Player.Stats.IgnoresResourceCosts = true;
+        if (Items.Flasks.Of(Player) is { } flasks)
+        {
+            flasks.Mana.Enabled = false; // no mana in the Survival Rift
+        }
         Player.GetNodeOrNull<CanvasLayer>("DebugReadout")?.Hide();
 
         Player.Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Flat, RunBonusLife, RunBaselineSource));

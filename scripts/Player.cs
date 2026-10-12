@@ -101,6 +101,11 @@ public partial class Player : CharacterBody2D
     public override void _Ready()
     {
         AddToGroup(CombatQuery.PlayerGroup);
+        if (GetNodeOrNull<Flasks>("Flasks") is null)
+        {
+            AddChild(new Flasks { Name = "Flasks" });
+        }
+
         Dodge = GetNodeOrNull<Dodge>("Dodge");
         Health = GetNodeOrNull<Health>("Health");
         _sprite = GetNodeOrNull<AnimatedSprite2D>("Sprite");

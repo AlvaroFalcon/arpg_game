@@ -158,6 +158,13 @@ public partial class Pickup : Node2D
         }
 
         float distance = GlobalPosition.DistanceTo(player.GlobalPosition);
+        // A refill orb stays on the ground while the flasks are full (items.md ->
+        // "An orb is not consumed when the flask is already full").
+        if (Kind == PickupKind.Life && Items.Flasks.Of(player) is { AllFull: true })
+        {
+            _attracted = false;
+        }
+
         if (!_attracted)
         {
             _bob += dt * 3f;

@@ -8,6 +8,7 @@ using ArpgGame.Combat;
 using ArpgGame.Core;
 using ArpgGame.Enemies;
 using ArpgGame.Items;
+using ArpgGame.Run;
 using ArpgGame.Skills;
 using ArpgGame.Stats;
 using ArpgGame.World;
@@ -425,6 +426,34 @@ public partial class EndgameSmokeTest : Node2D
 
         Vector2I playerCell = reality.Field.CellOf(reality.Player.GlobalPosition);
         Check("REALITY-PLAYER-AT-ENTRANCE", playerCell == reality.Raster.Entrance, $"player cell {playerCell}, entrance {reality.Raster.Entrance}");
+
+        // Flasks (docs/design/items.md -> "Flasks and refill orbs"): Q drinks, the
+        // recovery lands over time, a full pool refuses, orbs refill charges.
+        Flasks? flasks = Flasks.Of(reality.Player);
+        Stats.ResourcePool? pool = reality.Player.Stats.Life;
+        if (flasks is not null && pool is not null)
+        {
+            pool.Current = pool.Max * 0.3f;
+            Input.ActionPress(Flasks.LifeAction);
+            await Frames(2);
+            Input.ActionRelease(Flasks.LifeAction);
+            await ToSignal(GetTree().CreateTimer(1.8), SceneTreeTimer.SignalName.Timeout);
+            float healed = pool.Current / pool.Max;
+            int afterDrink = flasks.Life.Usable;
+            pool.Current = pool.Max;
+            bool refused = !flasks.TryDrink(flasks.Life);
+            bool refilled = flasks.Refill() && flasks.Life.Usable == flasks.Life.MaxCharges;
+            Pickup orb = Pickup.Spawn(reality, PickupKind.Life, 0.2f, reality.Player.GlobalPosition + new Vector2(30f, 0f));
+            flasks.Mana.Charges = flasks.Mana.MaxCharges;
+            await Frames(20);
+            bool orbStays = IsInstanceValid(orb) && !orb.IsQueuedForDeletion();
+            Check("FLASKS", healed > 0.65f && afterDrink == flasks.Life.MaxCharges - 1 && refused && refilled && orbStays,
+                $"life 30% → {healed:P0} after Q, {afterDrink}/{flasks.Life.MaxCharges} charges left, refused at full life={refused}, orb refill={refilled}, orb left on the ground while full={orbStays}");
+            if (IsInstanceValid(orb))
+            {
+                orb.QueueFree();
+            }
+        }
 
         // Walk into the boss room: the gate must close and the boss wake.
         reality.Player.Health!.IgnoreDamage = true;

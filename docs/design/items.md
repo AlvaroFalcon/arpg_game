@@ -403,7 +403,17 @@ A hidden gold pile is still auto-collected on walk-over. The moment hiding somet
 also stops the player getting it, filters become a trap that silently costs loot for
 reasons the player can't see. PoE holds this line strictly; so does this project.
 
-## Flasks and refill orbs **[DECIDED]**
+## Flasks and refill orbs **[IMPLEMENTED 2026-10-12]**
+
+Implemented as `Items/Flasks.cs` (a node the Player creates): a **life flask on Q**
+and a **mana flask on R**, 3 charges each. A drink restores 40% of max life (50% of
+max mana) over 1.4 s; a charge regenerates every 30 s; a drink is refused without
+spending a charge when the pool is already full or the flask is empty. The red orbs
+monsters drop (5% normal, 15% magic, 60% rare and up) give one charge to each flask
+and are not pulled in while both flasks are full. The Survival Rift has no mana, so
+its mana flask is disabled; its life orbs work the same way. The HUD shows each
+flask as a bottle whose liquid level is its charges.
+
 
 Flasks hold charges. Charges come from two sources:
 

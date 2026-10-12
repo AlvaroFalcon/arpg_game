@@ -105,7 +105,7 @@ public partial class Hideout : Node2D
         hintBack.SetAnchorsPreset(Control.LayoutPreset.BottomWide, true);
         hintBack.OffsetTop = -72f;
         Label hint = UiTheme.Label(
-            "HIDEOUT — E at the Mirror to open a reality, at the chest for your stash · portal: Survival Rift\nI inventory · C character · K skills · P passive tree · Shift sprint · Space dodge · Esc menu",
+            "HIDEOUT — E at the Mirror to open a reality, at the chest for your stash · portal: Survival Rift\nI inventory · C character · K skills · P passive tree · Shift sprint · Space dodge · Q/R flasks · Esc menu",
             17, UiTheme.Text, HorizontalAlignment.Center);
         root.AddChild(hint);
         hint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
