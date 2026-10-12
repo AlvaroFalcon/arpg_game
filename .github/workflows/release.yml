@@ -72,6 +72,13 @@ jobs:
           # Headless --quit exits 1 by design; the export below is the real check.
           timeout 600 "$godot" --headless --path . --editor --quit || true
 
+      - name: Build C#
+        # global.json pins SDK 6: runners also ship newer SDKs, which Godot 4.1's
+        # build picks up and fails with (see CLAUDE.md -> Toolchain).
+        run: |
+          dotnet --version
+          dotnet build ArpgGame.csproj -nologo
+
       - name: Export Windows build
         run: |
           mkdir -p build/windows
