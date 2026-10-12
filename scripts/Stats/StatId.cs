@@ -1,4 +1,4 @@
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// Identifies which named <see cref="Stat"/> on an <see cref="ActorStats"/> a

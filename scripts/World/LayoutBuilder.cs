@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.World;
+namespace ArpgGame.World;
 
 public enum CellKind : byte
 {

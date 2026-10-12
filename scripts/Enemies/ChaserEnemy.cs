@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// Walks straight at the player — the slime and the bat. <see cref="Weave"/>

@@ -2,7 +2,7 @@
 using System;
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Escape pauses — docs/design/menus.md -> "Pause". Works in the run and the

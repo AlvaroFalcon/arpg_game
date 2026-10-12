@@ -2,7 +2,7 @@
 using System.Linq;
 using Godot;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// Rarity readability for a monster — docs/design/endgame.md -> "Monster rarity":

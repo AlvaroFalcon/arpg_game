@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>docs/design/endgame.md -> "Monster rarity".</summary>
 public enum MonsterRarity

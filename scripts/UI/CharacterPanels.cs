@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The character panels available anywhere the persistent character is in

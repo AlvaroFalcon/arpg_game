@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// A single numeric stat with a base value and a stack of modifiers, computed using

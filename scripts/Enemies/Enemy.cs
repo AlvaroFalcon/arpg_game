@@ -1,10 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// Base for every hostile in a run — docs/design/enemies.md. Owns the parts all

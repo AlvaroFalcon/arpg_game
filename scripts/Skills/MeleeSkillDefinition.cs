@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The <c>Melee</c> archetype — docs/design/classes.md -> "The base classes".

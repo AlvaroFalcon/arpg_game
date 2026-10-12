@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text;
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Builds the BBCode body for <see cref="UI.ItemTooltipControl"/> —

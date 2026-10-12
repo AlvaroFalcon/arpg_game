@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// Conditional damage multipliers that depend on both sides of a hit — "more

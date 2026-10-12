@@ -1,10 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Skills;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// Drives scripted Fireball casts in a real (windowed) run and saves devlog

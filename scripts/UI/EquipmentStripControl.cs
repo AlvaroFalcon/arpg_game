@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Items;
+using ArpgGame.Items;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The equipment paper doll — docs/design/items.md -&gt; "Paper doll" (replaces

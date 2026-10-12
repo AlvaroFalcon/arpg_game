@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// A short line of text that rises and fades above something in the world —

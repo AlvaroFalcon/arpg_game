@@ -2,9 +2,9 @@
 using System;
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// Shared machinery for bosses — docs/design/bosses.md. A boss is an

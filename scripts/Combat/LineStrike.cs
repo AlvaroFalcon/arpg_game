@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// A rectangular telegraphed hit — docs/design/bosses.md -> "Telegraphs". A

@@ -2,15 +2,15 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Enemies;
-using PathToExile.Items;
-using PathToExile.Progression;
-using PathToExile.Run;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Enemies;
+using ArpgGame.Items;
+using ArpgGame.Progression;
+using ArpgGame.Run;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless smoke test for the survivor-run layer (docs/design/run.md,

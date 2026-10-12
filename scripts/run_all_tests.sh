@@ -24,7 +24,7 @@ if [[ -x "${HOME}/.dotnet/dotnet" ]]; then
 fi
 
 echo "== building C#"
-if ! build_out="$(cd "${PROJECT_DIR}" && dotnet build PathToExile.csproj -nologo -v q 2>&1)"; then
+if ! build_out="$(cd "${PROJECT_DIR}" && dotnet build ArpgGame.csproj -nologo -v q 2>&1)"; then
   echo "${build_out}" | grep -E "error" >&2
   echo "build failed" >&2
   exit 1
@@ -45,7 +45,7 @@ for scene in "${PROJECT_DIR}"/scenes/tests/*.tscn; do
   # Tests that may hang at shutdown mirror their output to
   # user://test_results/<name>.txt (stdout is block-buffered; see CLAUDE.md).
   mirror=""
-  for dir in "${HOME}/.local/share/godot/app_userdata/Path to Exile" "${HOME}/Library/Application Support/Godot/app_userdata/Path to Exile"; do
+  for dir in "${HOME}/.local/share/godot/app_userdata/ARPG Game" "${HOME}/Library/Application Support/Godot/app_userdata/ARPG Game"; do
     if [[ -d "${dir}" ]]; then
       mirror="${dir}/test_results/${name}.txt"
       rm -f "${mirror}"

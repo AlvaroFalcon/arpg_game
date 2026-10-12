@@ -1,13 +1,13 @@
 #nullable enable
 using System.Linq;
 using Godot;
-using PathToExile.Core;
-using PathToExile.Progression;
-using PathToExile.Skills;
-using PathToExile.Stats;
-using PathToExile.UI;
+using ArpgGame.Core;
+using ArpgGame.Progression;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
+using ArpgGame.UI;
 
-namespace PathToExile.Run;
+namespace ArpgGame.Run;
 
 /// <summary>
 /// Root of the run scene — docs/design/run.md. Wires the pieces together

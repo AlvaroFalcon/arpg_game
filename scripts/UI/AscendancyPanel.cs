@@ -1,10 +1,10 @@
 #nullable enable
 using System.Linq;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
+using ArpgGame.Characters;
+using ArpgGame.Core;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The ascendancy altar — docs/design/classes.md -> "Ascendancies". Locked

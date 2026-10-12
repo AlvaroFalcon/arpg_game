@@ -1,11 +1,11 @@
 using Godot;
-using PathToExile.Skills;
+using ArpgGame.Skills;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for player movement. Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh "res://scenes/tests/MovementSmokeTest.tscn" --quit-after 600
 /// Simulates input actions directly (Input.ActionPress/Release) rather than real
 /// OS key/mouse events, so it validates Player.cs's movement logic independent of

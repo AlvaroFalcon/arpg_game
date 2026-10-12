@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The <c>Area</c> archetype — docs/design/progression.md -> "New archetypes".

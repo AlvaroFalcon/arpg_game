@@ -3,12 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Core;
-using PathToExile.Items;
-using PathToExile.Progression;
-using PathToExile.Run;
+using ArpgGame.Core;
+using ArpgGame.Items;
+using ArpgGame.Progression;
+using ArpgGame.Run;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// End of run — docs/design/menus.md -> "Results" and docs/design/run.md ->

@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Items;
+using ArpgGame.Items;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>Where a dragged item came from — the other half of
 /// <see cref="InventoryDragPayload"/>, read by whichever control the item is

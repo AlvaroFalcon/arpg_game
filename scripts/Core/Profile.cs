@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Combat;
-using PathToExile.Items;
-using PathToExile.Stats;
+using ArpgGame.Characters;
+using ArpgGame.Combat;
+using ArpgGame.Items;
+using ArpgGame.Stats;
 
-namespace PathToExile.Core;
+namespace ArpgGame.Core;
 
 /// <summary>
 /// The save file: a list of persistent characters and which one is active —
@@ -63,7 +63,7 @@ public partial class Profile : Node
         {
             if (Characters.Count == 0)
             {
-                Characters.Add(CharacterData.Create("Exile", "arcanist"));
+                Characters.Add(CharacterData.Create("Hero", "arcanist"));
                 ActiveIndex = 0;
             }
 
@@ -93,7 +93,7 @@ public partial class Profile : Node
 
     public CharacterData CreateCharacter(string name, string classId)
     {
-        CharacterData data = CharacterData.Create(string.IsNullOrWhiteSpace(name) ? "Exile" : name.Trim(), classId);
+        CharacterData data = CharacterData.Create(string.IsNullOrWhiteSpace(name) ? "Hero" : name.Trim(), classId);
         Characters.Add(data);
         ActiveIndex = Characters.Count - 1;
         Save();
@@ -264,7 +264,7 @@ public partial class Profile : Node
 
     private sealed class SaveCharacter
     {
-        public string Name { get; set; } = "Exile";
+        public string Name { get; set; } = "Hero";
         public string ClassId { get; set; } = "arcanist";
         public int Level { get; set; } = 1;
         public float Experience { get; set; }
@@ -459,6 +459,7 @@ public partial class Profile : Node
 
     public void Load()
     {
+        LegacySave.Migrate();
         Characters.Clear();
         if (!FileAccess.FileExists(SavePath))
         {
@@ -503,7 +504,7 @@ public partial class Profile : Node
             // Version 1: one implicit character with gear and gold.
             if (file.Items is { Count: > 0 } || file.Gold > 0)
             {
-                CharacterData migrated = CharacterData.Create("Exile", "arcanist");
+                CharacterData migrated = CharacterData.Create("Hero", "arcanist");
                 migrated.Gold = file.Gold;
                 LoadItems(migrated, file.Items ?? new List<SaveItem>());
                 Characters.Add(migrated);

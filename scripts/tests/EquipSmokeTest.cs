@@ -3,16 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Items;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Items;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for milestone 2b (equip/unequip and modifier
 /// application). Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/EquipSmokeTest.tscn --quit-after 20
 ///
 /// Covers: equip raising the expected stats and unequip reverting them exactly;

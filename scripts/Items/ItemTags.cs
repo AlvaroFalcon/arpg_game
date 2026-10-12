@@ -1,6 +1,6 @@
 using System;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// docs/design/items.md -> "Item filter": "Tags // escape hatch for anything not

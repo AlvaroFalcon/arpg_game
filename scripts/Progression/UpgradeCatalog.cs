@@ -2,11 +2,11 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile.Progression;
+namespace ArpgGame.Progression;
 
 /// <summary>A run skill the player can be offered.</summary>
 public sealed class SkillEntry

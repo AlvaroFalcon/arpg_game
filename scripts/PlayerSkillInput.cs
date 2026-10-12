@@ -1,9 +1,9 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Skills;
+using ArpgGame.Skills;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>
 /// The "what feeds the skill user" component for a player character. Deliberately

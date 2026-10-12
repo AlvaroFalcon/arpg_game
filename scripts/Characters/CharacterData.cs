@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Items;
+using ArpgGame.Items;
 
-namespace PathToExile.Characters;
+namespace ArpgGame.Characters;
 
 /// <summary>One owned gem: a skill gem or a support gem (docs/design/classes.md ->
 /// "How it plugs into what exists": skills and supports are items, not level-up cards).</summary>
@@ -67,7 +67,7 @@ public sealed class CharacterData
 
     public static readonly string[] SlotLabels = { "LMB", "RMB", "1", "2", "3", "4" };
 
-    public string Name { get; set; } = "Exile";
+    public string Name { get; set; } = "Hero";
     public string ClassId { get; set; } = "arcanist";
     public int Level { get; set; } = 1;
     public float Experience { get; set; }

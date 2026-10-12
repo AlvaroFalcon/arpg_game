@@ -123,7 +123,7 @@ function writeGlbFrames(meshes: VoxelMesh[], names: string[], emissive?: (hex: s
   }
 
   const gltf = {
-    asset: { version: '2.0', generator: 'EasyPixel voxel export (Path to Exile pipeline)' },
+    asset: { version: '2.0', generator: 'EasyPixel voxel export (ARPG Game pipeline)' },
     scene: 0,
     scenes: [{ nodes: names.map((_, i) => i) }],
     nodes: names.map((name, i) => ({ name, mesh: i })),

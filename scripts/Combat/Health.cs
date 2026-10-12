@@ -1,9 +1,9 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// The damage receiver. Takes a <see cref="DamagePayload"/>, resolves crit and

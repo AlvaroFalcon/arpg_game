@@ -2,12 +2,12 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
-using PathToExile.UI;
-using PathToExile.World;
+using ArpgGame.Characters;
+using ArpgGame.Core;
+using ArpgGame.UI;
+using ArpgGame.World;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>
 /// The hideout — docs/design/menus.md -> "Hideout" and endgame.md -> "The

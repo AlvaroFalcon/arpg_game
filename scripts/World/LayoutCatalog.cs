@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.World;
+namespace ArpgGame.World;
 
 public enum RoomShape
 {

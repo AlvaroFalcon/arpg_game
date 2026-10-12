@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Combat;
-using PathToExile.Core;
-using PathToExile.Enemies;
-using PathToExile.Skills;
-using PathToExile.Stats;
-using PathToExile.World;
+using ArpgGame.Characters;
+using ArpgGame.Combat;
+using ArpgGame.Core;
+using ArpgGame.Enemies;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
+using ArpgGame.World;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless smoke test for the endgame layer (docs/design/endgame.md, classes.md).

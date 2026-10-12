@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// The runtime instance of an area hit — docs/design/progression.md -> "New

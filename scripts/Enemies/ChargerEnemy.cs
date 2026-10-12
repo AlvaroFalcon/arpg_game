@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// The ember brute — docs/design/enemies.md -> "Brute". Lumbers toward the

@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Minimal floating damage number. Not polish — per docs/design/skills.md ->

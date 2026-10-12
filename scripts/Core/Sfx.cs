@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.Core;
+namespace ArpgGame.Core;
 
 /// <summary>
 /// Procedural sound effects and music — docs/design/menus.md -> "Audio". The

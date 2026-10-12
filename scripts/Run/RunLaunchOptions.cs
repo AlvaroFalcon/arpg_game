@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Run;
+namespace ArpgGame.Run;
 
 /// <summary>
 /// How the next run starts. Normally all defaults (a fresh run with the skill

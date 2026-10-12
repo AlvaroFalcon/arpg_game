@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// Nereth, the Drowned Reflection — boss of the Drowned Mirror, docs/design/bosses.md

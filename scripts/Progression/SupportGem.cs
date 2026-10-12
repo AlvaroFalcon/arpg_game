@@ -1,9 +1,9 @@
 #nullable enable
 using System;
-using PathToExile.Combat;
-using PathToExile.Skills;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
 
-namespace PathToExile.Progression;
+namespace ArpgGame.Progression;
 
 /// <summary>
 /// A support attached to one skill — docs/design/progression.md -> "Supports".

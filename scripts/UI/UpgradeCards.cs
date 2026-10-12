@@ -2,9 +2,9 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Progression;
+using ArpgGame.Progression;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// A row of clickable upgrade cards — the level-up screen and the starting

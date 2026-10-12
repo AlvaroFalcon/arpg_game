@@ -1,4 +1,4 @@
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Which broad family of item this is. Part of the fixed filter vocabulary from

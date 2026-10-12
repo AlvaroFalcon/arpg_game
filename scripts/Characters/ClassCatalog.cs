@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PathToExile.Characters;
+namespace ArpgGame.Characters;
 
 /// <summary>An ascendancy: the class's endgame specialisation (docs/design/classes.md).</summary>
 public sealed class AscendancyDefinition

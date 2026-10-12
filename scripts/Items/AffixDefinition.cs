@@ -1,9 +1,9 @@
 using Godot;
 using Godot.Collections;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Which of the two pools an affix belongs to — docs/design/affixes.md -> "The

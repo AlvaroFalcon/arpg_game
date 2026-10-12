@@ -1,10 +1,10 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile.Characters;
+namespace ArpgGame.Characters;
 
 /// <summary>
 /// The class mechanic — docs/design/classes.md -> "The base classes":

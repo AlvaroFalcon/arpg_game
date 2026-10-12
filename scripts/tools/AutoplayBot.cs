@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Enemies;
-using PathToExile.Progression;
-using PathToExile.Run;
+using ArpgGame.Combat;
+using ArpgGame.Enemies;
+using ArpgGame.Progression;
+using ArpgGame.Run;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// Plays runs by itself for balance work — docs/design/run.md -> "Tuning".

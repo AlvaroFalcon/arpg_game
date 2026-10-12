@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// One entry in a <see cref="FilterChain"/>: a predicate over an

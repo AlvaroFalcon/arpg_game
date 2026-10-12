@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// The volatile imp — docs/design/enemies.md -> "Imp". Sprints at the player;

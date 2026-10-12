@@ -1,4 +1,4 @@
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// Whether casting a skill restricts the caster's movement. Authored on every

@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Core;
-using PathToExile.Items;
+using ArpgGame.Core;
+using ArpgGame.Items;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The stash — docs/design/items.md -> "Stash". Opened at the chest in the

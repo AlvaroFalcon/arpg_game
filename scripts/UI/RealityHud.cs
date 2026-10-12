@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
-using PathToExile.Enemies;
-using PathToExile.Skills;
-using PathToExile.World;
+using ArpgGame.Characters;
+using ArpgGame.Core;
+using ArpgGame.Enemies;
+using ArpgGame.Skills;
+using ArpgGame.World;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The HUD inside an Altered Reality — docs/design/endgame.md -> "Reality HUD".

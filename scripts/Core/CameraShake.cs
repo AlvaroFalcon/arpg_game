@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Core;
+namespace ArpgGame.Core;
 
 /// <summary>
 /// Trauma-based camera shake (docs/design/bosses.md -> "Feedback"). A

@@ -2,7 +2,7 @@
 using System;
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Base for the full-screen character panels (Mirror, skills, passive tree,

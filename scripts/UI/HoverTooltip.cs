@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// A small floating tooltip that follows the mouse — docs/design/menus.md ->

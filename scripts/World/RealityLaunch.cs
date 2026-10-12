@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 
-namespace PathToExile.World;
+namespace ArpgGame.World;
 
 /// <summary>
 /// A shard modifier — docs/design/endgame.md -> "Shard modifiers". Empowering a

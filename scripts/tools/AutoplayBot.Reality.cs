@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Combat;
-using PathToExile.Core;
-using PathToExile.Enemies;
-using PathToExile.Run;
-using PathToExile.World;
+using ArpgGame.Characters;
+using ArpgGame.Combat;
+using ArpgGame.Core;
+using ArpgGame.Enemies;
+using ArpgGame.Run;
+using ArpgGame.World;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// Reality mode for the autoplay bot — docs/design/endgame.md -> "Tuning".

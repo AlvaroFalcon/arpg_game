@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// A boss pattern bullet — docs/design/bosses.md -> "Bullet patterns". Moves in

@@ -1,0 +1,99 @@
+# Builds the Windows game and publishes it as a GitHub release, which the
+# launcher (tools/launcher) installs and keeps up to date.
+# docs/design/distribution.md
+#
+# Release a version: push a tag (`git tag v0.2.0 && git push origin v0.2.0`),
+# or run this workflow by hand from the Actions tab with a version.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. v0.2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency: release
+
+env:
+  GODOT_VERSION: 4.1.1
+
+jobs:
+  windows:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Version
+        run: echo "VERSION=${{ github.event.inputs.version || github.ref_name }}" >> "$GITHUB_ENV"
+
+      - name: Cache Godot and export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-mono-linux
+
+      - name: Download Godot (mono) and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          templates="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono"
+          mkdir -p ~/godot "$templates"
+          curl -fsSL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          curl -fsSL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz"
+          unzip -q /tmp/templates.tpz -d /tmp/templates
+          mv /tmp/templates/templates/* "$templates/"
+
+      - name: Import project
+        run: |
+          godot="$HOME/godot/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64/Godot_v${GODOT_VERSION}-stable_mono_linux.x86_64"
+          echo "GODOT=$godot" >> "$GITHUB_ENV"
+          # Headless --quit exits 1 by design; the export below is the real check.
+          timeout 600 "$godot" --headless --path . --editor --quit || true
+
+      - name: Export Windows build
+        run: |
+          mkdir -p build/windows
+          "$GODOT" --headless --path . --export-release "Windows Desktop" build/windows/ArpgGame.exe
+          test -f build/windows/ArpgGame.exe
+          test -f build/windows/ArpgGame.pck
+          test -d build/windows/data_ArpgGame_x86_64
+          find build/windows -name '*.pdb' -delete
+          echo "$VERSION" > build/windows/version.txt
+          (cd build/windows && zip -qr ../ArpgGame-windows.zip .)
+          echo "$VERSION" > build/version.txt
+          ls -la build
+
+      - name: Build launcher
+        run: |
+          dotnet build tools/launcher/ArpgGameLauncher.csproj -c Release -nologo
+          cp tools/launcher/bin/Release/net48/ArpgGameLauncher.exe build/
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: ARPG Game ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            Download **ArpgGameLauncher.exe** once: it installs the game and keeps it up to date.
+            (Windows SmartScreen may warn about an unsigned app: "More info" → "Run anyway".)
+          files: |
+            build/ArpgGame-windows.zip
+            build/version.txt
+            build/ArpgGameLauncher.exe

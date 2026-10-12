@@ -1,9 +1,9 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>
 /// The dodge roll — docs/design/dodge.md. Space dashes a short, fixed distance

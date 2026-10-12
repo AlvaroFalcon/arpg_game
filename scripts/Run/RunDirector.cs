@@ -1,10 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Enemies;
+using ArpgGame.Combat;
+using ArpgGame.Enemies;
 
-namespace PathToExile.Run;
+namespace ArpgGame.Run;
 
 /// <summary>
 /// Decides what spawns, where and when — docs/design/run.md -> "The timeline".

@@ -1,9 +1,9 @@
 #nullable enable
 using Godot;
 using Godot.Collections;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// Immutable authored data for a skill — layer 1 of the three-layer split in

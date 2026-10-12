@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Toggles the inventory/equipment panel on <c>toggle_inventory</c> ("i")

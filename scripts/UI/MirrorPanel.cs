@@ -3,11 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
-using PathToExile.World;
+using ArpgGame.Characters;
+using ArpgGame.Core;
+using ArpgGame.World;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The Mirror of Realities — docs/design/endgame.md -> "The Mirror". Pick a

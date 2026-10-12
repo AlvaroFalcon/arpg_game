@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.View3D;
+namespace ArpgGame.View3D;
 
 /// <summary>
 /// The voxel body of one 2D sprite — docs/design/art-pipeline.md -> "Voxels".

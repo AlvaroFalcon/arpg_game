@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.View3D;
+namespace ArpgGame.View3D;
 
 /// <summary>
 /// Flying voxel cubes — docs/design/art-pipeline.md -> "Voxels". A monster's

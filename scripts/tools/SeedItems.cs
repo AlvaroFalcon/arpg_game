@@ -1,10 +1,10 @@
 using Godot;
 using Godot.Collections;
-using PathToExile.Combat;
-using PathToExile.Items;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Items;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// One-shot resource-authoring tool for milestone 2a: builds the nine base items
@@ -17,7 +17,7 @@ namespace PathToExile.Tools;
 /// produce.
 ///
 /// Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tools/SeedItems.tscn --quit-after 2
 ///
 /// Safe to re-run — always overwrites everything under res://resources/items/.

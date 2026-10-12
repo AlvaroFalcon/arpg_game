@@ -1,6 +1,6 @@
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 public enum SpeedStatKind
 {

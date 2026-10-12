@@ -1,9 +1,9 @@
 #nullable enable
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// The Bone Herald — mid-run boss, docs/design/bosses.md -> "The Bone Herald".

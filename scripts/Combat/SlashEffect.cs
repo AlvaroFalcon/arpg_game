@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>A melee swing's visual: a bright arc that sweeps and fades in ~0.15 s.</summary>
 public partial class SlashEffect : Node2D

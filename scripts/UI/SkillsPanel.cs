@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
-using PathToExile.Progression;
-using PathToExile.Skills;
-using LoadoutSlot = PathToExile.Characters.LoadoutSlot;
+using ArpgGame.Characters;
+using ArpgGame.Core;
+using ArpgGame.Progression;
+using ArpgGame.Skills;
+using LoadoutSlot = ArpgGame.Characters.LoadoutSlot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The skills panel (K) — docs/design/classes.md -> "Gems as items". Four

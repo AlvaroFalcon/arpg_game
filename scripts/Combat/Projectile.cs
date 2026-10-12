@@ -1,9 +1,9 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Skills;
+using ArpgGame.Skills;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// The linear projectile executor's runtime instance — docs/design/skills.md ->

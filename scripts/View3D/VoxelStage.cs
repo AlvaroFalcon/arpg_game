@@ -1,10 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Enemies;
+using ArpgGame.Combat;
+using ArpgGame.Enemies;
 
-namespace PathToExile.View3D;
+namespace ArpgGame.View3D;
 
 /// <summary>
 /// The HD-2D voxel view of one scene — docs/design/art-pipeline.md -> "Voxels".

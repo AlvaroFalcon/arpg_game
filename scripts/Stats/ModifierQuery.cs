@@ -1,6 +1,6 @@
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// Seam 3 from docs/design/skills.md: modifier lookup takes a query object, not a

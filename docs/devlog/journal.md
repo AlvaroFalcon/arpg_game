@@ -240,3 +240,7 @@ The owner found the sprites too small and wanted more definition with a Japanese
 Upright voxel figures now also cancel the stage's depth stretch and lean back 30° from the camera, most of the way to an HD-2D billboard; before that the camera mostly saw the tops of heads. Screenshots: `anime-characters.png`, `menu-characters.png`, `menu-create.png`, `voxel-hideout.png`, `reality-ashen-boss.png`. 11/11 tests pass.
 
 Unfinished: monsters, bosses and tiles are still 1× art, waiting on the owner's verdict on the style.
+
+## 2026-10-12 — Renamed, and releases with a launcher
+
+The repo went public, so the project dropped the "Path to Exile" name everywhere (assembly, namespaces, solution, presets, title, docs) for the placeholder "ARPG Game" / `ArpgGame`; a small migration copies saves from the old user folder. Builds are now published by a GitHub Actions workflow on every `v*` tag, and a tiny .NET Framework launcher installs and updates the game from the latest release (design and the rejected Drive/R2/Dropbox/itch options in `distribution.md`). The updater logic was exercised against a local HTTP server: fresh install, no-op, update, all clean.

@@ -1,4 +1,4 @@
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The per-cast mutable copy of a <see cref="ProjectileSkillDefinition"/>'s

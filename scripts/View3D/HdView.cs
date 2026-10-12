@@ -1,9 +1,9 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.View3D;
+namespace ArpgGame.View3D;
 
 /// <summary>
 /// Autoload that gives every scene its voxel view — docs/design/art-pipeline.md

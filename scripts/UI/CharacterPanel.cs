@@ -1,11 +1,11 @@
 #nullable enable
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
-using PathToExile.Items;
-using PathToExile.Stats;
+using ArpgGame.Characters;
+using ArpgGame.Core;
+using ArpgGame.Items;
+using ArpgGame.Stats;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The character sheet (C) — docs/design/menus.md -> "Character panels". Live

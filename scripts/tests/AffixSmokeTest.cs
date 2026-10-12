@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Items;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Items;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for milestone 2a (base items + affix rolling).
 /// Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/AffixSmokeTest.tscn --quit-after 20
 ///
 /// Covers: the 2 Temper / 2 Sigil cap, affix count per rarity, no duplicate stat

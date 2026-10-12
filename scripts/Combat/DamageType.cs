@@ -1,4 +1,4 @@
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// The four damage types this game supports — docs/design/stats.md -> "Damage

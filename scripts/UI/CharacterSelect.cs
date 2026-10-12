@@ -1,10 +1,10 @@
 #nullable enable
 using System;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
+using ArpgGame.Characters;
+using ArpgGame.Core;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Character select and creation — docs/design/menus.md -> "Characters".
@@ -42,7 +42,7 @@ public partial class CharacterSelect : PanelContainer
     private void ShowList()
     {
         Clear();
-        _body.AddChild(UiTheme.Label("Choose your Exile", 34, UiTheme.Gold, HorizontalAlignment.Center));
+        _body.AddChild(UiTheme.Label("Choose your hero", 34, UiTheme.Gold, HorizontalAlignment.Center));
         Profile? profile = Profile;
         if (profile is null || !profile.HasCharacters)
         {
@@ -109,7 +109,7 @@ public partial class CharacterSelect : PanelContainer
         _body.AddChild(UiTheme.Label("New character", 34, UiTheme.Gold, HorizontalAlignment.Center));
         HBoxContainer nameRow = UiTheme.HBox(_body, 10);
         nameRow.AddChild(UiTheme.Label("Name", 18, UiTheme.Text));
-        _name = new LineEdit { Text = _name?.Text ?? "", PlaceholderText = "Exile", MaxLength = 20, CustomMinimumSize = new Vector2(320f, 40f) };
+        _name = new LineEdit { Text = _name?.Text ?? "", PlaceholderText = "Hero", MaxLength = 20, CustomMinimumSize = new Vector2(320f, 40f) };
         nameRow.AddChild(_name);
 
         HBoxContainer cards = UiTheme.HBox(_body, 10);

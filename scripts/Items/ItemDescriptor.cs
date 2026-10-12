@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The fixed vocabulary a filter can see, per docs/design/items.md -> "Item

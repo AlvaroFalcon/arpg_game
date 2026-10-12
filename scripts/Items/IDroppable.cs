@@ -1,6 +1,6 @@
-using PathToExile;
+using ArpgGame;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The shared contract every drop family implements, per docs/design/items.md ->

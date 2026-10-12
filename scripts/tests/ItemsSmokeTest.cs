@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Items;
-using PathToExile.UI;
+using ArpgGame.Items;
+using ArpgGame.UI;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for the M1 item/loot slice
@@ -13,7 +13,7 @@ namespace PathToExile.Tests;
 /// FilterChain, labels, and currency/gold"), extended in milestone 2d for
 /// inventory usability (docs/design/items.md -> "Pickup is manual...", "Closing
 /// panels", "UI must consume its own input", "Item tooltips"). Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/ItemsSmokeTest.tscn --quit-after 60
 ///
 /// Descriptor construction and filter-chain evaluation are pure C# and exercised

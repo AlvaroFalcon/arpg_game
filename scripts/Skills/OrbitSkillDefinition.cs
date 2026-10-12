@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The <c>Orbit</c> archetype — docs/design/progression.md -> "New archetypes".

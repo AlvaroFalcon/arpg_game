@@ -1,12 +1,12 @@
 using Godot;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 public partial class Main : Node
 {
 	public override void _Ready()
 	{
-		GD.Print("Path to Exile: Main scene loaded (C#/.NET, Godot 4).");
+		GD.Print("ARPG Game: Main scene loaded (C#/.NET, Godot 4).");
 
 		// The sandbox is reachable from the main menu now, so it needs a way
 		// back out (docs/design/menus.md -> "Pause").

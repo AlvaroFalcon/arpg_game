@@ -1,9 +1,9 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.Run;
+namespace ArpgGame.Run;
 
 public enum PickupKind
 {

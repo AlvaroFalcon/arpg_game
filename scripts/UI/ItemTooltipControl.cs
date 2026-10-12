@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Items;
+using ArpgGame.Items;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Renders whatever <see cref="ItemTooltipText.Build"/> hands it, following the

@@ -1,4 +1,4 @@
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The nine equipment slots from docs/design/items.md -> "Equipment slots":

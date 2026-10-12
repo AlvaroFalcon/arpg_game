@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.View3D;
+namespace ArpgGame.View3D;
 
 /// <summary>
 /// The voxel models exported by tools/art/voxels.ts (EasyPixel's voxel export):

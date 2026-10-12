@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Enemies;
-using PathToExile.Characters;
-using PathToExile.Core;
-using PathToExile.Run;
-using PathToExile.UI;
-using PathToExile.World;
+using ArpgGame.Enemies;
+using ArpgGame.Characters;
+using ArpgGame.Core;
+using ArpgGame.Run;
+using ArpgGame.UI;
+using ArpgGame.World;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// Plays scripted runs in a real (windowed) session and saves screenshots for
@@ -69,7 +69,7 @@ public partial class RunCapture : Node
             await Snap("menu-settings.png");
         }
 
-        await Shot(PathToExile.Core.Scenes.Hideout, "hideout.png", 1.2f);
+        await Shot(ArpgGame.Core.Scenes.Hideout, "hideout.png", 1.2f);
 
         // Start-of-run skill pick.
         RunLaunchOptions.Reset();
@@ -255,7 +255,7 @@ public partial class RunCapture : Node
     private async Task EndgameScript()
     {
         SetupDemoProfile();
-        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.MainMenu);
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.MainMenu);
         await Wait(0.8f);
         if (GetTree().CurrentScene is MainMenu menu)
         {
@@ -270,7 +270,7 @@ public partial class RunCapture : Node
             }
         }
 
-        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.Hideout);
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
         await Wait(1.0f);
         Node hideout = GetTree().CurrentScene;
         var player = hideout.GetNode<Player>("Player");
@@ -345,7 +345,7 @@ public partial class RunCapture : Node
     private async Task VoxelScript()
     {
         SetupDemoProfile();
-        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.Hideout);
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
         await Wait(1.2f);
         Node hideout = GetTree().CurrentScene;
         hideout.GetNode<Player>("Player").GlobalPosition = new Vector2(420f, 330f);
@@ -371,7 +371,7 @@ public partial class RunCapture : Node
         RealityLaunch.LayoutId = layout;
         RealityLaunch.Modifiers = new List<string> { "elite", "hordes" };
         GetTree().Paused = false;
-        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.Reality);
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Reality);
         await Wait(0.5f);
         if (GetTree().CurrentScene is not RealityController reality)
         {
@@ -452,7 +452,7 @@ public partial class RunCapture : Node
         return null;
     }
 
-    private static string Scenes(bool main) => PathToExile.Core.Scenes.MainMenu;
+    private static string Scenes(bool main) => ArpgGame.Core.Scenes.MainMenu;
 
     private async Task Shot(string scene, string file, float wait)
     {
@@ -464,7 +464,7 @@ public partial class RunCapture : Node
     private async Task Launch()
     {
         GetTree().Paused = false;
-        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.Run);
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Run);
         await Wait(0.3f);
         if (Run() is { } run)
         {

@@ -2,9 +2,9 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// Holds a combat entity's live stats. Entity-agnostic by design: the skill

@@ -3,11 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Progression;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Progression;
+using ArpgGame.Stats;
 
-namespace PathToExile.Characters;
+namespace ArpgGame.Characters;
 
 public enum PassiveKind
 {

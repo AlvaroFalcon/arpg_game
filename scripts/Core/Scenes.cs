@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Core;
+namespace ArpgGame.Core;
 
 /// <summary>Scene paths and transitions in one place (docs/design/menus.md -> "Flow").</summary>
 public static class Scenes

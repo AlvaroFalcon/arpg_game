@@ -3,4 +3,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- The launcher is its own .NET Framework app, not part of the game. -->
+    <Compile Remove="tools/**" />
+  </ItemGroup>
 </Project>

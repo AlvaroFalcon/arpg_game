@@ -1,8 +1,8 @@
 #nullable enable
 using System.Linq;
-using PathToExile.Progression;
+using ArpgGame.Progression;
 
-namespace PathToExile.Characters;
+namespace ArpgGame.Characters;
 
 /// <summary>
 /// What picking up a gem does — docs/design/classes.md -> "Gems as items".

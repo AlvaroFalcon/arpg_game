@@ -1,4 +1,4 @@
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// Named physics-layer bits shared by every combat scene. Kept as a small static

@@ -1,6 +1,6 @@
 # It's a game now: the survivor run
 
-Until last night, Path to Exile was a very well-tested sandbox: a mage, some
+Until last night, ARPG Game was a very well-tested sandbox: a mage, some
 training dummies, a fireball with forks, an affix system, a grid inventory.
 Every system was there; nothing to *do* with them. This post is about the night
 it turned into a game — a Vampire Survivors-style run with a Path of Exile-style

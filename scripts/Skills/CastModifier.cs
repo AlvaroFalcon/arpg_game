@@ -1,6 +1,6 @@
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// Seam 6 (docs/design/skills.md -> "CastModifier — behaviour transforms"): a

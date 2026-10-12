@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Skills;
+using ArpgGame.Skills;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>One dodge charge: a diamond that fills while recharging.</summary>
 public partial class DodgePip : Control

@@ -2,7 +2,7 @@
 using System;
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The shared look of every menu and overlay — docs/design/menus.md -> "Look".

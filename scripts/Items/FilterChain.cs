@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// docs/design/items.md -> "Item filter": <c>Roll item -> ItemDescriptor ->

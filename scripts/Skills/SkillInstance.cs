@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The per-owner, mutable wrapper around a <see cref="SkillDefinition"/> that

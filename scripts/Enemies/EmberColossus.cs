@@ -1,9 +1,9 @@
 #nullable enable
 using System.Threading.Tasks;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// The Ember Colossus — final boss, docs/design/bosses.md -> "The Ember Colossus".

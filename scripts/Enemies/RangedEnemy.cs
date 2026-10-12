@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Skills;
+using ArpgGame.Skills;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>
 /// The bone caster — docs/design/enemies.md -> "Caster". Keeps between

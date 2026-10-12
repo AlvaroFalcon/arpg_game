@@ -1,8 +1,8 @@
 #nullable enable
 
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// A single modifier applied to a <see cref="Stat"/>.

@@ -1,7 +1,7 @@
 using Godot;
 using Godot.Collections;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Authored data for one equipment base type ("Iron Wand", "Ebony Wand") — the

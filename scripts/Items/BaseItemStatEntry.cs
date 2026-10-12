@@ -1,8 +1,8 @@
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// One stat a <see cref="BaseItemDefinition"/> grants intrinsically — "wand

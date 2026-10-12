@@ -1,7 +1,7 @@
 using Godot;
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// How a <see cref="CostEntry"/>'s <see cref="CostEntry.Amount"/> is interpreted.

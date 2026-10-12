@@ -1,13 +1,13 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Enemies;
-using PathToExile.Progression;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Enemies;
+using ArpgGame.Progression;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile.Characters;
+namespace ArpgGame.Characters;
 
 /// <summary>
 /// Runtime behaviour of ascendancy nodes — docs/design/classes.md ->

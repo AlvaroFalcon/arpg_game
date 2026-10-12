@@ -1,11 +1,11 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Items;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Items;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>
 /// Top-down player controller. Supports two input modes that share one velocity:

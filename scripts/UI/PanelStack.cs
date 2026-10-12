@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>Something <see cref="PanelStack"/> can close on the player's
 /// behalf. Implemented by whatever owns a panel's actual visibility — e.g.

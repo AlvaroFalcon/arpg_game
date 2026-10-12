@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Core;
+namespace ArpgGame.Core;
 
 /// <summary>
 /// Player-facing settings — docs/design/menus.md -> "Settings". An autoload
@@ -121,6 +121,7 @@ public partial class GameSettings : Node
 
     public void Load()
     {
+        LegacySave.Migrate();
         var config = new ConfigFile();
         if (config.Load(SavePath) != Error.Ok)
         {

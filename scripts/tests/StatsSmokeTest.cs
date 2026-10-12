@@ -1,15 +1,15 @@
 #nullable enable
 using Godot;
 using Godot.Collections;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for the M2 stat-system pass
 /// (docs/design/stats.md's second pass). Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/StatsSmokeTest.tscn --quit-after 60
 ///
 /// Covers, in order: the keyed registry (get/set + named-accessor equivalence),

@@ -1,10 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Linq;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Characters;
+namespace ArpgGame.Characters;
 
 /// <summary>One ascendancy node. Stat lines are applied generically; behaviour
 /// nodes are keyed by id in <see cref="AscendancyEffects"/>.</summary>

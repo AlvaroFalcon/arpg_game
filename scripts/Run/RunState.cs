@@ -1,11 +1,11 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Enemies;
-using PathToExile.Progression;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Enemies;
+using ArpgGame.Progression;
+using ArpgGame.Stats;
 
-namespace PathToExile.Run;
+namespace ArpgGame.Run;
 
 /// <summary>
 /// The bookkeeping of one run — docs/design/run.md: elapsed time, kills,

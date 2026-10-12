@@ -1,9 +1,9 @@
 #nullable enable
 using Godot;
 using Godot.Collections;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Spawns an <see cref="EquipmentItem"/> drop when the entity this component is

@@ -1,9 +1,9 @@
 #nullable enable
 using System;
 using Godot;
-using PathToExile.Core;
+using ArpgGame.Core;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Audio / display / gameplay settings — docs/design/menus.md -> "Settings".

@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Items;
+using ArpgGame.Items;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Draws the 12x5 grid (docs/design/items.md -&gt; "Grid inventory") and owns

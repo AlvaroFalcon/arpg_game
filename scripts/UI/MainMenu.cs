@@ -1,9 +1,9 @@
 #nullable enable
 using Godot;
-using PathToExile.Core;
-using PathToExile.Run;
+using ArpgGame.Core;
+using ArpgGame.Run;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Title screen — docs/design/menus.md -> "Main menu". A slowly drifting view
@@ -32,7 +32,7 @@ public partial class MainMenu : Node2D
 
 		_center = UiTheme.Center(_menuRoot);
 		_menu = UiTheme.VBox(_center, 14);
-		_menu.AddChild(UiTheme.Label("PATH TO EXILE", 72, UiTheme.Gold, HorizontalAlignment.Center));
+		_menu.AddChild(UiTheme.Label("ARPG GAME", 72, UiTheme.Gold, HorizontalAlignment.Center));
 		_menu.AddChild(UiTheme.Label("— Altered Realities —", 24, UiTheme.Ember, HorizontalAlignment.Center));
 		_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 24f) });
 

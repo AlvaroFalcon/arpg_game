@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>A swirling portal (drawn, not a sprite): the way into a run.</summary>
 public partial class Portal : Node2D

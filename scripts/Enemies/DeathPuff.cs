@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Enemies;
+namespace ArpgGame.Enemies;
 
 /// <summary>A short burst of ash particles where something died. Pure feedback.</summary>
 public partial class DeathPuff : Node2D

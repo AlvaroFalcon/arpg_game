@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// One projectile to spawn: a direction and a forward offset from the cast

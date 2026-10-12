@@ -2,20 +2,20 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// Layer 3 of the three-layer split (docs/design/skills.md -> "The three
 /// layers"): the executor. Owns the loadout, the per-skill use timers, builds the
 /// cast context, pays costs, and triggers the cast. A player and an enemy both
 /// have one; the only difference is what feeds it — input (see
-/// <see cref="PathToExile.PlayerSkillInput"/>) vs AI, which doesn't exist yet.
+/// <see cref="ArpgGame.PlayerSkillInput"/>) vs AI, which doesn't exist yet.
 ///
 /// This component deliberately knows nothing about input actions, the mouse, or
-/// WASD — see the class doc on <see cref="PathToExile.PlayerSkillInput"/> for why
+/// WASD — see the class doc on <see cref="ArpgGame.PlayerSkillInput"/> for why
 /// that split exists.
 ///
 /// Expects sibling nodes on its parent: "Stats" (an <see cref="ActorStats"/>) and

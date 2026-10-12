@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 
-namespace PathToExile.World;
+namespace ArpgGame.World;
 
 /// <summary>A reality's look and population (docs/design/endgame.md -> "Layout" table).</summary>
 public sealed class RealityTheme

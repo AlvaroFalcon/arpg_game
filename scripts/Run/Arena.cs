@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Run;
+namespace ArpgGame.Run;
 
 /// <summary>
 /// The Ashen Arena — docs/design/run.md -> "The arena". Built at runtime from

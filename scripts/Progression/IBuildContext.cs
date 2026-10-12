@@ -2,11 +2,11 @@
 using System;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile.Progression;
+namespace ArpgGame.Progression;
 
 /// <summary>
 /// What a keystone or passive needs to apply itself, whoever owns the build:

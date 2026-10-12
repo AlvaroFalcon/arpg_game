@@ -1,6 +1,6 @@
 using System;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// Declarative labels for filtering — "what modifiers may grab this skill" — as

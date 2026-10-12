@@ -1,15 +1,15 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Items;
+using ArpgGame.Combat;
+using ArpgGame.Items;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for <see cref="DropSpawner"/> — the death hook
 /// that makes target dummies drop gold in the playable scene. Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/DropSpawnerSmokeTest.tscn --quit-after 120
 ///
 /// The kill goes through <see cref="Health.TakeDamage"/> with a real

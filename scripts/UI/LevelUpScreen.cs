@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Progression;
-using PathToExile.Run;
+using ArpgGame.Progression;
+using ArpgGame.Run;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// docs/design/menus.md -> "Level-up": pauses the run and offers three cards

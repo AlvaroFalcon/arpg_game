@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// A single resource pool an actor owns: a plain mutable <see cref="Current"/>,

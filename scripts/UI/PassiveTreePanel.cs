@@ -1,10 +1,10 @@
 #nullable enable
 using System.Linq;
 using Godot;
-using PathToExile.Characters;
-using PathToExile.Core;
+using ArpgGame.Characters;
+using ArpgGame.Core;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The passive tree (P) — docs/design/classes.md -> "Passive tree". One shared

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// Runtime instance of an <see cref="Skills.OrbitSkillDefinition"/> cast: a set

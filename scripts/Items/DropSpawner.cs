@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Spawns a drop when the entity this component is attached to dies.

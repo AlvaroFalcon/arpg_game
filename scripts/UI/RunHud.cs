@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Enemies;
-using PathToExile.Progression;
-using PathToExile.Run;
-using PathToExile.Skills;
+using ArpgGame.Enemies;
+using ArpgGame.Progression;
+using ArpgGame.Run;
+using ArpgGame.Skills;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// The in-run HUD — docs/design/menus.md -> "HUD". Top: experience bar, level,

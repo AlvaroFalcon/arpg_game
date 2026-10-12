@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Path to Exile"
+config/name="ARPG Game"
 run/main_scene="res://scenes/menus/MainMenu.tscn"
 config/features=PackedStringArray("4.1", "C#", "Forward Plus")
 
@@ -30,7 +30,7 @@ window/stretch/aspect="expand"
 
 [dotnet]
 
-project/assembly_name="PathToExile"
+project/assembly_name="ArpgGame"
 
 [input]
 

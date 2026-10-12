@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// The three elemental ailments — docs/design/progression.md -> "Ailments".

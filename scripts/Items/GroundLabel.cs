@@ -2,7 +2,7 @@
 using System;
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The pooled node <see cref="GroundLabelPool"/> actually creates — a thin

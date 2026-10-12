@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 public enum OnHitOutcomeKind
 {
