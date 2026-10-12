@@ -42,7 +42,7 @@ jobs:
           if [ -n "${{ github.event.inputs.version }}" ]; then v="${{ github.event.inputs.version }}"
           elif [ "${{ github.ref_type }}" = "tag" ]; then v="${{ github.ref_name }}"
           else v="v0.1.${{ github.run_number }}"; fi
-          echo "VERSION=$v" >> "$GITHUB_ENV"
+          echo "RELEASE_VERSION=$v" >> "$GITHUB_ENV"
 
       - name: Cache Godot and export templates
         id: godot-cache
@@ -87,9 +87,9 @@ jobs:
           test -f build/windows/ArpgGame.pck
           test -d build/windows/data_ArpgGame_x86_64
           find build/windows -name '*.pdb' -delete
-          echo "$VERSION" > build/windows/version.txt
+          echo "$RELEASE_VERSION" > build/windows/version.txt
           (cd build/windows && zip -qr ../ArpgGame-windows.zip .)
-          echo "$VERSION" > build/version.txt
+          echo "$RELEASE_VERSION" > build/version.txt
           ls -la build
 
       - name: Build launcher
@@ -100,8 +100,8 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION }}
-          name: ARPG Game ${{ env.VERSION }}
+          tag_name: ${{ env.RELEASE_VERSION }}
+          name: ARPG Game ${{ env.RELEASE_VERSION }}
           target_commitish: ${{ github.sha }}
           make_latest: true
           body: |
