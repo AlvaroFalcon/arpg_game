@@ -45,11 +45,17 @@ function writeGlbFrames(meshes: VoxelMesh[], names: string[], emissive?: (hex: s
   const accessors: object[] = [];
   const materials: object[] = [];
   const materialOf = new Map<string, number>();
-  const addView = (data: Float32Array | Uint32Array, target: number) => {
+  const addView = (data: Float32Array | Uint32Array | Uint16Array, target: number) => {
     const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
     bufferViews.push({ buffer: 0, byteOffset: length, byteLength: bytes.length, target });
     chunks.push(bytes);
     length += bytes.length;
+    // Keep every view 4-byte aligned (16-bit index views can end mid-word).
+    const pad = (4 - (bytes.length % 4)) % 4;
+    if (pad) {
+      chunks.push(new Uint8Array(pad));
+      length += pad;
+    }
     return bufferViews.length - 1;
   };
   const material = (hex: string) => {
@@ -82,24 +88,26 @@ function writeGlbFrames(meshes: VoxelMesh[], names: string[], emissive?: (hex: s
 
     const primitives: object[] = [];
     for (const [hex, quads] of byColor) {
-      const positions = new Float32Array(quads.length * 12);
-      const normals = new Float32Array(quads.length * 12);
-      const indices = new Uint32Array(quads.length * 6);
+      const count = quads.length;
+      const positions = new Float32Array(count * 12);
+      const normals = new Float32Array(count * 12);
+      const big = count * 4 > 65535;
+      const indices = big ? new Uint32Array(count * 6) : new Uint16Array(count * 6);
       const min = [Infinity, Infinity, Infinity];
       const max = [-Infinity, -Infinity, -Infinity];
-      quads.forEach((q, k) => {
-        positions.set(mesh.positions.subarray(q * 12, q * 12 + 12), k * 12);
-        normals.set(mesh.normals.subarray(q * 12, q * 12 + 12), k * 12);
+      for (let k = 0; k < count; k++) {
+        positions.set(mesh.positions.subarray(quads[k] * 12, quads[k] * 12 + 12), k * 12);
+        normals.set(mesh.normals.subarray(quads[k] * 12, quads[k] * 12 + 12), k * 12);
         indices.set([k * 4, k * 4 + 1, k * 4 + 2, k * 4, k * 4 + 2, k * 4 + 3], k * 6);
         for (let i = 0; i < 12; i++) {
           const a = i % 3;
           min[a] = Math.min(min[a], positions[k * 12 + i]);
           max[a] = Math.max(max[a], positions[k * 12 + i]);
         }
-      });
-      const pos = accessors.push({ bufferView: addView(positions, 34962), componentType: 5126, count: quads.length * 4, type: 'VEC3', min, max }) - 1;
-      const nor = accessors.push({ bufferView: addView(normals, 34962), componentType: 5126, count: quads.length * 4, type: 'VEC3' }) - 1;
-      const idx = accessors.push({ bufferView: addView(indices, 34963), componentType: 5125, count: indices.length, type: 'SCALAR' }) - 1;
+      }
+      const pos = accessors.push({ bufferView: addView(positions, 34962), componentType: 5126, count: count * 4, type: 'VEC3', min, max }) - 1;
+      const nor = accessors.push({ bufferView: addView(normals, 34962), componentType: 5126, count: count * 4, type: 'VEC3' }) - 1;
+      const idx = accessors.push({ bufferView: addView(indices, 34963), componentType: big ? 5125 : 5123, count: indices.length, type: 'SCALAR' }) - 1;
       primitives.push({ attributes: { POSITION: pos, NORMAL: nor }, indices: idx, material: material(hex), mode: 4 });
     }
 

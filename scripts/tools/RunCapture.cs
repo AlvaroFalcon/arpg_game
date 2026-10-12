@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : Script();
     }
 
     private async Task Script()
@@ -335,6 +335,27 @@ public partial class RunCapture : Node
             }
 
             await CaptureReality(layout, tier, name);
+        }
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>The four facings: the player walks up, left, down and right in the hideout.</summary>
+    private async Task FacingScript()
+    {
+        SetupDemoProfile();
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
+        await Wait(1.2f);
+        var player = GetTree().CurrentScene.GetNode<Player>("Player");
+        player.GlobalPosition = new Vector2(640f, 420f);
+        foreach ((string action, string name) in new[] { ("move_up", "up"), ("move_left", "left"), ("move_down", "down"), ("move_right", "right") })
+        {
+            Input.ActionPress(action);
+            await Wait(0.45f);
+            await Snap($"facing-{name}.png");
+            Input.ActionRelease(action);
+            await Wait(0.2f);
         }
 
         GD.Print("[CAPTURE] done");
