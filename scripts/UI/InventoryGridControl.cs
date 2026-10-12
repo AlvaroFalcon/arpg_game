@@ -46,10 +46,21 @@ public partial class InventoryGridControl : Control
     private Equipment _equipment = null!;
     private ItemTooltipControl? _tooltip;
 
+    /// <summary>Code-built grids (the stash panel) set these instead of the paths.</summary>
+    public Inventory? InventoryNode { get; set; }
+
+    public Equipment? EquipmentNode { get; set; }
+
+    /// <summary>Replaces right-click-to-equip (the stash panel uses it to move
+    /// items between the stash and the inventory). Returns whether it acted.</summary>
+    public System.Func<EquipmentItem, bool>? RightClickOverride { get; set; }
+
+    public Inventory Inventory => _inventory;
+
     public override void _Ready()
     {
-        _inventory = GetNode<Inventory>(InventoryPath);
-        _equipment = GetNode<Equipment>(EquipmentPath);
+        _inventory = InventoryNode ?? GetNode<Inventory>(InventoryPath);
+        _equipment = EquipmentNode ?? GetNode<Equipment>(EquipmentPath);
         _tooltip = GetNodeOrNull<ItemTooltipControl>(ItemTooltipPath)
             ?? GetTree().CurrentScene.GetNodeOrNull<ItemTooltipControl>("ItemTooltip");
 
@@ -60,7 +71,7 @@ public partial class InventoryGridControl : Control
             GD.PushWarning("[grid] ItemTooltipControl not found: no 'ItemTooltip' node on the current scene, and ItemTooltipPath is unset. Tooltips are disabled.");
         }
 
-        CustomMinimumSize = new Vector2(Inventory.Width * CellPx, Inventory.Height * CellPx);
+        CustomMinimumSize = new Vector2(_inventory.Columns * CellPx, _inventory.Rows * CellPx);
         MouseFilter = MouseFilterEnum.Stop;
     }
 
@@ -93,7 +104,7 @@ public partial class InventoryGridControl : Control
     /// </summary>
     private void UpdateHoverTooltip()
     {
-        var gridRect = new Rect2(Vector2.Zero, new Vector2(Inventory.Width * CellPx, Inventory.Height * CellPx));
+        var gridRect = new Rect2(Vector2.Zero, new Vector2(_inventory.Columns * CellPx, _inventory.Rows * CellPx));
         Vector2 mouseLocal = GetLocalMousePosition();
 
         EquipmentItem? hovered = gridRect.HasPoint(mouseLocal) ? _inventory.GetItemAt(CellAt(mouseLocal)) : null;
@@ -127,7 +138,15 @@ public partial class InventoryGridControl : Control
             return;
         }
 
-        _inventory.TryRightClickEquip(item, _equipment);
+        if (RightClickOverride is { } moveElsewhere)
+        {
+            moveElsewhere(item);
+        }
+        else
+        {
+            _inventory.TryRightClickEquip(item, _equipment);
+        }
+
         QueueRedraw();
         AcceptEvent();
     }
@@ -146,7 +165,10 @@ public partial class InventoryGridControl : Control
 
     public override bool _CanDropData(Vector2 atPosition, Variant data)
     {
+        // Dragging only moves within one grid (or from an equipment slot);
+        // grid-to-grid transfers go through right-click (see RightClickOverride).
         return InventoryDragPayload.TryParse(data, out InventoryDragPayload payload)
+            && (payload.Kind == DragSourceKind.EquipmentSlot || _inventory.Placements.ContainsKey(payload.Item))
             && _inventory.CanPlaceAt(payload.Item, CellAt(atPosition), ignore: payload.Item);
     }
 
@@ -180,16 +202,16 @@ public partial class InventoryGridControl : Control
 
     public override void _Draw()
     {
-        var gridSize = new Vector2(Inventory.Width * CellPx, Inventory.Height * CellPx);
+        var gridSize = new Vector2(_inventory.Columns * CellPx, _inventory.Rows * CellPx);
         DrawRect(new Rect2(Vector2.Zero, gridSize), new Color(0.1f, 0.1f, 0.12f, 0.9f));
 
         var lineColor = new Color(1, 1, 1, 0.15f);
-        for (int x = 0; x <= Inventory.Width; x++)
+        for (int x = 0; x <= _inventory.Columns; x++)
         {
             DrawLine(new Vector2(x * CellPx, 0), new Vector2(x * CellPx, gridSize.Y), lineColor);
         }
 
-        for (int y = 0; y <= Inventory.Height; y++)
+        for (int y = 0; y <= _inventory.Rows; y++)
         {
             DrawLine(new Vector2(0, y * CellPx), new Vector2(gridSize.X, y * CellPx), lineColor);
         }

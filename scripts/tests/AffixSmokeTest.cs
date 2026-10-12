@@ -293,8 +293,8 @@ public partial class AffixSmokeTest : Node2D
 
         AffixDefinition plated = _library.Entries.First(a => a.Id == "plated");
         Check("PLATED-AUTHORED-ARMOUR-SLOTS-ONLY",
-            plated.AllowedItemClasses.Count == 5 && !plated.AllowedItemClasses.Contains(ItemClass.Ring) && !plated.AllowedItemClasses.Contains(ItemClass.Wand),
-            $"Plated AllowedItemClasses={string.Join(",", plated.AllowedItemClasses)}, expected the 5 armour slots, no Ring/Wand");
+            plated.AllowedItemClasses.Count == 6 && plated.AllowedItemClasses.Contains(ItemClass.Pants) && !plated.AllowedItemClasses.Contains(ItemClass.Ring) && !plated.AllowedItemClasses.Contains(ItemClass.Wand),
+            $"Plated AllowedItemClasses={string.Join(",", plated.AllowedItemClasses)}, expected the 6 armour slots (incl. Pants), no Ring/Wand");
     }
 
     // ------------------------------------------------------------------

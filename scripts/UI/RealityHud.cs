@@ -30,6 +30,7 @@ public partial class RealityHud : CanvasLayer
     private Label _modsLabel = null!;
     private ProgressBar _lifeBar = null!;
     private ProgressBar _manaBar = null!;
+    private ProgressBar _staminaBar = null!;
     private Label _lifeLabel = null!;
     private Label _manaLabel = null!;
     private HBoxContainer _dodgeRow = null!;
@@ -124,6 +125,9 @@ public partial class RealityHud : CanvasLayer
         vitals.MoveChild(_resourceLabel, 0);
         (_lifeBar, _lifeLabel) = AddVital(vitals, UiTheme.Life);
         (_manaBar, _manaLabel) = AddVital(vitals, UiTheme.Mana);
+        _staminaBar = UiTheme.Bar(new Color(0.85f, 0.8f, 0.3f), 7f);
+        _staminaBar.CustomMinimumSize = new Vector2(320f, 7f);
+        vitals.AddChild(_staminaBar);
         _dodgeRow = UiTheme.HBox(vitals, 6);
 
         // --- skill bar ---
@@ -268,6 +272,12 @@ public partial class RealityHud : CanvasLayer
         {
             _manaBar.Value = mana.Max > 0 ? mana.Current / mana.Max : 0;
             _manaLabel.Text = $"{Mathf.FloorToInt(mana.Current)} / {Mathf.RoundToInt(mana.Max)}";
+        }
+
+        if (Player.MaxStamina > 0f)
+        {
+            _staminaBar.Value = Mathf.Max(0f, Player.Stamina) / Player.MaxStamina;
+            _staminaBar.Modulate = Player.Exhausted ? new Color(1f, 0.45f, 0.4f) : Colors.White;
         }
 
         UpdateDodge();

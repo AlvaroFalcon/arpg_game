@@ -34,6 +34,19 @@ public partial class Profile : Node
 
     public List<CharacterData> Characters { get; } = new();
 
+    // --- Stash (docs/design/items.md -> "Stash"): account-wide, PoE-style ------------
+
+    public const int StashColumns = 12;
+    public const int StashRows = 10;
+    public const int MaxStashTabs = 8;
+
+    /// <summary>Stash tabs, each a list of items and their grid cells. The first
+    /// tab is free; more are bought with gold.</summary>
+    public List<List<(EquipmentItem Item, Vector2I Cell)>> StashTabs { get; } = new() { new() };
+
+    /// <summary>Gold for the next tab: 150, 300, 600, 1 200… (doubling).</summary>
+    public long NextStashTabCost => StashTabs.Count >= MaxStashTabs ? -1 : 150L << (StashTabs.Count - 1);
+
     public int ActiveIndex { get; private set; }
 
     /// <summary>When false, nothing is written to disk (tests).</summary>
@@ -278,6 +291,8 @@ public partial class Profile : Node
         public int Active { get; set; }
         public List<SaveCharacter> Characters { get; set; } = new();
 
+        public List<List<SaveItem>> Stash { get; set; } = new();
+
         // Version 1 fields (single character), read for migration only.
         public long Gold { get; set; }
         public List<SaveItem>? Items { get; set; }
@@ -432,7 +447,12 @@ public partial class Profile : Node
             return;
         }
 
-        var file = new SaveFile { Active = ActiveIndex, Characters = Characters.Select(ToSave).ToList() };
+        var file = new SaveFile
+        {
+            Active = ActiveIndex,
+            Characters = Characters.Select(ToSave).ToList(),
+            Stash = StashTabs.Select(tab => tab.Select(e => { SaveItem si = ToSave(e.Item); si.X = e.Cell.X; si.Y = e.Cell.Y; return si; }).ToList()).ToList(),
+        };
         using FileAccess? f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         f?.StoreString(JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true }));
     }
@@ -451,6 +471,26 @@ public partial class Profile : Node
             if (f is null || JsonSerializer.Deserialize<SaveFile>(f.GetAsText()) is not { } file)
             {
                 return;
+            }
+
+            StashTabs.Clear();
+            foreach (List<SaveItem> tab in file.Stash)
+            {
+                var items = new List<(EquipmentItem, Vector2I)>();
+                foreach (SaveItem si in tab)
+                {
+                    if (FromSave(si) is { } item)
+                    {
+                        items.Add((item, new Vector2I(si.X, si.Y)));
+                    }
+                }
+
+                StashTabs.Add(items);
+            }
+
+            if (StashTabs.Count == 0)
+            {
+                StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
             }
 
             if (file.Characters.Count > 0)
@@ -480,6 +520,8 @@ public partial class Profile : Node
     public void Reset()
     {
         Characters.Clear();
+        StashTabs.Clear();
+        StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
         ActiveIndex = 0;
         Save();
     }

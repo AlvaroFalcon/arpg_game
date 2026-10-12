@@ -31,4 +31,7 @@ public enum ItemClass
     Sword,
     Axe,
     Dagger,
+
+    // The paper doll's legs slot (docs/design/items.md -> "Paper doll").
+    Pants,
 }

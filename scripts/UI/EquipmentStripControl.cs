@@ -5,46 +5,38 @@ using PathToExile.Items;
 namespace PathToExile.UI;
 
 /// <summary>
-/// The nine-slot equipment strip (docs/design/items.md -&gt; "The equipment
-/// strip") — ten labelled cells, one per <see cref="EquipmentSlot"/> value
-/// (the design doc says "nine" while listing eight distinct categories plus
-/// "Ring x2"; the milestone report flags this count mismatch. Every slot the
-/// existing <see cref="EquipmentSlot"/> enum/<see cref="Equipment"/> component
-/// already treats as independent — including both ring slots — gets its own
-/// row here, since that is the enum this milestone builds on). Deliberately a
-/// flat labelled list, not a paper-doll figure, per the design doc.
+/// The equipment paper doll — docs/design/items.md -&gt; "Paper doll" (replaces
+/// the earlier flat labelled strip, at the owner's request). A body silhouette
+/// with every <see cref="EquipmentSlot"/> placed on it: helmet on the head,
+/// amulet at the neck, body armour on the torso, belt at the waist, pants below
+/// it, the main weapon in the left arm and the offhand/shield in the right,
+/// gloves under the left hand, boots under the right hand, a ring by each hand.
 ///
 /// Same architecture as <see cref="InventoryGridControl"/>: one Control draws
-/// every row and hit-tests by row index rather than one child node per slot,
+/// every slot and hit-tests by rectangle rather than one child node per slot,
 /// and the same "nothing mutates until a drop lands" rule applies — see
-/// <see cref="InventoryDragPayload"/>'s class doc.
-///
-/// Only accepts drops whose <see cref="InventoryDragPayload.Kind"/> is
-/// <see cref="DragSourceKind.Grid"/> — slot-to-slot dragging (e.g. swapping
-/// Ring1 and Ring2 by dragging between the two rows) is not part of this
-/// milestone's scope ("drag between grid and equipment slots in both
-/// directions," not slot-to-slot). Dropping a slot-sourced drag here simply
-/// fails like any other rejected drop: nothing changes, the item stays
-/// equipped where it was.
+/// <see cref="InventoryDragPayload"/>'s class doc. Only grid-sourced drags drop
+/// here (slot-to-slot dragging is out of scope).
 /// </summary>
 [GlobalClass]
 public partial class EquipmentStripControl : Control
 {
-    public const int RowPx = 32;
-    public const int WidthPx = 160;
+    public const int WidthPx = 384;
+    public const int HeightPx = 300;
 
-    private static readonly EquipmentSlot[] Order =
+    private static readonly (EquipmentSlot Slot, Rect2 Rect)[] Layout =
     {
-        EquipmentSlot.Weapon,
-        EquipmentSlot.Offhand,
-        EquipmentSlot.Helmet,
-        EquipmentSlot.BodyArmour,
-        EquipmentSlot.Gloves,
-        EquipmentSlot.Boots,
-        EquipmentSlot.Belt,
-        EquipmentSlot.Amulet,
-        EquipmentSlot.Ring1,
-        EquipmentSlot.Ring2,
+        (EquipmentSlot.Helmet, new Rect2(160, 4, 64, 64)),
+        (EquipmentSlot.Amulet, new Rect2(228, 8, 42, 42)),
+        (EquipmentSlot.BodyArmour, new Rect2(148, 76, 88, 110)),
+        (EquipmentSlot.Weapon, new Rect2(56, 54, 64, 128)),
+        (EquipmentSlot.Offhand, new Rect2(264, 54, 64, 128)),
+        (EquipmentSlot.Ring1, new Rect2(6, 116, 44, 44)),
+        (EquipmentSlot.Ring2, new Rect2(334, 116, 44, 44)),
+        (EquipmentSlot.Gloves, new Rect2(56, 190, 64, 64)),
+        (EquipmentSlot.Boots, new Rect2(264, 190, 64, 64)),
+        (EquipmentSlot.Belt, new Rect2(148, 190, 88, 26)),
+        (EquipmentSlot.Pants, new Rect2(160, 220, 64, 76)),
     };
 
     private static string Label(EquipmentSlot slot) => slot switch
@@ -52,13 +44,14 @@ public partial class EquipmentStripControl : Control
         EquipmentSlot.Weapon => "Weapon",
         EquipmentSlot.Offhand => "Offhand",
         EquipmentSlot.Helmet => "Helmet",
-        EquipmentSlot.BodyArmour => "Body Armour",
+        EquipmentSlot.BodyArmour => "Body",
         EquipmentSlot.Gloves => "Gloves",
         EquipmentSlot.Boots => "Boots",
         EquipmentSlot.Belt => "Belt",
         EquipmentSlot.Amulet => "Amulet",
-        EquipmentSlot.Ring1 => "Ring 1",
-        EquipmentSlot.Ring2 => "Ring 2",
+        EquipmentSlot.Ring1 => "Ring",
+        EquipmentSlot.Ring2 => "Ring",
+        EquipmentSlot.Pants => "Pants",
         _ => slot.ToString(),
     };
 
@@ -92,7 +85,7 @@ public partial class EquipmentStripControl : Control
             GD.PushWarning("[strip] ItemTooltipControl not found: no 'ItemTooltip' node on the current scene, and ItemTooltipPath is unset. Tooltips are disabled.");
         }
 
-        CustomMinimumSize = new Vector2(WidthPx, Order.Length * RowPx);
+        CustomMinimumSize = new Vector2(WidthPx, HeightPx);
         MouseFilter = MouseFilterEnum.Stop;
     }
 
@@ -112,25 +105,11 @@ public partial class EquipmentStripControl : Control
     }
 
     /// <summary>Same per-frame poll shape as
-    /// <see cref="InventoryGridControl.UpdateHoverTooltip"/>, and the same
-    /// reason: one Control per row is drawn by hand already, so hit-testing the
-    /// mouse against a row here piggybacks on this method's existing redraw
-    /// poll rather than adding a signal per row.
-    ///
-    /// <b>Unlike <see cref="_GuiInput"/>'s use of <see cref="SlotAt"/></b>, this
-    /// runs unconditionally every visible frame rather than only when Godot has
-    /// already confirmed the mouse is over this Control — so it must check the
-    /// horizontal bound itself. <see cref="SlotAt"/> only tests the row (Y);
-    /// Godot's own dispatch supplies the X bound for free to
-    /// <see cref="_GuiInput"/>, but nothing supplies it here.</summary>
+    /// <see cref="InventoryGridControl.UpdateHoverTooltip"/>: hit-tests the mouse
+    /// against the slot rectangles every visible frame.</summary>
     private void UpdateHoverTooltip()
     {
-        var stripRect = new Rect2(Vector2.Zero, new Vector2(WidthPx, Order.Length * RowPx));
-        Vector2 mouseLocal = GetLocalMousePosition();
-
-        EquipmentItem? hovered = stripRect.HasPoint(mouseLocal) && SlotAt(mouseLocal) is { } slot
-            ? _equipment.GetEquipped(slot)
-            : null;
+        EquipmentItem? hovered = SlotAt(GetLocalMousePosition()) is { } slot ? _equipment.GetEquipped(slot) : null;
         if (hovered is not null)
         {
             _tooltip?.Show(hovered, this);
@@ -143,8 +122,15 @@ public partial class EquipmentStripControl : Control
 
     private static EquipmentSlot? SlotAt(Vector2 localPosition)
     {
-        int row = Mathf.FloorToInt(localPosition.Y / RowPx);
-        return row >= 0 && row < Order.Length ? Order[row] : null;
+        foreach ((EquipmentSlot slot, Rect2 rect) in Layout)
+        {
+            if (rect.HasPoint(localPosition))
+            {
+                return slot;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -223,25 +209,82 @@ public partial class EquipmentStripControl : Control
 
     public override void _Draw()
     {
+        DrawSilhouette();
         Font font = ThemeDB.FallbackFont;
-        int fontSize = ThemeDB.FallbackFontSize;
-
-        for (int i = 0; i < Order.Length; i++)
+        foreach ((EquipmentSlot slot, Rect2 rect) in Layout)
         {
-            EquipmentSlot slot = Order[i];
-            var rect = new Rect2(0, i * RowPx, WidthPx, RowPx);
-
             EquipmentItem? equipped = _equipment.GetEquipped(slot);
-            Color fill = equipped is not null
-                ? new Color(0.3f, 0.5f, 0.3f, 0.9f)
-                : new Color(0.15f, 0.15f, 0.18f, 0.9f);
+            Color rarity = equipped is not null ? RarityColor(equipped) : new Color(0.3f, 0.28f, 0.38f);
+            DrawRect(rect, equipped is not null ? new Color(0.1f, 0.09f, 0.14f, 0.95f) : new Color(0.07f, 0.06f, 0.1f, 0.85f));
+            DrawRect(rect, rarity, filled: false, width: equipped is not null ? 2f : 1f);
 
-            DrawRect(rect, fill);
-            DrawRect(rect, new Color(0, 0, 0, 0.6f), filled: false);
+            if (equipped is null)
+            {
+                DrawString(font, new Vector2(rect.Position.X, rect.GetCenter().Y + 5f), Label(slot),
+                    HorizontalAlignment.Center, rect.Size.X, 12, new Color(0.45f, 0.43f, 0.55f));
+                continue;
+            }
 
-            string text = equipped?.Descriptor.DisplayName ?? Label(slot);
-            DrawString(font, rect.Position + new Vector2(4, 20), text,
-                HorizontalAlignment.Left, rect.Size.X - 8, fontSize);
+            // Jewellery slots are too small for a name: a gem in the rarity colour
+            // (the tooltip has the details).
+            if (rect.Size.X < 50f)
+            {
+                Vector2 c = rect.GetCenter();
+                DrawColoredPolygon(new[] { c + new Vector2(0, -12), c + new Vector2(11, 0), c + new Vector2(0, 12), c + new Vector2(-11, 0) }, rarity);
+                DrawCircle(c + new Vector2(-3f, -4f), 2.5f, new Color(1f, 1f, 1f, 0.7f));
+                continue;
+            }
+
+            // Item name wrapped into the slot, in its rarity colour.
+            string[] words = equipped.Descriptor.DisplayName.Split(' ');
+            float y = rect.Position.Y + 14f;
+            string line = "";
+            foreach (string w in words)
+            {
+                string attempt = line.Length == 0 ? w : line + " " + w;
+                if (font.GetStringSize(attempt, HorizontalAlignment.Left, -1, 11).X > rect.Size.X - 6f && line.Length > 0)
+                {
+                    DrawString(font, new Vector2(rect.Position.X + 3f, y), line, HorizontalAlignment.Left, rect.Size.X - 6f, 11, rarity);
+                    y += 12f;
+                    line = w;
+                }
+                else
+                {
+                    line = attempt;
+                }
+
+                if (y > rect.End.Y - 4f)
+                {
+                    break;
+                }
+            }
+
+            if (line.Length > 0 && y <= rect.End.Y - 4f)
+            {
+                DrawString(font, new Vector2(rect.Position.X + 3f, y), line, HorizontalAlignment.Left, rect.Size.X - 6f, 11, rarity);
+            }
         }
+    }
+
+    private static Color RarityColor(EquipmentItem item) => item.Rarity switch
+    {
+        Rarity.Magic => new Color(0.5f, 0.6f, 1f),
+        Rarity.Rare => new Color(1f, 0.88f, 0.4f),
+        _ => new Color(0.85f, 0.85f, 0.85f),
+    };
+
+    /// <summary>A faint body behind the slots so the layout reads as a person.</summary>
+    private void DrawSilhouette()
+    {
+        var body = new Color(0.24f, 0.21f, 0.3f, 1f);
+        DrawCircle(new Vector2(192f, 36f), 30f, body);                 // head
+        DrawRect(new Rect2(180, 62, 24, 16), body);                     // neck
+        DrawRect(new Rect2(140, 72, 104, 120), body);                   // torso
+        DrawRect(new Rect2(100, 76, 44, 22), body);                     // shoulders
+        DrawRect(new Rect2(240, 76, 44, 22), body);
+        DrawRect(new Rect2(78, 84, 26, 110), body);                     // arms
+        DrawRect(new Rect2(280, 84, 26, 110), body);
+        DrawRect(new Rect2(156, 192, 30, 104), body);                   // legs
+        DrawRect(new Rect2(198, 192, 30, 104), body);
     }
 }

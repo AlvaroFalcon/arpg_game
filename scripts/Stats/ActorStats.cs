@@ -167,6 +167,8 @@ public partial class ActorStats : Node
         StatId.LifeOnKill => 0f,
         StatId.ExtraChains => 0f,
         StatId.ExtraPierce => 0f,
+        StatId.MaxStamina => 100f,
+        StatId.StaminaRegen => 22f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 

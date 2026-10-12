@@ -231,6 +231,61 @@ public partial class Player : CharacterBody2D
         }
     }
 
+    // --- Sprint (docs/design/movement.md -> "Sprint") -------------------------------
+
+    public const float SprintMultiplier = 1.55f;
+    private const float SprintDrainPerSecond = 30f;
+    private const float StaminaRegenDelay = 0.7f;
+
+    /// <summary>Current stamina (0..<see cref="MaxStamina"/>).</summary>
+    public float Stamina { get; private set; } = -1f;
+
+    public float MaxStamina => _stats.Get(StatId.MaxStamina).Value;
+
+    public bool IsSprinting { get; private set; }
+
+    /// <summary>After running dry, sprint stays locked until stamina is back to 30 %.</summary>
+    public bool Exhausted { get; private set; }
+
+    private float _staminaRegenWait;
+
+    /// <summary>Holds Shift to sprint while moving; returns the speed factor.</summary>
+    private float UpdateSprint(float dt, bool moving)
+    {
+        float max = MaxStamina;
+        if (Stamina < 0f)
+        {
+            Stamina = max;
+        }
+
+        bool wants = moving && Input.IsActionPressed("sprint") && !Exhausted && Stamina > 0f;
+        IsSprinting = wants;
+        if (wants)
+        {
+            Stamina = Mathf.Max(0f, Stamina - SprintDrainPerSecond * dt);
+            _staminaRegenWait = StaminaRegenDelay;
+            if (Stamina <= 0f)
+            {
+                Exhausted = true;
+            }
+
+            return SprintMultiplier;
+        }
+
+        _staminaRegenWait -= dt;
+        if (_staminaRegenWait <= 0f)
+        {
+            Stamina = Mathf.Min(max, Stamina + _stats.Get(StatId.StaminaRegen).Value * dt);
+        }
+
+        if (Exhausted && Stamina >= max * 0.3f)
+        {
+            Exhausted = false;
+        }
+
+        return 1f;
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         float speed = _stats.MovementSpeed.Value;
@@ -251,6 +306,7 @@ public partial class Player : CharacterBody2D
         }
 
         Vector2 wasdDir = Input.GetVector("move_left", "move_right", "move_up", "move_down");
+        speed *= UpdateSprint((float)delta, wasdDir != Vector2.Zero || !_navigationAgent.IsNavigationFinished());
         if (wasdDir != Vector2.Zero)
         {
             // WASD cancels a pending click-to-move destination outright instead of

@@ -75,4 +75,8 @@ public enum StatId
     LifeOnKill = 34,
     ExtraChains = 35,
     ExtraPierce = 36,
+
+    // Sprint (docs/design/movement.md -> "Sprint").
+    MaxStamina = 37,
+    StaminaRegen = 38,
 }

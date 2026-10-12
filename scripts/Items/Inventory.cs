@@ -36,6 +36,15 @@ public partial class Inventory : Node
     public const int Width = 12;
     public const int Height = 5;
 
+    /// <summary>This grid's size. The player's inventory keeps the 12x5
+    /// default (<see cref="Width"/>/<see cref="Height"/>); stash tabs are larger
+    /// (docs/design/items.md -> "Stash").</summary>
+    [Export]
+    public int Columns = Width;
+
+    [Export]
+    public int Rows = Height;
+
     private readonly Dictionary<EquipmentItem, Vector2I> _placements = new();
 
     /// <summary>Read-only view of what's placed where — item -&gt; top-left
@@ -58,7 +67,7 @@ public partial class Inventory : Node
     /// </summary>
     public bool[,] BuildOccupancyMask(EquipmentItem? ignore = null)
     {
-        var mask = new bool[Width, Height];
+        var mask = new bool[Columns, Rows];
         foreach ((EquipmentItem item, Vector2I origin) in _placements)
         {
             if (ReferenceEquals(item, ignore) || item.Base is null)
@@ -105,7 +114,7 @@ public partial class Inventory : Node
 
         int w = item.Base.Width;
         int h = item.Base.Height;
-        if (origin.X < 0 || origin.Y < 0 || origin.X + w > Width || origin.Y + h > Height)
+        if (origin.X < 0 || origin.Y < 0 || origin.X + w > Columns || origin.Y + h > Rows)
         {
             return false;
         }
@@ -162,9 +171,9 @@ public partial class Inventory : Node
 
         int w = item.Base.Width;
         int h = item.Base.Height;
-        for (int y = 0; y <= Height - h; y++)
+        for (int y = 0; y <= Rows - h; y++)
         {
-            for (int x = 0; x <= Width - w; x++)
+            for (int x = 0; x <= Columns - w; x++)
             {
                 var candidate = new Vector2I(x, y);
                 if (CanPlaceAt(item, candidate))

@@ -53,7 +53,7 @@ public static class InventorySorter
 
         Dictionary<EquipmentItem, Vector2I> original = new(inventory.Placements);
         var packed = new Dictionary<EquipmentItem, Vector2I>();
-        var occupied = new bool[Inventory.Width, Inventory.Height];
+        var occupied = new bool[inventory.Columns, inventory.Rows];
 
         foreach (EquipmentItem item in ordered)
         {
@@ -103,9 +103,9 @@ public static class InventorySorter
     /// <summary>First fit in reading order against the scratch mask.</summary>
     private static bool TryFit(bool[,] occupied, int width, int height, out Vector2I origin)
     {
-        for (int y = 0; y + height <= Inventory.Height; y++)
+        for (int y = 0; y + height <= occupied.GetLength(1); y++)
         {
-            for (int x = 0; x + width <= Inventory.Width; x++)
+            for (int x = 0; x + width <= occupied.GetLength(0); x++)
             {
                 if (IsFree(occupied, width, height, x, y))
                 {

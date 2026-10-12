@@ -30,6 +30,7 @@ public partial class RunHud : CanvasLayer
     private Label _killsLabel = null!;
     private ProgressBar _lifeBar = null!;
     private ProgressBar _manaBar = null!;
+    private ProgressBar _staminaBar = null!;
     private Label _lifeLabel = null!;
     private Label _manaLabel = null!;
     private HBoxContainer _dodgeRow = null!;
@@ -109,6 +110,9 @@ public partial class RunHud : CanvasLayer
         vitals.OffsetBottom = -16f;
         (_lifeBar, _lifeLabel) = AddVital(vitals, UiTheme.Life);
         (_manaBar, _manaLabel) = AddVital(vitals, UiTheme.Mana);
+        _staminaBar = UiTheme.Bar(new Color(0.85f, 0.8f, 0.3f), 7f);
+        _staminaBar.CustomMinimumSize = new Vector2(320f, 7f);
+        vitals.AddChild(_staminaBar);
         // No mana in the Survival Rift: skills are free and automatic.
         _manaBar.GetParent<Control>().Visible = !Player.Stats.IgnoresResourceCosts;
         _dodgeRow = UiTheme.HBox(vitals, 6);
@@ -227,6 +231,12 @@ public partial class RunHud : CanvasLayer
         {
             _manaBar.Value = mana.Max > 0 ? mana.Current / mana.Max : 0;
             _manaLabel.Text = $"{Mathf.FloorToInt(mana.Current)} / {Mathf.RoundToInt(mana.Max)}";
+        }
+
+        if (Player.MaxStamina > 0f)
+        {
+            _staminaBar.Value = Mathf.Max(0f, Player.Stamina) / Player.MaxStamina;
+            _staminaBar.Modulate = Player.Exhausted ? new Color(1f, 0.45f, 0.4f) : Colors.White;
         }
 
         float hintAlpha = Mathf.Clamp((25f - State.Elapsed) / 3f, 0f, 1f);

@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only == "endgame" ? EndgameScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : Script();
     }
 
     private async Task Script()
@@ -217,6 +217,33 @@ public partial class RunCapture : Node
             }
         }
 
+        // Demo gear: a full paper doll plus a few items for the inventory and stash.
+        var rng = new RandomNumberGenerator { Seed = 7 };
+        foreach ((string id, Items.EquipmentSlot slot, Items.Rarity rarity) in new[]
+        {
+            ("iron_axe", Items.EquipmentSlot.Weapon, Items.Rarity.Rare), ("oak_buckler", Items.EquipmentSlot.Offhand, Items.Rarity.Magic),
+            ("leather_cap", Items.EquipmentSlot.Helmet, Items.Rarity.Magic), ("ringmail_vest", Items.EquipmentSlot.BodyArmour, Items.Rarity.Rare),
+            ("rawhide_gloves", Items.EquipmentSlot.Gloves, Items.Rarity.Common), ("rawhide_boots", Items.EquipmentSlot.Boots, Items.Rarity.Magic),
+            ("rope_belt", Items.EquipmentSlot.Belt, Items.Rarity.Common), ("copper_amulet", Items.EquipmentSlot.Amulet, Items.Rarity.Rare),
+            ("copper_ring", Items.EquipmentSlot.Ring1, Items.Rarity.Magic), ("linen_trousers", Items.EquipmentSlot.Pants, Items.Rarity.Magic),
+        })
+        {
+            if (Items.ItemFactory.FindBase(id) is { } b)
+            {
+                k.Equipped[slot] = Items.ItemFactory.Roll(b, rarity, 22, rng);
+            }
+        }
+
+        for (int i = 0; i < 5; i++)
+        {
+            k.Inventory.Add((Items.ItemFactory.RollRandom(22, 0.5f, rng), new Vector2I(i * 2, 0)));
+        }
+
+        for (int i = 0; i < 6; i++)
+        {
+            profile.StashTabs[0].Add((Items.ItemFactory.RollRandom(18, 0.4f, rng), new Vector2I((i % 4) * 3, (i / 4) * 3)));
+        }
+
         k.Ascendancy = "samurai";
         k.AscendancyPoints = 4;
         foreach (AscendancyNode node in AscendancyCatalog.For("samurai").Take(3))
@@ -276,8 +303,31 @@ public partial class RunCapture : Node
         altar.Close();
         await Wait(0.2f);
 
+        panels.Sheet.Open();
+        await Wait(0.3f);
+        await Snap("panel-character.png");
+        panels.Sheet.Close();
+
+        var inventoryUi = player.GetNode<InventoryUI>("InventoryUI");
+        inventoryUi.SetOpen(true);
+        await Wait(0.3f);
+        await Snap("panel-inventory.png");
+        inventoryUi.SetOpen(false);
+
+        var stash = hideout.GetNode<StashPanel>("StashPanel");
+        stash.Open();
+        await Wait(0.3f);
+        await Snap("panel-stash.png");
+        stash.Close();
+        await Wait(0.2f);
+
         foreach ((string layout, int tier, string name) in new[] { ("ashen_halls", 5, "ashen"), ("bone_crypt", 8, "crypt"), ("drowned_mirror", 12, "drowned") })
         {
+            if (_only == "panels")
+            {
+                break;
+            }
+
             if (!ResourceLoader.Exists(RealityTheme.Get(LayoutCatalog.Find(layout)!.ThemeId).TilesetPath))
             {
                 GD.Print($"[CAPTURE] skipping {layout}: tileset missing");

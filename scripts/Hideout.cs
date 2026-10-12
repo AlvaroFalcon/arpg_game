@@ -26,6 +26,7 @@ public partial class Hideout : Node2D
     private bool _leaving;
     private MirrorPanel _mirror = null!;
     private AscendancyPanel _altar = null!;
+    private StashPanel _stash = null!;
     private Label _prompt = null!;
     private Label _status = null!;
     private ProgressBar _xp = null!;
@@ -59,6 +60,13 @@ public partial class Hideout : Node2D
         var altar = new Altar { Name = "Altar", Position = new Vector2(210f, 470f) };
         AddChild(altar);
         _interactables.Add(("Altar of Ascension", altar, _altar.Open));
+
+        _stash = new StashPanel { Player = _player, Name = "StashPanel" };
+        AddChild(_stash);
+        var chest = new StashChest { Name = "Stash", Position = new Vector2(480f, 500f) };
+        AddChild(chest);
+        _interactables.Add(("Stash", chest, _stash.Open));
+        AddLabel("Stash", chest.Position + new Vector2(0f, -44f));
 
         _portal.Position = new Vector2(680f, 150f);
         AddLabel("Survival Rift", _portal.Position + new Vector2(0f, -70f));
@@ -96,7 +104,7 @@ public partial class Hideout : Node2D
         hintBack.SetAnchorsPreset(Control.LayoutPreset.BottomWide, true);
         hintBack.OffsetTop = -72f;
         Label hint = UiTheme.Label(
-            "HIDEOUT — E at the Mirror to open a reality · walk into the portal for the Survival Rift\nI inventory · K skills · P passive tree · Space dodge · Esc menu",
+            "HIDEOUT — E at the Mirror to open a reality, at the chest for your stash · portal: Survival Rift\nI inventory · C character · K skills · P passive tree · Shift sprint · Space dodge · Esc menu",
             17, UiTheme.Text, HorizontalAlignment.Center);
         root.AddChild(hint);
         hint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
@@ -163,6 +171,21 @@ public partial class Hideout : Node2D
         _leaving = true;
         Profile.Get(this)?.CaptureFrom(_player);
         Scenes.Go(this, scene);
+    }
+
+    /// <summary>The stash: an iron-bound chest.</summary>
+    private sealed partial class StashChest : Node2D
+    {
+        public override void _Draw()
+        {
+            DrawRect(new Rect2(-30f, -10f, 60f, 30f), new Color(0.36f, 0.22f, 0.12f));
+            DrawRect(new Rect2(-30f, -26f, 60f, 18f), new Color(0.44f, 0.28f, 0.15f));
+            DrawRect(new Rect2(-30f, -26f, 60f, 44f), new Color(0.1f, 0.07f, 0.05f), false, 2f);
+            DrawRect(new Rect2(-30f, -10f, 60f, 4f), new Color(0.55f, 0.55f, 0.6f));
+            DrawRect(new Rect2(-22f, -26f, 5f, 46f), new Color(0.5f, 0.5f, 0.56f));
+            DrawRect(new Rect2(17f, -26f, 5f, 46f), new Color(0.5f, 0.5f, 0.56f));
+            DrawRect(new Rect2(-5f, -12f, 10f, 10f), new Color(0.9f, 0.75f, 0.3f));
+        }
     }
 
     /// <summary>The Altar of Ascension: a rune circle that glows once points are waiting.</summary>

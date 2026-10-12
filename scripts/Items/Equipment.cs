@@ -59,6 +59,7 @@ public partial class Equipment : Node
         ItemClass.BodyArmour => new[] { EquipmentSlot.BodyArmour },
         ItemClass.Gloves => new[] { EquipmentSlot.Gloves },
         ItemClass.Boots => new[] { EquipmentSlot.Boots },
+        ItemClass.Pants => new[] { EquipmentSlot.Pants },
         ItemClass.Belt => new[] { EquipmentSlot.Belt },
         ItemClass.Amulet => new[] { EquipmentSlot.Amulet },
         ItemClass.Ring => new[] { EquipmentSlot.Ring1, EquipmentSlot.Ring2 },
