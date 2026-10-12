@@ -41,6 +41,37 @@ public abstract partial class BossEnemy : Enemy
 
     public string CurrentAttack { get; protected set; } = "";
 
+    /// <summary>The element shown on the boss's target frame emblem.</summary>
+    public virtual DamageType Element => DamageType.Fire;
+
+    // The telegraph window: when the earliest pending telegraph started and the
+    // latest one lands, in the boss's own (pausable) clock. Lets the HUD show a
+    // cast bar that fills exactly until the hit arrives, for every attack,
+    // without each attack declaring its timing.
+    private float _clock;
+    private float _castStart;
+    private float _castEnd;
+
+    /// <summary>0..1 while a telegraphed attack is winding up, -1 otherwise.</summary>
+    public float CastProgress => _clock < _castEnd && _castEnd > _castStart ? Mathf.Clamp((_clock - _castStart) / (_castEnd - _castStart), 0f, 1f) : -1f;
+
+    /// <summary>Opens/extends the cast window shown on the HUD. Slam and Lane call
+    /// it; attacks that spawn telegraphs directly call it themselves.</summary>
+    protected void NoteTelegraph(float delay)
+    {
+        if (delay <= 0f)
+        {
+            return;
+        }
+
+        if (_clock >= _castEnd)
+        {
+            _castStart = _clock;
+        }
+
+        _castEnd = Mathf.Max(_castEnd, _clock + delay);
+    }
+
     public int Phase { get; private set; } = 1;
 
     /// <summary>Life fractions at which phases 2, 3... begin (descending).</summary>
@@ -63,6 +94,7 @@ public abstract partial class BossEnemy : Enemy
 
     protected override void Think(float delta)
     {
+        _clock += delta;
         int phase = 1;
         foreach (float threshold in PhaseThresholds)
         {
@@ -160,6 +192,7 @@ public abstract partial class BossEnemy : Enemy
 
     protected AreaBurst Slam(Vector2 at, float radius, float delay, float damage, float innerRadius = 0f, DamageType type = DamageType.Fire)
     {
+        NoteTelegraph(delay);
         AreaBurst burst = AreaBurst.Spawn(GetTree().CurrentScene, at, radius, delay, new Color(1f, 0.3f, 0.2f), MakeHit(damage, type, SkillTags.Area), innerRadius);
         burst.Impacted += _ => Core.Sfx.Play(this, "slam", -4f);
         return burst;
@@ -167,6 +200,7 @@ public abstract partial class BossEnemy : Enemy
 
     protected LineStrike Lane(Vector2 origin, Vector2 direction, float length, float width, float delay, float damage, DamageType type = DamageType.Fire)
     {
+        NoteTelegraph(delay);
         LineStrike strike = LineStrike.Spawn(GetTree().CurrentScene, origin, direction, length, width, delay, MakeHit(damage, type));
         strike.Impacted += () => Core.Sfx.Play(this, "explode", -6f);
         return strike;

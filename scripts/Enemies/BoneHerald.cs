@@ -17,6 +17,8 @@ namespace ArpgGame.Enemies;
 [GlobalClass]
 public partial class BoneHerald : BossEnemy
 {
+    public override DamageType Element => DamageType.Physical;
+
     [Export]
     public SpriteFrames? BoltFrames;
 
@@ -107,6 +109,7 @@ public partial class BoneHerald : BossEnemy
         for (int i = 0; i < count; i++)
         {
             marks[i] = ClampToArena(GlobalPosition + Vector2.Right.Rotated(Mathf.Tau * i / count) * 90f);
+            NoteTelegraph(1f);
             AreaBurst.Spawn(GetTree().CurrentScene, marks[i], 22f, 1f, new Color(0.7f, 0.4f, 1f), new HitProfile { Faction = Faction.Enemy }, 0f, harmless: true);
         }
 

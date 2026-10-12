@@ -203,3 +203,27 @@ boss arena (or the exit portal once the boss is down), visible monsters (coloure
 by rarity, bosses bigger) and the player as an arrow pointing where they move.
 The corner minimap stays. `UI/MapOverlay.cs`; the key comes in through `_Input`
 (the overlay is hidden most of the time).
+
+
+## Target frame **[IMPLEMENTED 2026-10-12]**
+
+Replaces the flat boss bar, modelled on AION 2's target frame (`UI/TargetFrame.cs`):
+
+- **Name line:** the monster level in a bronze ring, the name in its rarity colour
+  (bosses in ember).
+- **The bar:** an ornate frame with arrow-tip caps, a recent-damage trail, phase
+  marks at the boss's thresholds (the next one pulses as life closes in), the
+  percentage, a rank badge on the right tip (a star for bosses and uniques, a
+  diamond for rares) and a central emblem showing the boss's element (flame for
+  the Ember Colossus, a skull for the Bone Herald, water for Nereth).
+- **Under it:** the monster's modifiers as tags, a **cast bar** that fills until a
+  telegraphed attack lands (with the attack's name), and the **ailments** on the
+  target (ignite, chill, shock, poison stacks, curse) with their time left.
+- **Who it shows:** the boss during its fight; otherwise the monster under the
+  mouse (kept for 3 s after the cursor leaves it), or the nearest awake rare or
+  unique within ~7 m. So rares get their name, life and modifiers on screen too.
+
+The cast bar needed no per-attack timing: `BossEnemy` records the window of its
+pending telegraphs (`Slam`/`Lane`, and the few direct spawns call
+`NoteTelegraph`), and the bar runs from the first telegraph to the last impact.
+The frame is the "Target / boss life" panel in the HUD editor.

@@ -29,11 +29,6 @@ public partial class RunHud : CanvasLayer
     private Label _timerLabel = null!;
     private Label _killsLabel = null!;
     private HBoxContainer _skillRow = null!;
-    private Control _bossBox = null!;
-    private Label _bossName = null!;
-    private Label _bossAttack = null!;
-    private ProgressBar _bossBar = null!;
-    private Control _bossMarkers = null!;
     private Label _banner = null!;
     private Label _bannerSub = null!;
     private Label _callout = null!;
@@ -41,6 +36,7 @@ public partial class RunHud : CanvasLayer
     private float _bannerTime;
     private float _calloutTime;
     private BossEnemy? _boss;
+    private TargetFrame _target = null!;
     private readonly List<SkillSlotView> _slots = new();
     private string _skillSignature = "";
 
@@ -74,24 +70,9 @@ public partial class RunHud : CanvasLayer
         _killsLabel.OffsetTop = 16f;
 
         // --- boss bar ---
-        _bossBox = new VBoxContainer { Visible = false };
-        root.AddChild(_bossBox);
-        _bossBox.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
-        _bossBox.OffsetLeft = -320f;
-        _bossBox.OffsetRight = 320f;
-        _bossBox.OffsetTop = 56f;
-        _bossName = UiTheme.Label("", 22, UiTheme.Ember, HorizontalAlignment.Center);
-        _bossBox.AddChild(_bossName);
-        var barHolder = new Control { CustomMinimumSize = new Vector2(640f, 20f) };
-        _bossBox.AddChild(barHolder);
-        _bossBar = UiTheme.Bar(new Color(0.8f, 0.22f, 0.12f), 20f);
-        barHolder.AddChild(_bossBar);
-        _bossBar.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _bossMarkers = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
-        barHolder.AddChild(_bossMarkers);
-        _bossMarkers.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _bossAttack = UiTheme.Label("", 18, UiTheme.Text, HorizontalAlignment.Center);
-        _bossBox.AddChild(_bossAttack);
+        _target = new TargetFrame { Player = Player, Boss = () => _boss, Name = "TargetFrame" };
+        root.AddChild(_target);
+        _target.Dock(56f);
 
         // --- bottom centre: life, level badge, flask, skills (no mana here) ---
         var bar = new PlayerHudBar { Player = Player, Progress = () => (State.Level, State.ExperienceFraction) };
@@ -103,7 +84,7 @@ public partial class RunHud : CanvasLayer
         HudLayout.Register(_levelLabel, "run_level", "Level");
         HudLayout.Register(_timerLabel, "timer", "Timer");
         HudLayout.Register(_killsLabel, "kills", "Kills");
-        HudLayout.Register(_bossBox, "boss", "Boss life", PreviewBoss);
+        HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview);
         HudLayout.Register(bar, "vitals", "Life & flask");
         HudLayout.Register(_skillRow, "skills", "Skills");
 
@@ -164,18 +145,6 @@ public partial class RunHud : CanvasLayer
             _calloutTime = 2.2f;
         };
         b.PhaseChanged += (_, message) => ShowBanner($"Phase {b.Phase}", message, UiTheme.Ember);
-        _bossName.Text = b.DisplayName;
-        foreach (Node child in _bossMarkers.GetChildren())
-        {
-            child.QueueFree();
-        }
-
-        foreach (float threshold in b.PhaseThresholds)
-        {
-            var marker = new ColorRect { Color = new Color(1f, 0.9f, 0.6f, 0.9f), Size = new Vector2(3f, 20f), MouseFilter = Control.MouseFilterEnum.Ignore };
-            _bossMarkers.AddChild(marker);
-            marker.Position = new Vector2(640f * threshold - 1.5f, 0f);
-        }
     }
 
     public override void _Process(double delta)
@@ -193,7 +162,6 @@ public partial class RunHud : CanvasLayer
         _controlsHint.Modulate = new Color(1f, 1f, 1f, hintAlpha);
 
         UpdateSkills();
-        UpdateBoss();
 
         if (_bannerTime > 0f)
         {
@@ -249,29 +217,4 @@ public partial class RunHud : CanvasLayer
         }
     }
 
-    private void PreviewBoss(bool on)
-    {
-        if (_boss is not null && IsInstanceValid(_boss) && !_boss.Health.IsDead)
-        {
-            return;
-        }
-
-        _bossBox.Visible = on;
-        _bossName.Text = on ? "Boss name" : "";
-        _bossAttack.Text = on ? "« attack name »" : "";
-        _bossBar.Value = 0.65;
-    }
-
-    private void UpdateBoss()
-    {
-        bool show = _boss is not null && IsInstanceValid(_boss) && !_boss.Health.IsDead;
-        _bossBox.Visible = show;
-        if (!show)
-        {
-            return;
-        }
-
-        _bossBar.Value = _boss!.LifeFraction;
-        _bossAttack.Text = _boss.CurrentAttack.Length > 0 ? $"« {_boss.CurrentAttack} »" : "";
-    }
 }

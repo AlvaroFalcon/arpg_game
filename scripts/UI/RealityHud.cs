@@ -30,11 +30,6 @@ public partial class RealityHud : CanvasLayer
     private Label _infoLabel = null!;
     private Label _modsLabel = null!;
     private HBoxContainer _skillRow = null!;
-    private Control _bossBox = null!;
-    private Label _bossName = null!;
-    private Label _bossAttack = null!;
-    private ProgressBar _bossBar = null!;
-    private Control _bossMarkers = null!;
     private Label _banner = null!;
     private Label _bannerSub = null!;
     private Label _callout = null!;
@@ -43,6 +38,7 @@ public partial class RealityHud : CanvasLayer
     private float _bannerTime;
     private float _calloutTime;
     private BossEnemy? _boss;
+    private TargetFrame _target = null!;
     private readonly List<SkillSlotView> _slots = new();
     private string _skillSignature = "";
     private CharacterBuild? _build;
@@ -78,24 +74,9 @@ public partial class RealityHud : CanvasLayer
         info.AddChild(_minimap);
 
         // --- boss bar ---
-        _bossBox = new VBoxContainer { Visible = false };
-        root.AddChild(_bossBox);
-        _bossBox.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
-        _bossBox.OffsetLeft = -300f;
-        _bossBox.OffsetRight = 300f;
-        _bossBox.OffsetTop = 30f;
-        _bossName = UiTheme.Label("", 22, UiTheme.Ember, HorizontalAlignment.Center);
-        _bossBox.AddChild(_bossName);
-        var barHolder = new Control { CustomMinimumSize = new Vector2(600f, 20f) };
-        _bossBox.AddChild(barHolder);
-        _bossBar = UiTheme.Bar(new Color(0.8f, 0.22f, 0.12f), 20f);
-        barHolder.AddChild(_bossBar);
-        _bossBar.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _bossMarkers = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
-        barHolder.AddChild(_bossMarkers);
-        _bossMarkers.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _bossAttack = UiTheme.Label("", 18, UiTheme.Text, HorizontalAlignment.Center);
-        _bossBox.AddChild(_bossAttack);
+        _target = new TargetFrame { Player = Player, Boss = () => Reality.BossFightActive ? _boss : null, Name = "TargetFrame" };
+        root.AddChild(_target);
+        _target.Dock(30f);
 
         // --- the Tab overlay map, under every other HUD element ---
         root.AddChild(new MapOverlay { Reality = Reality, Name = "MapOverlay" });
@@ -147,7 +128,7 @@ public partial class RealityHud : CanvasLayer
         // Movable in the HUD editor (pause menu → Edit HUD).
         HudLayout.Register(_levelLabel, "character", "Character");
         HudLayout.Register(info, "reality_info", "Reality info & minimap");
-        HudLayout.Register(_bossBox, "boss", "Boss life", PreviewBoss);
+        HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview);
         HudLayout.Register(_bar, "vitals", "Life, mana & flasks");
         HudLayout.Register(_skillRow, "skills", "Skills");
         HudLayout.Register(_toasts, "toasts", "Notifications", on => PreviewToasts(_toasts, on));
@@ -166,19 +147,6 @@ public partial class RealityHud : CanvasLayer
         string mods = string.Join("\n", Reality.Modifiers.Select(m => RealityModifier.Find(m)?.Text ?? m));
         _modsLabel.Text = mods;
         _titleLabel.Text = $"{Reality.Layout.Name}  ·  T{Reality.Tier}";
-    }
-
-    private void PreviewBoss(bool on)
-    {
-        if (Reality.BossFightActive)
-        {
-            return;
-        }
-
-        _bossBox.Visible = on;
-        _bossName.Text = on ? "Boss name" : "";
-        _bossAttack.Text = on ? "« attack name »" : "";
-        _bossBar.Value = 0.65;
     }
 
     /// <summary>A placeholder line so the (usually empty) notification list has something to grab.</summary>
@@ -233,13 +201,6 @@ public partial class RealityHud : CanvasLayer
             _calloutTime = 2.2f;
         };
         b.PhaseChanged += (_, message) => ShowBanner($"Phase {b.Phase}", message, UiTheme.Ember);
-        _bossName.Text = b.ShownName.Length > 0 ? b.ShownName : b.DisplayName;
-        foreach (float threshold in b.PhaseThresholds)
-        {
-            var marker = new ColorRect { Color = new Color(1f, 0.9f, 0.6f, 0.9f), Size = new Vector2(3f, 20f), MouseFilter = Control.MouseFilterEnum.Ignore };
-            _bossMarkers.AddChild(marker);
-            marker.Position = new Vector2(600f * threshold - 1.5f, 0f);
-        }
     }
 
     public override void _Process(double delta)
@@ -260,7 +221,6 @@ public partial class RealityHud : CanvasLayer
         _infoLabel.Text = $"Monster level {Reality.MonsterLevel}  ·  {portals} portal{(portals == 1 ? "" : "s")} left\nCleared {cleared}  ·  {UiTheme.FormatTime(Reality.Elapsed)}";
 
         UpdateSkills();
-        UpdateBoss();
         UpdateToasts(dt);
         _minimap.QueueRedraw();
 
@@ -338,19 +298,6 @@ public partial class RealityHud : CanvasLayer
         {
             view.Cooldown = Player.SkillUser.CooldownFraction(view.Skill);
         }
-    }
-
-    private void UpdateBoss()
-    {
-        bool show = Reality.BossFightActive && _boss is not null && IsInstanceValid(_boss) && !_boss.Health.IsDead;
-        _bossBox.Visible = show;
-        if (!show)
-        {
-            return;
-        }
-
-        _bossBar.Value = _boss!.LifeFraction;
-        _bossAttack.Text = _boss.CurrentAttack.Length > 0 ? $"« {_boss.CurrentAttack} »" : "";
     }
 
     /// <summary>Explored floor, the player, the boss room and the exit, PoE-style.</summary>

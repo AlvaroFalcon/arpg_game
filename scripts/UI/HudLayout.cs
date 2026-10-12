@@ -166,7 +166,7 @@ public partial class HudMovable : Node
     public Action<bool>? Preview;
 
     public Vector2 Default { get; private set; }
-    public bool Ready { get; private set; }
+    public bool IsSettled { get; private set; }
 
     public override void _Ready()
     {
@@ -179,7 +179,7 @@ public partial class HudMovable : Node
     private void Settle()
     {
         Default = Target.Position;
-        Ready = true;
+        IsSettled = true;
         Target.Position = Default + HudLayout.OffsetOf(Id);
         ApplyScale(HudLayout.ScaleOf(Id));
         KeepOnScreen();
@@ -239,7 +239,7 @@ public partial class HudMovable : Node
 
     public void ResetPosition()
     {
-        if (Ready)
+        if (IsSettled)
         {
             Target.Position = Default;
             ApplyScale(1f);

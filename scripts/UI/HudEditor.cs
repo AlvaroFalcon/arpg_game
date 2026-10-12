@@ -39,7 +39,7 @@ public partial class HudEditor : CanvasLayer
 
         foreach (HudMovable m in GetTree().GetNodesInGroup(HudLayout.Group).OfType<HudMovable>())
         {
-            if (!IsInstanceValid(m.Target) || !m.Ready)
+            if (!IsInstanceValid(m.Target) || !m.IsSettled)
             {
                 continue;
             }

@@ -22,6 +22,8 @@ namespace ArpgGame.Enemies;
 [GlobalClass]
 public partial class Nereth : BossEnemy
 {
+    public override DamageType Element => DamageType.Cold;
+
     [Export]
     public SpriteFrames? OrbFrames;
 
@@ -200,6 +202,7 @@ public partial class Nereth : BossEnemy
         }
 
         // The flood itself: a room-wide wash drawn under everything.
+        NoteTelegraph(delay);
         AreaBurst flood = AreaBurst.Spawn(GetTree().CurrentScene, GlobalPosition, 1100f, delay, Water, new HitProfile { Faction = Faction.Enemy }, 0f, harmless: true);
         flood.ZIndex = -1;
         if (!await Wait(delay)) return;

@@ -441,12 +441,12 @@ public partial class EndgameSmokeTest : Node2D
             Vector2 before = vitals.Target.Position;
             vitals.MoveBy(new Vector2(-120f, -60f), GetViewport().GetVisibleRect().Size);
             moved = vitals.Target.Position.DistanceTo(before + new Vector2(-120f, -60f)) < 0.5f;
-            vitals.SetScale(1.25f);
+            vitals.SetScale(0.8f);
             UI.HudLayout.Save();
             UI.HudLayout.Reload();
         }
 
-        Check("HUD-LAYOUT-SAVE", movables.Count >= 6 && moved && UI.HudLayout.OffsetOf("vitals").DistanceTo(new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(UI.HudLayout.ScaleOf("vitals"), 1.25f),
+        Check("HUD-LAYOUT-SAVE", movables.Count >= 6 && moved && UI.HudLayout.OffsetOf("vitals").DistanceTo(new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(UI.HudLayout.ScaleOf("vitals"), 0.8f),
             $"{movables.Count} movable panels ({string.Join(", ", movables.Select(m => m.Id))}), moved={moved}, saved offset {UI.HudLayout.OffsetOf("vitals")}, saved size {UI.HudLayout.ScaleOf("vitals"):P0}");
 
         // The small bars over the character.
@@ -527,7 +527,7 @@ public partial class EndgameSmokeTest : Node2D
             {
                 await Frames(2);
                 UI.HudMovable? v = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().FirstOrDefault(m => m.Id == "vitals" && r.IsAncestorOf(m));
-                Check("HUD-LAYOUT-APPLIED", v is not null && v.Target.Position.DistanceTo(v.Default + new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(v.Target.Scale.X, 1.25f),
+                Check("HUD-LAYOUT-APPLIED", v is not null && v.Target.Position.DistanceTo(v.Default + new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(v.Target.Scale.X, 0.8f),
                     $"the next reality's life cluster sits at its default {v?.Default} + the saved offset: {v?.Target.Position}, size {v?.Target.Scale.X:P0}");
                 UI.HudLayout.Reset();
                 UI.HudLayout.Save();
@@ -544,6 +544,18 @@ public partial class EndgameSmokeTest : Node2D
                 telegraphs = GetChildren().Count(n => n is AreaBurst or LineStrike or BossBullet);
             }
 
+            // The target frame follows the boss, and its cast bar runs while a telegraphed
+            // attack winds up (bullets don't count: they aren't charged).
+            var frame = r.GetNode("Hud").FindChild("TargetFrame", true, false) as UI.TargetFrame;
+            float cast = -1f;
+            for (int i = 0; i < 600 && (cast < 0f || frame?.Target != r.Boss); i++)
+            {
+                await Frames(1);
+                cast = Mathf.Max(cast, r.Boss?.CastProgress ?? -1f);
+            }
+
+            Check($"TARGET-FRAME-{id}", frame?.Target == r.Boss && cast >= 0f,
+                $"target frame shows {frame?.Target?.DisplayName ?? "nothing"} (boss {r.Boss?.DisplayName}), cast bar at {cast:P0} while the first telegraph is pending");
             Check($"REALITY-{id}", r.MonstersTotal >= 20 && r.Boss is not null && r.BossFightActive && telegraphs > 0,
                 $"{r.MonstersTotal} monsters ({string.Join(", ", roster)}), boss {r.Boss?.DisplayName}, first attack '{r.Boss?.CurrentAttack}' with {telegraphs} telegraphs");
             r.QueueFree();

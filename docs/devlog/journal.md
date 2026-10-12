@@ -272,3 +272,7 @@ The HUD is now the player's to arrange: Esc → Edit HUD frames every movable pa
 ## 2026-10-12 — Resizable HUD panels and overhead bars
 
 Two follow-ups from the owner: the HUD editor now resizes panels too (corner grip or mouse wheel, 50–200%, scaled around their centre and nudged back on screen if they grow past an edge, saved beside the offsets), and a small life/mana bar floats over the character so you don't have to look down mid-fight (toggle in Settings). Screenshots: `hud-editor.png` (cluster at 80%, info at 125%), `overhead-bars.png`.
+
+## 2026-10-12 — An AION-style target frame
+
+The boss bar became a target frame after the owner's AION 2 reference: level and rarity-coloured name over an ornate bar with phase marks, a damage trail, an element emblem and a rank star, then modifier tags, a cast bar and the target's ailments. It follows the boss in its fight and otherwise the monster under the mouse or the nearest awake rare, so rares finally show their modifiers. The cast bar's timing comes for free: bosses record the window of their pending telegraphs. The first test run "failed" because it counted Nereth's bullets as telegraphs — bullets aren't charged attacks, so the test now waits for a real wind-up. Screenshot: `target-frame-boss.png`.
