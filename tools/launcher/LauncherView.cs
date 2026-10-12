@@ -140,9 +140,10 @@ namespace ArpgGameLauncher
             // match tools/art/launcher.ts, ×2).
             float flare = 0.5f + 0.5f * (float)Math.Sin(_time * 3.1f);
             float charge = 0.5f + 0.5f * (float)Math.Sin(_time * 1.7f + 1f);
-            Pulse(g, new PointF(512, 328), 70, Color.FromArgb(255, 246, 220), (int)(28 + 50 * flare));
-            Pulse(g, new PointF(286, 204), 56, Color.FromArgb(122, 232, 255), (int)(30 + 60 * charge));
-            Pulse(g, new PointF(820, 236), 90, Color.FromArgb(255, 120, 50), (int)(18 + 30 * charge));
+            Pulse(g, new PointF(532, 232), 70, Color.FromArgb(255, 246, 220), (int)(28 + 50 * flare));
+            Pulse(g, new PointF(196, 154), 56, Color.FromArgb(122, 232, 255), (int)(30 + 60 * charge));
+            Pulse(g, new PointF(300, 246), 34, Color.FromArgb(122, 232, 255), (int)(20 + 40 * charge));
+            Pulse(g, new PointF(820, 228), 90, Color.FromArgb(255, 120, 50), (int)(18 + 30 * charge));
 
             // Embers and motes, pixel-sized like the art.
             foreach (Mote m in _motes)

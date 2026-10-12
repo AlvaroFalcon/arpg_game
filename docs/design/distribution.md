@@ -31,6 +31,14 @@
   shimmer, a glowing PLAY button (RETRY on failure, UPDATING while busy), drifting
   embers and pulsing lights. A first draft had a literal "VS" over a rift of light;
   the owner found it too on the nose and wanted the scene to show a fight instead.
+  A second pass replaced the up-scaled game sprites with illustrated figures
+  ("much more quality, like real characters, really moving"): `tools/art/rig.ts`
+  is a small pose rig (joints → shaded tapered limbs, torso, anime head in
+  three-quarter view, flowing hair/capes) and `tools/art/heroes.ts` poses the
+  warrior lunging into a slash, the rogue leaping onto a bat, the Arcanist casting
+  and the Sage reading her tome, against a demon brute. The remaining monsters are
+  drawn as dark silhouettes whose hot details glow, so their low-res sprites read
+  as depth instead of clashing with the illustrated heroes.
 - An optional first argument (a folder URL serving `version.txt` and the zip)
   skips the API; it is how the updater was tested against a local server.
 

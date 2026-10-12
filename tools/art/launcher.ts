@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { buildDocument, encodePng, mulberry32, PROJECT_ROOT, type SpriteSpec } from './lib';
 import { compositeFrame } from './vendor/easypixel/packages/core/src/index';
 import { all } from './sprites/index';
+import { arcanistCast, bruteRear, rogueLeap, sageRead, warriorLunge, type Painted } from './heroes';
 
 const W = 480;
 const H = 270;
@@ -135,6 +136,10 @@ interface Figure {
   flip?: boolean;
   /** 0..1: how much the figure sinks into shadow (back rows). */
   dim?: number;
+  /** Paint as a dark silhouette where only hot/bright details (eyes, molten
+   * cracks, magic) glow: background monsters, whose low-res sprites would
+   * otherwise clash with the illustrated heroes. */
+  silhouette?: boolean;
 }
 
 const ambientLeft = hex('#8a8fb8');
@@ -165,7 +170,13 @@ function blit(f: Figure): void {
       if (px[i + 3] < 128) continue;
       const base: RGB = [px[i] / 255, px[i + 1] / 255, px[i + 2] / 255];
       const shade = 1 - (f.dim ?? 0) * 0.55;
-      const c: RGB = [base[0] * ambient[0] * shade, base[1] * ambient[1] * shade, base[2] * ambient[2] * shade];
+      let c: RGB = [base[0] * ambient[0] * shade, base[1] * ambient[1] * shade, base[2] * ambient[2] * shade];
+      if (f.silhouette) {
+        const hot = base[0] > 0.75 && base[0] > base[2] * 1.6 && base[1] > 0.3;
+        const bright = base[0] + base[1] + base[2] > 2.4;
+        const magic = base[2] > 0.7 && base[2] > base[1] * 1.3;
+        c = hot || bright || magic ? [base[0] * 1.5, base[1] * 1.3, base[2] * 1.3] : mix(hex('#150b16'), base, 0.16);
+      }
       for (let oy = 0; oy < f.scale; oy++) {
         for (let ox = 0; ox < f.scale; ox++) {
           const x = left + sx * f.scale + ox;
@@ -183,22 +194,55 @@ function blit(f: Figure): void {
 // the casters hang back charging their spells.
 const CLASH_X = 236;
 const figures: Figure[] = [
-  { name: 'ember_colossus', frame: 1, x: 410, y: 196 - LIFT, scale: 4, flip: true, dim: 0.3 },
-  { name: 'bat', x: 318, y: 92 - LIFT, scale: 3, flip: true, dim: 0.15 },
-  { name: 'bat', frame: 1, x: 362, y: 66 - LIFT, scale: 2, flip: true, dim: 0.35 },
-  { name: 'caster', x: 456, y: 216 - LIFT, scale: 3, flip: true, dim: 0.2 },
-  { name: 'skeleton', x: 334, y: 222 - LIFT, scale: 3, flip: true, dim: 0.1 },
-  { name: 'slime', x: 402, y: 246 - LIFT, scale: 3, flip: true },
+  { name: 'ember_colossus', frame: 1, x: 410, y: 196 - LIFT, scale: 4, flip: true, silhouette: true },
+  { name: 'bat', x: 288, y: 84, scale: 3, flip: true, silhouette: true },
+  { name: 'bat', frame: 1, x: 362, y: 66 - LIFT, scale: 2, flip: true, silhouette: true },
+  { name: 'caster', x: 456, y: 216 - LIFT, scale: 3, flip: true, silhouette: true },
+  { name: 'skeleton', x: 362, y: 222 - LIFT, scale: 3, flip: true, silhouette: true },
+  { name: 'slime', x: 402, y: 246 - LIFT, scale: 3, flip: true, silhouette: true },
 
-  { name: 'sage', x: 54, y: 214 - LIFT, scale: 2, dim: 0.2 },
-  { name: 'player', x: 120, y: 226 - LIFT, scale: 2 },
-
-  // The clash: brute and imp take the hits.
-  { name: 'brute', x: CLASH_X + 40, y: 230 - LIFT, scale: 3, flip: true },
-  { name: 'imp', x: CLASH_X + 6, y: 256 - LIFT, scale: 3, flip: true },
-  { name: 'warrior', frame: 6, x: CLASH_X - 22, y: 236 - LIFT, scale: 2 },
-  { name: 'rogue', frame: 6, x: CLASH_X - 52, y: 258 - LIFT, scale: 2 },
+  { name: 'imp', x: 326, y: 256 - LIFT, scale: 3, flip: true, silhouette: true },
 ];
+
+/** Illustrated figures (tools/art/heroes.ts), placed by their feet. */
+const painted: { fig: Painted; x: number; y: number; dim?: number }[] = [
+  { fig: sageRead(), x: 52, y: 214 - LIFT, dim: 0.15 },
+  { fig: arcanistCast(), x: 118, y: 228 - LIFT },
+  { fig: bruteRear(), x: 292, y: 238 - LIFT },
+  { fig: warriorLunge(), x: 206, y: 244 - LIFT },
+  // Mid-air, driving a dagger into a bat.
+  { fig: rogueLeap(), x: 212, y: 118 },
+];
+
+function blitPainted(f: Painted, fx: number, fy: number, dim = 0): void {
+  const rgb = (c: string): RGB => hex(f.legend[c] ?? '#ff00ff');
+  const left = Math.round(fx - f.anchor[0]);
+  const top = Math.round(fy - f.anchor[1]);
+  const ambient = mix(ambientLeft, ambientRight, fx / W);
+  const width = f.rows[0].length;
+  // Contact shadow.
+  for (let dy = -3; dy <= 3; dy++) {
+    for (let dx = -16; dx <= 16; dx++) {
+      const d = Math.hypot(dx / 16, dy / 3);
+      if (d < 1) {
+        const [r, g, b] = get(Math.round(fx + dx), Math.round(fy + dy));
+        set(Math.round(fx + dx), Math.round(fy + dy), [r * (0.45 + d * 0.55), g * (0.45 + d * 0.55), b * (0.45 + d * 0.55)]);
+      }
+    }
+  }
+  f.rows.forEach((row, y) => {
+    for (let x = 0; x < width; x++) {
+      const c = row[x];
+      if (c === '.') continue;
+      const base = rgb(c);
+      const shade = 1 - dim * 0.55;
+      set(left + x, top + y, [base[0] * ambient[0] * shade * 1.1, base[1] * ambient[1] * shade * 1.1, base[2] * ambient[2] * shade * 1.1]);
+      const px = left + x;
+      const py = top + y;
+      if (px >= 0 && py >= 0 && px < W && py < H) mask[py * W + px] = 1;
+    }
+  });
+}
 
 // Casters' ground runes go under everyone (drawn before the figures).
 function ring(cx: number, cy: number, r: number, c: RGB, k: number): void {
@@ -209,8 +253,8 @@ function ring(cx: number, cy: number, r: number, c: RGB, k: number): void {
   }
 }
 function runeCircle(cx: number, cy: number, r: number, c: RGB): void {
-  ring(cx, cy, r, c, 0.4);
-  ring(cx, cy, r * 0.72, c, 0.25);
+  ring(cx, cy, r, c, 0.28);
+  ring(cx, cy, r * 0.72, c, 0.16);
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2;
     const x = Math.round(cx + Math.cos(a) * r * 0.86);
@@ -220,10 +264,11 @@ function runeCircle(cx: number, cy: number, r: number, c: RGB): void {
   }
   glow(cx, cy, r * 1.3, c, 0.35, r * 0.45);
 }
-runeCircle(120, 226 - LIFT, 34, hex('#5ad8ff'));
-runeCircle(54, 214 - LIFT, 24, hex('#7aff9a'));
+runeCircle(118, 228 - LIFT, 34, hex('#5ad8ff'));
+runeCircle(52, 214 - LIFT, 24, hex('#7aff9a'));
 
 for (const f of figures) blit(f);
+for (const f of painted) blitPainted(f.fig, f.x, f.y, f.dim);
 
 // --- light ----------------------------------------------------------------------------------
 
@@ -239,7 +284,8 @@ glow(400, 200 - LIFT, 170, ember, 0.5, 95);
 glow(410, 140 - LIFT, 46, hex('#ff8a3a'), 0.55); // the Colossus' molten core
 
 // The Arcanist charges a big orb at her staff tip; the Sage's tome glows.
-const orb = { x: 143, y: 128 - LIFT };
+// Positions follow the painted figures: left = x - anchor, top = y - anchor.
+const orb = { x: 98, y: 77 };
 glow(orb.x, orb.y, 60, arcane, 0.5);
 glow(orb.x, orb.y, 18, arcane, 1.1);
 glow(orb.x, orb.y, 7, white, 1.6);
@@ -251,8 +297,9 @@ for (let i = 0; i < 14; i++) {
     add(Math.round(orb.x + Math.cos(a + t * 1.4) * d * (1 - t * 0.6)), Math.round(orb.y + Math.sin(a + t * 1.4) * d * (1 - t * 0.6)), arcane, 0.5 * (1 - t));
   }
 }
-glow(42, 186 - LIFT, 26, nature, 0.7);
-for (let i = 0; i < 18; i++) add(Math.round(30 + rand() * 26), Math.round(150 - LIFT + rand() * 40), nature, 0.9 + rand());
+glow(150, 123, 14, arcane, 0.9); // the casting palm
+glow(81, 111, 22, nature, 0.8); // the Sage's tome
+for (let i = 0; i < 18; i++) add(Math.round(70 + rand() * 24), Math.round(88 + rand() * 24), nature, 0.9 + rand());
 
 // The enemy caster answers with a dark bolt of its own.
 glow(440, 186 - LIFT, 20, hex('#c46aff'), 0.9);
@@ -266,9 +313,9 @@ function arc(cx: number, cy: number, r: number, from: number, to: number, thick:
     }
   }
 }
-const hit = { x: CLASH_X + 20, y: 190 - LIFT };
-arc(CLASH_X - 6, 196 - LIFT, 36, -1.9, 0.35, 5, white, 0.9);
-arc(CLASH_X - 6, 196 - LIFT, 30, -1.6, 0.2, 2, gold, 0.6);
+const hit = { x: 266, y: 116 };
+arc(206, 143, 50, -2.5, -0.35, 5, white, 0.9);
+arc(206, 143, 43, -2.2, -0.45, 2, gold, 0.6);
 glow(hit.x, hit.y, 40, white, 0.55);
 glow(hit.x, hit.y, 12, white, 1.2);
 for (let i = 0; i < 16; i++) {
@@ -279,8 +326,8 @@ for (let i = 0; i < 16; i++) {
   }
 }
 // The rogue's quick stab into the imp.
-const stab = { x: CLASH_X - 18, y: 226 - LIFT };
-arc(CLASH_X - 44, 228 - LIFT, 22, -0.9, 0.5, 3, hex('#d8f0ff'), 0.8);
+const stab = { x: 272, y: 70 };
+arc(250, 74, 22, -0.8, 0.3, 3, hex('#d8f0ff'), 0.8);
 glow(stab.x, stab.y, 16, hex('#d8f0ff'), 0.8);
 
 // Where the two lines meet the floor brightens.
