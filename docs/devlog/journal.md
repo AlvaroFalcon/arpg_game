@@ -268,3 +268,7 @@ Flasks finally exist, as items.md had planned: Q drinks the life flask and R the
 ## 2026-10-12 — A movable HUD and the overlay map
 
 The HUD is now the player's to arrange: Esc → Edit HUD frames every movable panel (life/mana cluster, skills, boss bar, reality info and minimap, character, notifications, the introduction guide; level/timer/kills in the Survival Rift) and lets them be dragged anywhere; the offsets are saved per panel id, shared across screens. Tab opens a big see-through map centred on the player, like Diablo and PoE, with wall outlines, markers and visible monsters. Testing the Tab key headless taught something: the headless display server has no window to deliver input events, so `Input.ParseInputEvent` never reaches nodes there — the test toggles the overlay directly and lets it draw. Screenshots: `map-overlay.png`, `hud-editor.png`.
+
+## 2026-10-12 — Resizable HUD panels and overhead bars
+
+Two follow-ups from the owner: the HUD editor now resizes panels too (corner grip or mouse wheel, 50–200%, scaled around their centre and nudged back on screen if they grow past an edge, saved beside the offsets), and a small life/mana bar floats over the character so you don't have to look down mid-fight (toggle in Settings). Screenshots: `hud-editor.png` (cluster at 80%, info at 125%), `overhead-bars.png`.

@@ -18,6 +18,10 @@ public partial class HudEditor : CanvasLayer
 
     private readonly List<(HudMovable Movable, Panel Frame, Label Name)> _frames = new();
     private HudMovable? _dragging;
+    private HudMovable? _resizing;
+    private float _resizeStartScale;
+    private float _resizeStartDistance;
+    private Vector2 _resizeCenter;
     private Control _root = null!;
     private StyleBoxFlat _idle = null!;
     private StyleBoxFlat _hot = null!;
@@ -48,6 +52,19 @@ public partial class HudEditor : CanvasLayer
             name.Position = new Vector2(6f, 2f);
             frame.AddChild(name);
             HudMovable movable = m;
+
+            // Resize grip in the bottom-right corner (the mouse wheel works too).
+            var grip = new Panel { MouseFilter = Control.MouseFilterEnum.Stop, MouseDefaultCursorShape = Control.CursorShape.Fdiagsize, CustomMinimumSize = new Vector2(14f, 14f), Size = new Vector2(14f, 14f) };
+            var gripStyle = new StyleBoxFlat { BgColor = new Color(1f, 0.85f, 0.5f, 0.95f) };
+            gripStyle.SetCornerRadiusAll(2);
+            grip.AddThemeStyleboxOverride("panel", gripStyle);
+            grip.SetAnchorsPreset(Control.LayoutPreset.BottomRight, true);
+            grip.OffsetLeft = -16f;
+            grip.OffsetTop = -16f;
+            grip.OffsetRight = -2f;
+            grip.OffsetBottom = -2f;
+            grip.GuiInput += e => OnGripInput(movable, grip, e);
+            frame.AddChild(grip);
             frame.GuiInput += e => OnFrameInput(movable, frame, e);
             frame.MouseEntered += () => frame.AddThemeStyleboxOverride("panel", _hot);
             frame.MouseExited += () =>
@@ -66,15 +83,15 @@ public partial class HudEditor : CanvasLayer
         _root.AddChild(bar);
         // In the middle of the screen, where no HUD panel lives by default.
         bar.SetAnchorsPreset(Control.LayoutPreset.Center, true);
-        bar.OffsetLeft = -330f;
-        bar.OffsetRight = 330f;
+        bar.OffsetLeft = -380f;
+        bar.OffsetRight = 380f;
         bar.OffsetTop = -150f;
         bar.OffsetBottom = -90f;
         HBoxContainer row = UiTheme.HBox(bar, 14);
         VBoxContainer text = UiTheme.VBox(row, 0);
         text.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         text.AddChild(UiTheme.Label("Edit HUD", 22, UiTheme.Gold));
-        text.AddChild(UiTheme.Label("Drag any panel to move it. Esc or Done saves.", 14, UiTheme.TextDim));
+        text.AddChild(UiTheme.Label("Drag a panel to move it; drag its corner or use the wheel to resize. Esc or Done saves.", 14, UiTheme.TextDim));
         row.AddChild(UiTheme.Button("Reset layout", ResetLayout, 15, 150f));
         Button done = UiTheme.Button("Done", Finish, 15, 110f);
         row.AddChild(done);
@@ -102,13 +119,15 @@ public partial class HudEditor : CanvasLayer
     /// <summary>Frames follow their panels (which can change size, e.g. the skill row).</summary>
     private void PlaceFrames()
     {
-        foreach ((HudMovable m, Panel frame, Label _) in _frames)
+        foreach ((HudMovable m, Panel frame, Label name) in _frames)
         {
             if (!IsInstanceValid(m) || !IsInstanceValid(m.Target))
             {
                 frame.Visible = false;
                 continue;
             }
+
+            name.Text = Mathf.Abs(m.Scale - 1f) < 0.01f ? m.Label : $"{m.Label}  ·  {Mathf.RoundToInt(m.Scale * 100f)}%";
 
             Rect2 r = m.Target.GetGlobalRect();
             if (r.Size.X < 60f || r.Size.Y < 24f)
@@ -131,10 +150,45 @@ public partial class HudEditor : CanvasLayer
                 frame.AddThemeStyleboxOverride("panel", button.Pressed ? _hot : _idle);
                 frame.AcceptEvent();
                 break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown, Pressed: true } wheel:
+                movable.SetScale(movable.Scale + (wheel.ButtonIndex == MouseButton.WheelUp ? 0.05f : -0.05f));
+                PlaceFrames();
+                frame.AcceptEvent();
+                break;
             case InputEventMouseMotion motion when _dragging == movable:
                 movable.MoveBy(motion.Relative, _root.Size);
                 PlaceFrames();
                 frame.AcceptEvent();
+                break;
+        }
+    }
+
+    /// <summary>Corner drag: panels scale around their centre, so the size follows the
+    /// mouse's distance from the centre and the corner stays under the cursor.</summary>
+    private void OnGripInput(HudMovable movable, Panel grip, InputEvent e)
+    {
+        Vector2 mouse = _root.GetGlobalMousePosition();
+        switch (e)
+        {
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left } button:
+                if (button.Pressed)
+                {
+                    _resizing = movable;
+                    _resizeCenter = movable.Target.GetGlobalRect().GetCenter();
+                    _resizeStartScale = movable.Scale;
+                    _resizeStartDistance = Mathf.Max(8f, mouse.DistanceTo(_resizeCenter));
+                }
+                else
+                {
+                    _resizing = null;
+                }
+
+                grip.AcceptEvent();
+                break;
+            case InputEventMouseMotion when _resizing == movable:
+                movable.SetScale(_resizeStartScale * mouse.DistanceTo(_resizeCenter) / _resizeStartDistance);
+                PlaceFrames();
+                grip.AcceptEvent();
                 break;
         }
     }

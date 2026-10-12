@@ -20,9 +20,33 @@ public static class HudLayout
     /// <summary>Where the layout is saved (tests point this elsewhere).</summary>
     public static string SavePath = "user://hud_layout.cfg";
 
-    private static Dictionary<string, Vector2>? _offsets;
+    public const float MinScale = 0.5f;
+    public const float MaxScale = 2f;
 
-    private static Dictionary<string, Vector2> Offsets => _offsets ??= Load();
+    private static Dictionary<string, Vector2>? _offsets;
+    private static Dictionary<string, float>? _scales;
+
+    private static Dictionary<string, Vector2> Offsets
+    {
+        get
+        {
+            if (_offsets is null)
+            {
+                (_offsets, _scales) = Load();
+            }
+
+            return _offsets;
+        }
+    }
+
+    private static Dictionary<string, float> Scales
+    {
+        get
+        {
+            _ = Offsets;
+            return _scales!;
+        }
+    }
 
     /// <summary>
     /// Makes <paramref name="target"/> movable in the HUD editor and applies any
@@ -51,7 +75,27 @@ public static class HudLayout
         }
     }
 
-    public static void Reset() => Offsets.Clear();
+    /// <summary>Size multiplier of a panel (1 = as designed).</summary>
+    public static float ScaleOf(string id) => Scales.TryGetValue(id, out float s) ? s : 1f;
+
+    public static void SetScale(string id, float scale)
+    {
+        scale = Mathf.Clamp(scale, MinScale, MaxScale);
+        if (Mathf.Abs(scale - 1f) < 0.01f)
+        {
+            Scales.Remove(id);
+        }
+        else
+        {
+            Scales[id] = scale;
+        }
+    }
+
+    public static void Reset()
+    {
+        Offsets.Clear();
+        Scales.Clear();
+    }
 
     public static void Save()
     {
@@ -61,30 +105,51 @@ public static class HudLayout
             config.SetValue("offsets", id, offset);
         }
 
+        foreach ((string id, float scale) in Scales)
+        {
+            config.SetValue("scales", id, scale);
+        }
+
         config.Save(SavePath);
     }
 
     /// <summary>Forgets the cached layout (tests, or after switching <see cref="SavePath"/>).</summary>
-    public static void Reload() => _offsets = null;
+    public static void Reload()
+    {
+        _offsets = null;
+        _scales = null;
+    }
 
-    private static Dictionary<string, Vector2> Load()
+    private static (Dictionary<string, Vector2>, Dictionary<string, float>) Load()
     {
         var offsets = new Dictionary<string, Vector2>();
+        var scales = new Dictionary<string, float>();
         var config = new ConfigFile();
-        if (config.Load(SavePath) != Error.Ok || !config.HasSection("offsets"))
+        if (config.Load(SavePath) != Error.Ok)
         {
-            return offsets;
+            return (offsets, scales);
         }
 
-        foreach (string id in config.GetSectionKeys("offsets"))
+        if (config.HasSection("offsets"))
         {
-            if (config.GetValue("offsets", id).Obj is Vector2 v)
+            foreach (string id in config.GetSectionKeys("offsets"))
             {
-                offsets[id] = v;
+                if (config.GetValue("offsets", id).Obj is Vector2 v)
+                {
+                    offsets[id] = v;
+                }
             }
         }
 
-        return offsets;
+        if (config.HasSection("scales"))
+        {
+            foreach (string id in config.GetSectionKeys("scales"))
+            {
+                scales[id] = Mathf.Clamp((float)config.GetValue("scales", id).AsDouble(), MinScale, MaxScale);
+            }
+        }
+
+        return (offsets, scales);
     }
 }
 
@@ -116,6 +181,49 @@ public partial class HudMovable : Node
         Default = Target.Position;
         Ready = true;
         Target.Position = Default + HudLayout.OffsetOf(Id);
+        ApplyScale(HudLayout.ScaleOf(Id));
+        KeepOnScreen();
+    }
+
+    public float Scale => Target.Scale.X;
+
+    /// <summary>Resizes the panel around its centre and records the size.</summary>
+    public void SetScale(float scale)
+    {
+        scale = Mathf.Clamp(scale, HudLayout.MinScale, HudLayout.MaxScale);
+        ApplyScale(scale);
+        HudLayout.SetScale(Id, scale);
+        KeepOnScreen();
+    }
+
+    /// <summary>A panel grown from its centre near an edge would poke off screen:
+    /// nudge it back in (and remember the nudge as part of its offset).</summary>
+    private void KeepOnScreen()
+    {
+        Vector2 screen = Target.GetViewportRect().Size;
+        Rect2 r = Target.GetGlobalRect();
+        Vector2 shift = Vector2.Zero;
+        if (r.Size.X <= screen.X)
+        {
+            shift.X = r.Position.X < 0f ? -r.Position.X : r.End.X > screen.X ? screen.X - r.End.X : 0f;
+        }
+
+        if (r.Size.Y <= screen.Y)
+        {
+            shift.Y = r.Position.Y < 0f ? -r.Position.Y : r.End.Y > screen.Y ? screen.Y - r.End.Y : 0f;
+        }
+
+        if (shift != Vector2.Zero)
+        {
+            Target.Position += shift;
+            HudLayout.SetOffset(Id, Target.Position - Default);
+        }
+    }
+
+    private void ApplyScale(float scale)
+    {
+        Target.PivotOffset = Target.Size / 2f;
+        Target.Scale = new Vector2(scale, scale);
     }
 
     /// <summary>Moves the panel by <paramref name="delta"/>, keeping it on screen, and records the offset.</summary>
@@ -134,6 +242,7 @@ public partial class HudMovable : Node
         if (Ready)
         {
             Target.Position = Default;
+            ApplyScale(1f);
         }
     }
 }

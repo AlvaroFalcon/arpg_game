@@ -177,8 +177,22 @@ Esc saves and returns to the pause menu.
 - Panels that are usually hidden show a placeholder while editing (a sample boss
   bar, a sample notification) so they can be placed before they are needed.
 
-Rejected: free resizing/scaling of panels (more to get wrong, little asked for),
-per-screen layouts (players expect "my life bar is here" everywhere).
+- **Resizing** (added on request): drag a frame's corner grip, or use the mouse
+  wheel over it, to scale the panel from 50% to 200%. Panels scale around their
+  centre (the corner follows the cursor) and are nudged back inside the screen if
+  growing pushed them off an edge. The size is saved next to the offset
+  (`[scales]` in the same file); Reset puts sizes back to 100% too.
+
+Rejected: per-screen layouts (players expect "my life bar is here" everywhere) and
+non-uniform stretching (bars and icons would distort).
+
+## Overhead bars **[IMPLEMENTED 2026-10-12]**
+
+A small life bar (and mana bar, where there is mana) floats over the player so
+you can watch it without looking down. `UI/OverheadBars.cs` is a world-space child
+of the Player, drawn above the world; the life bar keeps the same damage trail as
+the HUD and pulses below 30%. Settings → "Life and mana bars over your character"
+turns it off.
 
 ## Overlay map **[IMPLEMENTED 2026-10-12]**
 

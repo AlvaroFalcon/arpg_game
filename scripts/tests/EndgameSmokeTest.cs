@@ -441,12 +441,17 @@ public partial class EndgameSmokeTest : Node2D
             Vector2 before = vitals.Target.Position;
             vitals.MoveBy(new Vector2(-120f, -60f), GetViewport().GetVisibleRect().Size);
             moved = vitals.Target.Position.DistanceTo(before + new Vector2(-120f, -60f)) < 0.5f;
+            vitals.SetScale(1.25f);
             UI.HudLayout.Save();
             UI.HudLayout.Reload();
         }
 
-        Check("HUD-LAYOUT-SAVE", movables.Count >= 6 && moved && UI.HudLayout.OffsetOf("vitals").DistanceTo(new Vector2(-120f, -60f)) < 0.5f,
-            $"{movables.Count} movable panels ({string.Join(", ", movables.Select(m => m.Id))}), moved={moved}, saved offset {UI.HudLayout.OffsetOf("vitals")}");
+        Check("HUD-LAYOUT-SAVE", movables.Count >= 6 && moved && UI.HudLayout.OffsetOf("vitals").DistanceTo(new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(UI.HudLayout.ScaleOf("vitals"), 1.25f),
+            $"{movables.Count} movable panels ({string.Join(", ", movables.Select(m => m.Id))}), moved={moved}, saved offset {UI.HudLayout.OffsetOf("vitals")}, saved size {UI.HudLayout.ScaleOf("vitals"):P0}");
+
+        // The small bars over the character.
+        var overhead = reality.Player.GetNodeOrNull<Node2D>("OverheadBars");
+        Check("OVERHEAD-BARS", overhead is not null && overhead.Visible, $"overhead bars present={overhead is not null}, visible={overhead?.Visible}");
 
         // The Tab overlay map. Headless has no window to deliver key events, so the
         // test toggles it directly and lets it draw a few frames.
@@ -522,8 +527,8 @@ public partial class EndgameSmokeTest : Node2D
             {
                 await Frames(2);
                 UI.HudMovable? v = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().FirstOrDefault(m => m.Id == "vitals" && r.IsAncestorOf(m));
-                Check("HUD-LAYOUT-APPLIED", v is not null && v.Target.Position.DistanceTo(v.Default + new Vector2(-120f, -60f)) < 0.5f,
-                    $"the next reality's life cluster sits at its default {v?.Default} + the saved offset: {v?.Target.Position}");
+                Check("HUD-LAYOUT-APPLIED", v is not null && v.Target.Position.DistanceTo(v.Default + new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(v.Target.Scale.X, 1.25f),
+                    $"the next reality's life cluster sits at its default {v?.Default} + the saved offset: {v?.Target.Position}, size {v?.Target.Scale.X:P0}");
                 UI.HudLayout.Reset();
                 UI.HudLayout.Save();
                 UI.HudLayout.SavePath = "user://hud_layout.cfg";

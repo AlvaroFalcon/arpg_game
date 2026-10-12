@@ -35,6 +35,9 @@ public partial class GameSettings : Node
     /// <summary>HD-2D voxel view (docs/design/art-pipeline.md -> "Voxels"); off = classic 2D sprites.</summary>
     public bool VoxelGraphics { get; private set; } = true;
 
+    /// <summary>Small life/mana bars over the player (docs/design/menus.md -> "Overhead bars").</summary>
+    public bool OverheadBars { get; private set; } = true;
+
     /// <summary>Skills fire on their own while off cooldown (survivor style).
     /// Off: hold left mouse (all skills) or 1-4 (one skill).</summary>
     public bool AutoCast { get; private set; } = true;
@@ -77,6 +80,8 @@ public partial class GameSettings : Node
     public void SetScreenShake(bool v) { ScreenShake = v; NotifyChanged(); }
     public void SetDamageNumbers(bool v) { DamageNumbers = v; NotifyChanged(); }
     public void SetVoxelGraphics(bool v) { VoxelGraphics = v; NotifyChanged(); }
+
+    public void SetOverheadBars(bool v) { OverheadBars = v; NotifyChanged(); }
     public void SetAutoCast(bool v) { AutoCast = v; NotifyChanged(); }
     public void SetAutoAim(bool v) { AutoAim = v; NotifyChanged(); }
 
@@ -136,6 +141,7 @@ public partial class GameSettings : Node
         ScreenShake = (bool)config.GetValue("gameplay", "screen_shake", ScreenShake);
         DamageNumbers = (bool)config.GetValue("gameplay", "damage_numbers", DamageNumbers);
         VoxelGraphics = (bool)config.GetValue("display", "voxel_graphics", VoxelGraphics);
+        OverheadBars = (bool)config.GetValue("display", "overhead_bars", OverheadBars);
         AutoCast = (bool)config.GetValue("gameplay", "auto_cast", AutoCast);
         AutoAim = (bool)config.GetValue("gameplay", "auto_aim", AutoAim);
     }
@@ -151,6 +157,7 @@ public partial class GameSettings : Node
         config.SetValue("gameplay", "screen_shake", ScreenShake);
         config.SetValue("gameplay", "damage_numbers", DamageNumbers);
         config.SetValue("display", "voxel_graphics", VoxelGraphics);
+        config.SetValue("display", "overhead_bars", OverheadBars);
         config.SetValue("gameplay", "auto_cast", AutoCast);
         config.SetValue("gameplay", "auto_aim", AutoAim);
         config.Save(SavePath);

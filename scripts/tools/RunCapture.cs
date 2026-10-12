@@ -366,6 +366,15 @@ public partial class RunCapture : Node
 
         reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.Packs[2].Cell);
         await Wait(1f);
+        // The bars over the character, with some life missing so they read.
+        if (reality.Player.Stats.Life is { } life)
+        {
+            life.Current = life.Max * 0.55f;
+        }
+
+        await Wait(0.4f);
+        await Snap("overhead-bars.png");
+
         var map = reality.GetNode("Hud").FindChild("MapOverlay", true, false) as MapOverlay;
         map?.Toggle();
         await Wait(0.5f);
@@ -378,6 +387,8 @@ public partial class RunCapture : Node
         GetTree().CurrentScene.AddChild(editor);
         await Wait(0.3f);
         GetTree().GetNodesInGroup(HudLayout.Group).OfType<HudMovable>().FirstOrDefault(m => m.Id == "skills")?.MoveBy(new Vector2(380f, 0f), GetViewport().GetVisibleRect().Size);
+        GetTree().GetNodesInGroup(HudLayout.Group).OfType<HudMovable>().FirstOrDefault(m => m.Id == "vitals")?.SetScale(0.8f);
+        GetTree().GetNodesInGroup(HudLayout.Group).OfType<HudMovable>().FirstOrDefault(m => m.Id == "reality_info")?.SetScale(1.25f);
         await Wait(0.3f);
         await Snap("hud-editor.png");
         HudLayout.Reset();

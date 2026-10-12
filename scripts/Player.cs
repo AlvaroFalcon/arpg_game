@@ -106,6 +106,11 @@ public partial class Player : CharacterBody2D
             AddChild(new Flasks { Name = "Flasks" });
         }
 
+        if (GetNodeOrNull<UI.OverheadBars>("OverheadBars") is null)
+        {
+            AddChild(new UI.OverheadBars { Name = "OverheadBars" });
+        }
+
         Dodge = GetNodeOrNull<Dodge>("Dodge");
         Health = GetNodeOrNull<Health>("Health");
         _sprite = GetNodeOrNull<AnimatedSprite2D>("Sprite");
