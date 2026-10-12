@@ -2,12 +2,15 @@
 # launcher (tools/launcher) installs and keeps up to date.
 # docs/design/distribution.md
 #
-# Release a version: push a tag (`git tag v0.2.0 && git push origin v0.2.0`),
-# or run this workflow by hand from the Actions tab with a version.
+# Every push to main publishes a new version (v0.1.<run number>). A pushed
+# `v*` tag or a manual run from the Actions tab publishes that exact version.
+# The claude/ development branch is listed too while its PR is open, so test
+# builds reach the launcher before the merge; drop it once merged.
 name: Release
 
 on:
   push:
+    branches: [main, claude/stoic-dirac-xlg2w5]
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -35,7 +38,11 @@ jobs:
           dotnet-version: '6.0.x'
 
       - name: Version
-        run: echo "VERSION=${{ github.event.inputs.version || github.ref_name }}" >> "$GITHUB_ENV"
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then v="${{ github.event.inputs.version }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then v="${{ github.ref_name }}"
+          else v="v0.1.${{ github.run_number }}"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
 
       - name: Cache Godot and export templates
         id: godot-cache
