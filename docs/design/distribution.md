@@ -4,22 +4,24 @@
 
 - **Releases are built by CI.** `.github/workflows/release.yml` runs on every
   push to `main` (version `v0.1.<run number>`), on a pushed `v*` tag (that exact
-  version) or by hand from the Actions tab. While the endgame PR is open the
-  development branch publishes too. It downloads Godot
+  version) or by hand from the Actions tab. It downloads Godot
   4.1.1 mono and its export templates (cached), imports the project, exports the
   `Windows Desktop` preset, zips it and publishes a GitHub release with three
   assets: `ArpgGame-windows.zip`, `version.txt` and `ArpgGameLauncher.exe`.
 - **The launcher** (`tools/launcher/`, a .NET Framework 4.8 WinForms app, so
-  nothing to install on Windows 10/11) reads
-  `releases/latest/download/version.txt`; if it differs from the installed
+  nothing to install on Windows 10/11) asks the GitHub API for recent releases
+  and takes the newest that already has the zip attached (a release exists about
+  a minute before its files finish uploading, and `releases/latest/download`
+  404s in that window — the first owner test hit exactly that). If the API is
+  unreachable or rate-limited (60 requests/hour per IP) it falls back to
+  `releases/latest/download/version.txt`. If the version differs from the installed
   `game/version.txt` it downloads the zip with a progress bar, extracts it to
   `game.new` and swaps folders (the old build survives a failed download), then
   PLAY starts `ArpgGame.exe`. Offline, it plays what is installed. The game lives
   in `%LOCALAPPDATA%\ArpgGame\game`; saves stay in Godot's user folder
   (`%APPDATA%\Godot\app_userdata\ARPG Game`), untouched by updates.
-- `releases/latest/download/<asset>` is a plain redirect, so the launcher makes
-  no API calls and has no rate limits. An optional first argument overrides the
-  base URL (used to test against a local server).
+- An optional first argument (a folder URL serving `version.txt` and the zip)
+  skips the API; it is how the updater was tested against a local server.
 
 ## Why
 

@@ -36,7 +36,9 @@ namespace ArpgGameLauncher
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(520, 230);
+            AutoScaleDimensions = new SizeF(96f, 96f);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(600, 260);
             BackColor = Background;
             ForeColor = Ink;
             Font = new Font("Segoe UI", 10f);
@@ -48,13 +50,14 @@ namespace ArpgGameLauncher
                 ForeColor = Gold,
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Bounds = new Rectangle(0, 14, 520, 52),
+                Bounds = new Rectangle(0, 14, 600, 52),
             });
-            _status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Bounds = new Rectangle(20, 76, 480, 24) };
-            _bar = new ProgressBar { Bounds = new Rectangle(40, 108, 440, 18), Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30 };
-            _version = new Label { AutoSize = false, ForeColor = Dim, Font = new Font("Segoe UI", 8.5f), TextAlign = ContentAlignment.MiddleCenter, Bounds = new Rectangle(20, 130, 480, 20) };
-            _play = MakeButton("PLAY", new Rectangle(170, 160, 180, 46), true);
-            _retry = MakeButton("Retry", new Rectangle(360, 168, 100, 32), false);
+            // Two lines, wrapped: errors can be long.
+            _status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Bounds = new Rectangle(20, 72, 560, 44) };
+            _bar = new ProgressBar { Bounds = new Rectangle(50, 122, 500, 18), Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30 };
+            _version = new Label { AutoSize = false, ForeColor = Dim, Font = new Font("Segoe UI", 8.5f), TextAlign = ContentAlignment.MiddleCenter, Bounds = new Rectangle(20, 146, 560, 34) };
+            _play = MakeButton("PLAY", new Rectangle(210, 192, 180, 46), true);
+            _retry = MakeButton("Retry", new Rectangle(410, 199, 100, 32), false);
             _play.Enabled = false;
             _retry.Visible = false;
             _play.Click += (s, e) => Launch();
@@ -91,10 +94,10 @@ namespace ArpgGameLauncher
             string installed = _updater.InstalledVersion;
             _version.Text = installed is null ? "Not installed yet" : $"Installed: {installed}";
 
-            string latest;
+            Build latest;
             try
             {
-                latest = await _updater.FetchLatestVersionAsync(_cts.Token);
+                latest = await _updater.FetchLatestAsync(_cts.Token);
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
@@ -102,13 +105,13 @@ namespace ArpgGameLauncher
                 return;
             }
 
-            if (_updater.IsInstalled && latest == installed)
+            if (_updater.IsInstalled && latest.Version == installed)
             {
                 Ready($"Up to date ({installed})");
                 return;
             }
 
-            _status.Text = installed is null ? $"Downloading {latest}…" : $"Updating {installed} → {latest}…";
+            _status.Text = installed is null ? $"Downloading {latest.Version}…" : $"Updating {installed} → {latest.Version}…";
             _bar.Style = ProgressBarStyle.Continuous;
             _bar.Value = 0;
             var progress = new Progress<double>(p =>
@@ -128,16 +131,16 @@ namespace ArpgGameLauncher
             }
             catch (IOException ex) when (_updater.IsInstalled)
             {
-                Failed($"Couldn't replace the game files — is the game still running? ({ex.Message})");
+                Failed($"Couldn't replace the game files — is the game still running? ({Describe(ex)})");
                 return;
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
-                Failed($"Download failed: {ex.Message}");
+                Failed($"Download failed: {Describe(ex)}");
                 return;
             }
 
-            Ready($"Installed {latest}");
+            Ready($"Installed {latest.Version}");
         }
 
         private void Offline(string installed, Exception ex)
@@ -148,8 +151,19 @@ namespace ArpgGameLauncher
             }
             else
             {
-                Failed($"Can't reach the download server: {ex.Message}");
+                Failed($"Can't reach the download server: {Describe(ex)}");
             }
+        }
+
+        /// <summary>The innermost message: .NET Framework wraps the real network error.</summary>
+        private static string Describe(Exception ex)
+        {
+            while (ex.InnerException != null)
+            {
+                ex = ex.InnerException;
+            }
+
+            return ex.Message;
         }
 
         private void Ready(string message)

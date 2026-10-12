@@ -321,6 +321,19 @@ entire playerbase installed third-party tools to see them. A cell that currently
 shows a colour and a clipped word ("Ringm", "Leath") is not enough to make a
 keep-or-drop decision, which is the decision the inventory exists to pose.
 
+**Comparison with what you wear [IMPLEMENTED 2026-10-12].** Below the item, the
+tooltip lists what would change if you equipped it: every stat line of both items
+(base stats and affixes) summed per stat and modifier type, the difference shown
+in green with a `+` when it goes up and red with a `-` when it goes down; equal
+lines are omitted. The slot compared against is the one right-click equip would
+use (first free candidate slot, otherwise the first — Ring1 for rings), so an
+empty slot reads as "Empty slot — equipping adds". Items hovered in the equipment
+strip itself show no comparison. Per-stat totals, not affix-by-affix, because the
+question is "am I better off", and two items rarely share affixes.
+
+The tooltip also flips left of the cursor and clamps to the screen, so long
+tooltips no longer run off the bottom edge.
+
 ### Sorting **[DECIDED]**
 
 A sort button repacks the grid. Order is **item class, then rarity descending, then

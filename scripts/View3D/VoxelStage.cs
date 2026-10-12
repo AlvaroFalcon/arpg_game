@@ -358,7 +358,16 @@ public partial class VoxelStage : Node3D
         }
 
         float scale = sprite.GlobalScale.X / 2f;
-        VoxelDebris.Burst(World, mesh, Ground(enemy.GlobalPosition), scale, enemy.IsBoss ? 220 : 70);
+        // Bosses explode; ordinary monsters crumble — a few cubes that barely
+        // leave the ground, so packs dying don't bury the screen in debris.
+        if (enemy.IsBoss)
+        {
+            VoxelDebris.Burst(World, mesh, Ground(enemy.GlobalPosition), scale, 220);
+        }
+        else
+        {
+            VoxelDebris.Burst(World, mesh, Ground(enemy.GlobalPosition), scale, 16, 0.35f);
+        }
     }
 
     /// <summary>Ground debris where a big hit lands (slams, meteors, explosions).</summary>

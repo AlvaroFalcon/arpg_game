@@ -4,13 +4,11 @@
 #
 # Every push to main publishes a new version (v0.1.<run number>). A pushed
 # `v*` tag or a manual run from the Actions tab publishes that exact version.
-# The claude/ development branch is listed too while its PR is open, so test
-# builds reach the launcher before the merge; drop it once merged.
 name: Release
 
 on:
   push:
-    branches: [main, claude/stoic-dirac-xlg2w5]
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
     inputs:

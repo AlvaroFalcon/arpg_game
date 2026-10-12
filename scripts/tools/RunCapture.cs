@@ -365,6 +365,37 @@ public partial class RunCapture : Node
         GetTree().Quit();
     }
 
+    /// <summary>Puts the player on the walkable cell nearest to them whose
+    /// neighbour in <paramref name="toward"/> is wall, and takes a shot.</summary>
+    private async Task SnapNextToWall(RealityController reality, Vector2I toward, string file)
+    {
+        FlowField field = reality.Field;
+        Vector2I from = field.CellOf(reality.Player.GlobalPosition);
+        Vector2I? best = null;
+        int bestDistance = int.MaxValue;
+        for (int x = 0; x < field.Width; x++)
+        {
+            for (int y = 0; y < field.Height; y++)
+            {
+                var c = new Vector2I(x, y);
+                bool open = field.IsWalkable(c) && field.IsWalkable(c - toward) && field.IsWalkable(c + new Vector2I(toward.Y, toward.X)) && field.IsWalkable(c - new Vector2I(toward.Y, toward.X));
+                int d = Mathf.Abs(x - from.X) + Mathf.Abs(y - from.Y);
+                if (open && !field.IsWalkable(c + toward) && !field.IsWalkable(c + toward * 2) && d < bestDistance)
+                {
+                    best = c;
+                    bestDistance = d;
+                }
+            }
+        }
+
+        if (best is { } cell)
+        {
+            reality.Player.GlobalPosition = field.CenterOf(cell);
+            await Wait(0.8f);
+            await Snap(file);
+        }
+    }
+
     private async Task CaptureReality(string layout, int tier, string name)
     {
         RealityLaunch.Tier = tier;
@@ -382,6 +413,14 @@ public partial class RunCapture : Node
         reality.Player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
         await Wait(1.0f);
         await Snap($"reality-{name}-start.png");
+
+        if (_only == "voxel")
+        {
+            // Wall dithering: standing beside a wall must leave it solid; standing
+            // just north of one (it hides the player) must dither it.
+            await SnapNextToWall(reality, new Vector2I(1, 0), $"voxel-wall-side-{name}.png");
+            await SnapNextToWall(reality, new Vector2I(0, 1), $"voxel-wall-front-{name}.png");
+        }
 
         // The richest pack: a rare or unique-rare if the layout rolled one.
         Enemy? best = reality.GetChildren().OfType<Enemy>().Where(e => !e.IsBoss).OrderByDescending(e => (int)e.Rarity).FirstOrDefault();

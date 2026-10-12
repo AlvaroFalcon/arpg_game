@@ -121,6 +121,7 @@ public partial class ItemsSmokeTest : Node2D
         CheckHiddenRuleStillEvaluatesHidden();
         CheckWalletIncrementDirect();
         CheckTooltipTextIncludesRarityColourBaseAndTiers();
+        CheckTooltipComparison();
     }
 
     private void Check(string name, bool passed, string detail)
@@ -296,6 +297,26 @@ public partial class ItemsSmokeTest : Node2D
             && text.Contains($"T{_equipmentForClick.RolledAffixes[0].Tier} "),
             $"a rolled affix's tier number must be visible per docs/design/affixes.md -> 'Tiers are player-visible' " +
             $"— got:\n{text}");
+    }
+
+    /// <summary>docs/design/items.md -&gt; "Item tooltips": the comparison with
+    /// the equipped item lists differences, green for gains and red for losses.</summary>
+    private void CheckTooltipComparison()
+    {
+        // Same base; the magic one also rolled "vigorous", so it can only add.
+        string upgrade = ItemTooltipText.BuildComparison(_equipmentForClick, _equipmentWalkOver);
+        string downgrade = ItemTooltipText.BuildComparison(_equipmentWalkOver, _equipmentForClick);
+        string same = ItemTooltipText.BuildComparison(_equipmentForClick, _equipmentForClick);
+        string empty = ItemTooltipText.BuildComparison(_equipmentWalkOver, null);
+
+        Check("TOOLTIP-COMPARE-GAIN-IS-GREEN-PLUS", upgrade.Contains("[color=#6ee06e]+"),
+            $"an extra affix must show as a green + line — got:\n{upgrade}");
+        Check("TOOLTIP-COMPARE-LOSS-IS-RED-MINUS", downgrade.Contains("[color=#ff6a5a]-"),
+            $"losing that affix must show as a red - line — got:\n{downgrade}");
+        Check("TOOLTIP-COMPARE-IDENTICAL", same.Contains("No stat changes"),
+            $"an item compared with itself has no differences — got:\n{same}");
+        Check("TOOLTIP-COMPARE-EMPTY-SLOT", empty.Contains("Empty slot") && !empty.Contains("ff6a5a"),
+            $"against an empty slot everything is a gain — got:\n{empty}");
     }
 
     // ------------------------------------------------------------------
