@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : Script();
     }
 
     private async Task Script()
@@ -332,6 +332,30 @@ public partial class RunCapture : Node
             {
                 GD.Print($"[CAPTURE] skipping {layout}: tileset missing");
                 continue;
+            }
+
+            await CaptureReality(layout, tier, name);
+        }
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>Quick look at the voxel view: hideout and one reality per theme.</summary>
+    private async Task VoxelScript()
+    {
+        SetupDemoProfile();
+        GetTree().ChangeSceneToFile(PathToExile.Core.Scenes.Hideout);
+        await Wait(1.2f);
+        Node hideout = GetTree().CurrentScene;
+        hideout.GetNode<Player>("Player").GlobalPosition = new Vector2(420f, 330f);
+        await Wait(0.6f);
+        await Snap("voxel-hideout.png");
+        foreach ((string layout, int tier, string name) in new[] { ("ashen_halls", 5, "ashen"), ("bone_crypt", 8, "crypt"), ("drowned_mirror", 12, "drowned") })
+        {
+            if (_only == "voxel" && name != "ashen" && OS.GetCmdlineUserArgs().Length < 3)
+            {
+                break;
             }
 
             await CaptureReality(layout, tier, name);

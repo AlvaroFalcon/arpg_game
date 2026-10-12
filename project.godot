@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.1", "C#", "Forward Plus")
 GameSettings="*res://scenes/core/GameSettings.tscn"
 Profile="*res://scenes/core/Profile.tscn"
 Sfx="*res://scenes/core/Sfx.tscn"
+HdView="*res://scenes/core/HdView.tscn"
 
 [display]
 

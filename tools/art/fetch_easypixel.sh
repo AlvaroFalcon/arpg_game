@@ -5,7 +5,7 @@
 # from plain Node, without launching the Electron app.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMMIT="0dcaae72e818853b8dd2c542c8428618e4b29c64"
+COMMIT="bf08d5d7d09d894026dd9e116cc6fcbc0b1f77b7"
 DEST="${HERE}/vendor/easypixel"
 if [[ -d "${DEST}/.git" ]] && [[ "$(git -C "${DEST}" rev-parse HEAD)" == "${COMMIT}" ]]; then
   echo "EasyPixel already at ${COMMIT}"
