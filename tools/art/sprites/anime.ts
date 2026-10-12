@@ -406,6 +406,343 @@ function paintWeapon(p: Paint, look: Look, pose: Pose, hand: [number, number]): 
   }
 }
 
+// ---------------------------------------------------------------------------
+// Back view (walking away, "up") — owner brief: characters should face up, down
+// and sideways for the fake-3D look. Painted with the weapon hand on the image's
+// right like the front, then mirrored, so the weapon ends up on the correct side.
+// ---------------------------------------------------------------------------
+
+function paintChibiBack(look: Look, pose: Pose): string[] {
+  const p = new Paint(32, 48);
+  const b = pose.bob;
+  const robe = look.armor === 'robe';
+  const handR: [number, number] = pose.attack ? [28.5, 24.5 + b] : [24.5, 32.5 + b + pose.armR];
+
+  // The weapon is in front of the body, so from behind it sits behind it.
+  paintWeapon(p, look, { ...pose, attack: pose.attack }, handR);
+
+  // Legs and boots (the same stride as the front).
+  const [lx, ly, rx, ry] = pose.legs;
+  if (!robe) {
+    p.rect(10, 34 + b, 12, 2, 'l');
+    p.rect(11 + lx, 35 + b, 4, 8 + ly - b, 'l');
+    p.rect(17 + rx, 35 + b, 4, 8 + ry - b, 'l');
+    p.rect(11 + lx, 36 + b, 1, 6 + ly - b, 'L');
+    p.rect(17 + rx, 36 + b, 1, 6 + ry - b, 'L');
+  }
+  p.rect(10 + lx, 42 + ly, 5, 4, 'b');
+  p.rect(17 + rx, 42 + ry, 5, 4, 'b');
+  if (robe) {
+    p.poly([[10, 31 + b], [22, 31 + b], [24, 43], [8, 43]], 'o');
+    p.line(16, 33 + b, 16, 42, 'p');
+    p.rect(8, 42, 17, 1, 't');
+  }
+
+  // Arms.
+  const sleeve = look.armor === 'fur' ? 's' : 'o';
+  p.rect(6, 24 + b + pose.armL, 3, 8, sleeve);
+  if (pose.attack) {
+    p.poly([[23, 23 + b], [26, 22 + b], [29, 23 + b], [27, 26 + b]], sleeve);
+  } else {
+    p.rect(23, 24 + b + pose.armR, 3, 8, sleeve);
+  }
+  p.ellipse(7.5, 32.5 + b + pose.armL, 1.8, 1.8, 'S');
+  p.ellipse(handR[0], handR[1], 1.8, 1.8, 'S');
+
+  // Back of the torso: a seam down the spine, the belt, armour from behind.
+  p.poly([[9, 23 + b], [23, 23 + b], [22, 34 + b], [10, 34 + b]], look.armor === 'fur' ? 'f' : 'o');
+  p.line(16, 24 + b, 16, 31 + b, 'p');
+  if (look.armor === 'plate') {
+    p.poly([[11, 24 + b], [21, 24 + b], [20, 31 + b], [12, 31 + b]], 'x');
+    p.line(16, 25 + b, 16, 30 + b, 'X');
+    p.ellipse(9.5, 24.5 + b, 3, 2.4, 'x');
+    p.ellipse(22.5, 24.5 + b, 3, 2.4, 'x');
+  }
+  p.rect(10, 32 + b, 12, 2, 't');
+  p.recolorWhere((x, y, c) => c === 'o' && x >= 20, 'p');
+
+  // Cape over the back.
+  if (has(look, 'cape')) {
+    p.poly([[9, 22 + b], [23, 22 + b], [26, 45], [6, 45]], 'c');
+    p.line(13, 26 + b, 11, 44, 'C');
+    p.line(19, 26 + b, 21, 44, 'C');
+  }
+
+  // Head from behind: all hair (or hood), the nape, the ears' hint.
+  p.rect(14, 20 + b, 4, 3, 'S');
+  if (look.hair === 'hood') {
+    p.ellipse(16, 11 + b, 9.6, 9.4, 'q');
+    p.poly([[9, 14 + b], [23, 14 + b], [20, 25 + b], [16, 27 + b], [12, 25 + b]], 'q');
+    p.recolorWhere((x, y, c) => c === 'q' && x >= 20, 'Q');
+    p.line(16, 5 + b, 16, 24 + b, 'Q');
+  } else {
+    p.ellipse(16, 11 + b, look.hair === 'wild' ? 10 : 8.8, 8.8, 'h');
+    p.rect(8, 15 + b, 1, 2, 's'); // ears peeking
+    p.rect(23, 15 + b, 1, 2, 's');
+    switch (look.hair) {
+      case 'long':
+        p.poly([[8, 12 + b], [24, 12 + b], [25, 33 + b], [16, 35 + b], [7, 33 + b]], 'h');
+        p.line(12, 18 + b, 11, 32 + b, 'j');
+        p.line(20, 18 + b, 21, 32 + b, 'j');
+        break;
+      case 'wild':
+        p.poly([[5, 10 + b], [27, 10 + b], [28, 24 + b], [22, 21 + b], [16, 25 + b], [10, 21 + b], [4, 24 + b]], 'h');
+        break;
+      case 'spiky':
+        p.poly([[8, 6 + b], [5, 1 + b], [11, 3 + b]], 'h');
+        p.poly([[12, 3 + b], [13, -1 + b], [17, 2 + b]], 'h');
+        p.poly([[17, 2 + b], [21, -1 + b], [21, 4 + b]], 'h');
+        p.poly([[21, 4 + b], [27, 2 + b], [24, 7 + b]], 'h');
+        p.poly([[9, 16 + b], [12, 21 + b], [14, 17 + b], [17, 22 + b], [19, 17 + b], [22, 20 + b], [23, 16 + b]], 'h');
+        break;
+      case 'topknot':
+        p.ellipse(16, 3 + b, 3, 2.4, 'h');
+        p.rect(15, 4 + b, 2, 1, 't');
+        break;
+      case 'bob':
+        p.poly([[7, 12 + b], [25, 12 + b], [25, 20 + b], [7, 20 + b]], 'h');
+        break;
+      case 'swept':
+        p.poly([[8, 5 + b], [20, 2 + b], [27, 6 + b], [24, 9 + b]], 'h');
+        break;
+    }
+    // Strands and a shine on the crown.
+    p.line(12, 6 + b, 11, 16 + b, 'j');
+    p.line(16, 4 + b, 16, 17 + b, 'j');
+    p.line(20, 6 + b, 21, 16 + b, 'j');
+    p.ellipse(13, 6 + b, 3, 1.2, 'H', 'h');
+    p.recolorWhere((x, y, c) => c === 'h' && x >= 22, 'j');
+  }
+
+  // Accessories from behind.
+  paintHeadgear(p, look, b);
+  if (has(look, 'headband')) {
+    p.poly([[14, 10 + b], [18, 10 + b], [20, 16 + b], [12, 16 + b]], 'a'); // knot tails
+  }
+  if (has(look, 'scarf')) {
+    p.rect(11, 21 + b, 10, 2, 'a');
+    p.poly([[14, 22 + b], [18, 22 + b], [19, 29 + b], [13, 29 + b]], 'a');
+  }
+  if (has(look, 'mask')) {
+    p.rect(15, 16 + b, 2, 2, 'a'); // the tie
+  }
+
+  p.outline('k');
+  return p.rows().map((r) => [...r].reverse().join(''));
+}
+
+// ---------------------------------------------------------------------------
+// Side view (facing right; left is the same frames mirrored by the game).
+// ---------------------------------------------------------------------------
+
+function paintChibiSide(look: Look, pose: Pose, step: number): string[] {
+  const p = new Paint(32, 48);
+  const b = pose.bob;
+  const robe = look.armor === 'robe';
+  // Stride: the near leg forward when step > 0, back when step < 0.
+  const near = step * 3;
+  const far = -step * 3;
+  const sleeve = look.armor === 'fur' ? 's' : 'o';
+
+  // Behind everything: cape and long hair streaming back.
+  if (has(look, 'cape')) {
+    p.poly([[11, 22 + b], [16, 22 + b], [13, 45], [4, 44]], 'c');
+    p.line(10, 28 + b, 7, 43, 'C');
+  }
+  if (look.hair === 'long') {
+    p.poly([[8, 8 + b], [16, 8 + b], [14, 32 + b], [6, 33 + b], [5, 20 + b]], 'h');
+    p.line(9, 14 + b, 8, 31 + b, 'j');
+  } else if (look.hair === 'wild') {
+    p.poly([[5, 6 + b], [16, 6 + b], [14, 22 + b], [3, 24 + b]], 'h');
+  }
+
+  // Far arm and far leg (behind the body, darker).
+  p.rect(14 - Math.round(near / 2), 24 + b, 3, 8, look.armor === 'fur' ? 'S' : 'p');
+  p.ellipse(15.5 - near / 2, 32.5 + b, 1.6, 1.6, 'S');
+  if (!robe) {
+    p.rect(14 + far, 35 + b, 4, 8 - b, 'L');
+  }
+  p.rect(14 + far, 42, 5, 4, 'B');
+  if (look.weapon === 'sword_shield' || look.weapon === 'holy') {
+    // The shield rides on the far arm: its edge shows behind the body.
+    p.poly([[7, 25 + b], [11, 25 + b], [11, 35 + b], [9, 37 + b], [7, 35 + b]], look.weapon === 'holy' ? 'O' : 'x');
+    p.line(8, 26 + b, 8, 35 + b, 'X');
+  }
+
+  // Near leg.
+  if (!robe) {
+    p.rect(13, 34 + b, 7, 2, 'l');
+    p.rect(14 + near, 35 + b, 4, 8 - b, 'l');
+    p.rect(16 + near, 36 + b, 1, 6 - b, 'L');
+  }
+  p.rect(14 + near, 42, 6, 4, 'b');
+  p.rect(14 + near, 42, 6, 1, 'B');
+
+  if (robe) {
+    p.poly([[12, 31 + b], [21, 31 + b], [23 + Math.max(0, near), 43], [10 + Math.min(0, near), 43]], 'o');
+    p.line(17, 33 + b, 18 + near / 2, 42, 'p');
+    p.rect(10 + Math.min(0, near), 42, 14 + Math.abs(near), 1, 't');
+  }
+
+  // Torso in profile: chest forward, back straight.
+  p.poly([[11, 23 + b], [20, 23 + b], [21, 30 + b], [20, 34 + b], [12, 34 + b]], look.armor === 'fur' ? 's' : 'o');
+  switch (look.armor) {
+    case 'plate':
+      p.poly([[13, 24 + b], [20, 24 + b], [21, 30 + b], [14, 31 + b]], 'x');
+      p.line(18, 25 + b, 20, 29 + b, 'X');
+      p.ellipse(15, 24 + b, 3.4, 2.4, 'x');
+      break;
+    case 'fur':
+      p.ellipse(15, 24 + b, 4, 2.2, 'f');
+      break;
+    case 'leather':
+      p.line(13, 24 + b, 19, 33 + b, 't');
+      break;
+    case 'robe':
+    case 'gi':
+      p.line(19, 23 + b, 18, 29 + b, look.armor === 'gi' ? 't' : 'O');
+      break;
+  }
+  p.rect(12, 32 + b, 9, 2, 't');
+  p.recolorWhere((x, y, c) => c === 'o' && x <= 12, 'p');
+
+  // Neck and head in profile: the face on the right, hair over the back.
+  p.rect(15, 20 + b, 3, 3, 'S');
+  p.ellipse(16, 12 + b, 8, 8.2, 's');
+  p.poly([[17, 14 + b], [24, 13 + b], [23.5, 17 + b], [21, 20.5 + b], [16, 21 + b]], 's');
+  p.px(24, 15 + b, 's'); // the nose
+  if (look.hair === 'hood') {
+    p.ellipse(15, 10 + b, 10, 9.5, 'q', '.hs');
+    p.poly([[6, 10 + b], [15, 8 + b], [17, 22 + b], [8, 25 + b]], 'q');
+    p.ellipse(19.5, 13 + b, 5, 6, 's', 'q');
+    p.poly([[15, 6 + b], [24, 7 + b], [23, 10 + b], [16, 11 + b]], 'h');
+    p.recolorWhere((x, y, c) => c === 'q' && x <= 9, 'Q');
+  } else {
+    p.ellipse(14, 9 + b, look.hair === 'wild' ? 10 : 9, 7.6, 'h');
+    p.poly([[6, 8 + b], [17, 8 + b], [16, 18 + b], [12, 21 + b], [7, 17 + b]], 'h'); // back of the head
+    p.poly([[14, 4 + b], [24, 6 + b], [25, 10 + b], [22, 9 + b], [21, 12 + b], [19, 9 + b], [17, 11 + b]], 'h'); // bangs over the brow
+    switch (look.hair) {
+      case 'spiky':
+        p.poly([[8, 5 + b], [2, 2 + b], [9, 1 + b]], 'h');
+        p.poly([[12, 2 + b], [10, -2 + b], [16, 1 + b]], 'h');
+        p.poly([[17, 2 + b], [20, -2 + b], [21, 4 + b]], 'h');
+        p.poly([[7, 12 + b], [1, 12 + b], [7, 16 + b]], 'h');
+        break;
+      case 'topknot':
+        p.ellipse(13, 2.5 + b, 3, 2.4, 'h');
+        p.rect(12, 4 + b, 2, 1, 't');
+        break;
+      case 'bob':
+        p.poly([[7, 10 + b], [14, 10 + b], [14, 20 + b], [7, 19 + b]], 'h');
+        break;
+      case 'swept':
+        p.poly([[9, 4 + b], [20, 1 + b], [27, 5 + b], [22, 8 + b]], 'h');
+        break;
+      default:
+        break;
+    }
+    p.rect(14, 13 + b, 2, 3, 's'); // ear
+    p.px(15, 14 + b, 'S');
+    p.ellipse(11, 5 + b, 3, 1.2, 'H', 'h');
+    p.recolorWhere((x, y, c) => c === 'h' && x <= 9, 'j');
+  }
+
+  // One big eye, brow, mouth, blush.
+  p.stamp(20, 13 + b, ['kkk', 'eEw', 'EEe', '.k.']);
+  p.rect(20, 12 + b, 3, 1, 'j');
+  if (!has(look, 'mask')) {
+    p.px(22, 19 + b, 'm');
+    p.px(21, 17 + b, 'n');
+  } else {
+    p.poly([[16, 17 + b], [24, 16 + b], [23, 20 + b], [17, 21 + b]], 'a');
+  }
+  if (has(look, 'glasses')) {
+    p.rect(19, 13 + b, 5, 1, 't');
+    p.line(15, 13 + b, 19, 13 + b, 't');
+  }
+
+  // Headgear in profile.
+  if (has(look, 'wizard_hat')) {
+    p.ellipse(16, 6.5 + b, 11, 2.2, 'q');
+    p.poly([[10, 6 + b], [21, 6 + b], [16, 0 + b], [7, -1 + b], [12, 1 + b]], 'q');
+    p.rect(10, 5 + b, 11, 1, 'a');
+    p.recolorWhere((x, y, c) => c === 'q' && x <= 11, 'Q');
+  }
+  if (has(look, 'headband')) {
+    p.rect(8, 8 + b, 16, 2, 'a');
+    p.poly([[8, 8 + b], [2, 11 + b], [3, 14 + b], [8, 10 + b]], 'a');
+  }
+  if (has(look, 'horns')) {
+    p.poly([[16, 5 + b], [19, 4 + b], [16, -1 + b], [13, 1 + b]], 'x');
+  }
+  if (has(look, 'halo')) {
+    p.ellipse(15, 0.8 + b, 6.5, 1.4, 'z');
+    p.ellipse(15, 0.8 + b, 4.5, 0.6, '.', 'z');
+  }
+  if (has(look, 'circlet')) {
+    p.line(8, 9 + b, 24, 9 + b, 't');
+    p.px(23, 9 + b, 'z');
+  }
+  if (has(look, 'scarf')) {
+    p.rect(13, 21 + b, 8, 2, 'a');
+    p.poly([[13, 22 + b], [8, 24 + b], [5, 30 + b], [10, 27 + b]], 'a');
+  }
+
+  // Near arm swinging opposite to the near leg; forward on attack.
+  const handN: [number, number] = pose.attack ? [27.5, 27.5 + b] : [17.5 - near / 2, 32.5 + b];
+  if (pose.attack) {
+    p.poly([[15, 23 + b], [18, 23 + b], [28, 26 + b], [26, 29 + b]], sleeve);
+  } else {
+    p.poly([[15, 23 + b], [18, 23 + b], [19 - near / 2, 31 + b], [16 - near / 2, 31 + b]], sleeve);
+  }
+  p.ellipse(handN[0], handN[1], 1.8, 1.8, 's');
+  paintSideWeapon(p, look, pose, handN);
+
+  p.outline('k');
+  return p.rows();
+}
+
+function paintSideWeapon(p: Paint, look: Look, pose: Pose, hand: [number, number]): void {
+  const [hx, hy] = hand;
+  switch (look.weapon) {
+    case 'sword_shield':
+    case 'holy':
+    case 'katana':
+      if (pose.attack) {
+        p.line(hx + 1, hy - 1, hx + 4, hy - 1 - 14, 'X', 2);
+        p.line(hx, hy - 2, hx + 3, hy - 14, 'x');
+      } else {
+        p.line(hx, hy, hx + 3, hy - 16, 'X', 2);
+        p.line(hx - 1, hy, hx + 2, hy - 16, 'x');
+      }
+      p.rect(hx - 2, hy - 1, 5, 1, 't');
+      if (look.weapon === 'holy') p.px(hx + 3, hy - 16, 'z');
+      break;
+    case 'axe':
+      p.line(hx, hy + 5, hx + 2, hy - 13, 'y', 2);
+      p.poly([[hx + 3, hy - 13], [hx + 9, hy - 15], [hx + 9, hy - 6], [hx + 3, hy - 8]], 'x');
+      p.line(hx + 9, hy - 15, hx + 9, hy - 6, 'X');
+      break;
+    case 'daggers':
+      p.line(hx, hy, hx + (pose.attack ? 6 : 3), hy + (pose.attack ? -1 : 6), 'X', 2);
+      p.px(hx, hy, 'y');
+      break;
+    case 'staff':
+    case 'tome': {
+      const topY = pose.attack ? hy - 18 : 5 + pose.bob;
+      const sx = pose.attack ? hx + 1 : hx + 1;
+      p.line(sx, topY, sx, Math.min(45, hy + 12), 'y', 2);
+      p.ellipse(sx + 0.5, topY - 1, 2.8, 2.8, 'z');
+      p.ellipse(sx, topY - 1.6, 1.2, 1.2, 'Z');
+      if (look.weapon === 'tome') {
+        p.rect(20, 24 + pose.bob, 6, 7, 'q');
+        p.rect(21, 25 + pose.bob, 4, 5, 'w');
+      }
+      break;
+    }
+  }
+}
+
 function chibiSpec(look: Look): SpriteSpec {
   const poses: Pose[] = [
     { bob: 0, legs: [0, 0, 0, 0], armL: 0, armR: 0, attack: false },
@@ -413,16 +750,27 @@ function chibiSpec(look: Look): SpriteSpec {
     ...walkLegs.map((legs, i) => ({ bob: i % 2, legs, armL: i === 0 ? 1 : i === 2 ? -1 : 0, armR: i === 0 ? -1 : i === 2 ? 1 : 0, attack: false })),
     { bob: 0, legs: [0, 0, 0, 0], armL: 0, armR: 0, attack: true },
   ];
+  // Side strides: contact, pass, contact (other leg), pass.
+  const sideSteps = [0, 0, 1, 0, -1, 0, 0];
+  const durations = (i: number) => (i < 2 ? 420 : i < 6 ? 120 : 140);
+  const frames = [
+    ...poses.map((pose, i) => ({ rows: paintChibi(look, pose), duration: durations(i) })),
+    ...poses.map((pose, i) => ({ rows: paintChibiBack(look, pose), duration: durations(i) })),
+    ...poses.map((pose, i) => ({ rows: paintChibiSide(look, pose, sideSteps[i]), duration: durations(i) })),
+  ];
+  // "idle"/"walk"/"attack" stay the front (down) view so existing callers keep
+  // working; "_up" is the back view and "_side" the profile facing right.
+  const animations = ['', '_up', '_side'].flatMap((suffix, d) => [
+    { name: `idle${suffix}`, from: d * 7, to: d * 7 + 1 },
+    { name: `walk${suffix}`, from: d * 7 + 2, to: d * 7 + 5 },
+    { name: `attack${suffix}`, from: d * 7 + 6, to: d * 7 + 6, loop: false },
+  ]);
   return {
     name: look.name,
     dir: 'assets/sprites/player',
     legend: { ...baseColors, ...look.colors },
-    frames: poses.map((pose, i) => ({ rows: paintChibi(look, pose), duration: i < 2 ? 420 : i < 6 ? 120 : 140 })),
-    animations: [
-      { name: 'idle', from: 0, to: 1 },
-      { name: 'walk', from: 2, to: 5 },
-      { name: 'attack', from: 6, to: 6, loop: false },
-    ],
+    frames,
+    animations,
     autoplay: 'idle',
   };
 }

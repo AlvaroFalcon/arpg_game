@@ -10,11 +10,17 @@
     <LangVersion>10</LangVersion>
     <AssemblyName>ArpgGameLauncher</AssemblyName>
     <RootNamespace>ArpgGameLauncher</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>2.0.0</Version>
     <Product>ARPG Game Launcher</Product>
-    <ApplicationIcon />
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Key art and icon from tools/art/launcher.ts, compiled into the exe. -->
+    <EmbeddedResource Include="Assets\background.png" LogicalName="background.png" />
+    <EmbeddedResource Include="Assets\icon.ico" LogicalName="icon.ico" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="System.Windows.Forms" />

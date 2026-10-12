@@ -72,6 +72,23 @@ select screen.
 - **Closer camera.** The hideout and realities zoom the player camera to
   `Player.CloseZoom` (1.5); the Survival Rift stays at 1:1 so hordes stay in view.
 
+### Four directions **[IMPLEMENTED 2026-10-12]**
+
+For the fake-3D look the owner wanted characters to face up, down and sideways.
+Each character sheet now holds three views of the same seven poses (21 frames):
+the front (`idle`, `walk`, `attack` — unchanged names, so every existing caller
+still works), the back (`idle_up`, `walk_up`, `attack_up`: hair or hood, cape over
+the shoulders, the weapon behind the body; painted like the front and mirrored so
+the weapon hand lands on the correct side) and a profile facing right
+(`idle_side`, ...; the game mirrors it for left) with a real stride and the near
+arm swinging. `Player.UpdateFacing` faces the movement direction, or the aim when
+standing still, with a little hysteresis on diagonals. Sprites without the
+directional animations (monsters) keep the old left/right flip.
+
+The voxel export now writes 16-bit indices; with 21 frames per character the
+player models total ~53 MB raw but ~7 MB compressed (git and the release zip both
+compress them). EasyPixel already greedy-meshes, so there was nothing to merge.
+
 Monsters, bosses and tiles are still the 1× art; they get the same treatment once
 the owner signs off on the character style.
 

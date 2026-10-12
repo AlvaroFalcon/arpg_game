@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -22,11 +23,18 @@ namespace ArpgGameLauncher
             string baseUrl = args.Length > 0 ? args[0] : ReleasesUrl;
             string apiUrl = args.Length > 0 ? null : ApiUrl;
             var http = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("ArpgGameLauncher/1.1");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("ArpgGameLauncher/2.0");
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new LauncherForm(new Updater(apiUrl, baseUrl, root, http)));
+            System.Reflection.Assembly self = typeof(Program).Assembly;
+            using (Stream art = self.GetManifestResourceStream("background.png"))
+            using (Stream iconStream = self.GetManifestResourceStream("icon.ico"))
+            using (var image = Image.FromStream(art))
+            using (var icon = new Icon(iconStream))
+            {
+                Application.Run(new LauncherForm(new Updater(apiUrl, baseUrl, root, http), image, icon));
+            }
         }
     }
 }

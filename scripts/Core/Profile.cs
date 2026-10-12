@@ -94,6 +94,7 @@ public partial class Profile : Node
     public CharacterData CreateCharacter(string name, string classId)
     {
         CharacterData data = CharacterData.Create(string.IsNullOrWhiteSpace(name) ? "Hero" : name.Trim(), classId);
+        data.TutorialDone = false;
         Characters.Add(data);
         ActiveIndex = Characters.Count - 1;
         Save();
@@ -279,6 +280,9 @@ public partial class Profile : Node
         public int HighestTierCleared { get; set; }
         public int RealitiesCleared { get; set; }
         public int Deaths { get; set; }
+
+        /// <summary>Null in saves from before the tutorial existed: those characters skip it.</summary>
+        public bool? TutorialDone { get; set; }
         public int TotalKills { get; set; }
         public int SurvivalRuns { get; set; }
         public float BestSurvivalTime { get; set; }
@@ -353,6 +357,7 @@ public partial class Profile : Node
             HighestTierCleared = c.HighestTierCleared,
             RealitiesCleared = c.RealitiesCleared,
             Deaths = c.Deaths,
+            TutorialDone = c.TutorialDone,
             TotalKills = c.TotalKills,
             SurvivalRuns = c.SurvivalRuns,
             BestSurvivalTime = c.BestSurvivalTime,
@@ -392,6 +397,7 @@ public partial class Profile : Node
             HighestTierCleared = s.HighestTierCleared,
             RealitiesCleared = s.RealitiesCleared,
             Deaths = s.Deaths,
+            TutorialDone = s.TutorialDone ?? true,
             TotalKills = s.TotalKills,
             SurvivalRuns = s.SurvivalRuns,
             BestSurvivalTime = s.BestSurvivalTime,

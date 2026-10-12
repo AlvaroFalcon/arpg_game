@@ -28,6 +28,9 @@ public partial class RealityController : Node2D, IPickupHandler
 {
     public const string Group = "reality";
 
+    /// <summary>Metadata key on pack monsters: the layout room (or corridor) they spawned in.</summary>
+    public const string RoomMeta = "reality_room";
+
     [Signal]
     public delegate void AnnouncedEventHandler(string title, string subtitle, Color color);
 
@@ -52,6 +55,10 @@ public partial class RealityController : Node2D, IPickupHandler
     public bool BossFightActive { get; private set; }
     public bool Completed { get; private set; }
     public bool Collapsed { get; private set; }
+
+    /// <summary>The introduction reality (docs/design/tutorial.md): fixed packs,
+    /// softer monsters, unlimited portals and a <see cref="TutorialGuide"/>.</summary>
+    public bool IsTutorial { get; private set; }
     public Node2D? ExitPortal => _exitPortal;
     public HashSet<Vector2I> Explored { get; } = new();
     public RealityHud Hud { get; private set; } = null!;
@@ -78,13 +85,16 @@ public partial class RealityController : Node2D, IPickupHandler
         AddToGroup(Pickup.HandlerGroup);
         _rng.Randomize();
 
-        Tier = Mathf.Clamp(RealityLaunch.Tier, 1, RealityTiers.MaxTier);
-        Layout = (RealityLaunch.LayoutId is { } id ? LayoutCatalog.Find(id) : null) ?? LayoutCatalog.Layouts[_rng.RandiRange(0, LayoutCatalog.Layouts.Count - 1)];
-        Modifiers = new List<string>(RealityLaunch.Modifiers);
+        IsTutorial = RealityLaunch.Tutorial;
+        Tier = IsTutorial ? 1 : Mathf.Clamp(RealityLaunch.Tier, 1, RealityTiers.MaxTier);
+        Layout = IsTutorial
+            ? LayoutCatalog.Tutorial
+            : (RealityLaunch.LayoutId is { } id ? LayoutCatalog.Find(id) : null) ?? LayoutCatalog.Layouts[_rng.RandiRange(0, LayoutCatalog.Layouts.Count - 1)];
+        Modifiers = IsTutorial ? new List<string>() : new List<string>(RealityLaunch.Modifiers);
         RealityLaunch.Reset();
         Theme = RealityTheme.Get(Layout.ThemeId);
         (_quantity, _rarityBonus) = RealityLaunch.Bonuses(Modifiers);
-        PortalsLeft = RealityTiers.Portals(Tier);
+        PortalsLeft = IsTutorial ? TutorialPortals : RealityTiers.Portals(Tier);
 
         RenderingServer.SetDefaultClearColor(Theme.Void);
         AddChild(new CanvasModulate { Color = Theme.Ambient });
@@ -107,9 +117,14 @@ public partial class RealityController : Node2D, IPickupHandler
 
         Hud = new RealityHud { Reality = this, Name = "Hud" };
         AddChild(Hud);
-        Pause = new PauseMenu { LeaveText = "Abandon reality", OnLeave = Abandon, Summary = Summary };
+        Pause = new PauseMenu { LeaveText = IsTutorial ? "Skip the introduction" : "Abandon reality", OnLeave = Abandon, Summary = Summary };
         AddChild(Pause);
         AddChild(new CharacterPanels { Player = Player, Name = "CharacterPanels" });
+        if (IsTutorial)
+        {
+            AddChild(new TutorialGuide { Reality = this, Name = "TutorialGuide" });
+        }
+
         Enemy.SplitSpawned += OnSplitSpawned;
 
         Sfx.Music(this, Theme.Music);
@@ -118,7 +133,15 @@ public partial class RealityController : Node2D, IPickupHandler
     }
 
     private void AnnounceStart(string mods) =>
-        EmitSignal(SignalName.Announced, Layout.Name, $"Tier {Tier}  ·  monster level {MonsterLevel}  ·  {PortalsLeft} portal{(PortalsLeft == 1 ? "" : "s")}{mods}", RealityTiers.ShardColor(Tier));
+        EmitSignal(SignalName.Announced, Layout.Name, IsTutorial ? "A short introduction — follow the objectives on the left" : StartSubtitle(mods), IsTutorial ? new Color(1f, 0.85f, 0.4f) : RealityTiers.ShardColor(Tier));
+
+    private string StartSubtitle(string mods) => $"Tier {Tier}  ·  monster level {MonsterLevel}  ·  {PortalsLeft} portal{(PortalsLeft == 1 ? "" : "s")}{mods}";
+
+    /// <summary>Portals in the introduction: dying there costs nothing.</summary>
+    public const int TutorialPortals = 99;
+
+    /// <summary>The introduction's monsters and guardian are this much softer.</summary>
+    private float TutorialLife => IsTutorial ? 0.6f : 1f;
 
     public override void _ExitTree()
     {
@@ -198,6 +221,13 @@ public partial class RealityController : Node2D, IPickupHandler
         bool elite = Modifiers.Contains("elite");
         foreach (PackSpot spot in Raster.Packs)
         {
+            if (IsTutorial)
+            {
+                // Every marker spawns, small and predictable.
+                SpawnPack(spot, spot.Kind, false);
+                continue;
+            }
+
             float chance = spot.Kind switch
             {
                 'm' => RealityTiers.MagicPackChance(Tier) + (elite ? 0.25f : 0f),
@@ -225,7 +255,7 @@ public partial class RealityController : Node2D, IPickupHandler
         var pack = new List<Enemy>();
         Vector2 centre = RasterLayout.World(spot.Cell);
         string main = Theme.Roster[_rng.RandiRange(0, Theme.Roster.Count - 1)];
-        int normals = kind switch { 'm' => 0, 'r' => _rng.RandiRange(3, 5), 'u' => 0, _ => _rng.RandiRange(4, 7) };
+        int normals = kind switch { 'm' => 0, 'r' => _rng.RandiRange(3, 5), 'u' => 0, _ => IsTutorial ? 3 : _rng.RandiRange(4, 7) };
         if (hordes)
         {
             normals += 2;
@@ -240,7 +270,7 @@ public partial class RealityController : Node2D, IPickupHandler
         switch (kind)
         {
             case 'm':
-                for (int i = 0; i < _rng.RandiRange(3, 4); i++)
+                for (int i = 0; i < (IsTutorial ? 2 : _rng.RandiRange(3, 4)); i++)
                 {
                     pack.Add(SpawnMonster(main, centre, MonsterRarity.Magic));
                 }
@@ -262,6 +292,7 @@ public partial class RealityController : Node2D, IPickupHandler
         foreach (Enemy e in pack)
         {
             e.Pack = pack;
+            e.SetMeta(RoomMeta, spot.Room);
         }
     }
 
@@ -274,8 +305,8 @@ public partial class RealityController : Node2D, IPickupHandler
         Vector2 offset = new(_rng.RandfRange(-70f, 70f), _rng.RandfRange(-70f, 70f));
         Vector2 at = centre + offset;
         enemy.GlobalPosition = Raster.Walkable(Field.CellOf(at)) ? at : centre;
-        float life = RealityTiers.LifeMultiplier(Tier) * (Modifiers.Contains("hardened") ? 1.4f : 1f);
-        float dmg = RealityTiers.DamageMultiplier(Tier) * (Modifiers.Contains("searing") ? 1.25f : 1f);
+        float life = RealityTiers.LifeMultiplier(Tier) * TutorialLife * (Modifiers.Contains("hardened") ? 1.4f : 1f);
+        float dmg = RealityTiers.DamageMultiplier(Tier) * TutorialLife * (Modifiers.Contains("searing") ? 1.25f : 1f);
         enemy.ApplyTierScaling(life, dmg);
         if (Modifiers.Contains("swift"))
         {
@@ -325,8 +356,8 @@ public partial class RealityController : Node2D, IPickupHandler
         boss.AggroRadius = 0f;
         AddChild(boss);
         boss.GlobalPosition = RasterLayout.World(Raster.BossCell);
-        float life = RealityTiers.LifeMultiplier(Tier) * Theme.BossLifeMultiplier * (Modifiers.Contains("hardened") ? 1.4f : 1f);
-        float dmg = RealityTiers.DamageMultiplier(Tier) * (Modifiers.Contains("searing") ? 1.25f : 1f);
+        float life = RealityTiers.LifeMultiplier(Tier) * Theme.BossLifeMultiplier * TutorialLife * (Modifiers.Contains("hardened") ? 1.4f : 1f);
+        float dmg = RealityTiers.DamageMultiplier(Tier) * TutorialLife * (Modifiers.Contains("searing") ? 1.25f : 1f);
         boss.ApplyTierScaling(life, dmg);
         boss.Killed += OnBossKilled;
         Boss = boss;
@@ -495,12 +526,12 @@ public partial class RealityController : Node2D, IPickupHandler
 
     private Vector2 Jitter(float r) => new(_rng.RandfRange(-r, r), _rng.RandfRange(-r, r));
 
-    public void DropItem(Vector2 at, float quality)
+    public EquipmentItem? DropItem(Vector2 at, float quality)
     {
         IReadOnlyList<BaseItemDefinition> bases = ItemFactory.Bases;
         if (bases.Count == 0)
         {
-            return;
+            return null;
         }
 
         EquipmentItem item = ItemFactory.NewBlank();
@@ -509,6 +540,7 @@ public partial class RealityController : Node2D, IPickupHandler
         float roll = _rng.Randf() + (quality + _rarityBonus) * 0.6f;
         Rarity rarity = roll > 1.05f ? Rarity.Rare : roll > 0.5f ? Rarity.Magic : Rarity.Common;
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, Mathf.Clamp(MonsterLevel, 1, 100), ItemFactory.Affixes.Entries, _rng);
+        return item;
     }
 
     public void DropGem(Vector2 at)
@@ -611,7 +643,7 @@ public partial class RealityController : Node2D, IPickupHandler
         _exitPortal.AddChild(_exitPrompt);
         Sfx.Play(this, "victory");
         Sfx.Music(this, "music_menu");
-        EmitSignal(SignalName.Announced, "Reality stabilised", "Collect your loot — press E at the portal to go home", new Color(1f, 0.85f, 0.4f));
+        EmitSignal(SignalName.Announced, IsTutorial ? "Guardian defeated" : "Reality stabilised", "Collect your loot — press E at the portal to go home", new Color(1f, 0.85f, 0.4f));
     }
 
     private async void OnPlayerDied()
@@ -664,7 +696,7 @@ public partial class RealityController : Node2D, IPickupHandler
 
     private void Abandon()
     {
-        EmitSignal(SignalName.Announced, "Reality abandoned", "", new Color(0.8f, 0.8f, 0.8f));
+        EmitSignal(SignalName.Announced, IsTutorial ? "Introduction skipped" : "Reality abandoned", "", new Color(0.8f, 0.8f, 0.8f));
         Leave();
     }
 
@@ -679,6 +711,12 @@ public partial class RealityController : Node2D, IPickupHandler
     {
         _leaving = true;
         Player.Stats.RemoveModifiersFromSource(ModifierSource);
+        if (IsTutorial && Profile.Get(this) is { } profile)
+        {
+            // Finished, skipped or collapsed: either way it is never forced again.
+            profile.Active.TutorialDone = true;
+        }
+
         Profile.Get(this)?.CaptureFrom(Player);
         Scenes.Go(this, Scenes.Hideout);
     }

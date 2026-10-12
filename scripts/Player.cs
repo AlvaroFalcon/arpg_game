@@ -209,6 +209,40 @@ public partial class Player : CharacterBody2D
         }
     }
 
+    /// <summary>"" (front, facing down), "_up" (back) or "_side" (profile, mirrored
+    /// for left): the animation suffix of the current facing — docs/design/art-pipeline.md
+    /// -> "Four directions".</summary>
+    private string _facing = "";
+
+    /// <summary>
+    /// Faces where the character is going, or where it aims when standing still.
+    /// Sprites without directional views just flip left/right. A little
+    /// hysteresis keeps diagonals from flickering between the side and the
+    /// front/back views.
+    /// </summary>
+    private void UpdateFacing(Vector2 toward)
+    {
+        if (_sprite is null || toward.LengthSquared() < 16f)
+        {
+            return;
+        }
+
+        float ax = Mathf.Abs(toward.X);
+        float ay = Mathf.Abs(toward.Y);
+        bool side = _facing == "_side" ? ax * 1.3f >= ay : ax > ay * 1.3f;
+        bool directional = _sprite.SpriteFrames?.HasAnimation("idle_side") == true;
+        if (!directional || side)
+        {
+            _facing = directional ? "_side" : "";
+            _sprite.FlipH = toward.X < 0f;
+        }
+        else
+        {
+            _facing = toward.Y < 0f ? "_up" : "";
+            _sprite.FlipH = false;
+        }
+    }
+
     public override void _Process(double delta)
     {
         if (_sprite is null)
@@ -217,18 +251,16 @@ public partial class Player : CharacterBody2D
         }
 
         bool moving = Velocity.LengthSquared() > 25f;
-        string anim = moving ? "walk" : "idle";
+        UpdateFacing(moving ? Velocity : GetGlobalMousePosition() - GlobalPosition);
+        string anim = (moving ? "walk" : "idle") + _facing;
+        if (_sprite.SpriteFrames?.HasAnimation(anim) != true)
+        {
+            anim = moving ? "walk" : "idle";
+        }
+
         if (_sprite.Animation != anim && _sprite.SpriteFrames?.HasAnimation(anim) == true)
         {
             _sprite.Play(anim);
-        }
-
-        // Face the aim (mouse) — this is a caster; what it is pointing at matters
-        // more than which way its feet go.
-        float aimX = GetGlobalMousePosition().X - GlobalPosition.X;
-        if (Mathf.Abs(aimX) > 4f)
-        {
-            _sprite.FlipH = aimX < 0f;
         }
 
         if (_hurtFlash > 0f)

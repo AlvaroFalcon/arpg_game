@@ -40,6 +40,9 @@ public static class RealityLaunch
     public static string? LayoutId;
     public static List<string> Modifiers = new();
 
+    /// <summary>The next reality is the introduction (docs/design/tutorial.md).</summary>
+    public static bool Tutorial;
+
     /// <summary>Gold to empower a shard of a tier.</summary>
     public static long EmpowerCost(int tier) => 15 + tier * 12;
 
@@ -70,5 +73,6 @@ public static class RealityLaunch
         Tier = 1;
         LayoutId = null;
         Modifiers = new List<string>();
+        Tutorial = false;
     }
 }

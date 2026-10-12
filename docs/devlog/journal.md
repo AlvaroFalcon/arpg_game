@@ -248,3 +248,15 @@ The repo went public, so the project dropped the "Path to Exile" name everywhere
 ## 2026-10-12 — Tooltip comparison, launcher fixes, calmer deaths
 
 Owner feedback from the first real launcher and voxel play session. The launcher hit a 404: the PR merge had just published a release whose files were still uploading, and `releases/latest/download` points at it in that window — it now asks the releases API for the newest release that already has its zip (falling back to the direct links), wraps its status text and shows the real network error. Item tooltips compare against what you wear in that slot (green +, red −) and clamp to the screen. The wall dither used a distance test that faded walls you only stood next to; it now tests occlusion in view space. Ordinary monsters crumble instead of exploding; bosses keep the full burst. Screenshots: `voxel-wall-side-ashen.png`, `voxel-wall-front-ashen.png`.
+
+## 2026-10-12 — The Threshold and launcher 2.0
+
+New characters no longer appear in the hideout with no idea what to do: they start in The Threshold, an introduction reality reusing the real reality controller in a tutorial mode (fixed small packs, softer monsters, 99 portals) with a guide panel that advances one objective at a time only when the player has done it — move, dodge, kill the yard's pack, pick up and equip a gifted item (the tooltip comparison gets taught there), clear the cache, kill the guardian, go home. Existing characters skip it (no flag in the save means done). EndgameSmokeTest drives all eight steps.
+
+The launcher became a borderless, custom-drawn window over pixel-art key art generated from the game's sprites: a first draft had a literal "VS" over a rift of light, which the owner found too on the nose, so it became a fight — warrior and rogue mid-swing into the horde, casters charging spells on rune circles behind, the Colossus looming. The drawing code is pure System.Drawing so previews render on Linux through libgdiplus. Screenshots: `tutorial-start.png`, `tutorial-loot.png`, `launcher-ready.png`, `launcher-downloading.png`.
+
+## 2026-10-12 — Illustrated launcher heroes and four-way characters
+
+The owner wanted the launcher figures "like real characters, really moving". Up-scaled 32×48 sprites can't do that, so `tools/art/rig.ts` paints figures from joints (shaded tapered limbs, a torso, an anime head in three-quarter view, flowing hair, capes, weapons in hand) and `heroes.ts` poses them: the warrior lunging into a slash, the rogue leaping onto a bat, the Arcanist casting with her staff high, the Sage reading her tome, a demon brute rearing back. The low-res monsters behind became glowing silhouettes, which reads as depth instead of a clash of detail levels.
+
+Characters now face four ways: each sheet has front, back and profile views of the same poses, and the player faces where it moves (or aims, standing still). Screenshots: `facing-up.png`, `facing-left.png`, `facing-down.png`.

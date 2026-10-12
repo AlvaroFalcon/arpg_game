@@ -90,6 +90,10 @@ public sealed class CharacterData
     public int HighestTierCleared { get; set; }
     public int RealitiesCleared { get; set; }
     public int Deaths { get; set; }
+
+    /// <summary>False for a freshly created character until they finish (or
+    /// skip) the introduction reality — docs/design/tutorial.md.</summary>
+    public bool TutorialDone { get; set; } = true;
     public int TotalKills { get; set; }
     public int SurvivalRuns { get; set; }
     public float BestSurvivalTime { get; set; }

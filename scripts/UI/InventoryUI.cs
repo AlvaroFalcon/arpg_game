@@ -80,6 +80,8 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
     /// whether this panel is open — both the toggle key and
     /// <see cref="Close"/> (Escape, via <see cref="PanelStack.CloseTopmost"/>)
     /// go through this one method.</summary>
+    public bool IsOpen => _panel.Visible;
+
     public void SetOpen(bool open)
     {
         _panel.Visible = open;
