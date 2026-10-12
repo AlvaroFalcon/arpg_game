@@ -45,6 +45,36 @@ support, passive, keystone, dodge) and the Ashen Arena tileset (4 floor, 2 lava,
 wall, rune). Sprites are drawn at 1× and scaled ×2 (bosses ×3–3.5) in game, with
 Nearest filtering project-wide.
 
+## High-definition anime characters **[IMPLEMENTED 2026-10-12]**
+
+The owner found the 16×24 characters too small to read and asked for more
+definition in a Japanese anime style, plus a portrait per character on the
+select screen.
+
+- **Double resolution, same screen size.** Player characters are now 32×48 and the
+  Player's `Sprite` scale went from ×2 to ×1, so the hitbox and every 2D overlay are
+  unchanged. The voxel actor already derives its scale from the sprite's
+  `GlobalScale`, so the figures just gained detail (inflate depth cap raised to 16).
+- **Painted, not typed.** At 32×48 hand-typed rows stop scaling, so
+  `tools/art/paint.ts` adds a tiny raster painter (ellipses, polygons, lines, an
+  outline pass) and `tools/art/sprites/anime.ts` builds every class from one
+  parametric chibi: a `Look` picks hair style, armour, weapon, extras (hat, halo,
+  horns, mask, scarf, cape…) and a palette. Big eyes with two highlights, blush,
+  pointed chin, ~2.5-head proportions. Adding an ascendancy is one `Look` entry.
+- **Portraits.** The same `Look` paints a 64×64 bust into `assets/portraits/`.
+  `UiTheme.Portrait` frames it in gold and is used by character select, the
+  class-creation cards and the Ascendancy altar (falls back to the sprite's idle
+  frame).
+- **Faces, not scalps.** Upright voxel actors cancel the stage's depth stretch and
+  lean back `VoxelActor.LeanDegrees` (30°) from the camera, most of the way to an
+  HD-2D billboard (a 40° lean would face it exactly). Without that, the 40° camera
+  plus the stretched depth showed mostly the tops of heads.
+- **Closer camera.** The hideout and realities zoom the player camera to
+  `Player.CloseZoom` (1.5); the Survival Rift stays at 1:1 so hordes stay in view.
+
+Monsters, bosses and tiles are still the 1× art; they get the same treatment once
+the owner signs off on the character style.
+
 ## Voxels — the HD-2D view **[IMPLEMENTED 2026-10-12]**
 
 Owner brief: *"EasyPixel now exports voxels; use them as the game's main graphics

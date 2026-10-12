@@ -34,7 +34,6 @@ shape = SubResource("CircleShape2D_1")
 
 [node name="Sprite" parent="." instance=ExtResource("14")]
 position = Vector2(0, -6)
-scale = Vector2(2, 2)
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 

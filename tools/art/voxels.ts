@@ -172,7 +172,7 @@ const SPRITE_DIRS = ['assets/sprites/player', 'assets/sprites/enemies', 'assets/
 function exportSprite(spec: SpriteSpec): void {
   const doc = buildDocument(spec);
   // Thickness grows with the sprite: a puffy body, not a flat card.
-  const depth = Math.max(3, Math.min(12, Math.round(doc.width * 0.5)));
+  const depth = Math.max(3, Math.min(16, Math.round(doc.width * 0.5)));
   const meshes: VoxelMesh[] = [];
   const names: string[] = [];
   doc.frames.forEach((_, fi) => {

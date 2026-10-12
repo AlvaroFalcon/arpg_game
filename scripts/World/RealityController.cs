@@ -101,6 +101,7 @@ public partial class RealityController : Node2D, IPickupHandler
 
         Player = GetNode<Player>("Player");
         ConfigurePlayer();
+        Player.UseCloseCamera();
         SpawnPacks();
         SpawnBoss();
 

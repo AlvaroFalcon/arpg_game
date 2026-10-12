@@ -15,6 +15,9 @@ namespace PathToExile.View3D;
 /// </summary>
 public partial class VoxelActor : Node3D
 {
+    /// <summary>How far upright figures lean back from the camera (the camera pitch would be a full billboard facing it).</summary>
+    public const float LeanDegrees = 30f;
+
     public AnimatedSprite2D Sprite = null!;
     public VoxelStage Stage = null!;
 
@@ -57,9 +60,12 @@ public partial class VoxelActor : Node3D
         var scale = new Vector3(Sprite.FlipH ? -s : s, s, s);
         // Projectiles lie flat like their 2D sprite (sprite-up = screen-up = far)
         // and yaw with the heading: a 2D clockwise rotation θ is a yaw of -θ.
+        // Upright figures cancel the stage's depth stretch and lean back, away from
+        // the camera (most of the way to an HD-2D billboard), so faces read
+        // instead of the tops of heads.
         Basis basis = _flat
             ? new Basis(Vector3.Up, -Sprite.GlobalRotation) * new Basis(Vector3.Right, -Mathf.Pi / 2f)
-            : Basis.Identity;
+            : Basis.FromScale(new Vector3(1f, 1f, VoxelStage.SinPitch)) * new Basis(Vector3.Right, -Mathf.DegToRad(LeanDegrees));
         Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(anchor.GlobalPosition, _height));
         _mesh.Mesh = VoxelLibrary.MeshFor(Sprite);
 

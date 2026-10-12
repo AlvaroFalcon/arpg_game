@@ -39,17 +39,6 @@ public partial class CharacterSelect : PanelContainer
         }
     }
 
-    private static Control Portrait(string sprite, float size)
-    {
-        string path = $"res://assets/sprites/player/{sprite}.tres";
-        if (ResourceLoader.Exists(path) && GD.Load<SpriteFrames>(path) is { } frames && frames.HasAnimation("idle"))
-        {
-            return UiTheme.Icon(frames.GetFrameTexture("idle", 0), size);
-        }
-
-        return new Control { CustomMinimumSize = new Vector2(size, size) };
-    }
-
     private void ShowList()
     {
         Clear();
@@ -68,7 +57,7 @@ public partial class CharacterSelect : PanelContainer
                 var row = new PanelContainer();
                 _body.AddChild(row);
                 HBoxContainer h = UiTheme.HBox(row, 12);
-                h.AddChild(Portrait(c.AscendancyDef?.Sprite ?? c.Class.Sprite, 52f));
+                h.AddChild(UiTheme.Portrait(c.AscendancyDef?.Sprite ?? c.Class.Sprite, 72f));
                 VBoxContainer info = UiTheme.VBox(h, 2);
                 info.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
                 info.AddChild(UiTheme.Label($"{c.Name}{(index == profile.ActiveIndex ? "  (last played)" : "")}", 20, UiTheme.Text));
@@ -137,7 +126,7 @@ public partial class CharacterSelect : PanelContainer
             cards.AddChild(card);
             VBoxContainer v = UiTheme.VBox(card, 6);
             HBoxContainer head = UiTheme.HBox(v, 8);
-            head.AddChild(Portrait(cls.Sprite, 56f));
+            head.AddChild(UiTheme.Portrait(cls.Sprite, 96f));
             VBoxContainer titles = UiTheme.VBox(head, 0);
             titles.AddChild(UiTheme.Label(cls.Name, 24, selected ? UiTheme.Gold : UiTheme.Text));
             titles.AddChild(UiTheme.Label($"STR {cls.Strength} · DEX {cls.Dexterity} · INT {cls.Intelligence}", 13, UiTheme.TextDim));

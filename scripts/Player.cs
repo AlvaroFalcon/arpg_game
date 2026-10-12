@@ -83,6 +83,21 @@ public partial class Player : CharacterBody2D
     /// death, results). Physics still runs so knock-on systems stay sane.</summary>
     public bool ControlsEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Camera zoom for the endgame scenes (hideout, realities): the hi-res
+    /// characters read better a bit closer. The Survival Rift keeps 1:1 so its
+    /// hordes stay in view.
+    /// </summary>
+    public const float CloseZoom = 1.5f;
+
+    public void UseCloseCamera()
+    {
+        if (GetNodeOrNull<Camera2D>("Camera2D") is { } camera)
+        {
+            camera.Zoom = new Vector2(CloseZoom, CloseZoom);
+        }
+    }
+
     public override void _Ready()
     {
         AddToGroup(CombatQuery.PlayerGroup);

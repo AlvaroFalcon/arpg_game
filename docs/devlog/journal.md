@@ -232,3 +232,11 @@ The owner played the Windows build and left a list for the night.
 Verified: 11/11 headless tests pass (EndgameSmokeTest gained integer rolls, stash tab prices, the 6-slot loadout and sprint/stamina through simulated input). Screenshots: `panel-inventory.png`, `panel-stash.png`, `panel-character.png`, `panel-skills.png`, `voxel-*.png`, and the reality/boss shots re-taken in voxels.
 
 Unfinished, honestly: the voxel view is a presentation layer — pickups, telegraphs and UI are still flat 2D on top; walls only shed chips (no per-voxel destruction yet); the camera is orthographic, not Octopath's perspective; nobody has played the voxel build on a real GPU yet.
+
+## 2026-10-12 — Anime characters at double resolution
+
+The owner found the sprites too small and wanted more definition with a Japanese anime look, plus character portraits. Characters went from 16×24 to 32×48 at half the scale, so nothing in gameplay moved. Drawing at that size row by row would be miserable, so a tiny painter (`tools/art/paint.ts`) paints shapes and an outline pass, and one parametric chibi in `anime.ts` produces all eleven classes and ascendancies from a "look" (hair, armour, weapon, extras, palette). The same look paints a 64×64 bust, now framed on character select, the creation cards and the Ascendancy altar. The first portrait pass hid the eyes under the bangs, and the fix was simply drawing the face after the hair. The hideout and realities zoom in by 1.5 to show the detail off; the Survival Rift stays wide.
+
+Upright voxel figures now also cancel the stage's depth stretch and lean back 30° from the camera, most of the way to an HD-2D billboard; before that the camera mostly saw the tops of heads. Screenshots: `anime-characters.png`, `menu-characters.png`, `menu-create.png`, `voxel-hideout.png`, `reality-ashen-boss.png`. 11/11 tests pass.
+
+Unfinished: monsters, bosses and tiles are still 1× art, waiting on the owner's verdict on the style.

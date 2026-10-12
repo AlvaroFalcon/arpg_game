@@ -159,6 +159,30 @@ public static class UiTheme
         };
     }
 
+    /// <summary>
+    /// A character's bust (assets/portraits, drawn by tools/art/sprites/anime.ts)
+    /// in a gold frame; falls back to the idle frame of the class sprite.
+    /// </summary>
+    public static Control Portrait(string sprite, float size)
+    {
+        var frame = new PanelContainer { CustomMinimumSize = new Vector2(size, size) };
+        frame.AddThemeStyleboxOverride("panel", Box(new Color(0.1f, 0.08f, 0.14f), Gold, 2, 4, 2));
+        string portrait = $"res://assets/portraits/{sprite}.png";
+        string frames = $"res://assets/sprites/player/{sprite}.tres";
+        Texture2D? texture = null;
+        if (ResourceLoader.Exists(portrait))
+        {
+            texture = GD.Load<Texture2D>(portrait);
+        }
+        else if (ResourceLoader.Exists(frames) && GD.Load<SpriteFrames>(frames) is { } sf && sf.HasAnimation("idle"))
+        {
+            texture = sf.GetFrameTexture("idle", 0);
+        }
+
+        frame.AddChild(Icon(texture, size - 6f));
+        return frame;
+    }
+
     public static string FormatTime(float seconds)
     {
         int s = Mathf.Max(0, Mathf.FloorToInt(seconds));

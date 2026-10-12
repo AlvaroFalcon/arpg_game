@@ -104,11 +104,7 @@ public partial class AscendancyPanel : ModalPanel
             _content.AddChild(card);
             VBoxContainer v = UiTheme.VBox(card, 4);
             HBoxContainer head = UiTheme.HBox(v, 12);
-            string path = $"res://assets/sprites/player/{def.Sprite}.tres";
-            if (ResourceLoader.Exists(path) && GD.Load<SpriteFrames>(path) is { } frames && frames.HasAnimation("idle"))
-            {
-                head.AddChild(UiTheme.Icon(frames.GetFrameTexture("idle", 0), 56f));
-            }
+            head.AddChild(UiTheme.Portrait(def.Sprite, 80f));
 
             VBoxContainer titles = UiTheme.VBox(head, 2);
             titles.AddChild(UiTheme.Label(def.Name, 22, UiTheme.Gold));
