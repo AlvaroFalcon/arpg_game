@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The per-tier escape hatch from docs/design/affixes.md -> "Authoring shape":

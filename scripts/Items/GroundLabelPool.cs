@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// docs/design/items.md -> "Label rendering": "Dozens of labels appear at once

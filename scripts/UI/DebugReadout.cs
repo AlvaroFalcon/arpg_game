@@ -1,8 +1,8 @@
 #nullable enable
 using Godot;
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Plain-text life/mana readout. Per docs/design/skills.md -> priority item 7,

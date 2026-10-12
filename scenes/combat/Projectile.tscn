@@ -14,3 +14,8 @@ shape = SubResource("CircleShape2D_1")
 [node name="Visual" type="Polygon2D" parent="."]
 color = Color(1, 0.55, 0.15, 1)
 polygon = PackedVector2Array(6, 0, 2, 4, -6, 0, 2, -4)
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+visible = false
+texture_filter = 1
+scale = Vector2(2, 2)

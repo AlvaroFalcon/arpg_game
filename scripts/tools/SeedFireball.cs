@@ -1,10 +1,10 @@
 using Godot;
 using Godot.Collections;
-using PathToExile.Combat;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// One-shot resource-authoring tool: builds the Fireball skill definition in code
@@ -14,7 +14,7 @@ namespace PathToExile.Tools;
 /// not something to get right by typing sub_resource blocks by hand.
 ///
 /// Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tools/SeedFireball.tscn --quit-after 2
 ///
 /// Safe to re-run — always overwrites res://resources/skills/Fireball.tres.

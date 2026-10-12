@@ -1,4 +1,4 @@
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The nine equipment slots from docs/design/items.md -> "Equipment slots":
@@ -27,4 +27,5 @@ public enum EquipmentSlot
     Amulet = 7,
     Ring1 = 8,
     Ring2 = 9,
+    Pants = 10,
 }

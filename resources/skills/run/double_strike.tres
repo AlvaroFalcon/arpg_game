@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="MeleeSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/MeleeSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_double_strike.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 2.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Double Strike"
+Description = "Two quick stabs in a narrow arc. Fast, precise, crit-friendly."
+BaseDamage = 15.0
+BaseUseTime = 0.42
+Tags = 9
+Range = 80.0
+ArcDegrees = 80.0
+Strikes = 2
+Knockback = 60.0
+Tint = Color(0.85, 1, 0.85, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

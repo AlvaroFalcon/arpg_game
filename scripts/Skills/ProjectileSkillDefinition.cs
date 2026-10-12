@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The `Projectile` archetype. Authored with its full intended capability list —

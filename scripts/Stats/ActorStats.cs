@@ -2,9 +2,9 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
+using ArpgGame.Combat;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// Holds a combat entity's live stats. Entity-agnostic by design: the skill
@@ -149,6 +149,26 @@ public partial class ActorStats : Node
         StatId.Intelligence => 10f,
         StatId.ManaCostMultiplier => 1f,
         StatId.ThornsDamage => 0f,
+
+        // Fourth pass (docs/design/progression.md -> "Run stats"). The
+        // multiplier-shaped ones are base 1.0 so "no bonuses" is a no-op, the
+        // same convention ManaCostMultiplier already uses.
+        StatId.DamageTaken => 1f,
+        StatId.PickupRadius => 80f,
+        StatId.ExperienceGain => 1f,
+        StatId.AreaOfEffect => 1f,
+        StatId.ProjectileSpeed => 1f,
+        StatId.DodgeCharges => 2f,
+        StatId.DodgeRecovery => 1f,
+        StatId.ExtraProjectiles => 0f,
+        StatId.IgniteChance => 0f,
+        StatId.ShockChance => 0f,
+        StatId.SkillDuration => 1f,
+        StatId.LifeOnKill => 0f,
+        StatId.ExtraChains => 0f,
+        StatId.ExtraPierce => 0f,
+        StatId.MaxStamina => 100f,
+        StatId.StaminaRegen => 22f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 

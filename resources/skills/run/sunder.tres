@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="MeleeSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/MeleeSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_sunder.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 4.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Sunder"
+Description = "Splits the ground in a line ahead of you after a brief wind-up."
+BaseDamage = 36.0
+BaseUseTime = 0.75
+Tags = 25
+Range = 320.0
+Line = true
+LineWidth = 58.0
+LineDelay = 0.18
+Knockback = 100.0
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

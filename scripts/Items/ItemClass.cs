@@ -1,4 +1,4 @@
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Which broad family of item this is. Part of the fixed filter vocabulary from
@@ -25,4 +25,13 @@ public enum ItemClass
     Belt,
     Amulet,
     Ring,
+
+    // docs/design/classes.md: melee weapons for the Warrior and the Rogue.
+    // Appended, never inserted: base .tres files store this enum as an int.
+    Sword,
+    Axe,
+    Dagger,
+
+    // The paper doll's legs slot (docs/design/items.md -> "Paper doll").
+    Pants,
 }

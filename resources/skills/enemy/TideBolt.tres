@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ProjectileSkillDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/ProjectileSkillDefinition.cs" id="1"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/projectiles/tide_orb.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+Speed = 250.0
+Range = 760.0
+SpawnOffset = 18.0
+DisplayName = "Tide Bolt"
+BaseDamage = 9.0
+BaseUseTime = 0.55
+Tags = 1030
+Frames = ExtResource("2")

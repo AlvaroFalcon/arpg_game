@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// Drives scripted movement sequences in a real (windowed) run and saves screenshots to

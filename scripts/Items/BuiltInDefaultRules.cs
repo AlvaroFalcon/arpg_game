@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// docs/design/items.md -> "Rarity colour is filter output, not label state": the

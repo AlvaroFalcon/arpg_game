@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The six-step roll procedure from docs/design/affixes.md -> "Roll procedure",
@@ -36,6 +36,29 @@ public static class AffixRoller
             Tier = tier;
             Value = value;
         }
+    }
+
+    /// <summary>
+    /// A value in [min, max]. Ranges whose magnitude reaches 1 roll whole numbers
+    /// (+17 Intelligence, 12% increased damage — never +17.5); genuinely
+    /// fractional ranges (+0.05 critical multiplier, 4% chance stored as 0.04)
+    /// keep their decimals.
+    /// </summary>
+    public static float RollValue(float min, float max, RandomNumberGenerator rng)
+    {
+        if (min >= max)
+        {
+            return Mathf.Max(Mathf.Abs(min), Mathf.Abs(max)) >= 1f ? Mathf.Round(min) : min;
+        }
+
+        if (Mathf.Max(Mathf.Abs(min), Mathf.Abs(max)) >= 1f)
+        {
+            int lo = Mathf.CeilToInt(min);
+            int hi = Mathf.FloorToInt(max);
+            return lo <= hi ? rng.RandiRange(lo, hi) : Mathf.Round((min + max) / 2f);
+        }
+
+        return rng.RandfRange(min, max);
     }
 
     /// <summary>
@@ -86,7 +109,7 @@ public static class AffixRoller
             // Step 5: tier, then a value within that tier's range.
             int tier = RollTier(chosen, itemLevel, rng);
             (float min, float max) = chosen.ValueRangeForTier(tier);
-            float value = min >= max ? min : rng.RandfRange(min, max);
+            float value = RollValue(min, max, rng);
 
             result.Add(new RolledAffix(chosen, tier, value));
 

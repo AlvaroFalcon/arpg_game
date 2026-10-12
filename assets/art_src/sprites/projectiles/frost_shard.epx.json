@@ -1,0 +1,35 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "frost_shard",
+  "width": 10,
+  "height": 6,
+  "palette": [
+    "#2a6fd6",
+    "#6ec6ff",
+    "#e8fbff"
+  ],
+  "layers": [
+    {
+      "id": "layer_lj4sv1d",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_gc4gq1e",
+      "duration": 100
+    }
+  ],
+  "tags": [],
+  "cels": [
+    {
+      "layer": "layer_lj4sv1d",
+      "frame": "frame_gc4gq1e",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACpv1v8qb9b/AAAAAAAAAABuxv//bsb//27G//8AAAAAAAAAAAAAAAAAAAAAKm/W/ypv1v9uxv//6Pv//+j7///o+///bsb//27G//8AAAAAKm/W/ypv1v9uxv//bsb//+j7///o+///6Pv//+j7///o+///bsb//wAAAAAqb9b/Km/W/27G///o+///6Pv//+j7//9uxv//bsb//wAAAAAqb9b/Km/W/wAAAAAAAAAAbsb//27G//9uxv//AAAAAAAAAAAAAAAA"
+    }
+  ]
+}

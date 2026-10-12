@@ -1,4 +1,4 @@
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Five tiers, decided in docs/design/items.md -> "Rarity". Majestic and Set are

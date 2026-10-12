@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="BaseItemDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Items/BaseItemStatEntry.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Items/BaseItemDefinition.cs" id="2"]
+
+[sub_resource type="Resource" id="S0"]
+script = ExtResource("1")
+Stat = 1
+Type = 0
+Min = 7.0
+Max = 12.0
+Condition = 1
+
+[sub_resource type="Resource" id="S1"]
+script = ExtResource("1")
+Stat = 2
+Type = 1
+Min = -5.0
+Max = -5.0
+Condition = 0
+
+[resource]
+script = ExtResource("2")
+Id = "iron_axe"
+DisplayName = "Iron Axe"
+ItemClass = 11
+Width = 2
+Height = 3
+BaseStats = [SubResource("S0"), SubResource("S1")]
+RequiredLevel = 1
+AllowedAffixTags = 0

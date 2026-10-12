@@ -581,6 +581,30 @@ feedback.)*
 6. **Flasks** — charges, time regen, refill orbs.
 7. **Sets and Majestics** — `SetDefinition`, `CastModifier` subclasses.
 
+## Paper doll, pants, stash and messages **[IMPLEMENTED 2026-10-12]**
+
+Owner feedback after the first endgame build:
+
+- **Paper doll** instead of the labelled strip: a body silhouette with the helmet
+  on the head, amulet at the neck, body armour on the torso, belt at the waist, a
+  new **Pants** slot below it (new item class, *Linen Trousers* base, Plated may
+  roll on it), the **main weapon in the left arm**, the **offhand/shield in the
+  right**, **gloves under the left hand**, **boots under the right**, a ring by each
+  hand. Jewellery slots show a rarity-coloured gem; the tooltip has the details.
+  The inventory panel sits on the right of the screen, doll above the 12×5 grid.
+- **Stash** at a chest in the hideout (E): account-wide tabs shared by every
+  character, 12×10 each. The first is free; more cost gold, doubling each time
+  (150, 300, 600… up to 8 tabs). Right-click moves an item between the stash tab and
+  the inventory (PoE's ctrl-click); dragging rearranges inside a grid. Saved in the
+  profile next to the characters.
+- **"Inventory full"** floats above the player when a pickup doesn't fit (the item
+  stays on the ground, as before).
+- **Whole numbers.** Rolled values whose range reaches 1 are integers (+17
+  Intelligence, never +17.5); fractional ranges (+0.05 critical multiplier) keep
+  decimals. Tooltips now also list the base's own stats (armour, etc.).
+- Tooltips only show while their grid is actually visible (they used to leak
+  through a closed inventory).
+
 ## Open questions
 
 1. **Majestic effect pool** — the 10 effects above are [PROPOSED]; confirm, cut, or

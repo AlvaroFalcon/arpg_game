@@ -1,7 +1,7 @@
 using Godot;
 using Godot.Collections;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// Per-entity-archetype base stat values — docs/design/stats.md -> "Base values

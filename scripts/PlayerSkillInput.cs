@@ -1,9 +1,9 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Skills;
+using ArpgGame.Skills;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>
 /// The "what feeds the skill user" component for a player character. Deliberately
@@ -54,6 +54,41 @@ public partial class PlayerSkillInput : Node
     private SkillUser _skillUser = null!;
     private Node2D _caster = null!;
 
+    /// <summary>How input feeds the skill user — docs/design/menus.md -> "Controls".</summary>
+    public enum CastMode
+    {
+        /// <summary>The old sandbox: hold a slot key (or mouse button) to repeat.</summary>
+        Hold,
+
+        /// <summary>Realities and the hideout: LMB, RMB, 1, 2, 3, 4 each fire their
+        /// own slot, aimed at the cursor.</summary>
+        Bound,
+
+        /// <summary>The Survival Rift: every equipped skill fires on its own,
+        /// auto-aimed (the survivor genre's rule; there is no mana there either).</summary>
+        Survival,
+    }
+
+    [Export]
+    public CastMode Mode = CastMode.Hold;
+
+    /// <summary>Legacy switch kept for callers/tests: true means <see cref="CastMode.Survival"/>.</summary>
+    public bool RunMode
+    {
+        get => Mode == CastMode.Survival;
+        set => Mode = value ? CastMode.Survival : CastMode.Hold;
+    }
+
+    /// <summary>Tools only (autoplay bot, screenshot capture): cast everything
+    /// automatically at the nearest enemy whatever the mode, since they have no
+    /// mouse or keyboard.</summary>
+    public bool ForceAutoCast { get; set; }
+
+    /// <summary>False suspends all casting (level-up screen, results, death).</summary>
+    public bool InputEnabled { get; set; } = true;
+
+    private static readonly SkillSlotId[] AllSlots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
+
     public override void _Ready()
     {
         _caster = GetParent<Node2D>();
@@ -70,6 +105,17 @@ public partial class PlayerSkillInput : Node
 
     public override void _PhysicsProcess(double delta)
     {
+        if (!InputEnabled || (_caster.GetNodeOrNull<Combat.Health>("Health")?.IsDead ?? false))
+        {
+            return;
+        }
+
+        if (Mode == CastMode.Survival || ForceAutoCast)
+        {
+            SurvivalCast();
+            return;
+        }
+
         Vector2 aimDirection = _caster.GlobalPosition.DirectionTo(_caster.GetGlobalMousePosition());
 
         foreach ((SkillSlotId slot, string action) in Bindings)
@@ -85,9 +131,61 @@ public partial class PlayerSkillInput : Node
             // Hold-to-repeat (docs/design/skills.md -> "Input behaviour"): called
             // every physics frame the button is held. SkillUser's own per-skill
             // use-time/cooldown gate decides whether a cast actually happens.
-            // The failure reason is intentionally discarded — nothing in the
-            // first slice consumes it (no UI/sound/flash exists yet).
-            _skillUser.TryCast(slot, aimDirection);
+            // Bound mode is the same loop with a target point (ground-targeted
+            // skills land under the cursor); each button only ever fires its own slot.
+            if (Mode == CastMode.Bound)
+            {
+                _skillUser.TryCast(slot, aimDirection, _caster.GetGlobalMousePosition());
+            }
+            else
+            {
+                _skillUser.TryCast(slot, aimDirection);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Auto-aim target: the nearest enemy, except that a boss in range wins
+    /// unless something is already on top of the player (docs/design/run.md
+    /// -> "Controls"). Without the boss preference, auto-aim spends a whole boss
+    /// fight shooting the adds between you and it.
+    /// </summary>
+    private Node2D? AutoAimTarget()
+    {
+        Vector2 from = _caster.GlobalPosition;
+        Node2D? nearest = Combat.CombatQuery.NearestHostile(GetTree(), from, Combat.Faction.Player, 650f, requireSight: true);
+        if (nearest is null || nearest.GlobalPosition.DistanceTo(from) < 110f)
+        {
+            return nearest;
+        }
+
+        foreach (Node node in GetTree().GetNodesInGroup(Combat.CombatQuery.EnemyGroup))
+        {
+            if (node is Enemies.Enemy { IsBoss: true, Dormant: false } boss && !boss.Health.IsDead && boss.GlobalPosition.DistanceTo(from) < 700f
+                && (World.FlowField.Current is not { } field || field.HasLineOfSight(from, boss.GlobalPosition)))
+            {
+                return boss;
+            }
+        }
+
+        return nearest;
+    }
+
+    private void SurvivalCast()
+    {
+        Vector2 target = AutoAimTarget()?.GlobalPosition ?? _caster.GetGlobalMousePosition();
+        Vector2 aim = _caster.GlobalPosition.DirectionTo(target);
+        if (aim == Vector2.Zero)
+        {
+            aim = Vector2.Right;
+        }
+
+        foreach (SkillSlotId slot in AllSlots)
+        {
+            if (_skillUser.GetSkill(slot) is not null)
+            {
+                _skillUser.TryCast(slot, aim, target);
+            }
         }
     }
 }

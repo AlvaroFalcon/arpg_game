@@ -1,4 +1,4 @@
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// Identifies which named <see cref="Stat"/> on an <see cref="ActorStats"/> a
@@ -57,4 +57,26 @@ public enum StatId
     Intelligence = 20,
     ManaCostMultiplier = 21,
     ThornsDamage = 22,
+
+    // Fourth pass (docs/design/progression.md -> "Run stats"): the survivor-run
+    // layer needs stats the dummy sandbox never did — pickup reach, experience,
+    // area, dodge charges, ailment chances. Appended, never inserted.
+    DamageTaken = 23,
+    PickupRadius = 24,
+    ExperienceGain = 25,
+    AreaOfEffect = 26,
+    ProjectileSpeed = 27,
+    DodgeCharges = 28,
+    DodgeRecovery = 29,
+    ExtraProjectiles = 30,
+    IgniteChance = 31,
+    ShockChance = 32,
+    SkillDuration = 33,
+    LifeOnKill = 34,
+    ExtraChains = 35,
+    ExtraPierce = 36,
+
+    // Sprint (docs/design/movement.md -> "Sprint").
+    MaxStamina = 37,
+    StaminaRegen = 38,
 }

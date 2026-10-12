@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="MeleeSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/MeleeSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_cleave.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 2.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Cleave"
+Description = "A wide swing that hits every enemy in front of you. Scales with weapon damage."
+BaseDamage = 24.0
+BaseUseTime = 0.55
+Tags = 25
+Range = 100.0
+ArcDegrees = 150.0
+Knockback = 140.0
+Tint = Color(1, 0.85, 0.7, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

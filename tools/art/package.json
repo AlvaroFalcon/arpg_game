@@ -1,0 +1,13 @@
+{
+  "name": "arpg-game-art",
+  "private": true,
+  "type": "module",
+  "description": "Pixel art for ARPG Game, authored with EasyPixel's core (draw_grid) and exported with its Godot exporter.",
+  "scripts": {
+    "setup": "bash ./fetch_easypixel.sh",
+    "build": "tsx build.ts"
+  },
+  "devDependencies": {
+    "tsx": "4.19.2"
+  }
+}

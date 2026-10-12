@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="OrbitSkillDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/OrbitSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/projectiles/blade.tres" id="f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_blades.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 8.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Ethereal Blades"
+Description = "Summons blades that orbit you, cutting anything they touch."
+BaseDamage = 14.0
+BaseUseTime = 0.3
+Cooldown = 3.6
+Tags = 50
+Count = 3
+Radius = 78.0
+Duration = 3.8
+AngularSpeed = 3.6
+HitRadius = 16.0
+HitCooldown = 0.4
+Costs = [SubResource("Cost")]
+Frames = ExtResource("f")
+Icon = ExtResource("i")

@@ -1,4 +1,4 @@
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// Marker for anything that can attach to a specific equipped

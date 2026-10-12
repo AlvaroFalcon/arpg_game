@@ -20,5 +20,5 @@ ValueAtT7Max = 400.0
 Curve = 1.0
 TierOverrides = []
 Weight = 1.0
-AllowedItemClasses = [2, 3, 4, 5, 6]
+AllowedItemClasses = [2, 3, 4, 5, 6, 13]
 IsAllResistances = false

@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Skills;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional test for the two projectile capabilities wired up after
 /// the M1 slice: Count/SpreadDegrees (fan at cast) and Forks (split on hit).
 /// Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/ProjectileCapabilitiesTest.tscn --quit-after 400
 ///
 /// Kept separate from SkillsSmokeTest rather than appended to it: that test is a

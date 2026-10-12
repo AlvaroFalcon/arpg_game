@@ -1,14 +1,14 @@
 #nullable enable
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for the M1 combat slice. Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/SkillsSmokeTest.tscn --quit-after 200
 ///
 /// Two testing strategies are used deliberately, mirroring the split already

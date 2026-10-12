@@ -1798,6 +1798,30 @@ in authored data. What remains is `GetModifiers(query)`, which takes a stat iden
 parallel enum, so some keying mechanism is still needed. Halved, not eliminated. Not
 urgent at five stats; relevant well before fifteen.
 
+## Fourth pass: seam 6 goes live **[DECIDED — implemented]**
+
+The run layer (docs/design/progression.md) cashed in several seams that were built
+ahead of need:
+
+- **Seam 6 / CastModifier:** support gems (`Progression/SupportGem`) are the first
+  real subclasses, attached to `SkillInstance.Attached`; keystones add caster-wide
+  ones through `SkillUser.GlobalModifiers`. `CollectCastModifiers` now gathers both.
+  `CastContext` gained per-cast knobs the transforms write into (damage/area/
+  duration/use-time/cooldown multipliers, repeats, extra count, ailment bonuses,
+  a life-cost floor).
+- **Seam 1 (per-cast costs):** Blood Magic rewrites Mana cost entries into Life
+  entries per cast — exactly the case the mutable cost list was for.
+- **"One definition serves both sides":** the Bone Caster enemy fires a
+  `ProjectileSkillDefinition` through its own `SkillUser`.
+- **New archetypes:** `AreaSkillDefinition` (instant or delayed circle, on the
+  caster or a target point — boss slams use the same runtime, `Combat/AreaBurst`)
+  and `OrbitSkillDefinition` (`Combat/OrbitBlades`). Executors build a `HitProfile`
+  once per cast (damage, type, ailment chances, knockback) and every hit-dealer
+  builds payloads from it.
+- **Chains** are implemented (PoE order: pierce, then fork, then chain).
+- **Skill levels:** `SkillInstance.Level`, +20 % more damage per level.
+- `SkillDefinition` gained presentation fields: `Description`, `Icon`, `Frames`.
+
 ## Open questions
 
 **Closed in pass three:** the RMB binding (decided) · when cooldowns land (now, in the

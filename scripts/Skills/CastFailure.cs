@@ -1,6 +1,6 @@
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 public enum CastFailureKind
 {

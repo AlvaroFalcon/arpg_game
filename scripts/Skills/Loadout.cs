@@ -1,5 +1,5 @@
 #nullable enable
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The six equipped-skill slots — keys 1-4, LMB, RMB — per docs/design/skills.md

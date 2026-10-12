@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>
 /// Tracks whether a mouse-bound input action is "held," in a way that actually

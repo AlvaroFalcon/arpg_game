@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>Something <see cref="PanelStack"/> can close on the player's
 /// behalf. Implemented by whatever owns a panel's actual visibility — e.g.
@@ -74,6 +74,24 @@ public static class PanelStack
         }
 
         Open[^1].Close();
+        _lastClosedFrame = Godot.Engine.GetProcessFrames();
         return true;
     }
+
+    private static ulong _lastClosedFrame = ulong.MaxValue;
+
+    /// <summary>Forgets every panel — called on scene change, when the panels
+    /// themselves are being freed.</summary>
+    public static void Clear() => Open.Clear();
+
+    /// <summary>Whether any panel is currently open.</summary>
+    public static bool HasOpen => Open.Count > 0;
+
+    /// <summary>
+    /// True during the frame in which <see cref="CloseTopmost"/> closed
+    /// something. Lets a second Escape consumer (the pause menu,
+    /// docs/design/menus.md -> "Pause") stand down without depending on which
+    /// of the two happens to process first.
+    /// </summary>
+    public static bool ClosedThisFrame => _lastClosedFrame == Godot.Engine.GetProcessFrames();
 }

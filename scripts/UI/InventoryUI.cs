@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Toggles the inventory/equipment panel on <c>toggle_inventory</c> ("i")
@@ -80,7 +80,7 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
     /// whether this panel is open — both the toggle key and
     /// <see cref="Close"/> (Escape, via <see cref="PanelStack.CloseTopmost"/>)
     /// go through this one method.</summary>
-    private void SetOpen(bool open)
+    public void SetOpen(bool open)
     {
         _panel.Visible = open;
         if (open)

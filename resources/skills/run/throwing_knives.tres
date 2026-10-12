@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ProjectileSkillDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/ProjectileSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/projectiles/knife.tres" id="f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_throwing_knives.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 3.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Throwing Knives"
+Description = "Throws a fan of knives that pierce one enemy each."
+BaseDamage = 8.0
+BaseUseTime = 0.5
+Tags = 5
+Speed = 720.0
+Range = 520.0
+SpawnOffset = 18.0
+Count = 3
+SpreadDegrees = 20.0
+Pierce = 1
+Size = 1.0
+Costs = [SubResource("Cost")]
+Frames = ExtResource("f")
+Icon = ExtResource("i")

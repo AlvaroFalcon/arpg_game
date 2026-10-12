@@ -1,0 +1,49 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/Enemies/RangedEnemy.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
+[ext_resource type="Script" path="res://scripts/Combat/Health.cs" id="3"]
+[ext_resource type="Script" path="res://scripts/Combat/Ailments.cs" id="4"]
+[ext_resource type="PackedScene" path="res://assets/sprites/enemies/siren.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DamageNumber.tscn" id="6"]
+[ext_resource type="Script" path="res://scripts/Skills/SkillUser.cs" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/combat/Projectile.tscn" id="8"]
+[ext_resource type="Resource" path="res://resources/skills/enemy/TideBolt.tres" id="9"]
+
+[sub_resource type="CircleShape2D" id="Shape"]
+radius = 10.0
+
+[node name="Siren" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 21
+motion_mode = 1
+script = ExtResource("1")
+DisplayName = "Siren"
+BaseLife = 24.0
+BaseSpeed = 84.0
+ContactDamage = 5.0
+ContactRadius = 20.0
+ExperienceValue = 2
+DamageNumberScene = ExtResource("6")
+Attack = ExtResource("9")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Shape")
+
+[node name="Sprite" parent="." instance=ExtResource("5")]
+scale = Vector2(2, 2)
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("2")
+Faction = 2
+IgnoresResourceCosts = true
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="Ailments" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="SkillUser" type="Node" parent="."]
+script = ExtResource("7")
+ProjectileScene = ExtResource("8")

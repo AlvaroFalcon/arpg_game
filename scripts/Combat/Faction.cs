@@ -1,4 +1,4 @@
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// A combat entity's allegiance. A hit only resolves against a target of a

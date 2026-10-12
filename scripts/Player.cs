@@ -1,9 +1,11 @@
+#nullable enable
 using Godot;
-using PathToExile.Items;
-using PathToExile.Skills;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Items;
+using ArpgGame.Skills;
+using ArpgGame.Stats;
 
-namespace PathToExile;
+namespace ArpgGame;
 
 /// <summary>
 /// Top-down player controller. Supports two input modes that share one velocity:
@@ -61,8 +63,52 @@ public partial class Player : CharacterBody2D
     /// </summary>
     public Items.Inventory Inventory { get; private set; } = null!;
 
+    /// <summary>docs/design/dodge.md. Optional so older test scenes that build
+    /// a bare player still work.</summary>
+    public Dodge? Dodge { get; private set; }
+
+    public Health? Health { get; private set; }
+
+    public ActorStats Stats => _stats;
+
+    public SkillUser SkillUser => _skillUser;
+
+    private AnimatedSprite2D? _sprite;
+    private float _hurtFlash;
+
+    [Export]
+    public PackedScene? DamageNumberScene;
+
+    /// <summary>False freezes all player-driven movement (level-up screen,
+    /// death, results). Physics still runs so knock-on systems stay sane.</summary>
+    public bool ControlsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Camera zoom for the endgame scenes (hideout, realities): the hi-res
+    /// characters read better a bit closer. The Survival Rift keeps 1:1 so its
+    /// hordes stay in view.
+    /// </summary>
+    public const float CloseZoom = 1.5f;
+
+    public void UseCloseCamera()
+    {
+        if (GetNodeOrNull<Camera2D>("Camera2D") is { } camera)
+        {
+            camera.Zoom = new Vector2(CloseZoom, CloseZoom);
+        }
+    }
+
     public override void _Ready()
     {
+        AddToGroup(CombatQuery.PlayerGroup);
+        Dodge = GetNodeOrNull<Dodge>("Dodge");
+        Health = GetNodeOrNull<Health>("Health");
+        _sprite = GetNodeOrNull<AnimatedSprite2D>("Sprite");
+        if (Health is not null)
+        {
+            Health.Damaged += OnDamaged;
+        }
+
         _navigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
         _stats = GetNode<ActorStats>("Stats");
         _skillUser = GetNode<SkillUser>("SkillUser");
@@ -144,11 +190,138 @@ public partial class Player : CharacterBody2D
         _navigationAgent.TargetPosition = GlobalPosition;
     }
 
+    private void OnDamaged(float amount)
+    {
+        if (amount < 0.5f)
+        {
+            return;
+        }
+
+        _hurtFlash = 0.15f;
+        Core.Sfx.Play(this, "hurt");
+        Core.CameraShake.Request(this, 3f);
+        if (DamageNumberScene is not null && (Core.GameSettings.Get(this)?.DamageNumbers ?? true))
+        {
+            var number = DamageNumberScene.Instantiate<UI.DamageNumber>();
+            GetTree().CurrentScene.AddChild(number);
+            number.GlobalPosition = GlobalPosition + new Vector2(0f, -28f);
+            number.Display(amount, new Color(1f, 0.3f, 0.3f));
+        }
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_sprite is null)
+        {
+            return;
+        }
+
+        bool moving = Velocity.LengthSquared() > 25f;
+        string anim = moving ? "walk" : "idle";
+        if (_sprite.Animation != anim && _sprite.SpriteFrames?.HasAnimation(anim) == true)
+        {
+            _sprite.Play(anim);
+        }
+
+        // Face the aim (mouse) — this is a caster; what it is pointing at matters
+        // more than which way its feet go.
+        float aimX = GetGlobalMousePosition().X - GlobalPosition.X;
+        if (Mathf.Abs(aimX) > 4f)
+        {
+            _sprite.FlipH = aimX < 0f;
+        }
+
+        if (_hurtFlash > 0f)
+        {
+            _hurtFlash -= (float)delta;
+            _sprite.Modulate = new Color(2.5f, 0.6f, 0.6f);
+        }
+        else if (Health is { InvulnerableTime: > 0f } && !(Dodge?.IsDashing ?? false))
+        {
+            _sprite.Modulate = new Color(1f, 1f, 1f, Mathf.Sin((float)Time.GetTicksMsec() * 0.05f) > 0 ? 1f : 0.4f);
+        }
+        else
+        {
+            _sprite.Modulate = Colors.White;
+        }
+    }
+
+    // --- Sprint (docs/design/movement.md -> "Sprint") -------------------------------
+
+    public const float SprintMultiplier = 1.55f;
+    private const float SprintDrainPerSecond = 30f;
+    private const float StaminaRegenDelay = 0.7f;
+
+    /// <summary>Current stamina (0..<see cref="MaxStamina"/>).</summary>
+    public float Stamina { get; private set; } = -1f;
+
+    public float MaxStamina => _stats.Get(StatId.MaxStamina).Value;
+
+    public bool IsSprinting { get; private set; }
+
+    /// <summary>After running dry, sprint stays locked until stamina is back to 30 %.</summary>
+    public bool Exhausted { get; private set; }
+
+    private float _staminaRegenWait;
+
+    /// <summary>Holds Shift to sprint while moving; returns the speed factor.</summary>
+    private float UpdateSprint(float dt, bool moving)
+    {
+        float max = MaxStamina;
+        if (Stamina < 0f)
+        {
+            Stamina = max;
+        }
+
+        bool wants = moving && Input.IsActionPressed("sprint") && !Exhausted && Stamina > 0f;
+        IsSprinting = wants;
+        if (wants)
+        {
+            Stamina = Mathf.Max(0f, Stamina - SprintDrainPerSecond * dt);
+            _staminaRegenWait = StaminaRegenDelay;
+            if (Stamina <= 0f)
+            {
+                Exhausted = true;
+            }
+
+            return SprintMultiplier;
+        }
+
+        _staminaRegenWait -= dt;
+        if (_staminaRegenWait <= 0f)
+        {
+            Stamina = Mathf.Min(max, Stamina + _stats.Get(StatId.StaminaRegen).Value * dt);
+        }
+
+        if (Exhausted && Stamina >= max * 0.3f)
+        {
+            Exhausted = false;
+        }
+
+        return 1f;
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         float speed = _stats.MovementSpeed.Value;
 
+        if (!ControlsEnabled || (Health?.IsDead ?? false))
+        {
+            Velocity = Vector2.Zero;
+            return;
+        }
+
+        // A dash owns movement for its whole duration (docs/design/dodge.md).
+        if (Dodge is { IsDashing: true })
+        {
+            CancelPendingPickup();
+            Velocity = Dodge.DashVelocity;
+            MoveAndSlide();
+            return;
+        }
+
         Vector2 wasdDir = Input.GetVector("move_left", "move_right", "move_up", "move_down");
+        speed *= UpdateSprint((float)delta, wasdDir != Vector2.Zero || !_navigationAgent.IsNavigationFinished());
         if (wasdDir != Vector2.Zero)
         {
             // WASD cancels a pending click-to-move destination outright instead of

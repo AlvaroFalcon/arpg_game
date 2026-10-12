@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// The pure mitigation math from docs/design/stats.md -> "Mitigation". Kept as

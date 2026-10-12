@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// docs/design/items.md -> "Currency": authored data for one currency type. Gold

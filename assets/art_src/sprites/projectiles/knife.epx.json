@@ -1,0 +1,36 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "knife",
+  "width": 10,
+  "height": 5,
+  "palette": [
+    "#1a1a22",
+    "#c8d0da",
+    "#ffffff",
+    "#7a5a3a"
+  ],
+  "layers": [
+    {
+      "id": "layer_vovwj37",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_im3wy38",
+      "duration": 100
+    }
+  ],
+  "tags": [],
+  "cels": [
+    {
+      "layer": "layer_vovwj37",
+      "frame": "frame_im3wy38",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHpaOv96Wjr/AAAAABoaIv8aGiL/Ghoi/xoaIv8AAAAAAAAAAAAAAAB6Wjr/elo6/xoaIv/I0Nr/yNDa/////////////////xoaIv8AAAAAelo6/3paOv8AAAAAGhoi/xoaIv8aGiL/Ghoi/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    }
+  ]
+}

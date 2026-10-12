@@ -1,10 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Items;
+using ArpgGame.Combat;
+using ArpgGame.Items;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// Drives scripted drops and pickups in a real (windowed) run and saves devlog

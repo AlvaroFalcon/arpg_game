@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Items;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Items;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for milestone 2a (base items + affix rolling).
 /// Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/AffixSmokeTest.tscn --quit-after 20
 ///
 /// Covers: the 2 Temper / 2 Sigil cap, affix count per rarity, no duplicate stat
@@ -59,8 +59,9 @@ public partial class AffixSmokeTest : Node2D
 
         GD.Print("[AFFIXTEST] Ready.");
 
-        Check("LIBRARY-LOADED-28-AFFIXES", _library.Entries.Count == 28,
-            $"AffixLibrary.Entries.Count={_library.Entries.Count}, expected 28");
+        // 28 from docs/design/affixes.md + 5 run-stat affixes (docs/design/progression.md).
+        Check("LIBRARY-LOADED-33-AFFIXES", _library.Entries.Count == 33,
+            $"AffixLibrary.Entries.Count={_library.Entries.Count}, expected 33");
 
         CheckAffixCountPerRarity();
         CheckTemperSigilCap();
@@ -292,8 +293,8 @@ public partial class AffixSmokeTest : Node2D
 
         AffixDefinition plated = _library.Entries.First(a => a.Id == "plated");
         Check("PLATED-AUTHORED-ARMOUR-SLOTS-ONLY",
-            plated.AllowedItemClasses.Count == 5 && !plated.AllowedItemClasses.Contains(ItemClass.Ring) && !plated.AllowedItemClasses.Contains(ItemClass.Wand),
-            $"Plated AllowedItemClasses={string.Join(",", plated.AllowedItemClasses)}, expected the 5 armour slots, no Ring/Wand");
+            plated.AllowedItemClasses.Count == 6 && plated.AllowedItemClasses.Contains(ItemClass.Pants) && !plated.AllowedItemClasses.Contains(ItemClass.Ring) && !plated.AllowedItemClasses.Contains(ItemClass.Wand),
+            $"Plated AllowedItemClasses={string.Join(",", plated.AllowedItemClasses)}, expected the 6 armour slots (incl. Pants), no Ring/Wand");
     }
 
     // ------------------------------------------------------------------

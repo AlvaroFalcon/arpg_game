@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.UI;
+namespace ArpgGame.UI;
 
 /// <summary>
 /// Minimal floating damage number. Not polish — per docs/design/skills.md ->
@@ -26,6 +26,14 @@ public partial class DamageNumber : Node2D
     public void Display(float amount)
     {
         _label.Text = Mathf.RoundToInt(amount).ToString();
+    }
+
+    /// <summary>Same as <see cref="Display(float)"/> with a custom colour
+    /// (red for damage the player takes).</summary>
+    public void Display(float amount, Color color)
+    {
+        Display(amount);
+        _label.AddThemeColorOverride("font_color", color);
     }
 
     public override void _Process(double delta)

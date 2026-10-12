@@ -1,6 +1,6 @@
 using Godot;
 
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// One <c>(StatId, BaseValue)</c> entry inside a <see cref="StatBlock"/>. A

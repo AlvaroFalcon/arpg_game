@@ -3,15 +3,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Items;
-using PathToExile.Stats;
+using ArpgGame.Items;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for milestone 2c (the grid inventory and
 /// equipment strip). Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/InventorySmokeTest.tscn --quit-after 20
 ///
 /// Covers: placement into the first free space in reading order; an item that

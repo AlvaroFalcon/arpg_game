@@ -1,0 +1,42 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/Enemies/ChaserEnemy.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
+[ext_resource type="Script" path="res://scripts/Combat/Health.cs" id="3"]
+[ext_resource type="Script" path="res://scripts/Combat/Ailments.cs" id="4"]
+[ext_resource type="PackedScene" path="res://assets/sprites/enemies/bat.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DamageNumber.tscn" id="6"]
+
+[sub_resource type="CircleShape2D" id="Shape"]
+radius = 8.0
+
+[node name="Bat" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 21
+motion_mode = 1
+script = ExtResource("1")
+DisplayName = "Cinder Bat"
+BaseLife = 10.0
+BaseSpeed = 128.0
+ContactDamage = 4.0
+ContactRadius = 18.0
+ExperienceValue = 1
+Weave = 0.7
+DamageNumberScene = ExtResource("6")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Shape")
+
+[node name="Sprite" parent="." instance=ExtResource("5")]
+scale = Vector2(2, 2)
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("2")
+Faction = 2
+IgnoresResourceCosts = true
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="Ailments" type="Node" parent="."]
+script = ExtResource("4")

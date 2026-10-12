@@ -1,4 +1,4 @@
-namespace PathToExile.Stats;
+namespace ArpgGame.Stats;
 
 /// <summary>
 /// A resource pool an actor can spend from. Part of the authored cost shape on a

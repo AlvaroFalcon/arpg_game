@@ -1,8 +1,8 @@
 using Godot;
 using Godot.Collections;
-using PathToExile.Stats;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// One-shot resource-authoring tool: builds the target-dummy <see cref="StatBlock"/>
@@ -13,7 +13,7 @@ namespace PathToExile.Tools;
 /// blocks for.
 ///
 /// Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tools/SeedStatBlocks.tscn --quit-after 2
 ///
 /// Safe to re-run — always overwrites the four res://resources/stats/*.tres files.

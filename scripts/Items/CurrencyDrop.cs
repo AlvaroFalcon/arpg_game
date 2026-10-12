@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The currency <see cref="IDroppable"/>. Per docs/design/items.md -> "Drop

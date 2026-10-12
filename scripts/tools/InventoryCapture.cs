@@ -1,9 +1,9 @@
 #nullable enable
 using Godot;
-using PathToExile.Items;
-using PathToExile.UI;
+using ArpgGame.Items;
+using ArpgGame.UI;
 
-namespace PathToExile.Tools;
+namespace ArpgGame.Tools;
 
 /// <summary>
 /// Drives the inventory UI in a real (windowed) run and saves a devlog screenshot.

@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://bs2np6tvmjmi8"]
+[gd_scene load_steps=19 format=3 uid="uid://bs2np6tvmjmi8"]
 
 [ext_resource type="Script" path="res://scripts/Player.cs" id="1"]
 [ext_resource type="Script" path="res://scripts/Stats/ActorStats.cs" id="2"]
@@ -14,21 +14,26 @@
 [ext_resource type="Script" path="res://scripts/UI/InventoryGridControl.cs" id="12"]
 [ext_resource type="Script" path="res://scripts/UI/EquipmentStripControl.cs" id="13"]
 
+[ext_resource type="PackedScene" path="res://assets/sprites/player/player.tscn" id="14"]
+[ext_resource type="Script" path="res://scripts/Combat/Health.cs" id="15"]
+[ext_resource type="Script" path="res://scripts/Dodge.cs" id="16"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DamageNumber.tscn" id="17"]
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 12.0
 
 [node name="Player" type="CharacterBody2D"]
-collision_layer = 3
+collision_layer = 2
+collision_mask = 17
+motion_mode = 1
 script = ExtResource("1")
+DamageNumberScene = ExtResource("17")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_1")
 
-[node name="Visual" type="Polygon2D" parent="."]
-color = Color(0.9, 0.25, 0.25, 1)
-polygon = PackedVector2Array(12, 0, 8.49, 8.49, 0, 12, -8.49, 8.49, -12, 0, -8.49, -8.49, 0, -12, 8.49, -8.49)
-
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="Sprite" parent="." instance=ExtResource("14")]
+position = Vector2(0, -6)
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 
@@ -36,6 +41,12 @@ polygon = PackedVector2Array(12, 0, 8.49, 8.49, 0, 12, -8.49, 8.49, -12, 0, -8.4
 script = ExtResource("2")
 Faction = 1
 HasManaPool = true
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("15")
+
+[node name="Dodge" type="Node" parent="."]
+script = ExtResource("16")
 
 [node name="SkillUser" type="Node" parent="."]
 script = ExtResource("3")
@@ -78,23 +89,23 @@ script = ExtResource("11")
 visible = false
 layout_mode = 3
 anchors_preset = 0
-offset_left = 300.0
-offset_top = 120.0
-offset_right = 300.0
-offset_bottom = 120.0
+offset_left = 848.0
+offset_top = 70.0
+offset_right = 848.0
+offset_bottom = 70.0
 
 [node name="Background" type="ColorRect" parent="InventoryUI/Panel"]
 layout_mode = 0
-offset_right = 592.0
-offset_bottom = 352.0
-color = Color(0.05, 0.05, 0.07, 0.85)
+offset_right = 416.0
+offset_bottom = 552.0
+color = Color(0.07, 0.06, 0.1, 0.97)
 
 [node name="GridControl" type="Control" parent="InventoryUI/Panel"]
 anchors_preset = 0
 offset_left = 16.0
-offset_top = 16.0
+offset_top = 332.0
 offset_right = 16.0
-offset_bottom = 16.0
+offset_bottom = 332.0
 script = ExtResource("12")
 InventoryPath = NodePath("../../../Inventory")
 EquipmentPath = NodePath("../../../Equipment")
@@ -102,16 +113,16 @@ EquipmentPath = NodePath("../../../Equipment")
 [node name="SortButton" type="Button" parent="InventoryUI/Panel"]
 layout_mode = 0
 offset_left = 16.0
-offset_top = 196.0
+offset_top = 506.0
 offset_right = 116.0
-offset_bottom = 226.0
+offset_bottom = 536.0
 text = "Sort"
 
 [node name="StripControl" type="Control" parent="InventoryUI/Panel"]
 anchors_preset = 0
-offset_left = 416.0
+offset_left = 16.0
 offset_top = 16.0
-offset_right = 416.0
+offset_right = 16.0
 offset_bottom = 16.0
 script = ExtResource("13")
 InventoryPath = NodePath("../../../Inventory")

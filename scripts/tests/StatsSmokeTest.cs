@@ -1,15 +1,15 @@
 #nullable enable
 using Godot;
 using Godot.Collections;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Tests;
+namespace ArpgGame.Tests;
 
 /// <summary>
 /// Headless functional smoke test for the M2 stat-system pass
 /// (docs/design/stats.md's second pass). Run with:
-///   dotnet build PathToExile.csproj
+///   dotnet build ArpgGame.csproj
 ///   ./scripts/run_headless.sh res://scenes/tests/StatsSmokeTest.tscn --quit-after 60
 ///
 /// Covers, in order: the keyed registry (get/set + named-accessor equivalence),
@@ -84,9 +84,9 @@ public partial class StatsSmokeTest : Node2D
             _targetStats.Armour.Value == 50f,
             $"named accessor Armour.Value={_targetStats.Armour.Value} after Get(Armour).BaseValue=50 (expected 50 — same Stat instance)");
 
-        Check("REGISTRY-TWENTYTHREE-STATS",
-            System.Enum.GetValues<StatId>().Length == 23,
-            $"StatId has {System.Enum.GetValues<StatId>().Length} entries, expected 23 per docs/design/stats.md's third-pass stat table");
+        Check("REGISTRY-STAT-COUNT",
+            System.Enum.GetValues<StatId>().Length == 39,
+            $"StatId has {System.Enum.GetValues<StatId>().Length} entries, expected 39 (23 from docs/design/stats.md's third pass + 14 run stats from docs/design/progression.md + 2 stamina stats from docs/design/movement.md)");
 
         // Reset for the mitigation checks below, which assume a clean Armour.
         _targetStats.Get(StatId.Armour).BaseValue = 0f;

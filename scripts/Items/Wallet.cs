@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// docs/design/items.md -> "Currency": <c>Player.Wallet : Dictionary&lt;CurrencyId,
@@ -37,5 +37,17 @@ public partial class Wallet : Node
         long newBalance = GetBalance(id) + amount;
         _balances[id] = newBalance;
         EmitSignal(SignalName.BalanceChanged, id.Value, newBalance);
+    }
+
+    /// <summary>Spends <paramref name="amount"/> if the balance covers it.</summary>
+    public bool TrySpend(CurrencyId id, long amount)
+    {
+        if (amount < 0 || GetBalance(id) < amount)
+        {
+            return false;
+        }
+
+        Add(id, -amount);
+        return true;
     }
 }

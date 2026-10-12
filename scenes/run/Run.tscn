@@ -1,0 +1,44 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/Run/RunController.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/Run/Arena.cs" id="2"]
+[ext_resource type="PackedScene" uid="uid://bs2np6tvmjmi8" path="res://scenes/Player.tscn" id="3"]
+[ext_resource type="Script" path="res://scripts/Run/RunState.cs" id="4"]
+[ext_resource type="Script" path="res://scripts/Run/RunDirector.cs" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/Slime.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/Bat.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/Caster.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/Brute.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/Imp.tscn" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/BoneHerald.tscn" id="11"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/EmberColossus.tscn" id="12"]
+[ext_resource type="Script" path="res://scripts/Items/GroundLabelPool.cs" id="13"]
+[ext_resource type="Script" path="res://scripts/UI/ItemTooltipControl.cs" id="14"]
+
+[node name="Run" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1")
+
+[node name="Arena" type="Node2D" parent="."]
+script = ExtResource("2")
+
+[node name="RunState" type="Node" parent="."]
+script = ExtResource("4")
+
+[node name="RunDirector" type="Node" parent="."]
+script = ExtResource("5")
+Slime = ExtResource("6")
+Bat = ExtResource("7")
+Caster = ExtResource("8")
+Brute = ExtResource("9")
+Imp = ExtResource("10")
+Herald = ExtResource("11")
+Colossus = ExtResource("12")
+
+[node name="Player" parent="." instance=ExtResource("3")]
+
+[node name="GroundLabelPool" type="CanvasLayer" parent="."]
+script = ExtResource("13")
+
+[node name="ItemTooltip" type="CanvasLayer" parent="."]
+script = ExtResource("14")

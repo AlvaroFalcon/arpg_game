@@ -1,4 +1,4 @@
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The one seam docs/design/items.md's "Grid inventory" section names as

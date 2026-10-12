@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// Typed key for <see cref="Wallet"/>'s balance dictionary and

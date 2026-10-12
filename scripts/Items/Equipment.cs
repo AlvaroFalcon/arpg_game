@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
-using PathToExile.Combat;
-using PathToExile.Stats;
+using ArpgGame.Combat;
+using ArpgGame.Stats;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// The equip/unequip component — milestone 2b, docs/design/items.md's build
@@ -53,12 +53,13 @@ public partial class Equipment : Node
     /// </summary>
     public static IReadOnlyList<EquipmentSlot> CandidateSlots(ItemClass itemClass) => itemClass switch
     {
-        ItemClass.Wand => new[] { EquipmentSlot.Weapon },
+        ItemClass.Wand or ItemClass.Sword or ItemClass.Axe or ItemClass.Dagger => new[] { EquipmentSlot.Weapon },
         ItemClass.Offhand => new[] { EquipmentSlot.Offhand },
         ItemClass.Helmet => new[] { EquipmentSlot.Helmet },
         ItemClass.BodyArmour => new[] { EquipmentSlot.BodyArmour },
         ItemClass.Gloves => new[] { EquipmentSlot.Gloves },
         ItemClass.Boots => new[] { EquipmentSlot.Boots },
+        ItemClass.Pants => new[] { EquipmentSlot.Pants },
         ItemClass.Belt => new[] { EquipmentSlot.Belt },
         ItemClass.Amulet => new[] { EquipmentSlot.Amulet },
         ItemClass.Ring => new[] { EquipmentSlot.Ring1, EquipmentSlot.Ring2 },

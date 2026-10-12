@@ -1,7 +1,7 @@
 using Godot;
 using Godot.Collections;
 
-namespace PathToExile.Items;
+namespace ArpgGame.Items;
 
 /// <summary>
 /// A flat pool of <see cref="AffixDefinition"/>s to roll against — one `.tres`

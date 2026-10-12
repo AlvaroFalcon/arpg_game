@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace PathToExile.Skills;
+namespace ArpgGame.Skills;
 
 /// <summary>
 /// The per-owner, mutable wrapper around a <see cref="SkillDefinition"/> that
@@ -37,6 +37,18 @@ public sealed class SkillInstance
     /// <summary>Time remaining before this skill's use-time gate reopens. See
     /// docs/design/skills.md -> "Cooldown and use time are independent levers".</summary>
     public float UseTimeRemaining { get; set; }
+
+    /// <summary>
+    /// docs/design/progression.md -> "Skill levels": picking the same skill
+    /// again on level-up raises this. Each level past 1 adds
+    /// <see cref="DamagePerLevel"/> more damage. Per-instance, not per-definition,
+    /// so an enemy casting the same .tres is unaffected.
+    /// </summary>
+    public int Level { get; set; } = 1;
+
+    public const float DamagePerLevel = 0.12f;
+
+    public float LevelDamageMultiplier => 1f + DamagePerLevel * (Level - 1);
 
     public SkillInstance(SkillDefinition definition)
     {

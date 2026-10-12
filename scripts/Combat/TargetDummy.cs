@@ -1,7 +1,7 @@
 #nullable enable
 using Godot;
 
-namespace PathToExile.Combat;
+namespace ArpgGame.Combat;
 
 /// <summary>
 /// The inert target dummy required by docs/design/skills.md milestone 1: "has
@@ -18,6 +18,10 @@ public partial class TargetDummy : Area2D
 
     private Health _health = null!;
     private Polygon2D? _visual;
+
+    /// <summary>Optional pixel-art body (the hideout's training dummies). When
+    /// present the placeholder polygon is hidden and the flash goes on this.</summary>
+    private CanvasItem? _sprite;
     private Color _baseColor;
     private float _flashTimer;
 
@@ -26,6 +30,14 @@ public partial class TargetDummy : Area2D
         _health = GetNode<Health>("Health");
         _visual = GetNodeOrNull<Polygon2D>("Visual");
         _baseColor = _visual?.Color ?? Colors.White;
+        _sprite = GetNodeOrNull<CanvasItem>("Sprite");
+        if (_sprite is not null && _visual is not null)
+        {
+            _visual.Visible = false;
+        }
+
+        // Targetable by chains/auto-aim like any enemy (docs/design/progression.md).
+        AddToGroup(CombatQuery.EnemyGroup);
 
         _health.Damaged += OnDamaged;
         _health.Died += OnDied;
@@ -43,6 +55,11 @@ public partial class TargetDummy : Area2D
         {
             _visual.Color = _baseColor;
         }
+
+        if (_flashTimer <= 0f && _sprite is not null)
+        {
+            _sprite.Modulate = Colors.White;
+        }
     }
 
     private void OnDamaged(float amount)
@@ -51,6 +68,11 @@ public partial class TargetDummy : Area2D
         if (_visual is not null)
         {
             _visual.Color = Colors.White;
+        }
+
+        if (_sprite is not null)
+        {
+            _sprite.Modulate = new Color(3f, 3f, 3f);
         }
 
         SpawnDamageNumber(amount);
