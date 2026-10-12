@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Godot;
@@ -68,6 +69,76 @@ public static class ItemTooltipText
         return sb.ToString();
     }
 
+    private const string Better = "6ee06e";
+    private const string Worse = "ff6a5a";
+    private const string Muted = "9a94b0";
+
+    /// <summary>
+    /// "What changes if I equip this?" — docs/design/items.md -&gt; "Item
+    /// tooltips". Sums every stat line of both items (base stats and affixes,
+    /// per stat and modifier type) and lists the differences, green when the
+    /// candidate adds, red when it takes away. <paramref name="equipped"/> null
+    /// means the slot is empty, so everything is a gain. Equal lines are left
+    /// out; identical items say so.
+    /// </summary>
+    public static string BuildComparison(EquipmentItem candidate, EquipmentItem? equipped)
+    {
+        Dictionary<(Stats.StatId, Stats.ModifierType), float> mine = Totals(candidate);
+        Dictionary<(Stats.StatId, Stats.ModifierType), float> theirs = equipped is null ? new() : Totals(equipped);
+
+        var sb = new StringBuilder();
+        sb.Append("[color=#").Append(Muted).Append(']')
+            .Append(equipped is null ? "Empty slot — equipping adds:" : $"Compared to {Escape(equipped.Descriptor.DisplayName)}:")
+            .Append("[/color]");
+
+        bool any = false;
+        foreach ((Stats.StatId stat, Stats.ModifierType type) in mine.Keys.Union(theirs.Keys).OrderBy(k => k.Item1).ThenBy(k => k.Item2))
+        {
+            float delta = mine.GetValueOrDefault((stat, type)) - theirs.GetValueOrDefault((stat, type));
+            if (Mathf.Abs(delta) < 0.005f)
+            {
+                continue;
+            }
+
+            any = true;
+            sb.Append("\n[color=#").Append(delta > 0f ? Better : Worse).Append(']')
+                .Append(delta > 0f ? "+" : "").Append(Number(delta)).Append(Unit(type)).Append(' ')
+                .Append(SpacedStatName(stat)).Append("[/color]");
+        }
+
+        if (!any)
+        {
+            sb.Append("\n[color=#").Append(Muted).Append("]No stat changes[/color]");
+        }
+
+        return sb.ToString();
+    }
+
+    private static Dictionary<(Stats.StatId, Stats.ModifierType), float> Totals(EquipmentItem item)
+    {
+        var totals = new Dictionary<(Stats.StatId, Stats.ModifierType), float>();
+        foreach ((Stats.StatId stat, Stats.ModifierType type, float value, _) in item.RolledBaseStats)
+        {
+            totals[(stat, type)] = totals.GetValueOrDefault((stat, type)) + value;
+        }
+
+        foreach (AffixRoller.RolledAffix affix in item.RolledAffixes)
+        {
+            var key = (affix.Definition.Stat, affix.Definition.Type);
+            totals[key] = totals.GetValueOrDefault(key) + affix.Value;
+        }
+
+        return totals;
+    }
+
+    private static string Unit(Stats.ModifierType type) => type switch
+    {
+        Stats.ModifierType.Flat => "",
+        Stats.ModifierType.Increased => "%",
+        Stats.ModifierType.More => "% more",
+        _ => "",
+    };
+
     /// <summary>Whole numbers for anything of magnitude 1 or more (+17, not +17.5);
     /// small fractional values keep two decimals.</summary>
     public static string Number(float v) => Mathf.Abs(v) >= 1f ? Mathf.RoundToInt(v).ToString() : v.ToString("0.##");
@@ -76,15 +147,7 @@ public static class ItemTooltipText
     {
         AffixDefinition definition = affix.Definition;
         string sign = affix.Value >= 0f ? "+" : "";
-        string unit = definition.Type switch
-        {
-            Stats.ModifierType.Flat => "",
-            Stats.ModifierType.Increased => "%",
-            Stats.ModifierType.More => "% more",
-            _ => "",
-        };
-
-        return $"T{affix.Tier} {Escape(definition.DisplayWord)} ({sign}{Number(affix.Value)}{unit} {SpacedStatName(definition.Stat)})";
+        return $"T{affix.Tier} {Escape(definition.DisplayWord)} ({sign}{Number(affix.Value)}{Unit(definition.Type)} {SpacedStatName(definition.Stat)})";
     }
 
     /// <summary>"FireResistance" -&gt; "Fire Resistance". <see cref="Stats.StatId"/>

@@ -119,13 +119,19 @@ world is a presentation layer underneath the 2D canvas:
   their heading at chest height. The 2D sprite is made transparent but keeps
   animating, so all existing sprite-driving code still works. Hit flashes and tints
   become a colour overlay.
-- **Explosions.** A dying monster breaks its current voxel frame into cubes of its
-  own colours that burst, bounce and shrink away (`VoxelDebris`). Heavy telegraphed
+- **Explosions.** A dying boss breaks its current voxel frame into cubes of its
+  own colours that burst, bounce and shrink away (`VoxelDebris`). Ordinary monsters
+  only crumble (16 cubes at about a third of the speed, gone in under a second): the
+  owner found full bursts on every pack death too much. Heavy telegraphed
   hits (radius ≥ 55 px) kick up floor cubes and knock bricks off walls they reach.
 - **HD-2D look** (Forward+): key light with shadows, a warm light on the player,
   coloured lights over lava/ichor/water, glow, tilt-shift depth of field (top and
-  bottom of the screen blur), a touch of saturation. Walls between the camera and
-  the player dither away (`voxel_wall.gdshader`) so you never lose your character.
+  bottom of the screen blur), a touch of saturation. Walls that hide the player
+  dither away (`voxel_wall.gdshader`) so you never lose your character. The test is
+  done in view space (orthographic camera: view x/y is the screen, z is depth): a
+  wall fragment fades only if it is closer to the camera than the player's chest
+  and inside an ellipse around them on screen. The first version faded any nearby
+  wall on the camera's side, so a wall you merely stood beside turned to noise.
 - **Off switch.** Settings → *Voxel graphics (HD-2D)*; headless runs (tests, the
   autoplay bot) never create the stage.
 

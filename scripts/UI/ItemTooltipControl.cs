@@ -1,4 +1,6 @@
 #nullable enable
+using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using ArpgGame.Items;
 
@@ -57,7 +59,7 @@ public partial class ItemTooltipControl : CanvasLayer
             FitContent = true,
             ScrollActive = false,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            CustomMinimumSize = new Vector2(160f, 0f),
+            CustomMinimumSize = new Vector2(250f, 0f),
         };
         panel.AddChild(_label);
 
@@ -68,15 +70,69 @@ public partial class ItemTooltipControl : CanvasLayer
     /// the current mouse position. Safe to call every frame from a hover-polling
     /// <c>_Process</c> — it only ever overwrites the same label/position, never
     /// accumulates state.</summary>
-    public void Show(EquipmentItem item, object requester)
+    /// <param name="compare">Append the "compared to what you're wearing"
+    /// section. Off for items hovered in the equipment strip itself.</param>
+    public void Show(EquipmentItem item, object requester, bool compare = true)
     {
         _owner = requester;
 
-        _label.Text = ItemTooltipText.Build(item);
-        Visible = true;
+        string text = ItemTooltipText.Build(item);
+        if (compare && TryComparisonTarget(item, out EquipmentItem? equipped))
+        {
+            text += "\n[color=#3a3450]──────────────[/color]\n" + ItemTooltipText.BuildComparison(item, equipped);
+        }
 
+        if (_label.Text != text)
+        {
+            _label.Text = text;
+        }
+
+        Visible = true;
+        Place();
+    }
+
+    /// <summary>
+    /// The slot this item would go into — the same "first free candidate slot,
+    /// else the first one" order right-click equip uses — and what's in it.
+    /// False when there's no player equipment around or the item isn't
+    /// equippable (or is the very item already worn there).
+    /// </summary>
+    private bool TryComparisonTarget(EquipmentItem item, out EquipmentItem? equipped)
+    {
+        equipped = null;
+        Equipment? equipment = GetTree().GetFirstNodeInGroup(Combat.CombatQuery.PlayerGroup)?.GetNodeOrNull<Equipment>("Equipment");
+        IReadOnlyList<EquipmentSlot> slots = Equipment.CandidateSlots(item.Descriptor.ItemClass);
+        if (equipment is null || slots.Count == 0 || slots.Any(slot => equipment.GetEquipped(slot) == item))
+        {
+            return false;
+        }
+
+        EquipmentSlot target = slots.FirstOrDefault(slot => equipment.GetEquipped(slot) is null, slots[0]);
+        equipped = equipment.GetEquipped(target);
+        return true;
+    }
+
+    /// <summary>Beside the cursor, flipped left/up and clamped so the whole
+    /// tooltip always stays on screen (long ones used to run off the bottom).</summary>
+    private void Place()
+    {
         var panel = (Control)_label.GetParent();
-        panel.Position = GetViewport().GetMousePosition() + CursorOffset;
+        panel.ResetSize();
+        Vector2 size = panel.Size;
+        Vector2 screen = GetViewport().GetVisibleRect().Size;
+        Vector2 mouse = GetViewport().GetMousePosition();
+        Vector2 at = mouse + CursorOffset;
+        if (at.X + size.X > screen.X)
+        {
+            at.X = mouse.X - CursorOffset.X - size.X;
+        }
+
+        if (at.Y + size.Y > screen.Y)
+        {
+            at.Y = screen.Y - size.Y;
+        }
+
+        panel.Position = new Vector2(Mathf.Clamp(at.X, 0f, Mathf.Max(0f, screen.X - size.X)), Mathf.Max(0f, at.Y));
     }
 
     /// <summary>

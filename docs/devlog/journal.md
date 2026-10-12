@@ -244,3 +244,7 @@ Unfinished: monsters, bosses and tiles are still 1× art, waiting on the owner's
 ## 2026-10-12 — Renamed, and releases with a launcher
 
 The repo went public, so the project dropped the "Path to Exile" name everywhere (assembly, namespaces, solution, presets, title, docs) for the placeholder "ARPG Game" / `ArpgGame`; a small migration copies saves from the old user folder. Builds are now published by a GitHub Actions workflow on every `v*` tag, and a tiny .NET Framework launcher installs and updates the game from the latest release (design and the rejected Drive/R2/Dropbox/itch options in `distribution.md`). The updater logic was exercised against a local HTTP server: fresh install, no-op, update, all clean.
+
+## 2026-10-12 — Tooltip comparison, launcher fixes, calmer deaths
+
+Owner feedback from the first real launcher and voxel play session. The launcher hit a 404: the PR merge had just published a release whose files were still uploading, and `releases/latest/download` points at it in that window — it now asks the releases API for the newest release that already has its zip (falling back to the direct links), wraps its status text and shows the real network error. Item tooltips compare against what you wear in that slot (green +, red −) and clamp to the screen. The wall dither used a distance test that faded walls you only stood next to; it now tests occlusion in view space. Ordinary monsters crumble instead of exploding; bosses keep the full burst. Screenshots: `voxel-wall-side-ashen.png`, `voxel-wall-front-ashen.png`.

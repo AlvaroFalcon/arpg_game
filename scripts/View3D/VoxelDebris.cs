@@ -13,7 +13,7 @@ namespace ArpgGame.View3D;
 /// </summary>
 public partial class VoxelDebris : MultiMeshInstance3D
 {
-    private const float Life = 1.6f;
+    private float _life = 1.6f;
     private const float Gravity = 16f;
     private const float FloorY = 0.12f;
 
@@ -46,8 +46,12 @@ public partial class VoxelDebris : MultiMeshInstance3D
         };
     }
 
-    /// <summary>Breaks a voxel model (one frame of a monster) into cubes.</summary>
-    public static void Burst(Node3D parent, Mesh model, Vector3 at, float scale, int count)
+    /// <summary>
+    /// Breaks a voxel model (one frame of a monster) into cubes.
+    /// <paramref name="power"/> scales how far they fly and how long they last:
+    /// 1 is the full boss explosion, ordinary monsters crumble at well under half.
+    /// </summary>
+    public static void Burst(Node3D parent, Mesh model, Vector3 at, float scale, int count, float power = 1f)
     {
         var points = new List<(Vector3 Point, Color Color)>();
         for (int s = 0; s < model.GetSurfaceCount(); s++)
@@ -72,6 +76,7 @@ public partial class VoxelDebris : MultiMeshInstance3D
 
         var debris = new VoxelDebris { Multimesh = NewMultiMesh(count), CastShadow = ShadowCastingSetting.On };
         debris._cubes = new Cube[count];
+        debris._life = Mathf.Lerp(0.7f, 1.6f, Mathf.Clamp(power, 0f, 1f));
         Vector3 centre = Vector3.Zero;
         foreach ((Vector3 p, _) in points)
         {
@@ -92,7 +97,7 @@ public partial class VoxelDebris : MultiMeshInstance3D
             debris._cubes[i] = new Cube
             {
                 Position = at + local,
-                Velocity = (outward * Rng.RandfRange(2f, 5.5f) + new Vector3(0f, Rng.RandfRange(2.5f, 6f), 0f)) * Mathf.Sqrt(scale),
+                Velocity = (outward * Rng.RandfRange(2f, 5.5f) + new Vector3(0f, Rng.RandfRange(2.5f, 6f), 0f)) * Mathf.Sqrt(scale) * power,
                 Spin = new Vector3(Rng.RandfRange(-9f, 9f), Rng.RandfRange(-9f, 9f), Rng.RandfRange(-9f, 9f)),
                 Size = Rng.RandfRange(0.12f, 0.2f) * scale,
             };
@@ -130,13 +135,13 @@ public partial class VoxelDebris : MultiMeshInstance3D
     {
         float dt = (float)delta;
         _t += dt;
-        if (_t >= Life)
+        if (_t >= _life)
         {
             QueueFree();
             return;
         }
 
-        float shrink = Mathf.Clamp((Life - _t) / 0.6f, 0f, 1f);
+        float shrink = Mathf.Clamp((_life - _t) / 0.6f, 0f, 1f);
         for (int i = 0; i < _cubes.Length; i++)
         {
             ref Cube c = ref _cubes[i];

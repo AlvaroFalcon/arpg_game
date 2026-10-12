@@ -112,7 +112,7 @@ public partial class EquipmentStripControl : Control
         EquipmentItem? hovered = SlotAt(GetLocalMousePosition()) is { } slot ? _equipment.GetEquipped(slot) : null;
         if (hovered is not null)
         {
-            _tooltip?.Show(hovered, this);
+            _tooltip?.Show(hovered, this, compare: false);
         }
         else
         {
