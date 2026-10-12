@@ -2,8 +2,10 @@
 
 ## What it is
 
-- **Releases are built by CI.** `.github/workflows/release.yml` runs on a pushed
-  `v*` tag (or by hand from the Actions tab with a version). It downloads Godot
+- **Releases are built by CI.** `.github/workflows/release.yml` runs on every
+  push to `main` (version `v0.1.<run number>`), on a pushed `v*` tag (that exact
+  version) or by hand from the Actions tab. While the endgame PR is open the
+  development branch publishes too. It downloads Godot
   4.1.1 mono and its export templates (cached), imports the project, exports the
   `Windows Desktop` preset, zips it and publishes a GitHub release with three
   assets: `ArpgGame-windows.zip`, `version.txt` and `ArpgGameLauncher.exe`.
