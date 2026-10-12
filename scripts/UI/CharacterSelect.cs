@@ -86,6 +86,20 @@ public partial class CharacterSelect : PanelContainer
     private void Play(int index)
     {
         Profile?.Select(index);
+        Enter();
+    }
+
+    /// <summary>New characters start in The Threshold, the introduction
+    /// (docs/design/tutorial.md); everyone else goes home.</summary>
+    private void Enter()
+    {
+        if (Profile?.Active is { TutorialDone: false })
+        {
+            World.RealityLaunch.Tutorial = true;
+            Scenes.Go(this, Scenes.Reality);
+            return;
+        }
+
         Scenes.Go(this, Scenes.Hideout);
     }
 
@@ -158,6 +172,6 @@ public partial class CharacterSelect : PanelContainer
     private void Create()
     {
         Profile?.CreateCharacter(_name?.Text ?? "", _newClass);
-        Scenes.Go(this, Scenes.Hideout);
+        Enter();
     }
 }

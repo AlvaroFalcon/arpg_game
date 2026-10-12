@@ -20,6 +20,17 @@
   PLAY starts `ArpgGame.exe`. Offline, it plays what is installed. The game lives
   in `%LOCALAPPDATA%\ArpgGame\game`; saves stay in Godot's user folder
   (`%APPDATA%\Godot\app_userdata\ARPG Game`), untouched by updates.
+- **Look** (launcher 2.0): a borderless, custom-drawn 960×540 window
+  (`LauncherView`, pure System.Drawing so it renders off-screen for previews;
+  `LauncherForm` handles DPI, dragging and the Win11 rounded corners). The key art
+  is pixel art composed by `tools/art/launcher.ts` from the game's own sprites: the
+  warrior and rogue mid-attack into the horde in the middle (slash arcs, sparks),
+  the Arcanist and Sage behind on rune circles charging spells, the Ember Colossus
+  looming on the right, lit in float RGB (warm gold vs hellfire) and quantised back.
+  On top: a glass bottom bar with the title, a slim gradient progress bar with a
+  shimmer, a glowing PLAY button (RETRY on failure, UPDATING while busy), drifting
+  embers and pulsing lights. A first draft had a literal "VS" over a rift of light;
+  the owner found it too on the nose and wanted the scene to show a fight instead.
 - An optional first argument (a folder URL serving `version.txt` and the zip)
   skips the API; it is how the updater was tested against a local server.
 

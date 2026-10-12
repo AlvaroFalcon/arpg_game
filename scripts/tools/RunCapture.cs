@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : Script();
     }
 
     private async Task Script()
@@ -337,6 +337,38 @@ public partial class RunCapture : Node
             await CaptureReality(layout, tier, name);
         }
 
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>The introduction reality: its start, the first fight and the guardian.</summary>
+    private async Task TutorialScript()
+    {
+        SetupDemoProfile();
+        RealityLaunch.Tutorial = true;
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Reality);
+        await Wait(1.5f);
+        if (GetTree().CurrentScene is not RealityController reality)
+        {
+            GetTree().Quit();
+            return;
+        }
+
+        reality.Player.Health!.IgnoreDamage = true;
+        await Wait(1.5f);
+        await Snap("tutorial-start.png");
+        reality.Player.GlobalPosition += new Vector2(520f, 0f);
+        await Wait(0.6f);
+        reality.Player.Dodge!.EmitSignal(Dodge.SignalName.Dodged);
+        reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.Packs.First(p => p.Room == "yard").Cell) + new Vector2(-260f, 0f);
+        reality.Player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
+        await Wait(2.5f);
+        await Snap("tutorial-fight.png");
+        await Wait(4f);
+        await Snap("tutorial-loot.png");
+        reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.BossCell) + new Vector2(0f, 220f);
+        await Wait(4f);
+        await Snap("tutorial-guardian.png");
         GD.Print("[CAPTURE] done");
         GetTree().Quit();
     }

@@ -163,8 +163,40 @@ public static class LayoutCatalog
         },
     };
 
+    /// <summary>
+    /// The introduction every new character plays once — docs/design/tutorial.md.
+    /// Not in <see cref="Layouts"/>, so the Mirror never rolls it. A straight line
+    /// of rooms, one lesson each: a quiet camp to learn to move, a long hall to
+    /// sprint and dodge, a yard with a small pack, a cache with a magic pack, and
+    /// a weakened guardian behind the gate.
+    /// </summary>
+    public static readonly LayoutDef Tutorial = new()
+    {
+        Id = "threshold", Name = "The Threshold", ThemeId = "ashen", Entrance = "camp", BossRoom = "seal",
+        Rooms = new[]
+        {
+            new RoomDef { Id = "camp", X = 2, Y = 9, W = 8, H = 8 },
+            new RoomDef { Id = "yard", X = 22, Y = 7, W = 11, H = 11, Packs = "p", Pillars = 2 },
+            new RoomDef { Id = "cache", X = 38, Y = 8, W = 10, H = 9, Packs = "m" },
+            new RoomDef { Id = "ante", X = 53, Y = 9, W = 7, H = 7 },
+            new RoomDef { Id = "seal", X = 65, Y = 5, W = 15, H = 15, Shape = RoomShape.Circle },
+        },
+        Corridors = new[]
+        {
+            new CorridorDef { From = "camp", To = "yard", Width = 3 },
+            new CorridorDef { From = "yard", To = "cache", Width = 3 },
+            new CorridorDef { From = "cache", To = "ante", Width = 3 },
+            new CorridorDef { From = "ante", To = "seal", Width = 3 },
+        },
+    };
+
     public static LayoutDef? Find(string id)
     {
+        if (id == Tutorial.Id)
+        {
+            return Tutorial;
+        }
+
         foreach (LayoutDef l in Layouts)
         {
             if (l.Id == id)

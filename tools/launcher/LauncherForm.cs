@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -10,89 +10,199 @@ using System.Windows.Forms;
 namespace ArpgGameLauncher
 {
     /// <summary>
-    /// The launcher window: checks for a new build, downloads it with a
-    /// progress bar, then lets you play. Offline it simply runs what's installed.
+    /// The launcher window: borderless and entirely drawn by <see cref="LauncherView"/>
+    /// on a 960×540 logical canvas scaled to the monitor's DPI. Checks for a new
+    /// build, downloads it with a progress bar, then lets you play; offline it
+    /// simply runs what's installed. Drag anywhere to move it.
     /// </summary>
     public sealed class LauncherForm : Form
     {
-        private static readonly Color Background = Color.FromArgb(22, 19, 30);
-        private static readonly Color Panel = Color.FromArgb(38, 33, 52);
-        private static readonly Color Gold = Color.FromArgb(232, 184, 74);
-        private static readonly Color Ink = Color.FromArgb(225, 220, 235);
-        private static readonly Color Dim = Color.FromArgb(150, 144, 170);
-
         private readonly Updater _updater;
-        private readonly Label _status;
-        private readonly Label _version;
-        private readonly ProgressBar _bar;
-        private readonly Button _play;
-        private readonly Button _retry;
+        private readonly LauncherView _view;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private readonly System.Windows.Forms.Timer _timer = new System.Windows.Forms.Timer { Interval = 33 };
+        private readonly Stopwatch _clock = Stopwatch.StartNew();
+        private float _scale = 1f;
+        private bool _busy;
 
-        public LauncherForm(Updater updater)
+        public LauncherForm(Updater updater, Image art, Icon icon)
         {
             _updater = updater;
+            _view = new LauncherView(art);
             Text = "ARPG Game Launcher";
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
+            Icon = icon;
+            FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
-            AutoScaleDimensions = new SizeF(96f, 96f);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(600, 260);
-            BackColor = Background;
-            ForeColor = Ink;
-            Font = new Font("Segoe UI", 10f);
+            AutoScaleMode = AutoScaleMode.None;
+            BackColor = Color.FromArgb(9, 7, 16);
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
+            ApplyScale(DeviceDpi);
 
-            Controls.Add(new Label
+            _timer.Tick += (s, e) =>
             {
-                Text = "ARPG GAME",
-                Font = new Font("Segoe UI", 26f, FontStyle.Bold),
-                ForeColor = Gold,
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Bounds = new Rectangle(0, 14, 600, 52),
-            });
-            // Two lines, wrapped: errors can be long.
-            _status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Bounds = new Rectangle(20, 72, 560, 44) };
-            _bar = new ProgressBar { Bounds = new Rectangle(50, 122, 500, 18), Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30 };
-            _version = new Label { AutoSize = false, ForeColor = Dim, Font = new Font("Segoe UI", 8.5f), TextAlign = ContentAlignment.MiddleCenter, Bounds = new Rectangle(20, 146, 560, 34) };
-            _play = MakeButton("PLAY", new Rectangle(210, 192, 180, 46), true);
-            _retry = MakeButton("Retry", new Rectangle(410, 199, 100, 32), false);
-            _play.Enabled = false;
-            _retry.Visible = false;
-            _play.Click += (s, e) => Launch();
-            _retry.Click += async (s, e) => await CheckAsync();
-            Controls.AddRange(new Control[] { _status, _bar, _version, _play, _retry });
-            AcceptButton = _play;
-
-            Shown += async (s, e) => await CheckAsync();
-            FormClosing += (s, e) => _cts.Cancel();
-        }
-
-        private static Button MakeButton(string text, Rectangle bounds, bool primary)
-        {
-            var b = new Button
-            {
-                Text = text,
-                Bounds = bounds,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = primary ? Color.FromArgb(70, 52, 24) : Panel,
-                ForeColor = primary ? Gold : Ink,
-                Font = new Font("Segoe UI", primary ? 14f : 10f, primary ? FontStyle.Bold : FontStyle.Regular),
-                Cursor = Cursors.Hand,
+                _view.Tick((float)_clock.Elapsed.TotalSeconds);
+                _clock.Restart();
+                Invalidate();
             };
-            b.FlatAppearance.BorderColor = primary ? Gold : Dim;
-            return b;
+            Shown += async (s, e) =>
+            {
+                RoundCorners();
+                _timer.Start();
+                await CheckAsync();
+            };
+            FormClosing += (s, e) =>
+            {
+                _cts.Cancel();
+                _timer.Stop();
+            };
+            DpiChanged += (s, e) => ApplyScale(e.DeviceDpiNew);
         }
+
+        private void ApplyScale(int dpi)
+        {
+            _scale = dpi / 96f;
+            ClientSize = new Size((int)Math.Round(LauncherView.Width * _scale), (int)Math.Round(LauncherView.Height * _scale));
+        }
+
+        /// <summary>A drop shadow around the borderless window.</summary>
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ClassStyle |= 0x20000; // CS_DROPSHADOW
+                return cp;
+            }
+        }
+
+        // --- painting and input --------------------------------------------------------
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.ScaleTransform(_scale, _scale);
+            _view.Paint(e.Graphics);
+        }
+
+        private Point Logical(Point p) => new Point((int)(p.X / _scale), (int)(p.Y / _scale));
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            Point p = Logical(e.Location);
+            _view.HoverPlay = LauncherView.PlayBounds.Contains(p) && _view.PlayClickable;
+            _view.HoverClose = LauncherView.CloseBounds.Contains(p);
+            _view.HoverMinimize = LauncherView.MinimizeBounds.Contains(p);
+            _view.HoverFolder = LauncherView.FolderBounds.Contains(p);
+            Cursor = _view.HoverPlay || _view.HoverClose || _view.HoverMinimize || _view.HoverFolder ? Cursors.Hand : Cursors.Default;
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            _view.HoverPlay = _view.HoverClose = _view.HoverMinimize = _view.HoverFolder = false;
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            Point p = Logical(e.Location);
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            if (LauncherView.PlayBounds.Contains(p) && _view.PlayClickable)
+            {
+                _view.PressPlay = true;
+                return;
+            }
+
+            if (LauncherView.CloseBounds.Contains(p) || LauncherView.MinimizeBounds.Contains(p) || LauncherView.FolderBounds.Contains(p))
+            {
+                return;
+            }
+
+            // Anywhere else drags the window, like a title bar.
+            ReleaseCapture();
+            SendMessage(Handle, 0xA1 /* WM_NCLBUTTONDOWN */, (IntPtr)2 /* HTCAPTION */, IntPtr.Zero);
+        }
+
+        protected override async void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            Point p = Logical(e.Location);
+            bool pressed = _view.PressPlay;
+            _view.PressPlay = false;
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            if (LauncherView.CloseBounds.Contains(p))
+            {
+                Close();
+            }
+            else if (LauncherView.MinimizeBounds.Contains(p))
+            {
+                WindowState = FormWindowState.Minimized;
+            }
+            else if (LauncherView.FolderBounds.Contains(p))
+            {
+                Directory.CreateDirectory(_updater.InstallRoot);
+                Process.Start(new ProcessStartInfo(_updater.InstallRoot) { UseShellExecute = true });
+            }
+            else if (pressed && LauncherView.PlayBounds.Contains(p))
+            {
+                if (_view.CanPlay)
+                {
+                    Launch();
+                }
+                else if (_view.Phase == LauncherPhase.Failed)
+                {
+                    await CheckAsync();
+                }
+            }
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Enter && _view.CanPlay)
+            {
+                Launch();
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                Close();
+            }
+        }
+
+        // --- update flow ---------------------------------------------------------------
 
         private async Task CheckAsync()
         {
-            _retry.Visible = false;
-            _play.Enabled = false;
-            _bar.Style = ProgressBarStyle.Marquee;
-            _status.Text = "Checking for updates…";
+            if (_busy)
+            {
+                return;
+            }
+
+            _busy = true;
+            try
+            {
+                await RunUpdateAsync();
+            }
+            finally
+            {
+                _busy = false;
+            }
+        }
+
+        private async Task RunUpdateAsync()
+        {
             string installed = _updater.InstalledVersion;
-            _version.Text = installed is null ? "Not installed yet" : $"Installed: {installed}";
+            Set(LauncherPhase.Checking, "Checking for updates…", -1, false);
+            _view.Detail = installed is null ? "Not installed yet" : $"Installed {installed}";
 
             Build latest;
             try
@@ -101,28 +211,36 @@ namespace ArpgGameLauncher
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
-                Offline(installed, ex);
+                if (_updater.IsInstalled)
+                {
+                    Set(LauncherPhase.Offline, "Offline — you can still play the installed version", 1, true);
+                }
+                else
+                {
+                    Set(LauncherPhase.Failed, $"Can't reach the download server: {Describe(ex)}", 0, false);
+                }
+
                 return;
             }
 
             if (_updater.IsInstalled && latest.Version == installed)
             {
-                Ready($"Up to date ({installed})");
+                Set(LauncherPhase.Ready, "Ready to play — you have the latest version", 1, true);
+                _view.Detail = $"Version {installed}";
                 return;
             }
 
-            _status.Text = installed is null ? $"Downloading {latest.Version}…" : $"Updating {installed} → {latest.Version}…";
-            _bar.Style = ProgressBarStyle.Continuous;
-            _bar.Value = 0;
+            Set(LauncherPhase.Downloading, installed is null ? $"Downloading {latest.Version}…" : $"Updating {installed} → {latest.Version}…", 0, false);
             var progress = new Progress<double>(p =>
             {
-                if (p < 0)
+                if (p >= 1 && _view.Phase == LauncherPhase.Downloading)
                 {
-                    _bar.Style = ProgressBarStyle.Marquee;
-                    return;
+                    Set(LauncherPhase.Installing, "Installing…", -1, false);
                 }
-
-                _bar.Value = (int)(Math.Min(1.0, p) * 100);
+                else if (_view.Phase == LauncherPhase.Downloading)
+                {
+                    _view.Progress = p;
+                }
             });
 
             try
@@ -131,28 +249,26 @@ namespace ArpgGameLauncher
             }
             catch (IOException ex) when (_updater.IsInstalled)
             {
-                Failed($"Couldn't replace the game files — is the game still running? ({Describe(ex)})");
+                Set(LauncherPhase.Failed, $"Couldn't replace the game files — is the game still running? ({Describe(ex)})", 0, true);
                 return;
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
-                Failed($"Download failed: {Describe(ex)}");
+                Set(LauncherPhase.Failed, $"Download failed: {Describe(ex)}", 0, _updater.IsInstalled);
                 return;
             }
 
-            Ready($"Installed {latest.Version}");
+            Set(LauncherPhase.Ready, $"Installed {latest.Version} — ready to play", 1, true);
+            _view.Detail = $"Version {latest.Version}";
         }
 
-        private void Offline(string installed, Exception ex)
+        private void Set(LauncherPhase phase, string status, double progress, bool canPlay)
         {
-            if (_updater.IsInstalled)
-            {
-                Ready($"Offline — playing installed {installed ?? "build"}");
-            }
-            else
-            {
-                Failed($"Can't reach the download server: {Describe(ex)}");
-            }
+            _view.Phase = phase;
+            _view.Status = status;
+            _view.Progress = progress;
+            _view.CanPlay = canPlay;
+            Invalidate();
         }
 
         /// <summary>The innermost message: .NET Framework wraps the real network error.</summary>
@@ -166,25 +282,6 @@ namespace ArpgGameLauncher
             return ex.Message;
         }
 
-        private void Ready(string message)
-        {
-            _bar.Style = ProgressBarStyle.Continuous;
-            _bar.Value = 100;
-            _status.Text = message;
-            _version.Text = $"Installed: {_updater.InstalledVersion} · {_updater.GameDir}";
-            _play.Enabled = true;
-            _play.Focus();
-        }
-
-        private void Failed(string message)
-        {
-            _bar.Style = ProgressBarStyle.Continuous;
-            _bar.Value = 0;
-            _status.Text = message;
-            _retry.Visible = true;
-            _play.Enabled = _updater.IsInstalled;
-        }
-
         private void Launch()
         {
             try
@@ -196,6 +293,42 @@ namespace ArpgGameLauncher
             {
                 MessageBox.Show(this, ex.Message, "Couldn't start the game", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        // --- Win32 ---------------------------------------------------------------------
+
+        private void RoundCorners()
+        {
+            try
+            {
+                int round = 2; // DWMWCP_ROUND (Windows 11; ignored elsewhere)
+                DwmSetWindowAttribute(Handle, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, ref round, sizeof(int));
+            }
+            catch (Exception)
+            {
+                // Older Windows: square corners.
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _timer.Dispose();
+                _view.Dispose();
+                _cts.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

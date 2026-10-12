@@ -7,6 +7,7 @@ using ArpgGame.Characters;
 using ArpgGame.Combat;
 using ArpgGame.Core;
 using ArpgGame.Enemies;
+using ArpgGame.Items;
 using ArpgGame.Skills;
 using ArpgGame.Stats;
 using ArpgGame.World;
@@ -94,6 +95,7 @@ public partial class EndgameSmokeTest : Node2D
         await RarityChecks();
         await BuildChecks();
         await RealityChecks();
+        await TutorialChecks();
     }
 
     // --- layouts ---------------------------------------------------------------------
@@ -471,4 +473,88 @@ public partial class EndgameSmokeTest : Node2D
             await Frames(2);
         }
     }
+
+    // --- the introduction (docs/design/tutorial.md) ---------------------------------
+
+    private async Task TutorialChecks()
+    {
+        // New characters owe the introduction; old saves (no field) don't.
+        var profile = new Profile { Persist = false };
+        CharacterData fresh = profile.CreateCharacter("Newcomer", "warrior");
+        CharacterData? back = Profile.DeserializeCharacter(Profile.SerializeCharacter(fresh));
+        CharacterData? legacy = Profile.DeserializeCharacter(Profile.SerializeCharacter(fresh).Replace("\"TutorialDone\":false,", ""));
+        Check("TUTORIAL-FLAG", !fresh.TutorialDone && back is { TutorialDone: false } && legacy is { TutorialDone: true },
+            $"new={fresh.TutorialDone}, round-trip={back?.TutorialDone}, legacy save={legacy?.TutorialDone}");
+        profile.Free();
+
+        RealityLaunch.Tutorial = true;
+        var reality = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+        AddChild(reality);
+        await Frames(5);
+        var guide = reality.GetNodeOrNull<TutorialGuide>("TutorialGuide");
+        int packMonsters = reality.GetChildren().OfType<Enemy>().Count(e => !e.IsBoss);
+        Check("TUTORIAL-BUILT", reality.IsTutorial && reality.Layout == LayoutCatalog.Tutorial && guide is not null && reality.PortalsLeft == RealityController.TutorialPortals
+            && packMonsters == 5 && reality.Boss is not null && !LayoutCatalog.Layouts.Contains(LayoutCatalog.Tutorial),
+            $"tutorial={reality.IsTutorial}, layout={reality.Layout.Id}, guide={guide is not null}, {packMonsters} pack monsters (3 yard + 2 magic), portals={reality.PortalsLeft}");
+        if (guide is null)
+        {
+            return;
+        }
+
+        Player p = reality.Player;
+        p.Health!.IgnoreDamage = true;
+        var steps = new List<string> { guide.StepTitle };
+        async Task Next()
+        {
+            for (int i = 0; i < 30 && steps[^1] == guide.StepTitle; i++)
+            {
+                await Frames(1);
+            }
+
+            steps.Add(guide.StepTitle);
+        }
+
+        p.GlobalPosition += new Vector2(500f, 0f);
+        await Next();
+        p.Dodge!.EmitSignal(Dodge.SignalName.Dodged);
+        await Next();
+        foreach (Enemy e in RoomMonsters(reality, "yard"))
+        {
+            e.Health.ApplyResolvedDamage(1e9f, p);
+        }
+
+        await Next();
+        EquipmentItem? gift = reality.GetChildren().OfType<EquipmentItem>().LastOrDefault();
+        var bag = p.GetNode<Inventory>("Inventory");
+        if (gift is not null)
+        {
+            gift.GetParent().RemoveChild(gift);
+            bag.TryAdd(gift);
+        }
+
+        await Next();
+        if (gift is not null)
+        {
+            bag.TryRightClickEquip(gift, p.GetNode<Equipment>("Equipment"));
+        }
+
+        await Next();
+        foreach (Enemy e in RoomMonsters(reality, "cache"))
+        {
+            e.Health.ApplyResolvedDamage(1e9f, p);
+        }
+
+        await Next();
+        p.GlobalPosition = RasterLayout.World(reality.Raster.Entrance);
+        reality.Boss!.Health.ApplyResolvedDamage(1e9f, p);
+        await Next();
+
+        Check("TUTORIAL-STEPS", guide.StepIndex == guide.StepCount - 1 && steps.Distinct().Count() == guide.StepCount,
+            $"reached step {guide.StepIndex + 1}/{guide.StepCount}: {string.Join(" → ", steps.Distinct())}");
+        reality.QueueFree();
+        await Frames(2);
+    }
+
+    private static IEnumerable<Enemy> RoomMonsters(RealityController reality, string room) =>
+        reality.GetChildren().OfType<Enemy>().Where(e => e.HasMeta(RealityController.RoomMeta) && (string)e.GetMeta(RealityController.RoomMeta) == room).ToList();
 }
