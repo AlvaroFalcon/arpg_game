@@ -427,6 +427,37 @@ public partial class EndgameSmokeTest : Node2D
         Vector2I playerCell = reality.Field.CellOf(reality.Player.GlobalPosition);
         Check("REALITY-PLAYER-AT-ENTRANCE", playerCell == reality.Raster.Entrance, $"player cell {playerCell}, entrance {reality.Raster.Entrance}");
 
+        // HUD layout editor (docs/design/menus.md -> "HUD layout editor"): panels
+        // register, a move is saved and comes back in the next reality.
+        UI.HudLayout.SavePath = "user://test_hud_layout.cfg";
+        UI.HudLayout.Reload();
+        UI.HudLayout.Reset();
+        await Frames(2);
+        var movables = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().ToList();
+        UI.HudMovable? vitals = movables.FirstOrDefault(m => m.Id == "vitals");
+        bool moved = false;
+        if (vitals is not null)
+        {
+            Vector2 before = vitals.Target.Position;
+            vitals.MoveBy(new Vector2(-120f, -60f), GetViewport().GetVisibleRect().Size);
+            moved = vitals.Target.Position.DistanceTo(before + new Vector2(-120f, -60f)) < 0.5f;
+            UI.HudLayout.Save();
+            UI.HudLayout.Reload();
+        }
+
+        Check("HUD-LAYOUT-SAVE", movables.Count >= 6 && moved && UI.HudLayout.OffsetOf("vitals").DistanceTo(new Vector2(-120f, -60f)) < 0.5f,
+            $"{movables.Count} movable panels ({string.Join(", ", movables.Select(m => m.Id))}), moved={moved}, saved offset {UI.HudLayout.OffsetOf("vitals")}");
+
+        // The Tab overlay map. Headless has no window to deliver key events, so the
+        // test toggles it directly and lets it draw a few frames.
+        var map = reality.GetNode("Hud").FindChild("MapOverlay", true, false) as UI.MapOverlay;
+        map?.Toggle();
+        await Frames(4);
+        bool opened = map?.Visible == true;
+        map?.Toggle();
+        Check("MAP-OVERLAY", map is not null && opened && !map.Visible && InputMap.HasAction(UI.MapOverlay.Action),
+            $"overlay found={map is not null}, opened and drew={opened}, closed again={map?.Visible == false}, Tab bound={InputMap.HasAction(UI.MapOverlay.Action)}");
+
         // Flasks (docs/design/items.md -> "Flasks and refill orbs"): Q drinks, the
         // recovery lands over time, a full pool refuses, orbs refill charges.
         Flasks? flasks = Flasks.Of(reality.Player);
@@ -487,6 +518,18 @@ public partial class EndgameSmokeTest : Node2D
             AddChild(r);
             await Frames(5);
             var roster = r.GetChildren().OfType<Enemy>().Where(e => !e.IsBoss).Select(e => e.DisplayName).Distinct().ToList();
+            if (id == "bone_crypt")
+            {
+                await Frames(2);
+                UI.HudMovable? v = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().FirstOrDefault(m => m.Id == "vitals" && r.IsAncestorOf(m));
+                Check("HUD-LAYOUT-APPLIED", v is not null && v.Target.Position.DistanceTo(v.Default + new Vector2(-120f, -60f)) < 0.5f,
+                    $"the next reality's life cluster sits at its default {v?.Default} + the saved offset: {v?.Target.Position}");
+                UI.HudLayout.Reset();
+                UI.HudLayout.Save();
+                UI.HudLayout.SavePath = "user://hud_layout.cfg";
+                UI.HudLayout.Reload();
+            }
+
             r.Player.Health!.IgnoreDamage = true;
             r.Player.GlobalPosition = RasterLayout.World(r.Raster.BossCell) + new Vector2(0f, 150f);
             int telegraphs = 0;

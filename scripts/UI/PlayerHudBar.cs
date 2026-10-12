@@ -12,15 +12,16 @@ namespace ArpgGame.UI;
 /// the owner's reference (AION 2): a long red life bar and a cyan mana bar that
 /// meet at a central hexagonal badge holding the level, with an experience ring
 /// around it; under the bars the flasks (Q life, R mana) as bottles whose liquid
-/// shows the charges left; dodge charges under the badge; and the skill row
-/// below everything. Custom-drawn rather than built from ProgressBars so the
+/// shows the charges left; and dodge charges under the badge. The skill row
+/// below it is a separate control (<see cref="CreateSkillRow"/>), so the HUD
+/// editor can move it on its own. Custom-drawn rather than built from ProgressBars so the
 /// bars can be slanted, mirrored and drain towards the centre, with a lighter
 /// "recent damage" trail.
 /// </summary>
 public partial class PlayerHudBar : Control
 {
     public const float Width = 920f;
-    public const float Height = 214f;
+    public const float Height = 142f;
 
     public Player Player = null!;
 
@@ -29,9 +30,6 @@ public partial class PlayerHudBar : Control
 
     /// <summary>The class resource (Rage, Combo...), if any.</summary>
     public Func<ClassResource?> Resource = () => null;
-
-    /// <summary>Skill slot views go here (the owner HUD fills it).</summary>
-    public HBoxContainer SkillRow { get; private set; } = null!;
 
     private const float CenterX = Width / 2f;
     private static readonly Vector2 Badge = new(CenterX, 60f);
@@ -57,11 +55,22 @@ public partial class PlayerHudBar : Control
     {
         MouseFilter = MouseFilterEnum.Ignore;
         CustomMinimumSize = new Vector2(Width, Height);
-        SkillRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
-        SkillRow.AddThemeConstantOverride("separation", 8);
-        AddChild(SkillRow);
-        SkillRow.Position = new Vector2(0f, 142f);
-        SkillRow.Size = new Vector2(Width, 66f);
+        Size = new Vector2(Width, Height);
+    }
+
+    /// <summary>The skill row (LMB, RMB, 1-4), docked under the cluster. Its own
+    /// control so the HUD editor can move it separately.</summary>
+    public static HBoxContainer CreateSkillRow(Control root)
+    {
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", 8);
+        root.AddChild(row);
+        row.SetAnchorsPreset(LayoutPreset.CenterBottom, true);
+        row.OffsetLeft = -230f;
+        row.OffsetRight = 230f;
+        row.OffsetTop = -74f;
+        row.OffsetBottom = -8f;
+        return row;
     }
 
     /// <summary>Places the cluster at the bottom centre of a full-rect parent.</summary>
@@ -70,8 +79,8 @@ public partial class PlayerHudBar : Control
         SetAnchorsPreset(LayoutPreset.CenterBottom, true);
         OffsetLeft = -Width / 2f;
         OffsetRight = Width / 2f;
-        OffsetTop = -Height - 6f;
-        OffsetBottom = -6f;
+        OffsetTop = -Height - 78f;
+        OffsetBottom = -78f;
     }
 
     public override void _Process(double delta)

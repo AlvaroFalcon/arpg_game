@@ -150,9 +150,42 @@ reality and Survival Rift HUDs:
 - A **hexagonal level badge** where they meet, ringed by an **experience arc**
   (with the percentage under the level).
 - Under the bars: stamina (left), class-resource pips (right), the **flasks** as
-  bottles with their key (Q, R) and charges, dodge charges as diamonds under the
-  badge, and the **skill row** (LMB, RMB, 1-4) below everything.
+  bottles with their key (Q, R) and charges, and dodge charges as diamonds under the
+  badge. The **skill row** (LMB, RMB, 1-4) is its own control below the cluster.
 
 It replaced bottom-left progress bars and a separate skill row: one cluster at the
 bottom centre keeps the eye near the character. Custom-drawn rather than built
 from ProgressBars so the bars can be slanted, mirrored and trail.
+
+
+## HUD layout editor **[IMPLEMENTED 2026-10-12]**
+
+Pause (Esc) → **Edit HUD**. The game stays paused, the pause menu steps aside and
+every movable panel gets a labelled frame that can be dragged anywhere on screen
+(kept at least half on screen). **Reset layout** puts everything back; **Done** or
+Esc saves and returns to the pause menu.
+
+- Panels register with `HudLayout.Register(control, id, label, preview?)`, which
+  adds a `HudMovable` node that records the panel's default position once the HUD
+  has laid itself out and applies the saved offset. The layout is one offset per id
+  in `user://hud_layout.cfg`, in the 1280×720 canvas the UI is authored in (the
+  stretch mode scales it to any window).
+- Movable now: character name, reality info + minimap, boss life, the life/mana
+  cluster, skills, notifications, the introduction guide; in the Survival Rift
+  level, timer and kills too. Ids are shared, so moving the life cluster or the boss
+  bar in a reality moves it in the Survival Rift as well.
+- Panels that are usually hidden show a placeholder while editing (a sample boss
+  bar, a sample notification) so they can be placed before they are needed.
+
+Rejected: free resizing/scaling of panels (more to get wrong, little asked for),
+per-screen layouts (players expect "my life bar is here" everywhere).
+
+## Overlay map **[IMPLEMENTED 2026-10-12]**
+
+**Tab** toggles a large, see-through map over the game in realities, Diablo / Path
+of Exile style, centred on the player so it can stay open while fighting: explored
+floor as a faint wash, walls as bright outlines, the boss gate, the entrance, the
+boss arena (or the exit portal once the boss is down), visible monsters (coloured
+by rarity, bosses bigger) and the player as an arrow pointing where they move.
+The corner minimap stays. `UI/MapOverlay.cs`; the key comes in through `_Input`
+(the overlay is hidden most of the time).

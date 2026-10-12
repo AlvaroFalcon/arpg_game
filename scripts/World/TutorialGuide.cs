@@ -69,7 +69,7 @@ public partial class TutorialGuide : CanvasLayer
         _steps.Add(new Step
         {
             Title = "Find your feet",
-            Body = $"Move with {Key("W")}{Key("A")}{Key("S")}{Key("D")}, or hold {Key("Ctrl")} and click to walk to the cursor.\nHead east, out of the camp.",
+            Body = $"Move with {Key("W")}{Key("A")}{Key("S")}{Key("D")}, or hold {Key("Ctrl")} and click to walk to the cursor.\nHead east, out of the camp. {Key("Tab")} opens the map.",
             Enter = () => _start = Player.GlobalPosition,
             Done = () => Player.GlobalPosition.DistanceTo(_start) > 420f,
         });
@@ -188,6 +188,7 @@ public partial class TutorialGuide : CanvasLayer
         };
         _panel.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.07f, 0.06f, 0.1f, 0.88f), new Color(1f, 0.82f, 0.45f, 0.7f), 2, 6, 14));
         AddChild(_panel);
+        UI.HudLayout.Register(_panel, "tutorial", "Introduction guide");
         VBoxContainer v = UiTheme.VBox(_panel, 6);
         v.MouseFilter = Control.MouseFilterEnum.Ignore;
         _counter = UiTheme.Label("", 12, UiTheme.TextDim);

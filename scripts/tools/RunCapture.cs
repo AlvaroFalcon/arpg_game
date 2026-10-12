@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : Script();
     }
 
     private async Task Script()
@@ -338,6 +338,49 @@ public partial class RunCapture : Node
         }
 
         GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>The Tab overlay map and the HUD editor, in a reality.</summary>
+    private async Task HudScript()
+    {
+        SetupDemoProfile();
+        RealityLaunch.Tier = 5;
+        RealityLaunch.LayoutId = "ashen_halls";
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Reality);
+        await Wait(1.2f);
+        if (GetTree().CurrentScene is not RealityController reality)
+        {
+            GetTree().Quit();
+            return;
+        }
+
+        reality.Player.Health!.IgnoreDamage = true;
+        reality.Player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
+        // Explore: walk the room graph so the map has something to show.
+        foreach (PackSpot spot in reality.Raster.Packs.Take(6))
+        {
+            reality.Player.GlobalPosition = RasterLayout.World(spot.Cell);
+            await Wait(0.5f);
+        }
+
+        reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.Packs[2].Cell);
+        await Wait(1f);
+        var map = reality.GetNode("Hud").FindChild("MapOverlay", true, false) as MapOverlay;
+        map?.Toggle();
+        await Wait(0.5f);
+        await Snap("map-overlay.png");
+        map?.Toggle();
+
+        // The editor, as the pause menu opens it, with the life cluster dragged up-left.
+        GetTree().Paused = true;
+        var editor = new HudEditor();
+        GetTree().CurrentScene.AddChild(editor);
+        await Wait(0.3f);
+        GetTree().GetNodesInGroup(HudLayout.Group).OfType<HudMovable>().FirstOrDefault(m => m.Id == "skills")?.MoveBy(new Vector2(380f, 0f), GetViewport().GetVisibleRect().Size);
+        await Wait(0.3f);
+        await Snap("hud-editor.png");
+        HudLayout.Reset();
         GetTree().Quit();
     }
 

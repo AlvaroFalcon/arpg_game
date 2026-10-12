@@ -28,6 +28,7 @@ public partial class PauseMenu : CanvasLayer
     private Label _summary = null!;
     private Control _center = null!;
     private ulong _settingsClosedFrame = ulong.MaxValue;
+    private Button _editHud = null!;
 
     public override void _Ready()
     {
@@ -46,6 +47,8 @@ public partial class PauseMenu : CanvasLayer
         _menu.AddChild(_summary);
         _menu.AddChild(UiTheme.Button("Resume", Close));
         _menu.AddChild(UiTheme.Button("Settings", OpenSettings));
+        _editHud = UiTheme.Button("Edit HUD", OpenHudEditor);
+        _menu.AddChild(_editHud);
         _menu.AddChild(UiTheme.Button(LeaveText, () => { Close(); OnLeave?.Invoke(); }));
         _menu.AddChild(UiTheme.Button("Quit to desktop", () => GetTree().Quit()));
         _root.Visible = false;
@@ -90,6 +93,7 @@ public partial class PauseMenu : CanvasLayer
         GetTree().Paused = true;
         _summary.Text = Summary?.Invoke() ?? "";
         _summary.Visible = _summary.Text.Length > 0;
+        _editHud.Visible = GetTree().GetNodesInGroup(HudLayout.Group).Count > 0;
         _menu.Visible = true;
         _root.Visible = true;
         ((Button)_menu.GetChild(2)).CallDeferred(Control.MethodName.GrabFocus);
@@ -100,6 +104,22 @@ public partial class PauseMenu : CanvasLayer
         IsOpen = false;
         _root.Visible = false;
         GetTree().Paused = false;
+    }
+
+    /// <summary>HUD edit mode (docs/design/menus.md -> "HUD layout editor"):
+    /// the pause menu steps aside while the panels are dragged around.</summary>
+    private void OpenHudEditor()
+    {
+        _root.Visible = false;
+        var editor = new HudEditor();
+        AddSibling(editor);
+        editor.Closed += () =>
+        {
+            // The Esc that closed the editor must not also close the pause menu.
+            _settingsClosedFrame = Engine.GetProcessFrames();
+            _root.Visible = true;
+            _editHud.CallDeferred(Control.MethodName.GrabFocus);
+        };
     }
 
     private void OpenSettings()

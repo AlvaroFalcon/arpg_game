@@ -97,6 +97,9 @@ public partial class RealityHud : CanvasLayer
         _bossAttack = UiTheme.Label("", 18, UiTheme.Text, HorizontalAlignment.Center);
         _bossBox.AddChild(_bossAttack);
 
+        // --- the Tab overlay map, under every other HUD element ---
+        root.AddChild(new MapOverlay { Reality = Reality, Name = "MapOverlay" });
+
         // --- bottom centre: life, mana, level badge, flasks, skills ---
         _bar = new PlayerHudBar
         {
@@ -106,7 +109,7 @@ public partial class RealityHud : CanvasLayer
         };
         root.AddChild(_bar);
         _bar.Dock();
-        _skillRow = _bar.SkillRow;
+        _skillRow = PlayerHudBar.CreateSkillRow(root);
         if (Flasks.Of(Player) is { } flasks)
         {
             flasks.Refused += reason => ShowToast(reason, UiTheme.TextDim);
@@ -141,6 +144,14 @@ public partial class RealityHud : CanvasLayer
         _callout.OffsetRight = 500f;
         _callout.OffsetTop = 90f;
 
+        // Movable in the HUD editor (pause menu → Edit HUD).
+        HudLayout.Register(_levelLabel, "character", "Character");
+        HudLayout.Register(info, "reality_info", "Reality info & minimap");
+        HudLayout.Register(_bossBox, "boss", "Boss life", PreviewBoss);
+        HudLayout.Register(_bar, "vitals", "Life, mana & flasks");
+        HudLayout.Register(_skillRow, "skills", "Skills");
+        HudLayout.Register(_toasts, "toasts", "Notifications", on => PreviewToasts(_toasts, on));
+
         Reality.Announced += ShowBanner;
         Reality.Toast += ShowToast;
         Reality.BossStarted += OnBossStarted;
@@ -155,6 +166,35 @@ public partial class RealityHud : CanvasLayer
         string mods = string.Join("\n", Reality.Modifiers.Select(m => RealityModifier.Find(m)?.Text ?? m));
         _modsLabel.Text = mods;
         _titleLabel.Text = $"{Reality.Layout.Name}  ·  T{Reality.Tier}";
+    }
+
+    private void PreviewBoss(bool on)
+    {
+        if (Reality.BossFightActive)
+        {
+            return;
+        }
+
+        _bossBox.Visible = on;
+        _bossName.Text = on ? "Boss name" : "";
+        _bossAttack.Text = on ? "« attack name »" : "";
+        _bossBar.Value = 0.65;
+    }
+
+    /// <summary>A placeholder line so the (usually empty) notification list has something to grab.</summary>
+    public static void PreviewToasts(VBoxContainer toasts, bool on)
+    {
+        if (on && toasts.GetNodeOrNull("Preview") is null)
+        {
+            Label sample = UiTheme.Label("Notifications appear here", 16, UiTheme.TextDim);
+            sample.Name = "Preview";
+            sample.SetMeta("t", 9999f);
+            toasts.AddChild(sample);
+        }
+        else if (!on && toasts.GetNodeOrNull("Preview") is { } preview)
+        {
+            preview.QueueFree();
+        }
     }
 
     public void ShowBanner(string title, string subtitle, Color color)

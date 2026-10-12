@@ -97,7 +97,15 @@ public partial class RunHud : CanvasLayer
         var bar = new PlayerHudBar { Player = Player, Progress = () => (State.Level, State.ExperienceFraction) };
         root.AddChild(bar);
         bar.Dock();
-        _skillRow = bar.SkillRow;
+        _skillRow = PlayerHudBar.CreateSkillRow(root);
+
+        // Movable in the HUD editor (pause menu → Edit HUD); ids shared with the realities.
+        HudLayout.Register(_levelLabel, "run_level", "Level");
+        HudLayout.Register(_timerLabel, "timer", "Timer");
+        HudLayout.Register(_killsLabel, "kills", "Kills");
+        HudLayout.Register(_bossBox, "boss", "Boss life", PreviewBoss);
+        HudLayout.Register(bar, "vitals", "Life & flask");
+        HudLayout.Register(_skillRow, "skills", "Skills");
 
         // --- banners ---
         _banner = UiTheme.Label("", 46, UiTheme.Gold, HorizontalAlignment.Center);
@@ -239,6 +247,19 @@ public partial class RunHud : CanvasLayer
         {
             view.Cooldown = Player.SkillUser.CooldownFraction(view.Skill);
         }
+    }
+
+    private void PreviewBoss(bool on)
+    {
+        if (_boss is not null && IsInstanceValid(_boss) && !_boss.Health.IsDead)
+        {
+            return;
+        }
+
+        _bossBox.Visible = on;
+        _bossName.Text = on ? "Boss name" : "";
+        _bossAttack.Text = on ? "« attack name »" : "";
+        _bossBar.Value = 0.65;
     }
 
     private void UpdateBoss()
