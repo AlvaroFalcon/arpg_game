@@ -21,7 +21,7 @@ public partial class PassiveTreePanel : ModalPanel
     protected override Vector2 FrameSize => new(1180f, 680f);
 
     private Label _points = null!;
-    private Label _detail = null!;
+    private HoverTooltip _tooltip = null!;
     private TreeView _view = null!;
 
     private CharacterData? Character => CharacterBuild.Of(Player)?.Data ?? Profile.Get(this)?.Active;
@@ -32,10 +32,8 @@ public partial class PassiveTreePanel : ModalPanel
         body.AddChild(_points);
         _view = new TreeView { Panel = this, CustomMinimumSize = new Vector2(1140f, 520f), ClipContents = true, SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         body.AddChild(_view);
-        _detail = UiTheme.Label("Hover a node to read it.", 15, UiTheme.Text);
-        _detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _detail.CustomMinimumSize = new Vector2(1140f, 40f);
-        body.AddChild(_detail);
+        _tooltip = new HoverTooltip();
+        Root.AddChild(_tooltip);
     }
 
     public override void Refresh()
@@ -60,12 +58,34 @@ public partial class PassiveTreePanel : ModalPanel
     {
         if (node is null || Character is not { } c)
         {
+            _tooltip.HideTooltip();
             return;
         }
 
-        string state = c.Passives.Contains(node.Id) ? "allocated" : PassiveTree.CanAllocate(c, node.Id) ? "can allocate" : "not connected";
-        _detail.Text = $"{node.Name} [{node.Kind}, {state}]: {node.Describe()}";
+        bool taken = c.Passives.Contains(node.Id);
+        bool can = !taken && PassiveTree.CanAllocate(c, node.Id);
+        Color title = node.Kind switch
+        {
+            PassiveKind.Keystone => new Color(0.8f, 0.6f, 1f),
+            PassiveKind.Notable => new Color(0.55f, 0.8f, 1f),
+            PassiveKind.Start => UiTheme.Ember,
+            _ => UiTheme.Text,
+        };
+        _tooltip.Begin(node.Name, title);
+        _tooltip.AddLine(node.Kind == PassiveKind.Small ? "Passive" : node.Kind.ToString(), UiTheme.TextDim, 13);
+        foreach (string line in node.Describe().Split('\n'))
+        {
+            _tooltip.AddLine(line, new Color(0.62f, 0.75f, 1f));
+        }
+
+        string state = taken
+            ? (PassiveTree.CanRefund(c, node.Id) ? $"Allocated — right-click to refund ({PassiveTree.RefundCost(c)} gold)" : "Allocated")
+            : can ? (c.PassivePointsFree > 0 ? "Left-click to allocate" : "No passive points left") : "Not connected to your tree";
+        _tooltip.AddLine(state, taken ? UiTheme.Gold : can ? UiTheme.Experience : UiTheme.TextDim, 13);
+        _tooltip.ShowTooltip();
     }
+
+    protected override void OnClosed() => _tooltip.HideTooltip();
 
     private void Click(PassiveNode node, bool refund)
     {
@@ -104,6 +124,16 @@ public partial class PassiveTreePanel : ModalPanel
         private Vector2 _dragStart;
         private bool _moved;
         private PassiveNode? _hover;
+
+        public override void _Ready()
+        {
+            MouseExited += () =>
+            {
+                _hover = null;
+                Panel.Hover(null);
+                QueueRedraw();
+            };
+        }
 
         private Vector2 ToScreen(Vector2 p) => Size / 2f + (p + Offset) * Zoom;
 

@@ -51,7 +51,7 @@ public partial class DodgePip : Control
 public partial class SkillSlotView : Control
 {
     public SkillInstance Skill { get; }
-    private readonly int _key;
+    private readonly string _key;
     private float _cooldown;
 
     public float Cooldown
@@ -66,7 +66,18 @@ public partial class SkillSlotView : Control
         }
     }
 
-    public SkillSlotView(SkillInstance skill, int key)
+    /// <summary>The key a slot is bound to, as shown on the skill bar.</summary>
+    public static string LabelOf(SkillSlotId slot) => slot switch
+    {
+        SkillSlotId.Lmb => "LMB",
+        SkillSlotId.Rmb => "RMB",
+        SkillSlotId.Slot1 => "1",
+        SkillSlotId.Slot2 => "2",
+        SkillSlotId.Slot3 => "3",
+        _ => "4",
+    };
+
+    public SkillSlotView(SkillInstance skill, string key)
     {
         Skill = skill;
         _key = key;
@@ -90,7 +101,7 @@ public partial class SkillSlotView : Control
 
         DrawRect(rect, UiTheme.Gold with { A = 0.8f }, false, 2f);
         Font font = ThemeDB.FallbackFont;
-        DrawString(font, new Vector2(5f, 16f), _key.ToString(), HorizontalAlignment.Left, -1, 14, UiTheme.TextDim);
+        DrawString(font, new Vector2(5f, 16f), _key, HorizontalAlignment.Left, -1, 14, UiTheme.TextDim);
         DrawString(font, new Vector2(0f, Size.Y - 5f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 4f, 14, UiTheme.Gold);
         for (int i = 0; i < Skill.Attached.Count; i++)
         {

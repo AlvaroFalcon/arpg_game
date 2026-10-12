@@ -61,6 +61,7 @@ public partial class RealityController : Node2D, IPickupHandler
     private StaticBody2D _gate = null!;
     private GateBars _gateBars = null!;
     private Node2D? _exitPortal;
+    private Label? _exitPrompt;
     private float _fieldTimer;
     private float _quantity;
     private float _rarityBonus;
@@ -140,9 +141,8 @@ public partial class RealityController : Node2D, IPickupHandler
     private void ConfigurePlayer()
     {
         Player.GlobalPosition = RasterLayout.World(Raster.Entrance);
-        Player.SkillUser.ClearSlot(SkillSlotId.Lmb);
-        Player.SkillUser.ClearSlot(SkillSlotId.Rmb);
-        Player.GetNode<PlayerSkillInput>("PlayerSkillInput").RunMode = true;
+        // LMB, RMB, 1-4 each fire their own loadout slot (CharacterBuild.Slots).
+        Player.GetNode<PlayerSkillInput>("PlayerSkillInput").Mode = PlayerSkillInput.CastMode.Bound;
         Player.GetNodeOrNull<CanvasLayer>("DebugReadout")?.Hide();
         Profile.Get(this)?.ApplyTo(Player);
 
@@ -355,7 +355,24 @@ public partial class RealityController : Node2D, IPickupHandler
             StartBossFight();
         }
 
-        if (_exitPortal is not null && !_leaving && Player.GlobalPosition.DistanceTo(_exitPortal.GlobalPosition) < 44f)
+    }
+
+    public override void _Process(double delta)
+    {
+        // The exit portal is used deliberately (E), never by walking over it:
+        // loot tends to land right on top of it.
+        if (_exitPortal is null || _leaving)
+        {
+            return;
+        }
+
+        bool near = Player.GlobalPosition.DistanceTo(_exitPortal.GlobalPosition) < 70f;
+        if (_exitPrompt is not null)
+        {
+            _exitPrompt.Visible = near;
+        }
+
+        if (near && !GetTree().Paused && Input.IsActionJustPressed("interact"))
         {
             Finish();
         }
@@ -586,9 +603,14 @@ public partial class RealityController : Node2D, IPickupHandler
         _exitPortal = new Portal { ZIndex = -1 };
         AddChild(_exitPortal);
         _exitPortal.GlobalPosition = at + new Vector2(0f, 90f);
+        _exitPrompt = UiTheme.Label("[E] Return to the hideout", 16, UiTheme.Gold, HorizontalAlignment.Center);
+        _exitPrompt.Size = new Vector2(260f, 22f);
+        _exitPrompt.Position = new Vector2(-130f, -78f);
+        _exitPrompt.Visible = false;
+        _exitPortal.AddChild(_exitPrompt);
         Sfx.Play(this, "victory");
         Sfx.Music(this, "music_menu");
-        EmitSignal(SignalName.Announced, "Reality stabilised", "Collect your loot — the portal leads home", new Color(1f, 0.85f, 0.4f));
+        EmitSignal(SignalName.Announced, "Reality stabilised", "Collect your loot — press E at the portal to go home", new Color(1f, 0.85f, 0.4f));
     }
 
     private async void OnPlayerDied()

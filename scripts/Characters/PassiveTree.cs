@@ -100,7 +100,7 @@ public static class PassiveText
             ModifierType.Flat when chance => $"+{Mathf.RoundToInt(m.Value * 100)}% {name}",
             ModifierType.Flat when m.Stat == StatId.CritMultiplier => $"+{Mathf.RoundToInt(m.Value * 100)}% {name}",
             ModifierType.Flat when m.Stat is StatId.DodgeCharges or StatId.ExtraProjectiles or StatId.ExtraChains => $"+{m.Value:0} {name}{(m.Value > 1 ? "s" : "")}",
-            ModifierType.Flat => $"+{m.Value:0.#} {TagWords(m)}{name}",
+            ModifierType.Flat => $"+{Items.ItemTooltipText.Number(m.Value)} {TagWords(m)}{name}",
             ModifierType.Increased when m.Value < 0 => $"{-m.Value:0}% reduced {TagWords(m)}{name}",
             ModifierType.Increased => $"{m.Value:0}% increased {TagWords(m)}{name}",
             ModifierType.More when m.Value < 0 => $"{-m.Value:0}% less {TagWords(m)}{name}",

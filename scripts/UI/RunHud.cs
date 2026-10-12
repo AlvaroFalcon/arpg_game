@@ -109,6 +109,8 @@ public partial class RunHud : CanvasLayer
         vitals.OffsetBottom = -16f;
         (_lifeBar, _lifeLabel) = AddVital(vitals, UiTheme.Life);
         (_manaBar, _manaLabel) = AddVital(vitals, UiTheme.Mana);
+        // No mana in the Survival Rift: skills are free and automatic.
+        _manaBar.GetParent<Control>().Visible = !Player.Stats.IgnoresResourceCosts;
         _dodgeRow = UiTheme.HBox(vitals, 6);
 
         // --- skill bar ---
@@ -295,10 +297,10 @@ public partial class RunHud : CanvasLayer
             }
 
             _slots.Clear();
-            int key = 1;
             foreach (SkillInstance skill in skills)
             {
-                var view = new SkillSlotView(skill, key++);
+                // Survival: everything auto-casts, so no key labels.
+                var view = new SkillSlotView(skill, "");
                 _skillRow.AddChild(view);
                 _slots.Add(view);
             }

@@ -332,7 +332,7 @@ public partial class EndgameSmokeTest : Node2D
         c.Level = 10;
         CharacterBuild build = CharacterBuild.Attach(player, c);
         await Frames(2);
-        SkillInstance? slot1 = player.SkillUser.GetSkill(SkillSlotId.Slot1);
+        SkillInstance? slot1 = player.SkillUser.GetSkill(SkillSlotId.Lmb);
         bool skillOk = slot1 is not null && slot1.Definition.DisplayName.Length > 0 && slot1.Attached.Count == 1;
         Check("CLASS-BUILD", skillOk && player.Stats.Life.Max > baseLife && build.Resource?.Kind == ClassResourceKind.Rage,
             $"slot1={slot1?.Definition.DisplayName} supports={slot1?.Attached.Count}, life {baseLife:0} → {player.Stats.Life.Max:0}, resource {build.Resource?.Kind}");

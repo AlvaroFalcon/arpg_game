@@ -131,6 +131,7 @@ public partial class AutoplayBot
         }
 
         Player player = reality.Player;
+        player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
         if (_hooked != player.Health && player.Health is { } h)
         {
             _hooked = h;

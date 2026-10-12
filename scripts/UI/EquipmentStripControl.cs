@@ -98,7 +98,9 @@ public partial class EquipmentStripControl : Control
 
     public override void _Process(double delta)
     {
-        if (Visible)
+        // IsVisibleInTree, not Visible: this control stays Visible while the
+        // inventory panel around it is hidden, and must not show tooltips then.
+        if (IsVisibleInTree())
         {
             QueueRedraw();
             UpdateHoverTooltip();

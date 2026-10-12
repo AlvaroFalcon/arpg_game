@@ -22,7 +22,8 @@ namespace PathToExile.Characters;
 [GlobalClass]
 public partial class CharacterBuild : Node, IBuildContext
 {
-    private static readonly SkillSlotId[] Slots = { SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
+    /// <summary>Loadout index → input slot: LMB, RMB, 1, 2, 3, 4.</summary>
+    public static readonly SkillSlotId[] Slots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
 
     [Signal]
     public delegate void LevelledUpEventHandler(int level);
@@ -89,7 +90,7 @@ public partial class CharacterBuild : Node, IBuildContext
         Stats.Dexterity.BaseValue = cls.Dexterity;
         Stats.Intelligence.BaseValue = cls.Intelligence;
         AddMod(StatId.MaxLife, ModifierType.Flat, cls.BonusLife + (Data.Level - 1) * 4f);
-        AddMod(StatId.MaxMana, ModifierType.Flat, cls.BonusMana + (Data.Level - 1) * 1.5f);
+        AddMod(StatId.MaxMana, ModifierType.Flat, cls.BonusMana + Mathf.Floor((Data.Level - 1) * 1.5f));
         if (cls.BonusDodgeCharges != 0)
         {
             AddMod(StatId.DodgeCharges, ModifierType.Flat, cls.BonusDodgeCharges);
@@ -135,13 +136,21 @@ public partial class CharacterBuild : Node, IBuildContext
     public void EquipLoadout()
     {
         _slotGems.Clear();
-        SkillUser.ClearSlot(SkillSlotId.Rmb);
         for (int i = 0; i < Slots.Length; i++)
         {
-            LoadoutSlot slot = Data.Loadout[i];
-            if (Data.FindGem(slot.SkillUid) is not { IsSupport: false } gem || UpgradeCatalog.FindSkill(gem.Id) is not { } entry)
+            LoadoutSlot? slot = i < Data.Loadout.Length ? Data.Loadout[i] : null;
+            if (slot is null || Data.FindGem(slot.SkillUid) is not { IsSupport: false } gem || UpgradeCatalog.FindSkill(gem.Id) is not { } entry)
             {
-                SkillUser.ClearSlot(Slots[i]);
+                // An empty LMB keeps click-to-move; any other empty slot is just empty.
+                if (Slots[i] == SkillSlotId.Lmb)
+                {
+                    SkillUser.RestoreMove(SkillSlotId.Lmb);
+                }
+                else
+                {
+                    SkillUser.ClearSlot(Slots[i]);
+                }
+
                 continue;
             }
 

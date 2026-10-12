@@ -127,6 +127,13 @@ public partial class SkillUser : Node
         SkillEquipped?.Invoke(null);
     }
 
+    /// <summary>Puts the built-in Move occupant back into a slot (LMB click-to-move).</summary>
+    public void RestoreMove(SkillSlotId slot)
+    {
+        _loadout[(int)slot] = new LoadoutSlot { BuiltIn = BuiltInAction.Move };
+        SkillEquipped?.Invoke(null);
+    }
+
     /// <summary>The skill instance in a slot, or null.</summary>
     public SkillInstance? GetSkill(SkillSlotId slot) => _loadout[(int)slot].Skill;
 

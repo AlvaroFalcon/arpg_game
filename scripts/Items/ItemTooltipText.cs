@@ -53,6 +53,13 @@ public static class ItemTooltipText
 
         sb.Append("Item Level ").Append(item.Descriptor.ItemLevel);
 
+        foreach ((Stats.StatId stat, Stats.ModifierType type, float value, _) in item.RolledBaseStats)
+        {
+            string unit = type == Stats.ModifierType.Flat ? "" : "%";
+            sb.Append("\n[color=#c8c8d0]").Append(value >= 0f ? "+" : "").Append(Number(value)).Append(unit).Append(' ')
+                .Append(SpacedStatName(stat)).Append("[/color]");
+        }
+
         foreach (AffixRoller.RolledAffix affix in item.RolledAffixes.OrderByDescending(a => a.Tier))
         {
             sb.Append('\n').Append(FormatAffix(affix));
@@ -60,6 +67,10 @@ public static class ItemTooltipText
 
         return sb.ToString();
     }
+
+    /// <summary>Whole numbers for anything of magnitude 1 or more (+17, not +17.5);
+    /// small fractional values keep two decimals.</summary>
+    public static string Number(float v) => Mathf.Abs(v) >= 1f ? Mathf.RoundToInt(v).ToString() : v.ToString("0.##");
 
     private static string FormatAffix(AffixRoller.RolledAffix affix)
     {
@@ -73,7 +84,7 @@ public static class ItemTooltipText
             _ => "",
         };
 
-        return $"T{affix.Tier} {Escape(definition.DisplayWord)} ({sign}{affix.Value:0.#}{unit} {SpacedStatName(definition.Stat)})";
+        return $"T{affix.Tier} {Escape(definition.DisplayWord)} ({sign}{Number(affix.Value)}{unit} {SpacedStatName(definition.Stat)})";
     }
 
     /// <summary>"FireResistance" -&gt; "Fire Resistance". <see cref="Stats.StatId"/>

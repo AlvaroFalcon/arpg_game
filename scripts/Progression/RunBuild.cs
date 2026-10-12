@@ -57,7 +57,7 @@ public partial class RunBuild : Node, IBuildContext
     public const int MaxSkillLevel = 6;
     public const int KeystoneEvery = 5;
 
-    private static readonly SkillSlotId[] SkillSlots = { SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
+    private static readonly SkillSlotId[] SkillSlots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
 
     /// <summary>Source tag for every modifier this build grants.</summary>
     public object Source { get; } = new();
@@ -129,7 +129,7 @@ public partial class RunBuild : Node, IBuildContext
     /// <summary>Equips a run skill in the first free slot. Returns false if full or owned.</summary>
     public bool AddSkill(string id)
     {
-        if (UpgradeCatalog.FindSkill(id) is not { } entry || FindSkill(id) is not null)
+        if (UpgradeCatalog.FindSkill(id) is not { } entry || FindSkill(id) is not null || Skills.Count() >= MaxSkills)
         {
             return false;
         }

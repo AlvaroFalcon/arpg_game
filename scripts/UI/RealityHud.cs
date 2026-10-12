@@ -369,8 +369,12 @@ public partial class RealityHud : CanvasLayer
 
     private void UpdateSkills()
     {
-        List<SkillInstance> skills = Player.SkillUser.EquippedSkills().Select(s => s.Skill).ToList();
-        string signature = string.Join("|", skills.Select(s => $"{s.Definition.DisplayName}{s.Level}{s.Attached.Count}"));
+        // Fixed bar order matching the bindings: LMB, RMB, 1, 2, 3, 4.
+        var skills = CharacterBuild.Slots
+            .Select(slot => (slot, skill: Player.SkillUser.GetSkill(slot)))
+            .Where(t => t.skill is not null)
+            .ToList();
+        string signature = string.Join("|", skills.Select(t => $"{t.slot}{t.skill!.Definition.DisplayName}{t.skill.Level}{t.skill.Attached.Count}"));
         if (signature != _skillSignature)
         {
             _skillSignature = signature;
@@ -380,10 +384,9 @@ public partial class RealityHud : CanvasLayer
             }
 
             _slots.Clear();
-            int key = 1;
-            foreach (SkillInstance skill in skills)
+            foreach ((SkillSlotId slot, SkillInstance? skill) in skills)
             {
-                var view = new SkillSlotView(skill, key++);
+                var view = new SkillSlotView(skill!, SkillSlotView.LabelOf(slot));
                 _skillRow.AddChild(view);
                 _slots.Add(view);
             }

@@ -305,6 +305,7 @@ public partial class RunCapture : Node
         }
 
         reality.Player.Health!.IgnoreDamage = true;
+        reality.Player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
         await Wait(1.0f);
         await Snap($"reality-{name}-start.png");
 

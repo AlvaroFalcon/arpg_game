@@ -137,7 +137,7 @@ public partial class EquipmentItem : Area2D, IDroppable
             .Select(entry => (
                 entry.Stat,
                 entry.Type,
-                entry.Min >= entry.Max ? entry.Min : rng.RandfRange(entry.Min, entry.Max),
+                AffixRoller.RollValue(entry.Min, entry.Max, rng),
                 entry.Condition))
             .ToList();
 
@@ -338,6 +338,7 @@ public partial class EquipmentItem : Area2D, IDroppable
     {
         if (!player.Inventory.TryAdd(this))
         {
+            UI.WorldMessage.Show(player, "Inventory full", new Color(1f, 0.45f, 0.35f));
             return;
         }
 

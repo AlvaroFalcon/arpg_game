@@ -40,8 +40,6 @@ public partial class SettingsPanel : PanelContainer
         AddToggle(box, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
 
         box.AddChild(UiTheme.Label("Gameplay", 22, UiTheme.Ember));
-        AddToggle(box, "Auto-cast skills (off: hold left mouse / 1-4)", settings?.AutoCast ?? true, v => settings?.SetAutoCast(v));
-        AddToggle(box, "Auto-aim at nearest enemy", settings?.AutoAim ?? false, v => settings?.SetAutoAim(v));
 
         box.AddChild(UiTheme.Label(
             "WASD move · Mouse aim · Space dodge · I inventory · Esc pause",

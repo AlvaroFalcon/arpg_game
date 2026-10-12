@@ -54,20 +54,40 @@ public partial class PlayerSkillInput : Node
     private SkillUser _skillUser = null!;
     private Node2D _caster = null!;
 
-    /// <summary>
-    /// docs/design/progression.md -> "Controls": in a run, slots 1-4 hold the
-    /// build's skills and fire on their own (<see cref="Core.GameSettings.AutoCast"/>)
-    /// or while LMB is held; aim follows the cursor or the nearest enemy
-    /// (<see cref="Core.GameSettings.AutoAim"/>). Off (the hideout, the old
-    /// sandbox), the original hold-a-slot-key behaviour is untouched.
-    /// </summary>
+    /// <summary>How input feeds the skill user — docs/design/menus.md -> "Controls".</summary>
+    public enum CastMode
+    {
+        /// <summary>The old sandbox: hold a slot key (or mouse button) to repeat.</summary>
+        Hold,
+
+        /// <summary>Realities and the hideout: LMB, RMB, 1, 2, 3, 4 each fire their
+        /// own slot, aimed at the cursor.</summary>
+        Bound,
+
+        /// <summary>The Survival Rift: every equipped skill fires on its own,
+        /// auto-aimed (the survivor genre's rule; there is no mana there either).</summary>
+        Survival,
+    }
+
     [Export]
-    public bool RunMode;
+    public CastMode Mode = CastMode.Hold;
+
+    /// <summary>Legacy switch kept for callers/tests: true means <see cref="CastMode.Survival"/>.</summary>
+    public bool RunMode
+    {
+        get => Mode == CastMode.Survival;
+        set => Mode = value ? CastMode.Survival : CastMode.Hold;
+    }
+
+    /// <summary>Tools only (autoplay bot, screenshot capture): cast everything
+    /// automatically at the nearest enemy whatever the mode, since they have no
+    /// mouse or keyboard.</summary>
+    public bool ForceAutoCast { get; set; }
 
     /// <summary>False suspends all casting (level-up screen, results, death).</summary>
     public bool InputEnabled { get; set; } = true;
 
-    private static readonly SkillSlotId[] RunSlots = { SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
+    private static readonly SkillSlotId[] AllSlots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
 
     public override void _Ready()
     {
@@ -90,9 +110,9 @@ public partial class PlayerSkillInput : Node
             return;
         }
 
-        if (RunMode)
+        if (Mode == CastMode.Survival || ForceAutoCast)
         {
-            RunModeCast();
+            SurvivalCast();
             return;
         }
 
@@ -111,9 +131,16 @@ public partial class PlayerSkillInput : Node
             // Hold-to-repeat (docs/design/skills.md -> "Input behaviour"): called
             // every physics frame the button is held. SkillUser's own per-skill
             // use-time/cooldown gate decides whether a cast actually happens.
-            // The failure reason is intentionally discarded — nothing in the
-            // first slice consumes it (no UI/sound/flash exists yet).
-            _skillUser.TryCast(slot, aimDirection);
+            // Bound mode is the same loop with a target point (ground-targeted
+            // skills land under the cursor); each button only ever fires its own slot.
+            if (Mode == CastMode.Bound)
+            {
+                _skillUser.TryCast(slot, aimDirection, _caster.GetGlobalMousePosition());
+            }
+            else
+            {
+                _skillUser.TryCast(slot, aimDirection);
+            }
         }
     }
 
@@ -144,32 +171,20 @@ public partial class PlayerSkillInput : Node
         return nearest;
     }
 
-    private void RunModeCast()
+    private void SurvivalCast()
     {
-        Core.GameSettings? settings = Core.GameSettings.Get(this);
-        bool autoCast = settings?.AutoCast ?? true;
-        bool autoAim = settings?.AutoAim ?? false;
-
-        Vector2 mouse = _caster.GetGlobalMousePosition();
-        Vector2 target = mouse;
-        if (autoAim && AutoAimTarget() is { } aimed)
-        {
-            target = aimed.GlobalPosition;
-        }
-
+        Vector2 target = AutoAimTarget()?.GlobalPosition ?? _caster.GetGlobalMousePosition();
         Vector2 aim = _caster.GlobalPosition.DirectionTo(target);
         if (aim == Vector2.Zero)
         {
             aim = Vector2.Right;
         }
 
-        bool lmbHeld = _mouseGates["skill_slot_lmb"].Poll();
-        for (int i = 0; i < RunSlots.Length; i++)
+        foreach (SkillSlotId slot in AllSlots)
         {
-            bool wants = autoCast || lmbHeld || Input.IsActionPressed(Bindings[i].Action);
-            if (wants && _skillUser.GetSkill(RunSlots[i]) is not null)
+            if (_skillUser.GetSkill(slot) is not null)
             {
-                _skillUser.TryCast(RunSlots[i], aim, target);
+                _skillUser.TryCast(slot, aim, target);
             }
         }
     }

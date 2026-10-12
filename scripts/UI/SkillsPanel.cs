@@ -70,7 +70,9 @@ public partial class SkillsPanel : ModalPanel
             LoadoutSlot slot = c.Loadout[i];
             GemData? skill = c.FindGem(slot.SkillUid);
             HBoxContainer row = UiTheme.HBox(_slots, 6);
-            row.AddChild(UiTheme.Label($"{i + 1}", 22, UiTheme.Gold));
+            Label key = UiTheme.Label(CharacterData.SlotLabels[i], 20, UiTheme.Gold);
+            key.CustomMinimumSize = new Vector2(52f, 0f);
+            row.AddChild(key);
             Button skillButton = GemButton(skill is null ? "— empty skill —" : $"{GemName(skill)}  Lv{skill.Level}", skill, _targetSlot == i && _targetSocket < 0, 260f);
             skillButton.Pressed += () => Target(slotIndex, -1);
             skillButton.GuiInput += e => RightClickClear(e, slotIndex, -1);
@@ -92,8 +94,8 @@ public partial class SkillsPanel : ModalPanel
         SkillDefinition? targetSkill = SkillOf(c.FindGem(target.SkillUid));
         bool supports = _targetSocket >= 0 && targetSkill is not null;
         _hint.Text = supports
-            ? $"Socketing a support into slot {_targetSlot + 1} ({targetSkill!.DisplayName}) — only supports that fit it are listed. Right-click a socket to empty it."
-            : $"Choosing the skill for slot {_targetSlot + 1}. Skill gems level with the kills they make; supports never level. Right-click to empty.";
+            ? $"Socketing a support into {CharacterData.SlotLabels[_targetSlot]} ({targetSkill!.DisplayName}) — only supports that fit it are listed. Right-click a socket to empty it."
+            : $"Choosing the skill for {CharacterData.SlotLabels[_targetSlot]}. Skill gems level with the kills they make; supports never level. Right-click to empty.";
 
         ClearChildren(_gems);
         IEnumerable<GemData> list = c.Gems.Where(g => g.IsSupport == supports).OrderBy(g => GemName(g)).ThenByDescending(g => g.Level);
@@ -159,7 +161,7 @@ public partial class SkillsPanel : ModalPanel
         {
             if (c.Loadout[i].SkillUid == uid || c.Loadout[i].SupportUids.Contains(uid))
             {
-                return $"slot {i + 1}";
+                return CharacterData.SlotLabels[i];
             }
         }
 

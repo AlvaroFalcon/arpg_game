@@ -62,7 +62,10 @@ public sealed class LoadoutSlot
 public sealed class CharacterData
 {
     public const int MaxLevel = 70;
-    public const int LoadoutSlots = 4;
+    /// <summary>LMB, RMB, 1, 2, 3, 4 — see <see cref="SlotLabels"/>.</summary>
+    public const int LoadoutSlots = 6;
+
+    public static readonly string[] SlotLabels = { "LMB", "RMB", "1", "2", "3", "4" };
 
     public string Name { get; set; } = "Exile";
     public string ClassId { get; set; } = "arcanist";

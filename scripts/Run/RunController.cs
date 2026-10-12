@@ -105,18 +105,21 @@ public partial class RunController : Node2D
         Build = new RunBuild { Name = "RunBuild" };
         Player.AddChild(Build);
 
-        // Run casting: slots 1-4 are the character's gems (equipped by
-        // CharacterBuild in ApplyTo below), LMB/RMB are free (no click-to-move
-        // in a run: WASD + dodge is the whole movement kit).
-        Player.SkillUser.ClearSlot(SkillSlotId.Lmb);
-        Player.SkillUser.ClearSlot(SkillSlotId.Rmb);
-
-        Player.GetNode<PlayerSkillInput>("PlayerSkillInput").RunMode = true;
+        // Survival casting: every equipped skill (the character's six loadout
+        // slots, equipped by CharacterBuild in ApplyTo below) fires on its own,
+        // auto-aimed, and costs nothing — there is no mana in the Survival Rift
+        // (docs/design/run.md -> "Controls"). No click-to-move either.
+        Player.GetNode<PlayerSkillInput>("PlayerSkillInput").Mode = PlayerSkillInput.CastMode.Survival;
+        Player.Stats.IgnoresResourceCosts = true;
         Player.GetNodeOrNull<CanvasLayer>("DebugReadout")?.Hide();
 
         Player.Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Flat, RunBonusLife, RunBaselineSource));
-        Player.Stats.Get(StatId.ManaRegen).AddModifier(new StatModifier(ModifierType.Flat, RunBonusManaRegen, RunBaselineSource));
         Profile.Get(this)?.ApplyTo(Player);
+        if (Player.SkillUser.SlotIsBuiltInMove(SkillSlotId.Lmb))
+        {
+            Player.SkillUser.ClearSlot(SkillSlotId.Lmb);
+        }
+
         if (Player.Stats.Life is { } life)
         {
             life.Current = life.Max;

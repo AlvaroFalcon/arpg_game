@@ -39,6 +39,7 @@ public partial class Hideout : Node2D
         _portal = GetNode<Node2D>("Portal");
         Profile.Get(this)?.ApplyTo(_player);
         _player.GetNodeOrNull<CanvasLayer>("DebugReadout")?.Hide();
+        _player.GetNode<PlayerSkillInput>("PlayerSkillInput").Mode = PlayerSkillInput.CastMode.Bound;
         Sfx.Music(this, "music_menu");
 
         AddChild(new PauseMenu { LeaveText = "Character select", OnLeave = () => Leave(Scenes.MainMenu) });

@@ -70,7 +70,9 @@ public partial class InventoryGridControl : Control
         // "Inventory interaction": "the world keeps running"), so a pickup can
         // land in the grid while it's open — redraw every visible frame rather
         // than only on explicit mutation, to stay cheap-but-correct at 60 cells.
-        if (Visible)
+        // IsVisibleInTree, not Visible: this control stays Visible while the
+        // inventory panel around it is hidden, and must not show tooltips then.
+        if (IsVisibleInTree())
         {
             QueueRedraw();
             UpdateHoverTooltip();
