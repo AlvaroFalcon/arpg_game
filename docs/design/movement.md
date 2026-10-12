@@ -161,3 +161,12 @@ there is no click-to-move at all — LMB/RMB are cleared and WASD + dodge is the
 movement kit (docs/design/run.md → Controls); click-to-move and `force_move` still
 work in the hideout and the sandbox. The player's physics layer is now
 PlayerFaction only, so enemies pass through it instead of body-blocking.
+
+
+## Fifth pass: sprint **[IMPLEMENTED 2026-10-12]**
+
+**Shift** sprints (×1.55 speed) while moving, draining stamina at 30/s. Stamina is
+two new stats — `MaxStamina` (100) and `StaminaRegen` (22/s, after a 0.7 s pause) —
+so passives and gear can build around it later. Running dry exhausts you until
+stamina is back to 30 %, so sprint can't be feathered at zero. A thin yellow bar
+under mana shows it (red while exhausted). `force_move` moved from Shift to Ctrl.

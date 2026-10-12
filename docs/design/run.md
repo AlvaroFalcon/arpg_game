@@ -101,6 +101,14 @@ There is no click-to-move inside a run: LMB/RMB are cleared, and WASD + dodge is
 whole movement kit. Click-to-move still works in the hideout and the sandbox, where
 `force_move` moved from Space to **Shift** (Space is the dodge everywhere).
 
+### Controls in the endgame era (2026-10-12)
+
+The Survival Rift keeps the genre's rule: **every equipped skill fires on its own,
+auto-aimed, and costs nothing** — there is no mana bar here. In realities and the
+hideout skills are cast by hand instead: the six loadout slots are bound to
+**LMB, RMB, 1, 2, 3, 4**, each button firing only its own slot at the cursor
+(an empty LMB keeps click-to-move). See docs/design/menus.md -> "Controls".
+
 ## Tuning — the autoplay bot
 
 `scripts/autoplay.sh --runs=3 [--skill=spark]` plays full runs headless and

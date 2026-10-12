@@ -57,6 +57,25 @@ game, joins the panel stack, Escape or the button closes):
   refund (gold); hover reads a node.
 - **Altar**: see docs/design/classes.md -> "Ascendancies".
 
+## Controls (2026-10-12)
+
+| Key | Action |
+|---|---|
+| WASD | move (Shift sprint, Space dodge, Ctrl force-move) |
+| LMB, RMB, 1, 2, 3, 4 | the six loadout skills, aimed at the cursor (realities, hideout) |
+| E | interact: Mirror, Altar, Stash, the exit portal after a boss |
+| I / C / K / P | inventory, character sheet, skills, passive tree |
+| Esc | close the top panel, else pause |
+
+In the Survival Rift skills auto-cast and auto-aim (no mana). The boss's exit
+portal is used with E, never by walking onto it, since loot lands around it.
+
+**Character sheet (C)**: attributes with what each grants, defences (life, mana,
+stamina, armour, resistances, dodge), offence (speeds, critical, area,
+projectiles, ailments), utility and records. **Tooltips** on the passive tree float
+next to the cursor (`HoverTooltip`) instead of a line under the tree, so long text
+never resizes the panel.
+
 ## Pause (Escape)
 
 `UI/PauseMenu.cs`, in the run, the hideout and the sandbox. Escape first closes an

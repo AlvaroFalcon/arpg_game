@@ -89,6 +89,8 @@ public partial class EndgameSmokeTest : Node2D
         PassiveChecks();
         GemChecks();
         ProfileChecks();
+        FeedbackChecks();
+        await SprintChecks();
         await RarityChecks();
         await BuildChecks();
         await RealityChecks();
@@ -284,6 +286,68 @@ public partial class EndgameSmokeTest : Node2D
             && back.Loadout[0].SkillUid == c.Loadout[0].SkillUid && back.Loadout[0].SupportUids.SequenceEqual(c.Loadout[0].SupportUids)
             && back.HighestTierCleared == 6;
         Check("PROFILE-CHARACTER-ROUNDTRIP", ok, $"{json.Length} bytes of JSON");
+    }
+
+    // --- feedback batch (2026-10-12) -------------------------------------------------
+
+    private void FeedbackChecks()
+    {
+        var rng = new RandomNumberGenerator { Seed = 99 };
+        bool integers = true;
+        bool fractional = false;
+        for (int i = 0; i < 200; i++)
+        {
+            float v = Items.AffixRoller.RollValue(10.2f, 20.7f, rng);
+            integers &= Mathf.IsEqualApprox(v, Mathf.Round(v)) && v >= 11f && v <= 20f;
+            float f = Items.AffixRoller.RollValue(0.02f, 0.08f, rng);
+            fractional |= !Mathf.IsEqualApprox(f, Mathf.Round(f * 100f) / 100f) || f is > 0.02f and < 0.08f;
+        }
+
+        Check("ROLLS-WHOLE-NUMBERS", integers && fractional, "ranges >= 1 roll integers (10.2-20.7 -> 11..20); 0.02-0.08 keeps decimals");
+
+        var profile = new Profile();
+        long first = profile.NextStashTabCost;
+        profile.StashTabs.Add(new List<(Items.EquipmentItem, Vector2I)>());
+        long second = profile.NextStashTabCost;
+        while (profile.StashTabs.Count < Profile.MaxStashTabs)
+        {
+            profile.StashTabs.Add(new List<(Items.EquipmentItem, Vector2I)>());
+        }
+
+        Check("STASH-TAB-COSTS", first == 150 && second == 300 && profile.NextStashTabCost == -1, $"tab 2: {first}, tab 3: {second}, after {Profile.MaxStashTabs}: {profile.NextStashTabCost}");
+        profile.Free();
+
+        Check("LOADOUT-SIX-SLOTS", CharacterData.LoadoutSlots == 6 && CharacterBuild.Slots[0] == SkillSlotId.Lmb && CharacterBuild.Slots[1] == SkillSlotId.Rmb && CharacterBuild.Slots[5] == SkillSlotId.Slot4,
+            $"{string.Join(", ", CharacterData.SlotLabels)}");
+
+        var tab = new Items.Inventory { Columns = Profile.StashColumns, Rows = Profile.StashRows };
+        Check("STASH-GRID-SIZE", tab.BuildOccupancyMask().GetLength(0) == 12 && tab.BuildOccupancyMask().GetLength(1) == 10, "stash tabs are 12x10 grids");
+        tab.Free();
+    }
+
+    private async Task SprintChecks()
+    {
+        var player = GD.Load<PackedScene>("res://scenes/Player.tscn").Instantiate<Player>();
+        AddChild(player);
+        player.GlobalPosition = new Vector2(-6000f, 0f);
+        await Frames(2);
+        Vector2 start = player.GlobalPosition;
+        Input.ActionPress("move_right");
+        await Frames(20);
+        float walked = player.GlobalPosition.X - start.X;
+        Input.ActionPress("sprint");
+        Vector2 sprintStart = player.GlobalPosition;
+        await Frames(20);
+        float sprinted = player.GlobalPosition.X - sprintStart.X;
+        float drained = player.Stamina;
+        Input.ActionRelease("sprint");
+        Input.ActionRelease("move_right");
+        await Frames(90);
+        float recovered = player.Stamina;
+        Check("SPRINT-STAMINA", sprinted > walked * 1.4f && drained < player.MaxStamina && recovered > drained,
+            $"walk {walked:0} px vs sprint {sprinted:0} px in 20 frames; stamina {drained:0} -> {recovered:0} / {player.MaxStamina:0}");
+        player.QueueFree();
+        await Frames(2);
     }
 
     // --- live checks --------------------------------------------------------------

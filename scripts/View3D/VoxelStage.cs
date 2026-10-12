@@ -43,6 +43,10 @@ public partial class VoxelStage : Node3D
     private OmniLight3D _playerLight = null!;
     private WorldEnvironment _environment = null!;
     private readonly List<ShaderMaterial> _wallMaterials = new();
+
+    /// <summary>Wall blocks by whole-metre ground cell (for chips on heavy hits) and their colour.</summary>
+    private readonly Dictionary<Vector2I, Vector3> _walls = new();
+    private Color _wallColor = new(0.45f, 0.38f, 0.35f);
     private Node2D? _player;
 
     /// <summary>The theme's look; realities set it from their theme.</summary>
@@ -219,6 +223,11 @@ public partial class VoxelStage : Node3D
             }
 
             list.Add(new Transform3D(basis, at));
+            if (piece == "wall")
+            {
+                _walls[new Vector2I(Mathf.FloorToInt(at.X), Mathf.FloorToInt(at.Z))] = at;
+            }
+
             if (piece.StartsWith("hazard"))
             {
                 hazards.Add(at);
@@ -234,6 +243,11 @@ public partial class VoxelStage : Node3D
 
             if (piece == "wall")
             {
+                if (mesh.GetSurfaceCount() > 0 && mesh.SurfaceGetMaterial(0) is BaseMaterial3D wm)
+                {
+                    _wallColor = wm.AlbedoColor;
+                }
+
                 mesh = SeeThroughWall(mesh);
             }
 
@@ -351,6 +365,24 @@ public partial class VoxelStage : Node3D
     public void Impact(Vector2 at2D, float radiusPx, Color tint)
     {
         int count = Mathf.Clamp(Mathf.RoundToInt(radiusPx / 4f), 8, 60);
-        VoxelDebris.Puff(World, Ground(at2D), radiusPx / PixelsPerMeter, tint, count);
+        Vector3 at = Ground(at2D);
+        float radius = radiusPx / PixelsPerMeter;
+        VoxelDebris.Puff(World, at, radius, tint, count);
+
+        // Walls caught in the blast lose a few bricks.
+        int chipped = 0;
+        int r = Mathf.CeilToInt(radius) + 1;
+        Vector2I c = new(Mathf.FloorToInt(at.X), Mathf.FloorToInt(at.Z));
+        for (int dx = -r; dx <= r && chipped < 4; dx++)
+        {
+            for (int dz = -r; dz <= r && chipped < 4; dz++)
+            {
+                if (_walls.TryGetValue(c + new Vector2I(dx, dz), out Vector3 wall) && wall.DistanceTo(at) <= radius + 0.7f)
+                {
+                    VoxelDebris.Puff(World, wall + new Vector3(0f, 0.9f, 0f), 0.4f, _wallColor, 10);
+                    chipped++;
+                }
+            }
+        }
     }
 }
