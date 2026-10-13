@@ -59,6 +59,7 @@ public partial class PauseMenu : CanvasLayer
             _menu.AddChild(UiTheme.Button(ExtraText, () => { Close(); OnExtra?.Invoke(); }));
         }
 
+        _menu.AddChild(UiTheme.Button("Send feedback", () => OpenFeedback()));
         _menu.AddChild(UiTheme.Button(LeaveText, () => { Close(); OnLeave?.Invoke(); }));
         _menu.AddChild(UiTheme.Button("Quit to desktop", () => GetTree().Quit()));
         _root.Visible = false;
@@ -130,6 +131,19 @@ public partial class PauseMenu : CanvasLayer
             _root.Visible = true;
             _editHud.CallDeferred(Control.MethodName.GrabFocus);
         };
+    }
+
+    /// <summary>Bug reports, ideas and feature requests → GitHub (docs/design/menus.md -> "Feedback").</summary>
+    public FeedbackPanel OpenFeedback()
+    {
+        _menu.GetParent<Control>().Visible = false;
+        FeedbackPanel feedback = FeedbackPanel.Create(_center);
+        feedback.Closed += () =>
+        {
+            _settingsClosedFrame = Engine.GetProcessFrames();
+            _menu.GetParent<Control>().Visible = true;
+        };
+        return feedback;
     }
 
     private void OpenSettings()

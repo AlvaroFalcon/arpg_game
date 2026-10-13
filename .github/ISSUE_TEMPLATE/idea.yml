@@ -1,0 +1,17 @@
+name: Idea
+description: A thought about the game — balance, feel, art, anything.
+title: "[Idea] "
+labels: ["idea"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Your idea
+    validations:
+      required: true
+  - type: textarea
+    id: game-info
+    attributes:
+      label: Game info
+      description: Filled in automatically when sent from the game (Esc → Send feedback).
+      render: text

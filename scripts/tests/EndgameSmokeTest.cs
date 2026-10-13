@@ -98,6 +98,7 @@ public partial class EndgameSmokeTest : Node2D
         await RealityChecks();
         await TutorialChecks();
         await CraftingChecks();
+        await IssueFeedbackChecks();
     }
 
     // --- layouts ---------------------------------------------------------------------
@@ -955,6 +956,48 @@ public partial class EndgameSmokeTest : Node2D
             profile.Hideout = realTown ?? new HideoutData();
             profile.Persist = persisted;
         }
+    }
+
+    // --- in-game feedback → GitHub issues (docs/design/menus.md -> "Feedback") ------
+
+    private async Task IssueFeedbackChecks()
+    {
+        bool urls = true;
+        string detail = "";
+        foreach (FeedbackKind kind in System.Enum.GetValues<FeedbackKind>())
+        {
+            string url = Feedback.BuildUrl(kind, "Boss stuck in wall", "It happened & I lost a portal?", "1. go", "Version: dev build");
+            bool ok = url.StartsWith(Feedback.Repository + "/issues/new?template=" + Feedback.Template(kind))
+                && url.Contains("title=" + System.Uri.EscapeDataString(Feedback.TitlePrefix(kind) + "Boss stuck in wall"))
+                && url.Contains("description=It%20happened%20%26%20I%20lost%20a%20portal%3F") && url.Contains("game-info=");
+            // The issue form for this kind exists and applies the matching label.
+            string form = ProjectSettings.GlobalizePath($"res://.github/ISSUE_TEMPLATE/{Feedback.Template(kind)}");
+            bool labelled = System.IO.File.Exists(form) && System.IO.File.ReadAllText(form).Contains($"labels: [\"{Feedback.Label(kind)}\"]");
+            urls &= ok && labelled;
+            detail += $"{kind}: url={ok} form+label={labelled}; ";
+        }
+
+        string longUrl = Feedback.BuildUrl(FeedbackKind.Idea, "Long", new string('x', 20000), "", "info");
+        Check("FEEDBACK-URL", urls && longUrl.Length <= Feedback.MaxUrlLength, detail + $"20k-char idea trimmed to a {longUrl.Length}-char URL");
+
+        // The Esc menu's form: fill it in and "open" (captured, no real browser).
+        var menu = new UI.PauseMenu();
+        AddChild(menu);
+        await Frames(1);
+        menu.Open();
+        UI.FeedbackPanel panel = menu.OpenFeedback();
+        await Frames(1);
+        string? opened = null;
+        panel.OpenUrl = url => opened = url;
+        panel.SetKind(FeedbackKind.FeatureRequest);
+        panel.Fill("Controller support", "Play with a gamepad", "Couch play");
+        panel.Send();
+        bool sent = opened is { } o && o.Contains("template=feature_request.yml") && o.Contains("why=Couch%20play") && o.Contains("Sent%20from%20the%20game");
+        panel.Close();
+        menu.Close();
+        Check("FEEDBACK-FORM", sent, $"Esc → Send feedback opened {(opened is null ? "nothing" : opened[..System.Math.Min(110, opened.Length)] + "…")}");
+        menu.QueueFree();
+        await Frames(1);
     }
 
     private static IEnumerable<Enemy> RoomMonsters(RealityController reality, string room) =>

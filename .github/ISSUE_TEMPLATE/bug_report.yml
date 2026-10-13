@@ -1,0 +1,24 @@
+name: Bug report
+description: Something in the game is broken or behaves wrongly.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we make it happen again?
+      placeholder: "1. Open a tier 3 reality\n2. ..."
+  - type: textarea
+    id: game-info
+    attributes:
+      label: Game info
+      description: Filled in automatically when sent from the game (Esc → Send feedback).
+      render: text

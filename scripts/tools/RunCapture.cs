@@ -523,6 +523,21 @@ public partial class RunCapture : Node
         await Wait(0.4f);
         await Snap("town-edit-decor.png");
         editor.Close();
+        await Wait(0.3f);
+
+        // Esc menu → Send feedback.
+        if (hideout.GetChildren().OfType<PauseMenu>().FirstOrDefault() is { } pause)
+        {
+            pause.Open();
+            FeedbackPanel feedback = pause.OpenFeedback();
+            await Wait(0.2f);
+            feedback.OpenUrl = _ => { };
+            feedback.Fill("The statue blocks the bridge", "I placed a hero statue on the south bridge and now I can't walk to the temple.", "1. H to edit the town\n2. Place a statue on a bridge");
+            await Wait(0.3f);
+            await Snap("feedback-panel.png");
+            feedback.Close();
+            pause.Close();
+        }
 
         GD.Print("[CAPTURE] done");
         GetTree().Quit();

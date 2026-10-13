@@ -261,3 +261,28 @@ HUD (dark glass panels, gold accents, the AION-style cluster):
 
 All new panels are movable in Edit HUD (`character`, `hideout_menu`, `town`,
 `vitals`, `skills`). The whole HUD hides while the town editor is open.
+
+## Feedback **[IMPLEMENTED 2026-10-13]**
+
+Esc → **Send feedback** opens a form inside the pause menu: kind (**Bug**, **Idea**,
+**Feature request**), a one-line title, a description, an optional second field
+(steps to reproduce for bugs, "why would it help?" for requests) and a checkbox to
+include game info (version from `version.txt` next to the executable, OS and GPU,
+window size and voxel view, where the player is, character level and class —
+nothing personal). It's shown before sending.
+
+**Open on GitHub** opens the repository's new-issue page in the browser with the
+matching **issue form** (`.github/ISSUE_TEMPLATE/bug_report.yml`, `idea.yml`,
+`feature_request.yml`) and every field filled in through URL parameters; the player
+only presses Submit. The forms apply the labels `bug`, `idea` and `enhancement`
+(labels passed in the URL are ignored for non-collaborators, form labels are not),
+and `.github/workflows/labels.yml` makes sure those labels exist. **Copy text** puts
+the same report on the clipboard as Markdown. Very long reports are trimmed to keep
+the URL under GitHub's limit.
+
+Why not create the issue directly from the game: that needs a GitHub token inside the
+client, which anyone can extract from a .NET build and use to spam the repo. The
+planned next step is a relay (most likely a Discord integration: a webhook into a
+forum channel with tags, behind a small relay that holds the secret), which would
+let players send feedback without a GitHub account. The form stays the same; only
+`Feedback`'s sending step changes.
