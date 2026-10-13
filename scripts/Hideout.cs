@@ -40,9 +40,9 @@ public partial class Hideout : Node2D
     private MerchantPanel _merchant = null!;
     private ArtificerPanel _artificer = null!;
     private DecorShopPanel _shop = null!;
-    private Label _prompt = null!;
-    private Label _status = null!;
-    private ProgressBar _xp = null!;
+    private TownGuidePanel _guide = null!;
+    private HideoutHud _hud = null!;
+    private string? _highlighted;
     private readonly Dictionary<string, Node2D> _props = new();
     private readonly HashSet<TileMap> _dirtyMaps = new();
     private float _rebuildIn;
@@ -90,7 +90,8 @@ public partial class Hideout : Node2D
         _merchant = new MerchantPanel { Player = _player, Name = "MerchantPanel" };
         _artificer = new ArtificerPanel { Player = _player, Name = "ArtificerPanel" };
         _shop = new DecorShopPanel { Player = _player, Data = Data, Name = "DecorShopPanel" };
-        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop })
+        _guide = new TownGuidePanel { Data = Data, ShowMe = WalkTo, Name = "TownGuide" };
+        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide })
         {
             AddChild(panel);
         }
@@ -101,7 +102,27 @@ public partial class Hideout : Node2D
         }
 
         EnsureEditAction();
-        BuildHud();
+        _hud = new HideoutHud { Hideout = this, Name = "HideoutHud" };
+        AddChild(_hud);
+        if (!Data.GuideSeen && profile is not null)
+        {
+            // First visit on this account: the guide explains the town.
+            CallDeferred(nameof(OpenGuide));
+        }
+        else
+        {
+            _hud.ShowBanner("Hideout", "Your town between realities — ? opens the guide");
+        }
+    }
+
+    public HideoutHud Hud => _hud;
+
+    public void OpenGuide()
+    {
+        if (!Editing && !_guide.IsOpen)
+        {
+            _guide.Open();
+        }
     }
 
     private static void EnsureEditAction()
@@ -171,6 +192,8 @@ public partial class Hideout : Node2D
         _props[prop.Uid] = node;
         return node;
     }
+
+    public static float LabelHeightOf(PropDef def) => LabelHeight(def);
 
     private static float LabelHeight(PropDef def) => def.Id switch
     {
@@ -356,55 +379,70 @@ public partial class Hideout : Node2D
         }
     }
 
-    // --- HUD and frame ---------------------------------------------------------------
+    // --- stations ----------------------------------------------------------------------
 
-    private void BuildHud()
+    /// <summary>The station the player stands next to, if any (the E prompt).</summary>
+    public (PlacedProp Prop, PropDef Def)? NearestStation()
     {
-        var layer = new CanvasLayer { Layer = 4 };
-        AddChild(layer);
-        Control root = UiTheme.FullRect(layer);
+        (PlacedProp, PropDef)? best = null;
+        float bestD = InteractRange;
+        foreach (PlacedProp p in Data.Props)
+        {
+            if (HideoutCatalog.Prop(p.Kind) is { Station: true } def && (UseOf(def.Id) is not null || def.Id == "portal"))
+            {
+                float d = _player.GlobalPosition.DistanceTo(p.Position);
+                if (d < bestD)
+                {
+                    best = (p, def);
+                    bestD = d;
+                }
+            }
+        }
 
-        _xp = UiTheme.Bar(UiTheme.Experience, 8f);
-        root.AddChild(_xp);
-        _xp.SetAnchorsPreset(Control.LayoutPreset.TopWide, true);
-        _xp.OffsetBottom = 8f;
-        _status = UiTheme.Label("", 18, UiTheme.Gold);
-        root.AddChild(_status);
-        _status.Position = new Vector2(16f, 16f);
+        return best;
+    }
 
-        var hintBack = new ColorRect { Color = new Color(0.03f, 0.02f, 0.05f, 0.75f), MouseFilter = Control.MouseFilterEnum.Ignore };
-        root.AddChild(hintBack);
-        hintBack.SetAnchorsPreset(Control.LayoutPreset.BottomWide, true);
-        hintBack.OffsetTop = -72f;
-        Label hint = UiTheme.Label(
-            "HIDEOUT — E to use: Mirror · Odran (trade) · Ysolde (decor) · forge (smithy) · stash (vault) · altar (temple) · north gate: Survival Rift\nI inventory/crafting · C character · K skills · P passive tree · H edit hideout · Shift sprint · Space dodge · Q/R flasks · Esc menu",
-            17, UiTheme.Text, HorizontalAlignment.Center);
-        root.AddChild(hint);
-        hint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
-        hint.OffsetLeft = -620f;
-        hint.OffsetRight = 620f;
-        hint.OffsetTop = -64f;
+    /// <summary>Hides the world label of the station whose prompt is showing (the
+    /// prompt carries its name), and shows the others.</summary>
+    public void HighlightStation(string? uid)
+    {
+        if (uid == _highlighted)
+        {
+            return;
+        }
 
-        _prompt = UiTheme.Label("", 22, UiTheme.Gold, HorizontalAlignment.Center);
-        root.AddChild(_prompt);
-        _prompt.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
-        _prompt.OffsetLeft = -300f;
-        _prompt.OffsetRight = 300f;
-        _prompt.OffsetTop = -150f;
+        foreach ((string id, Node2D node) in _props)
+        {
+            if (node.GetNodeOrNull<Label>("Label") is { } label)
+            {
+                label.Visible = id != uid;
+            }
+        }
+
+        _highlighted = uid;
+    }
+
+    /// <summary>Walks the player to a station (the town directory, the guide's "Show me").</summary>
+    public void WalkTo(string uid)
+    {
+        if (Data.Find(uid) is not { } prop || Editing)
+        {
+            return;
+        }
+
+        Vector2 from = _player.GlobalPosition;
+        Vector2 stop = prop.Position + (from - prop.Position).Normalized() * 48f;
+        if (uid == "portal")
+        {
+            // Not into the rift itself.
+            stop = prop.Position + new Vector2(0f, 90f);
+        }
+
+        _player.GetNode<NavigationAgent2D>("NavigationAgent2D").TargetPosition = stop;
     }
 
     public override void _Process(double delta)
     {
-        CharacterBuild? build = CharacterBuild.Of(_player);
-        if (build is not null)
-        {
-            CharacterData c = build.Data;
-            _xp.Value = build.ExperienceFraction;
-            string points = c.PassivePointsFree > 0 ? $"  ·  {c.PassivePointsFree} passive point{(c.PassivePointsFree == 1 ? "" : "s")} (P)" : "";
-            string asc = c.AscendancyPointsFree > 0 ? $"  ·  {c.AscendancyPointsFree} ascendancy point{(c.AscendancyPointsFree == 1 ? "" : "s")}" : "";
-            _status.Text = $"{c.Name} — level {c.Level} {c.AscendancyDef?.Name ?? c.Class.Name}  ·  gold {_player.Wallet.GetBalance(Profile.GoldId)}  ·  best tier {c.HighestTierCleared}{points}{asc}";
-        }
-
         // Repaved floors: rebuild their voxel terrain once painting pauses.
         if (_dirtyMaps.Count > 0 && (_rebuildIn -= (float)delta) <= 0f)
         {
@@ -421,7 +459,6 @@ public partial class Hideout : Node2D
 
         if (Editing)
         {
-            _prompt.Text = "";
             return;
         }
 
@@ -431,26 +468,21 @@ public partial class Hideout : Node2D
             return;
         }
 
-        (string Name, Action Use)? near = Nearest();
-        _prompt.Text = near is { } n && !GetTree().Paused ? $"[E] {n.Name}" : "";
-        if (near is { } target && !GetTree().Paused && Input.IsActionJustPressed("interact"))
+        if (!GetTree().Paused && Input.IsActionJustPressed("interact") && NearestStation() is { } near && UseOf(near.Def.Id) is { } use)
         {
-            target.Use();
+            use();
         }
     }
 
-    private (string Name, Action Use)? Nearest()
+    /// <summary>? (whatever the keyboard layout) or F1 opens the town guide.</summary>
+    public override void _UnhandledInput(InputEvent e)
     {
-        foreach (PlacedProp p in Data.Props)
+        if (e is InputEventKey { Pressed: true, Echo: false } key && (key.Unicode == '?' || key.Keycode == Key.F1)
+            && !GetTree().Paused && !Editing && !PanelStack.HasOpen)
         {
-            if (HideoutCatalog.Prop(p.Kind) is { Station: true } def && UseOf(def.Id) is { } use
-                && _player.GlobalPosition.DistanceTo(p.Position) < InteractRange)
-            {
-                return (def.Name, use);
-            }
+            OpenGuide();
+            GetViewport().SetInputAsHandled();
         }
-
-        return null;
     }
 
     public override void _PhysicsProcess(double delta)

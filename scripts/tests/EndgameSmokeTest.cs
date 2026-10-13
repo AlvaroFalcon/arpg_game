@@ -825,7 +825,7 @@ public partial class EndgameSmokeTest : Node2D
         if (profile is not null)
         {
             profile.Persist = false;
-            profile.Hideout = new HideoutData();
+            profile.Hideout = new HideoutData { GuideSeen = true };
         }
 
         var hideout = GD.Load<PackedScene>("res://scenes/Hideout.tscn").Instantiate<Hideout>();
@@ -840,6 +840,29 @@ public partial class EndgameSmokeTest : Node2D
         bool inSmithy = HideoutTown.BaseChar(forgeCell) == 'p';
         Check("HIDEOUT-STATIONS", stations && inPlaza && inSmithy,
             $"Mirror and Odran in the plaza, the forge in the smithy ({forgeCell}), stash, altar and Ysolde's shop in town");
+
+        // The HUD explains the town: a directory of every station, an E prompt naming
+        // the one you stand next to, and a click in the directory walks you there.
+        UI.HideoutHud hud = hideout.Hud;
+        hideout.Player.GlobalPosition = mirror + new Vector2(0f, 40f);
+        for (int i = 0; i < 3; i++)
+        {
+            // The HUD updates on process frames, which headless runs less often than physics frames.
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        string prompt = hud.PromptText;
+        hideout.WalkTo("forge");
+        Vector2 target = hideout.Player.GetNode<NavigationAgent2D>("NavigationAgent2D").TargetPosition;
+        hideout.OpenGuide();
+        await Frames(1);
+        var guide = hideout.GetNode<UI.TownGuidePanel>("TownGuide");
+        bool guideOpen = guide.IsOpen;
+        guide.Close();
+        Check("HIDEOUT-HUD", hud.DirectoryEntries.Count == HideoutCatalog.Props.Count(p => p.Station) && prompt.StartsWith("Mirror of Realities")
+            && target.DistanceTo(hideout.Data.Find("forge")!.Position) < 60f && guideOpen && !guide.IsOpen && hideout.Data.GuideSeen,
+            $"directory: {string.Join(", ", hud.DirectoryEntries)}; prompt '{prompt}' (paused={GetTree().Paused}, panels open={UI.PanelStack.HasOpen}, near={hideout.NearestStation()?.Def.Id}, player at {hideout.Player.GlobalPosition}, mirror {mirror}); walk-to target {target.DistanceTo(hideout.Data.Find("forge")!.Position):0} px from the forge; guide opened={guideOpen}");
+        hideout.Player.GetNode<NavigationAgent2D>("NavigationAgent2D").TargetPosition = hideout.Player.GlobalPosition;
 
         // Walls block, and click-to-move can path from the plaza into the smithy.
         Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);

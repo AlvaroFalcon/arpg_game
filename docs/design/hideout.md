@@ -40,6 +40,12 @@ reality moods in the voxel view.
 Rejected: reusing the reality layout format (rooms and corridors). A town is
 buildings, doors and a canal, which a hand-drawn character map says directly.
 
+## Finding your way
+
+The hideout HUD (docs/design/menus.md -> "Hideout HUD") explains the town: a town
+directory with arrows and click-to-walk, an E prompt card over the nearest station,
+and a town guide that opens on the first visit.
+
 ## Props and stations
 
 Everything standing in town is a **prop** with an id, a kind and a position: seven

@@ -460,6 +460,16 @@ public partial class RunCapture : Node
         var hideout = (Hideout)GetTree().CurrentScene;
         Player player = hideout.Player;
         player.Health!.IgnoreDamage = true;
+        // First visit: the guide opens by itself.
+        await Snap("hideout-guide.png");
+        hideout.GetNode<TownGuidePanel>("TownGuide").Close();
+        player.GlobalPosition = hideout.Data.Find("mirror")!.Position + new Vector2(0f, 46f);
+        await Wait(0.6f);
+        await Snap("hideout-hud.png");
+        hideout.Hud.ShowBanner("Hideout", "Your town between realities — ? opens the guide");
+        player.GlobalPosition = hideout.Data.Find("forge")!.Position + new Vector2(30f, 50f);
+        await Wait(0.6f);
+        await Snap("hideout-prompt-forge.png");
         foreach ((string file, Vector2I cell) in new[] { ("town-plaza.png", new Vector2I(25, 20)), ("town-smithy.png", new Vector2I(11, 16)), ("town-south.png", new Vector2I(25, 28)), ("town-gate.png", new Vector2I(25, 7)), ("town-yard.png", new Vector2I(40, 16)) })
         {
             player.GlobalPosition = World.HideoutTown.World(cell);

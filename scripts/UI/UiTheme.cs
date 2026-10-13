@@ -158,6 +158,24 @@ public static class UiTheme
         MouseFilter = Control.MouseFilterEnum.Ignore,
     };
 
+    /// <summary>A light key cap ("E", "Esc", "C · K · P") with crisp dark text.</summary>
+    public static PanelContainer KeyCap(string key, int size = 14, float minWidth = 0f)
+    {
+        var box = new PanelContainer { CustomMinimumSize = new Vector2(minWidth, 0f), MouseFilter = Control.MouseFilterEnum.Ignore };
+        var style = new StyleBoxFlat { BgColor = new Color(0.9f, 0.86f, 0.77f), BorderColor = new Color(0.45f, 0.4f, 0.33f) };
+        style.SetCornerRadiusAll(5);
+        style.BorderWidthBottom = 3;
+        style.SetContentMarginAll(2f);
+        style.ContentMarginLeft = 8f;
+        style.ContentMarginRight = 8f;
+        box.AddThemeStyleboxOverride("panel", style);
+        Label text = Label(key, size, new Color(0.12f, 0.1f, 0.08f), HorizontalAlignment.Center);
+        text.AddThemeColorOverride("font_shadow_color", Colors.Transparent);
+        text.AddThemeConstantOverride("outline_size", 0);
+        box.AddChild(text);
+        return box;
+    }
+
     public static TextureRect Icon(Texture2D? texture, float size)
     {
         return new TextureRect
