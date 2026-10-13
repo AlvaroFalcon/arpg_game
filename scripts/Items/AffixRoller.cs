@@ -30,12 +30,91 @@ public static class AffixRoller
         public int Tier { get; }
         public float Value { get; }
 
-        public RolledAffix(AffixDefinition definition, int tier, float value)
+        /// <summary>Put there on purpose at the Artificer's forge
+        /// (docs/design/crafting.md -> "Forging"); shown in its own colour.</summary>
+        public bool Crafted { get; }
+
+        /// <summary>Protected from the next orb by an Artificer's seal
+        /// (docs/design/crafting.md -> "Seals").</summary>
+        public bool Sealed { get; }
+
+        public RolledAffix(AffixDefinition definition, int tier, float value, bool crafted = false, bool isSealed = false)
         {
             Definition = definition;
             Tier = tier;
             Value = value;
+            Crafted = crafted;
+            Sealed = isSealed;
         }
+
+        public RolledAffix WithSeal(bool isSealed) => new(Definition, Tier, Value, Crafted, isSealed);
+    }
+
+    /// <summary>How many affixes an item of this rarity can carry
+    /// (docs/design/crafting.md -> "Affix limits").</summary>
+    public static int MaxAffixes(Rarity rarity) => rarity switch
+    {
+        Rarity.Common => 0,
+        Rarity.Magic => 2,
+        _ => MaxPerPool * 2,
+    };
+
+    /// <summary>
+    /// The affixes that could still be added to an item that already carries
+    /// <paramref name="existing"/>: allowed on the base, reachable at the item
+    /// level, not claiming a stat the item already has and with room in its pool.
+    /// </summary>
+    public static List<AffixDefinition> Addable(
+        BaseItemDefinition baseItem,
+        int itemLevel,
+        IReadOnlyList<AffixDefinition> pool,
+        IEnumerable<RolledAffix> existing)
+    {
+        var usedStats = new HashSet<StatId>();
+        int temper = 0;
+        int sigil = 0;
+        foreach (RolledAffix a in existing)
+        {
+            foreach (StatId stat in ClaimedStatsOf(a.Definition))
+            {
+                usedStats.Add(stat);
+            }
+
+            if (a.Definition.Pool == AffixPoolKind.Temper)
+            {
+                temper++;
+            }
+            else
+            {
+                sigil++;
+            }
+        }
+
+        return pool.Where(a =>
+            IsEligibleAffix(a, baseItem, itemLevel)
+            && !ClaimedStatsOf(a).Any(usedStats.Contains)
+            && PoolHasRoom(a.Pool, temper, sigil)).ToList();
+    }
+
+    /// <summary>Rolls one more affix onto <paramref name="existing"/>, or null when
+    /// nothing fits.</summary>
+    public static RolledAffix? RollAdditional(
+        BaseItemDefinition baseItem,
+        int itemLevel,
+        IReadOnlyList<AffixDefinition> pool,
+        IEnumerable<RolledAffix> existing,
+        RandomNumberGenerator rng)
+    {
+        List<AffixDefinition> eligible = Addable(baseItem, itemLevel, pool, existing);
+        if (eligible.Count == 0)
+        {
+            return null;
+        }
+
+        AffixDefinition chosen = WeightedPick(eligible, a => a.Weight, rng);
+        int tier = RollTier(chosen, itemLevel, rng);
+        (float min, float max) = chosen.ValueRangeForTier(tier);
+        return new RolledAffix(chosen, tier, RollValue(min, max, rng));
     }
 
     /// <summary>

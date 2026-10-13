@@ -87,6 +87,7 @@ public partial class EquipmentStripControl : Control
 
         CustomMinimumSize = new Vector2(WidthPx, HeightPx);
         MouseFilter = MouseFilterEnum.Stop;
+        TextureFilter = TextureFilterEnum.Nearest;
     }
 
     public override void _Process(double delta)
@@ -172,7 +173,9 @@ public partial class EquipmentStripControl : Control
             return default;
         }
 
-        SetDragPreview(new Label { Text = item.Descriptor.DisplayName, Modulate = new Color(1, 1, 1, 0.85f) });
+        SetDragPreview(ItemArt.ForItem(item) is { } icon
+            ? new TextureRect { Texture = icon, TextureFilter = TextureFilterEnum.Nearest, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, Size = icon.GetSize() * 2f, Modulate = new Color(1, 1, 1, 0.85f) }
+            : new Label { Text = item.Descriptor.DisplayName, Modulate = new Color(1, 1, 1, 0.85f) });
         return InventoryDragPayload.FromEquipmentSlot(item, slot).ToVariant();
     }
 
@@ -222,6 +225,12 @@ public partial class EquipmentStripControl : Control
             {
                 DrawString(font, new Vector2(rect.Position.X, rect.GetCenter().Y + 5f), Label(slot),
                     HorizontalAlignment.Center, rect.Size.X, 12, new Color(0.45f, 0.43f, 0.55f));
+                continue;
+            }
+
+            if (ItemArt.ForItem(equipped) is { } icon)
+            {
+                ItemArt.DrawFitted(this, icon, rect.Grow(-4f));
                 continue;
             }
 

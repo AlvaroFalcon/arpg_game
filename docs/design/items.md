@@ -156,6 +156,9 @@ most-wanted filter rule in the genre, and hiding tiers is a known mistake — Po
 them and effectively the entire playerbase installed third-party tools to read them.
 D4 and Last Epoch show them natively.
 
+**Update 2026-10-13:** the tooltip now shows tiers while Alt is held, small and dim,
+instead of always (crafting.md -> "Tooltip"). They are one key away, never hidden.
+
 ## Base items **[DECIDED]**
 
 ```
@@ -313,8 +316,9 @@ ignores clicks the GUI has taken.
 ### Item tooltips **[DECIDED]**
 
 Hovering an item — in the grid, in an equipment slot, or on the ground — shows its
-name in its rarity colour, its base type, item level, and its rolled affixes with
-their tier numbers.
+name in its rarity colour, its base type, item level, and its rolled affixes; their
+tier numbers appear while Alt is held. The layout was reorganised on 2026-10-13, see
+crafting.md -> "Tooltip".
 
 Showing the tier is deliberate and matches `affixes.md`: PoE hides tiers and its
 entire playerbase installed third-party tools to see them. A cell that currently
@@ -372,6 +376,35 @@ drag out of would be shipping something the player cannot fully use.
 Removes the milestone-2b auto-equip-on-pickup bridge, which existed only so gear was
 usable before this screen existed.
 
+## Item art **[IMPLEMENTED 2026-10-13]**
+
+Every base item has a pixel-art icon instead of a coloured box with its name (the
+owner: "we only have a box with a name, which is odd"). Icons are drawn at **16 px
+per inventory cell** and shown at 2x, so each fills its grid footprint exactly: the
+iron axe is 32x48 (2x3 cells), the rope belt 32x16. They come from
+`tools/art/sprites/items.ts` (procedural pixel art on the shared `tools/art/pix.ts`
+raster, like the town props) into `assets/sprites/items/<base id>.png`.
+
+Where they show:
+
+- **Grids** (inventory, stash, merchant, bench): the icon over a dim backdrop in the
+  rarity colour with a rarity edge. A base without art falls back to the old box.
+- **Paper doll**: the icon fitted in its slot.
+- **Dragging**: the icon is the drag preview.
+- **On the ground**: the icon lying tilted with a small shadow, under its label.
+- **The forge's base list** shows each base's icon.
+
+Crafting currencies have 16x16 icons in `assets/sprites/currency/`. The three
+Shards are faceted crystals; the Orbs are round with a symbol (a crown, lightning, a
+crack, a halo, a radiant cross); dust is a sparkling pile in its rarity colour; the
+Artificer's Seal is a wax seal, and gold a stack of coins. They are used in the
+Crafting tab's buttons, the dust and gold counts, Odran's wares, the bench's dust
+list, and for orbs lying on the ground. `ItemArt` (`scripts/Items/ItemArt.cs`)
+loads them and makes crisp nearest-neighbour copies for button icons.
+
+`EndgameSmokeTest` `ITEM-ART` fails if a base or a currency has no icon, or if an
+item icon doesn't match its footprint, so new bases must come with art.
+
 ## Currency **[DECIDED]**
 
 Gold is instance 1 of N, built generically from the start:
@@ -386,9 +419,9 @@ Player.Wallet : Dictionary<CurrencyId, long>
 ```
 
 Currency is **never a grid item** — it's a counter, collected by walking over it.
-Rejected: PoE's model where currency items occupy inventory slots and *are* the
-crafting economy. That only pays for its cost if item-based crafting currency is the
-economy; this project is taking the Diablo model.
+Rejected: PoE's model where currency items occupy inventory slots. (Since 2026-10-13
+crafting orbs *are* a PoE-style crafting economy, but still as wallet counters, never
+grid items — see crafting.md.)
 
 `AutoPickup` is per-currency rather than a global rule, because a future crafting
 currency may want manual pickup or stash routing, and discovering that after gold has
@@ -403,7 +436,17 @@ A hidden gold pile is still auto-collected on walk-over. The moment hiding somet
 also stops the player getting it, filters become a trap that silently costs loot for
 reasons the player can't see. PoE holds this line strictly; so does this project.
 
-## Flasks and refill orbs **[DECIDED]**
+## Flasks and refill orbs **[IMPLEMENTED 2026-10-12]**
+
+Implemented as `Items/Flasks.cs` (a node the Player creates): a **life flask on Q**
+and a **mana flask on R**, 3 charges each. A drink restores 40% of max life (50% of
+max mana) over 1.4 s; a charge regenerates every 30 s; a drink is refused without
+spending a charge when the pool is already full or the flask is empty. The red orbs
+monsters drop (5% normal, 15% magic, 60% rare and up) give one charge to each flask
+and are not pulled in while both flasks are full. The Survival Rift has no mana, so
+its mana flask is disabled; its life orbs work the same way. The HUD shows each
+flask as a bottle whose liquid level is its charges.
+
 
 Flasks hold charges. Charges come from two sources:
 

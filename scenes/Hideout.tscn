@@ -1,76 +1,24 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/Hideout.cs" id="1"]
-[ext_resource type="Script" path="res://scripts/Run/Arena.cs" id="2"]
 [ext_resource type="PackedScene" uid="uid://bs2np6tvmjmi8" path="res://scenes/Player.tscn" id="3"]
 [ext_resource type="Script" path="res://scripts/Portal.cs" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/combat/TargetDummy.tscn" id="5"]
-[ext_resource type="Resource" path="res://resources/stats/TrainingDummy.tres" id="6"]
 [ext_resource type="Script" path="res://scripts/Items/GroundLabelPool.cs" id="7"]
 [ext_resource type="Script" path="res://scripts/UI/ItemTooltipControl.cs" id="8"]
-[ext_resource type="PackedScene" path="res://assets/sprites/props/training_dummy.tscn" id="9"]
-
-[sub_resource type="NavigationPolygon" id="Nav"]
-vertices = PackedVector2Array(40, 40, 920, 40, 920, 600, 40, 600)
-polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2, 3)])
-outlines = Array[PackedVector2Array]([PackedVector2Array(40, 40, 920, 40, 920, 600, 40, 600)])
 
 [node name="Hideout" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("1")
 
-[node name="Arena" type="Node2D" parent="."]
-script = ExtResource("2")
-WidthTiles = 30
-HeightTiles = 20
-MoatTiles = 18
-
-[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
-navigation_polygon = SubResource("Nav")
-
 [node name="Portal" type="Node2D" parent="."]
-position = Vector2(480, 130)
+position = Vector2(816, 112)
 script = ExtResource("4")
 
 [node name="Player" parent="." instance=ExtResource("3")]
-position = Vector2(480, 400)
-
-[node name="Dummy0" parent="." instance=ExtResource("5")]
-position = Vector2(200, 300)
-
-[node name="Stats" parent="Dummy0" index="2"]
-Bases = ExtResource("6")
-
-[node name="Sprite" parent="Dummy0" instance=ExtResource("9")]
-position = Vector2(0, -12)
-scale = Vector2(2.5, 2.5)
-
-[node name="Dummy1" parent="." instance=ExtResource("5")]
-position = Vector2(760, 300)
-
-[node name="Stats" parent="Dummy1" index="2"]
-Bases = ExtResource("6")
-
-[node name="Sprite" parent="Dummy1" instance=ExtResource("9")]
-position = Vector2(0, -12)
-scale = Vector2(2.5, 2.5)
-
-[node name="Dummy2" parent="." instance=ExtResource("5")]
-position = Vector2(760, 480)
-
-[node name="Stats" parent="Dummy2" index="2"]
-Bases = ExtResource("6")
-
-[node name="Sprite" parent="Dummy2" instance=ExtResource("9")]
-position = Vector2(0, -12)
-scale = Vector2(2.5, 2.5)
+position = Vector2(816, 624)
 
 [node name="GroundLabelPool" type="CanvasLayer" parent="."]
 script = ExtResource("7")
 
 [node name="ItemTooltip" type="CanvasLayer" parent="."]
 script = ExtResource("8")
-
-[editable path="Dummy0"]
-[editable path="Dummy1"]
-[editable path="Dummy2"]

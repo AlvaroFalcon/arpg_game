@@ -8,6 +8,7 @@ using ArpgGame.Combat;
 using ArpgGame.Core;
 using ArpgGame.Enemies;
 using ArpgGame.Items;
+using ArpgGame.Run;
 using ArpgGame.Skills;
 using ArpgGame.Stats;
 using ArpgGame.World;
@@ -96,6 +97,7 @@ public partial class EndgameSmokeTest : Node2D
         await BuildChecks();
         await RealityChecks();
         await TutorialChecks();
+        await CraftingChecks();
     }
 
     // --- layouts ---------------------------------------------------------------------
@@ -426,6 +428,70 @@ public partial class EndgameSmokeTest : Node2D
         Vector2I playerCell = reality.Field.CellOf(reality.Player.GlobalPosition);
         Check("REALITY-PLAYER-AT-ENTRANCE", playerCell == reality.Raster.Entrance, $"player cell {playerCell}, entrance {reality.Raster.Entrance}");
 
+        // HUD layout editor (docs/design/menus.md -> "HUD layout editor"): panels
+        // register, a move is saved and comes back in the next reality.
+        UI.HudLayout.SavePath = "user://test_hud_layout.cfg";
+        UI.HudLayout.Reload();
+        UI.HudLayout.Reset();
+        await Frames(2);
+        var movables = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().ToList();
+        UI.HudMovable? vitals = movables.FirstOrDefault(m => m.Id == "vitals");
+        bool moved = false;
+        if (vitals is not null)
+        {
+            Vector2 before = vitals.Target.Position;
+            vitals.MoveBy(new Vector2(-120f, -60f), GetViewport().GetVisibleRect().Size);
+            moved = vitals.Target.Position.DistanceTo(before + new Vector2(-120f, -60f)) < 0.5f;
+            vitals.SetScale(0.8f);
+            UI.HudLayout.Save();
+            UI.HudLayout.Reload();
+        }
+
+        Check("HUD-LAYOUT-SAVE", movables.Count >= 6 && moved && UI.HudLayout.OffsetOf("vitals").DistanceTo(new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(UI.HudLayout.ScaleOf("vitals"), 0.8f),
+            $"{movables.Count} movable panels ({string.Join(", ", movables.Select(m => m.Id))}), moved={moved}, saved offset {UI.HudLayout.OffsetOf("vitals")}, saved size {UI.HudLayout.ScaleOf("vitals"):P0}");
+
+        // The small bars over the character.
+        var overhead = reality.Player.GetNodeOrNull<Node2D>("OverheadBars");
+        Check("OVERHEAD-BARS", overhead is not null && overhead.Visible, $"overhead bars present={overhead is not null}, visible={overhead?.Visible}");
+
+        // The Tab overlay map. Headless has no window to deliver key events, so the
+        // test toggles it directly and lets it draw a few frames.
+        var map = reality.GetNode("Hud").FindChild("MapOverlay", true, false) as UI.MapOverlay;
+        map?.Toggle();
+        await Frames(4);
+        bool opened = map?.Visible == true;
+        map?.Toggle();
+        Check("MAP-OVERLAY", map is not null && opened && !map.Visible && InputMap.HasAction(UI.MapOverlay.Action),
+            $"overlay found={map is not null}, opened and drew={opened}, closed again={map?.Visible == false}, Tab bound={InputMap.HasAction(UI.MapOverlay.Action)}");
+
+        // Flasks (docs/design/items.md -> "Flasks and refill orbs"): Q drinks, the
+        // recovery lands over time, a full pool refuses, orbs refill charges.
+        Flasks? flasks = Flasks.Of(reality.Player);
+        Stats.ResourcePool? pool = reality.Player.Stats.Life;
+        if (flasks is not null && pool is not null)
+        {
+            pool.Current = pool.Max * 0.3f;
+            Input.ActionPress(Flasks.LifeAction);
+            await Frames(2);
+            Input.ActionRelease(Flasks.LifeAction);
+            await ToSignal(GetTree().CreateTimer(1.8), SceneTreeTimer.SignalName.Timeout);
+            float healed = pool.Current / pool.Max;
+            int afterDrink = flasks.Life.Usable;
+            pool.Current = pool.Max;
+            bool refused = !flasks.TryDrink(flasks.Life);
+            bool refilled = flasks.Refill() && flasks.Life.Usable == flasks.Life.MaxCharges;
+            Pickup orb = Pickup.Spawn(reality, PickupKind.Life, 0.2f, reality.Player.GlobalPosition + new Vector2(30f, 0f));
+            flasks.Mana.Charges = flasks.Mana.MaxCharges;
+            await Frames(20);
+            bool orbStays = IsInstanceValid(orb) && !orb.IsQueuedForDeletion();
+            Check("FLASKS", healed > 0.65f && afterDrink == flasks.Life.MaxCharges - 1 && refused && refilled && orbStays,
+                $"life 30% → {healed:P0} after Q, {afterDrink}/{flasks.Life.MaxCharges} charges left, refused at full life={refused}, orb refill={refilled}, orb left on the ground while full={orbStays}");
+            if (IsInstanceValid(orb))
+            {
+                orb.QueueFree();
+            }
+        }
+
         // Walk into the boss room: the gate must close and the boss wake.
         reality.Player.Health!.IgnoreDamage = true;
         reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.BossCell) + new Vector2(0f, 120f);
@@ -458,6 +524,18 @@ public partial class EndgameSmokeTest : Node2D
             AddChild(r);
             await Frames(5);
             var roster = r.GetChildren().OfType<Enemy>().Where(e => !e.IsBoss).Select(e => e.DisplayName).Distinct().ToList();
+            if (id == "bone_crypt")
+            {
+                await Frames(2);
+                UI.HudMovable? v = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().FirstOrDefault(m => m.Id == "vitals" && r.IsAncestorOf(m));
+                Check("HUD-LAYOUT-APPLIED", v is not null && v.Target.Position.DistanceTo(v.Default + new Vector2(-120f, -60f)) < 0.5f && Mathf.IsEqualApprox(v.Target.Scale.X, 0.8f),
+                    $"the next reality's life cluster sits at its default {v?.Default} + the saved offset: {v?.Target.Position}, size {v?.Target.Scale.X:P0}");
+                UI.HudLayout.Reset();
+                UI.HudLayout.Save();
+                UI.HudLayout.SavePath = "user://hud_layout.cfg";
+                UI.HudLayout.Reload();
+            }
+
             r.Player.Health!.IgnoreDamage = true;
             r.Player.GlobalPosition = RasterLayout.World(r.Raster.BossCell) + new Vector2(0f, 150f);
             int telegraphs = 0;
@@ -467,6 +545,18 @@ public partial class EndgameSmokeTest : Node2D
                 telegraphs = GetChildren().Count(n => n is AreaBurst or LineStrike or BossBullet);
             }
 
+            // The target frame follows the boss, and its cast bar runs while a telegraphed
+            // attack winds up (bullets don't count: they aren't charged).
+            var frame = r.GetNode("Hud").FindChild("TargetFrame", true, false) as UI.TargetFrame;
+            float cast = -1f;
+            for (int i = 0; i < 600 && (cast < 0f || frame?.Target != r.Boss); i++)
+            {
+                await Frames(1);
+                cast = Mathf.Max(cast, r.Boss?.CastProgress ?? -1f);
+            }
+
+            Check($"TARGET-FRAME-{id}", frame?.Target == r.Boss && cast >= 0f,
+                $"target frame shows {frame?.Target?.DisplayName ?? "nothing"} (boss {r.Boss?.DisplayName}), cast bar at {cast:P0} while the first telegraph is pending");
             Check($"REALITY-{id}", r.MonstersTotal >= 20 && r.Boss is not null && r.BossFightActive && telegraphs > 0,
                 $"{r.MonstersTotal} monsters ({string.Join(", ", roster)}), boss {r.Boss?.DisplayName}, first attack '{r.Boss?.CurrentAttack}' with {telegraphs} telegraphs");
             r.QueueFree();
@@ -553,6 +643,295 @@ public partial class EndgameSmokeTest : Node2D
             $"reached step {guide.StepIndex + 1}/{guide.StepCount}: {string.Join(" → ", steps.Distinct())}");
         reality.QueueFree();
         await Frames(2);
+    }
+
+    // --- crafting, merchant, disenchanting, forging (docs/design/crafting.md) --------
+
+    private async Task CraftingChecks()
+    {
+        var rng = new RandomNumberGenerator { Seed = 1234 };
+        IReadOnlyList<AffixDefinition> pool = ItemFactory.Affixes.Entries;
+        // A base with plenty of modifiers to choose from, at a high item level.
+        BaseItemDefinition ring = ItemFactory.Bases.OrderByDescending(b => Crafting.ForgeableAffixes(b, 80).Count).First();
+        CraftingCurrency Orb(CraftAction a) => Crafting.Orbs.First(o => o.Action == a);
+
+        EquipmentItem item = ItemFactory.Roll(ring, Rarity.Common, 80, rng);
+        bool refused = !Crafting.Apply(Orb(CraftAction.Tempest), item, rng, out string why) && item.Rarity == Rarity.Common;
+        Check("CRAFT-WRONG-RARITY-REFUSED", refused && why.Contains("rare"), $"Tempest on a common item: '{why}', item still {item.Rarity}");
+
+        bool kindled = Crafting.Apply(Orb(CraftAction.Kindle), item, rng, out _) && item.Rarity == Rarity.Magic && item.RolledAffixes.Count is >= 1 and <= 2;
+        bool fluxed = Crafting.Apply(Orb(CraftAction.Flux), item, rng, out _) && item.Rarity == Rarity.Magic;
+        if (item.RolledAffixes.Count == 2)
+        {
+            Crafting.Apply(Orb(CraftAction.Sunder), item, rng, out _);
+        }
+
+        bool grafted = Crafting.Apply(Orb(CraftAction.Graft), item, rng, out _) && item.RolledAffixes.Count == 2;
+        Check("CRAFT-MAGIC-ORBS", kindled && fluxed && grafted, $"kindle → magic, flux keeps magic, graft fills to 2 — now {item.Descriptor.DisplayName} ({item.RolledAffixes.Count} mods)");
+
+        int before = item.RolledAffixes.Count;
+        bool crowned = Crafting.Apply(Orb(CraftAction.Crown), item, rng, out _) && item.Rarity == Rarity.Rare && item.RolledAffixes.Count == before + 1;
+        bool ascended = Crafting.Apply(Orb(CraftAction.Ascend), item, rng, out _) && item.RolledAffixes.Count == 4;
+        bool full = Crafting.CannotApply(Orb(CraftAction.Ascend), item) is not null;
+        bool tempest = Crafting.Apply(Orb(CraftAction.Tempest), item, rng, out _) && item.Rarity == Rarity.Rare && item.RolledAffixes.Count is >= 3 and <= 4;
+        var pools = item.RolledAffixes.GroupBy(a => a.Definition.Pool).Select(g => g.Count()).ToList();
+        Check("CRAFT-RARE-ORBS", crowned && ascended && full && tempest && pools.All(n => n <= AffixRoller.MaxPerPool),
+            $"crown +1 → rare, ascend fills to 4 then refuses, tempest rerolls 3–4 (pools {string.Join("/", pools)})");
+
+        var tiers = item.RolledAffixes.Select(a => (a.Definition.Id, a.Tier)).ToList();
+        bool tuned = Crafting.Apply(Orb(CraftAction.Tune), item, rng, out _)
+            && item.RolledAffixes.Select(a => (a.Definition.Id, a.Tier)).SequenceEqual(tiers)
+            && item.RolledAffixes.All(a => a.Value >= a.Definition.ValueRangeForTier(a.Tier).Min - 0.01f && a.Value <= a.Definition.ValueRangeForTier(a.Tier).Max + 0.01f);
+        int count = item.RolledAffixes.Count;
+        bool sundered = Crafting.Apply(Orb(CraftAction.Sunder), item, rng, out _) && item.RolledAffixes.Count == count - 1 && item.Rarity == Rarity.Rare;
+        bool ashed = Crafting.Apply(Orb(CraftAction.Ash), item, rng, out _) && item.Rarity == Rarity.Common && item.RolledAffixes.Count == 0 && item.Descriptor.DisplayName == ring.DisplayName;
+        Check("CRAFT-TUNE-SUNDER-ASH", tuned && sundered && ashed, $"tune keeps mods and tiers, sunder removes one, ash → common '{item.Descriptor.DisplayName}'");
+
+        EquipmentItem common = ItemFactory.Roll(ring, Rarity.Common, 20, rng);
+        EquipmentItem magic = ItemFactory.Roll(ring, Rarity.Magic, 20, rng);
+        EquipmentItem rare = ItemFactory.Roll(ring, Rarity.Rare, 20, rng);
+        Check("MERCHANT-PRICES", Crafting.SellPrice(common) > 0 && Crafting.SellPrice(common) < Crafting.SellPrice(magic) && Crafting.SellPrice(magic) < Crafting.SellPrice(rare),
+            $"common {Crafting.SellPrice(common)} < magic {Crafting.SellPrice(magic)} < rare {Crafting.SellPrice(rare)} gold");
+        Check("DISENCHANT-YIELD", Crafting.DisenchantYield(common).Dust.Id == "grey_dust" && Crafting.DisenchantYield(magic).Dust.Id == "azure_dust"
+            && Crafting.DisenchantYield(rare).Dust.Id == "gilded_dust" && Crafting.DisenchantYield(rare).Amount >= 1,
+            $"common → {Crafting.DisenchantYield(common).Dust.Name}, magic → {Crafting.DisenchantYield(magic).Dust.Name}, rare → {Crafting.DisenchantYield(rare).Amount} {Crafting.DisenchantYield(rare).Dust.Name}");
+
+        // Every base item and every currency has inventory art (docs/design/items.md -> "Item art").
+        var missing = ItemFactory.Bases.Where(b => ItemArt.ForBase(b.Id) is null).Select(b => b.Id)
+            .Concat(Crafting.All.Where(c => ItemArt.ForCurrency(c.Id) is null).Select(c => c.Id)).ToList();
+        bool sized = ItemFactory.Bases.All(b => ItemArt.ForBase(b.Id) is not { } t || (t.GetWidth() == b.Width * 16 && t.GetHeight() == b.Height * 16));
+        Check("ITEM-ART", missing.Count == 0 && sized && ItemArt.ForCurrency("artificer_seal") is not null,
+            missing.Count == 0 ? $"{ItemFactory.Bases.Count} item icons sized to their grid footprint, {Crafting.All.Count()} currency icons" : $"missing: {string.Join(", ", missing)}");
+
+        AffixDefinition chosen = Crafting.ForgeableAffixes(ring, 80).First();
+        Crafting.ForgeGrade gilded = Crafting.Grades.First(g => g.Name.StartsWith("Gilded"));
+        Crafting.ForgeGrade grey = Crafting.Grades.First(g => g.Name.StartsWith("Grey"));
+        EquipmentItem forged = Crafting.Forge(ring, chosen, gilded, 80, rng);
+        EquipmentItem rough = Crafting.Forge(ring, chosen, grey, 80, rng);
+        AffixRoller.RolledAffix? mine = forged.RolledAffixes.FirstOrDefault(a => a.Definition == chosen);
+        Check("FORGE-GUARANTEED-MOD", forged.Rarity == Rarity.Rare && mine is { Crafted: true } && mine.Tier == chosen.MaxReachableTier(80)
+            && forged.RolledAffixes.Count >= 3 && rough.Rarity == Rarity.Magic && rough.RolledAffixes[0].Tier == Mathf.Max(1, chosen.MaxReachableTier(80) - 2),
+            $"gilded: {forged.Descriptor.DisplayName} with {chosen.Id} T{mine?.Tier} crafted={mine?.Crafted} (+{forged.RolledAffixes.Count - 1} random); grey: magic T{rough.RolledAffixes[0].Tier}");
+
+        // Crafted flags and currency balances survive the save.
+        CharacterData c = CharacterData.Create("Smith", "warrior");
+        c.Inventory.Add((forged, Vector2I.Zero));
+        CharacterData? back = Profile.DeserializeCharacter(Profile.SerializeCharacter(c));
+        EquipmentItem? saved = back?.Inventory.FirstOrDefault().Item;
+
+        // Orbs and dust belong to the account; old per-character balances are pooled.
+        var account = new Profile { Persist = false };
+        account.Currency["tempest_orb"] = 3;
+        account.Characters.Add(c);
+        // The character's own (empty) currency table stands in for an old save's.
+        string json = account.ToJson().Replace("\"Currency\": {}", "\"Currency\": { \"tempest_orb\": 2 }");
+        var reloaded = new Profile { Persist = false };
+        reloaded.LoadJson(json);
+        Check("CRAFT-SAVE-ROUND-TRIP", saved is not null && saved.RolledAffixes.Any(a => a.Crafted && a.Definition == chosen)
+            && reloaded.Currency.GetValueOrDefault("tempest_orb") == 5 && reloaded.Characters[0].Currency.Count == 0,
+            $"crafted mod kept={saved?.RolledAffixes.Any(a => a.Crafted)}, account tempest orbs={reloaded.Currency.GetValueOrDefault("tempest_orb")} (3 account + 2 from an old per-character save)");
+        account.Free();
+        reloaded.Free();
+
+        // The stations, live: sell + buy back + buy at the merchant; orbs, disenchant
+        // and forge at the bench.
+        var player = GD.Load<PackedScene>("res://scenes/Player.tscn").Instantiate<Player>();
+        AddChild(player);
+        player.GlobalPosition = new Vector2(-4000f, 0f);
+        var merchant = new UI.MerchantPanel { Player = player };
+        AddChild(merchant);
+        await Frames(1);
+        EquipmentItem loot = ItemFactory.Roll(ring, Rarity.Rare, 30, rng);
+        player.Inventory.TryAdd(loot);
+        merchant.Open();
+        long gold0 = player.Wallet.GetBalance(Profile.GoldId);
+        bool sold = merchant.Sell(loot) && !player.Inventory.Placements.ContainsKey(loot) && merchant.Buyback.Placements.ContainsKey(loot);
+        long gold1 = player.Wallet.GetBalance(Profile.GoldId);
+        bool boughtBack = merchant.BuyBack(loot) && player.Inventory.Placements.ContainsKey(loot) && player.Wallet.GetBalance(Profile.GoldId) == gold0;
+        merchant.Sell(loot);
+        player.Wallet.Add(Profile.GoldId, 100);
+        bool bought = merchant.Buy(Orb(CraftAction.Kindle)) && player.Wallet.GetBalance("kindling_shard") == 1;
+        merchant.Close();
+        Check("MERCHANT-SELL-BUYBACK", sold && gold1 == gold0 + Crafting.SellPrice(loot) && boughtBack && bought && merchant.Buyback.Placements.Count == 0,
+            $"sold for {gold1 - gold0}, bought back={boughtBack}, bought a shard={bought}, buyback cleared on close");
+
+        var bench = new UI.ArtificerPanel { Player = player };
+        AddChild(bench);
+        await Frames(1);
+        EquipmentItem plain = ItemFactory.Roll(ring, Rarity.Common, 30, rng);
+        player.Inventory.TryAdd(plain);
+        // Orbs are used from the inventory's Crafting tab.
+        var inventoryUi = player.GetNode<UI.InventoryUI>("InventoryUI");
+        inventoryUi.SetOpen(true);
+        inventoryUi.ShowCrafting(true);
+        UI.CraftingBoard board = inventoryUi.Board;
+        board.Arm(Orb(CraftAction.Kindle));
+        bool applied = board.ApplyArmed(plain) && plain.Rarity == Rarity.Magic && player.Wallet.GetBalance("kindling_shard") == 0 && board.Armed is null;
+        Check("INVENTORY-CRAFTING-TAB", applied && inventoryUi.CraftingShown && board.Visible && !player.GetNode<Control>("InventoryUI/Panel/StripControl").Visible,
+            $"kindling used from the I panel's Crafting tab: {plain.Descriptor.DisplayName}");
+
+        // Seals: protect one modifier from the next orb; every seal on the same item costs more.
+        EquipmentItem target = ItemFactory.Roll(ring, Rarity.Rare, 60, rng);
+        player.Inventory.TryAdd(target);
+        player.Wallet.Add(Profile.GoldId, 1000);
+        player.Wallet.Add("gilded_dust", 10);
+        player.Wallet.Add("tempest_orb", 2);
+        long firstCost = Crafting.SealCost(target).Gold;
+        AffixDefinition keptDef = target.RolledAffixes[0].Definition;
+        float keptValue = target.RolledAffixes[0].Value;
+        bool sealedOk = board.SealForTest(target, 0);
+        long secondCost = Crafting.SealCost(target).Gold;
+        board.Arm(Orb(CraftAction.Tempest));
+        board.ApplyArmed(target);
+        bool kept = target.RolledAffixes.Any(a => a.Definition == keptDef && Mathf.IsEqualApprox(a.Value, keptValue));
+        bool broke = target.RolledAffixes.All(a => !a.Sealed);
+        bool persisted = Profile.DeserializeCharacter(Profile.SerializeCharacter(new CharacterData { Inventory = { (target, Vector2I.Zero) } }))
+            ?.Inventory.FirstOrDefault().Item?.SealCount == 1;
+        Check("CRAFT-SEAL", sealedOk && kept && broke && secondCost > firstCost && target.SealCount == 1 && persisted,
+            $"sealed mod survived Tempest={kept}, seal broke after it={broke}, cost {firstCost} → {secondCost}, seal count saved={persisted}");
+        inventoryUi.ShowCrafting(false);
+        inventoryUi.SetOpen(false);
+
+        bench.Open();
+        bench.Show(UI.ArtificerPanel.Tab.Disenchant);
+        bool disenchanted = bench.Disenchant(plain) && player.Wallet.GetBalance("azure_dust") >= 1 && !player.Inventory.Placements.ContainsKey(plain);
+        bench.Show(UI.ArtificerPanel.Tab.Forge);
+        player.Wallet.Add("grey_dust", 6);
+        player.Wallet.Add(Profile.GoldId, grey.Gold);
+        bench.SelectForge(ring, chosen);
+        long greyBefore = player.Wallet.GetBalance("grey_dust");
+        EquipmentItem? made = bench.Forge(grey);
+        Check("ARTIFICER-BENCH", applied && disenchanted && made is not null && player.Inventory.Placements.ContainsKey(made)
+            && made.RolledAffixes.Any(a => a.Crafted && a.Definition == chosen) && player.Wallet.GetBalance("grey_dust") == greyBefore - 6,
+            $"orb applied={applied}, disenchant={disenchanted}, forged={made?.Descriptor.DisplayName}");
+        bench.Close();
+
+        // The hideout has both stations.
+        player.QueueFree();
+        merchant.QueueFree();
+        bench.QueueFree();
+        await Frames(2);
+        await HideoutChecks();
+    }
+
+    // --- the hideout town, its editor and shop (docs/design/hideout.md) ----------------
+
+    private async Task HideoutChecks()
+    {
+        // Never touch the real account: an empty town, nothing written to disk.
+        Profile? profile = Profile.Get(this);
+        bool persisted = profile?.Persist ?? false;
+        HideoutData? realTown = profile?.Hideout;
+        if (profile is not null)
+        {
+            profile.Persist = false;
+            profile.Hideout = new HideoutData();
+        }
+
+        var hideout = GD.Load<PackedScene>("res://scenes/Hideout.tscn").Instantiate<Hideout>();
+        AddChild(hideout);
+        await Frames(4);
+
+        bool stations = new[] { "Mirror", "Merchant", "Artificer", "Stash", "Altar", "Decorator" }.All(n => hideout.GetNodeOrNull(n) is not null)
+            && hideout.GetNodeOrNull<UI.MerchantPanel>("MerchantPanel") is not null && hideout.GetNodeOrNull<UI.ArtificerPanel>("ArtificerPanel") is not null;
+        Vector2 mirror = hideout.Data.Find("mirror")!.Position;
+        Vector2I forgeCell = HideoutTown.CellOf(hideout.Data.Find("forge")!.Position);
+        bool inPlaza = mirror.DistanceTo(HideoutTown.World(new Vector2I(25, 15))) < 40f && HideoutTown.BaseChar(HideoutTown.CellOf(hideout.Data.Find("merchant")!.Position)) is '.' or 'o';
+        bool inSmithy = HideoutTown.BaseChar(forgeCell) == 'p';
+        Check("HIDEOUT-STATIONS", stations && inPlaza && inSmithy,
+            $"Mirror and Odran in the plaza, the forge in the smithy ({forgeCell}), stash, altar and Ysolde's shop in town");
+
+        // Walls block, and click-to-move can path from the plaza into the smithy.
+        Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);
+        Vector2 to = HideoutTown.World(forgeCell + new Vector2I(1, 2));
+        Vector2[] path = NavigationServer2D.MapGetPath(hideout.GetWorld2D().NavigationMap, from, to, true);
+        bool reaches = path.Length > 1 && path[^1].DistanceTo(to) < 20f;
+        bool walled = !HideoutTown.Walkable(new Vector2I(3, 12)) && !HideoutTown.Walkable(new Vector2I(5, 24)) && HideoutTown.Walkable(HideoutTown.SpawnCell);
+        Check("HIDEOUT-TOWN", reaches && walled && hideout.Town.Maps.Count() >= 4,
+            $"path plaza → smithy: {path.Length} points, ends {(path.Length > 0 ? path[^1].DistanceTo(to) : -1):0} px from the forge; walls and canal block");
+
+        // Ysolde's shop: floor tiles come in packs, decorations one at a time.
+        var shop = hideout.GetNode<UI.DecorShopPanel>("DecorShopPanel");
+        hideout.Player.Wallet.Add(Profile.GoldId, 2000);
+        FloorStyle marble = HideoutCatalog.Floor("marble");
+        PropDef statueDef = HideoutCatalog.Prop("statue")!;
+        long gold0 = hideout.Player.Wallet.GetBalance(Profile.GoldId);
+        bool boughtFloor = shop.BuyFloor(marble) && hideout.Data.StockOf("marble") == HideoutCatalog.FloorPack;
+        bool boughtDecor = shop.BuyDecor(statueDef) && hideout.Data.StockOf("statue") == 1;
+        bool noStations = !shop.BuyDecor(HideoutCatalog.Prop("mirror")!);
+        Check("HIDEOUT-SHOP", boughtFloor && boughtDecor && noStations && hideout.Player.Wallet.GetBalance(Profile.GoldId) == gold0 - marble.PackPrice - statueDef.Price,
+            $"bought {HideoutCatalog.FloorPack} marble tiles ({marble.PackPrice}g) and a statue ({statueDef.Price}g); stations aren't for sale");
+
+        // Edit mode: drag the Mirror, store a brazier, place the statue, pave a cell.
+        hideout.OpenEditor();
+        await Frames(1);
+        UI.HideoutEditor editor = hideout.Editor!;
+        editor.Use(UI.HideoutEditor.Tool.Move);
+        float pick = HideoutCatalog.Prop("mirror")!.PickRadius;
+        Vector2 grabAt = mirror + new Vector2(0f, -pick * 0.6f);
+        Vector2 newSpot = HideoutTown.World(new Vector2I(25, 12));
+        editor.PressAt(grabAt);
+        editor.DragTo(grabAt + (newSpot - mirror));
+        editor.Release();
+        bool moved = hideout.Data.Find("mirror")!.Position.DistanceTo(newSpot) < 6f && hideout.Props["mirror"].GlobalPosition.DistanceTo(newSpot) < 6f;
+        editor.PressAt(HideoutTown.World(new Vector2I(4, 12)) + new Vector2(0f, -pick * 0.6f));
+        editor.DragTo(HideoutTown.World(new Vector2I(3, 12)));
+        editor.Release();
+        bool notIntoWalls = hideout.Data.Props.All(p => HideoutTown.Walkable(HideoutTown.CellOf(p.Position)));
+
+        string brazier = hideout.Data.Props.First(p => p.Kind == "brazier").Uid;
+        Vector2 brazierAt = hideout.Data.Find(brazier)!.Position;
+        int propsBefore = hideout.Data.Props.Count;
+        editor.RightAt(brazierAt + new Vector2(0f, -15f));
+        bool stored = hideout.Data.Find(brazier) is null && hideout.Data.StockOf("brazier") == 1 && hideout.Data.Props.Count == propsBefore - 1;
+        editor.RightAt(hideout.Data.Find("stash")!.Position + new Vector2(0f, -15f));
+        bool stationsStay = hideout.Data.Find("stash") is not null;
+        editor.Use(UI.HideoutEditor.Tool.Decorations);
+        editor.SelectDecor("statue");
+        Vector2 statueSpot = HideoutTown.World(new Vector2I(22, 23));
+        editor.PressAt(statueSpot);
+        bool placed = hideout.Data.Props.Any(p => p.Kind == "statue" && p.Position.DistanceTo(statueSpot) < 8f) && hideout.Data.StockOf("statue") == 0;
+
+        editor.Use(UI.HideoutEditor.Tool.Floors);
+        editor.SelectFloor("marble");
+        Vector2I paveCell = new(24, 22);
+        editor.PressAt(HideoutTown.World(paveCell));
+        editor.Release();
+        bool paved = hideout.Town.StyleAt(paveCell) == "marble" && hideout.Data.StockOf("marble") == HideoutCatalog.FloorPack - 1;
+        editor.PressAt(HideoutTown.World(new Vector2I(3, 12)));
+        editor.Release();
+        bool wallsUnpaved = hideout.Town.StyleAt(new Vector2I(3, 12)) == "wall";
+        editor.RightAt(HideoutTown.World(paveCell));
+        bool refunded = hideout.Town.StyleAt(paveCell) == "cobble" && hideout.Data.StockOf("marble") == HideoutCatalog.FloorPack;
+        editor.Use(UI.HideoutEditor.Tool.Floors);
+        editor.SelectFloor("marble");
+        editor.PressAt(HideoutTown.World(paveCell));
+        editor.Release();
+        editor.Close();
+        await Frames(1);
+        Check("HIDEOUT-EDIT", moved && notIntoWalls && stored && stationsStay && placed && paved && wallsUnpaved && refunded && !hideout.Editing,
+            $"moved the Mirror={moved}, props stay off walls={notIntoWalls}, brazier stored={stored}, stash can't be stored={stationsStay}, statue placed={placed}, paved={paved}, walls unpaintable={wallsUnpaved}, right-click refunds={refunded}");
+
+        // The arrangement is the account's: it survives the save file.
+        var account = new Profile { Persist = false };
+        account.Hideout = hideout.Data;
+        var reread = new Profile { Persist = false };
+        reread.LoadJson(account.ToJson());
+        HideoutData back = reread.Hideout;
+        bool same = back.Initialized && back.Props.Count == hideout.Data.Props.Count
+            && back.Find("mirror")!.Position.DistanceTo(newSpot) < 6f && back.Floors.GetValueOrDefault(HideoutData.Key(paveCell)) == "marble"
+            && back.StockOf("brazier") == 1;
+        Check("HIDEOUT-SAVE", same, $"{back.Props.Count} props, mirror at {back.Find("mirror")?.Position}, {back.Floors.Count} paved cell(s), stock {string.Join(", ", back.Stock.Select(kv => $"{kv.Key}×{kv.Value}"))}");
+        account.Free();
+        reread.Free();
+
+        hideout.QueueFree();
+        await Frames(2);
+        if (profile is not null)
+        {
+            profile.Hideout = realTown ?? new HideoutData();
+            profile.Persist = persisted;
+        }
     }
 
     private static IEnumerable<Enemy> RoomMonsters(RealityController reality, string room) =>

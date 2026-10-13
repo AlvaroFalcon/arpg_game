@@ -35,11 +35,40 @@ namespace ArpgGame.UI;
 public partial class InventoryUI : CanvasLayer, IClosablePanel
 {
     private Control _panel = null!;
+    private Control _strip = null!;
+    private Button _inventoryTab = null!;
+    private Button _craftingTab = null!;
+
+    /// <summary>The Crafting tab (docs/design/crafting.md -> "Using orbs").</summary>
+    public CraftingBoard Board { get; private set; } = null!;
+
+    public bool CraftingShown { get; private set; }
 
     public override void _Ready()
     {
         _panel = GetNode<Control>("Panel");
         _panel.Visible = false;
+        _strip = _panel.GetNode<Control>("StripControl");
+
+        // Inventory | Crafting tabs over the panel. Crafting swaps the paper doll
+        // for the orb board; the grid stays, since orbs are used on its items.
+        var tabs = new HBoxContainer { Position = new Vector2(0f, -38f) };
+        tabs.AddThemeConstantOverride("separation", 4);
+        _panel.AddChild(tabs);
+        _inventoryTab = UiTheme.Button("Inventory", () => ShowCrafting(false), 15, 120f);
+        _craftingTab = UiTheme.Button("Crafting", () => ShowCrafting(true), 15, 120f);
+        tabs.AddChild(_inventoryTab);
+        tabs.AddChild(_craftingTab);
+        Board = new CraftingBoard
+        {
+            Player = GetParent<Player>(),
+            Grid = _panel.GetNode<InventoryGridControl>("GridControl"),
+            Position = new Vector2(16f, 16f),
+            Visible = false,
+            Name = "CraftingBoard",
+        };
+        _panel.AddChild(Board);
+        StyleTabs();
 
         // docs/design/items.md -> "Sorting". The button lives in the scene so its
         // placement is an editor concern; the policy lives in InventorySorter.
@@ -62,6 +91,30 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
         }
     }
 
+    public void ShowCrafting(bool crafting)
+    {
+        CraftingShown = crafting;
+        _strip.Visible = !crafting;
+        if (crafting)
+        {
+            Board.Activate();
+        }
+        else
+        {
+            Board.Deactivate();
+        }
+
+        StyleTabs();
+    }
+
+    private void StyleTabs()
+    {
+        foreach ((Button tab, bool on) in new[] { (_inventoryTab, !CraftingShown), (_craftingTab, CraftingShown) })
+        {
+            tab.AddThemeStyleboxOverride("normal", UiTheme.Box(on ? new Color(0.24f, 0.18f, 0.32f) : new Color(0.07f, 0.06f, 0.1f, 0.97f), on ? UiTheme.Gold : UiTheme.PanelBorder, on ? 2 : 1));
+        }
+    }
+
     public override void _Process(double delta)
     {
         if (Input.IsActionJustPressed("toggle_inventory"))
@@ -71,7 +124,16 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
 
         if (Input.IsActionJustPressed("ui_cancel"))
         {
-            PanelStack.CloseTopmost();
+            // An orb in hand is put away first; the next Esc closes the panel.
+            if (_panel.Visible && Board.Holding)
+            {
+                Board.Disarm();
+                PanelStack.MarkClosedThisFrame();
+            }
+            else
+            {
+                PanelStack.CloseTopmost();
+            }
         }
     }
 
@@ -88,10 +150,18 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
         if (open)
         {
             PanelStack.Push(this);
+            if (CraftingShown)
+            {
+                Board.Activate();
+            }
         }
         else
         {
             PanelStack.Remove(this);
+            if (CraftingShown)
+            {
+                Board.Deactivate();
+            }
         }
     }
 

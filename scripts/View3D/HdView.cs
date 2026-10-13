@@ -85,6 +85,12 @@ public partial class HdView : Node
                 HazardColor(reality.Theme.Id));
         }
 
+        else if (scene is Hideout)
+        {
+            // A sunny town; the canal glows a soft blue.
+            _stage.SetMood(new Color(0.78f, 0.76f, 0.72f), new Color(1f, 0.93f, 0.82f), new Color(0.4f, 0.7f, 1f));
+        }
+
         scene.AddChild(_stage);
         Walk(scene);
     }

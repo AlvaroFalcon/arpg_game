@@ -137,3 +137,93 @@ audio assets yet; replacing any sound with a real file is a one-line change.
 - Key rebinding UI (the actions exist in `project.godot`).
 - A stash and a vendor in the hideout (gold has no sink yet).
 - Controller support pass (focus works; dodge/aim on sticks does not yet).
+
+
+## In-game HUD: the bottom-centre cluster **[IMPLEMENTED 2026-10-12]**
+
+Modelled on the owner's reference (AION 2). `UI/PlayerHudBar.cs`, shared by the
+reality and Survival Rift HUDs:
+
+- A long red **life bar** on the left and a cyan **mana bar** on the right, slanted
+  at their outer ends, both draining towards the centre, with a lighter trail that
+  shows recent damage before catching up. Values sit by the inner ends.
+- A **hexagonal level badge** where they meet, ringed by an **experience arc**
+  (with the percentage under the level).
+- Under the bars: stamina (left), class-resource pips (right), the **flasks** as
+  bottles with their key (Q, R) and charges, and dodge charges as diamonds under the
+  badge. The **skill row** (LMB, RMB, 1-4) is its own control below the cluster.
+
+It replaced bottom-left progress bars and a separate skill row: one cluster at the
+bottom centre keeps the eye near the character. Custom-drawn rather than built
+from ProgressBars so the bars can be slanted, mirrored and trail.
+
+
+## HUD layout editor **[IMPLEMENTED 2026-10-12]**
+
+Pause (Esc) → **Edit HUD**. The game stays paused, the pause menu steps aside and
+every movable panel gets a labelled frame that can be dragged anywhere on screen
+(kept at least half on screen). **Reset layout** puts everything back; **Done** or
+Esc saves and returns to the pause menu.
+
+- Panels register with `HudLayout.Register(control, id, label, preview?)`, which
+  adds a `HudMovable` node that records the panel's default position once the HUD
+  has laid itself out and applies the saved offset. The layout is one offset per id
+  in `user://hud_layout.cfg`, in the 1280×720 canvas the UI is authored in (the
+  stretch mode scales it to any window).
+- Movable now: character name, reality info + minimap, boss life, the life/mana
+  cluster, skills, notifications, the introduction guide; in the Survival Rift
+  level, timer and kills too. Ids are shared, so moving the life cluster or the boss
+  bar in a reality moves it in the Survival Rift as well.
+- Panels that are usually hidden show a placeholder while editing (a sample boss
+  bar, a sample notification) so they can be placed before they are needed.
+
+- **Resizing** (added on request): drag a frame's corner grip, or use the mouse
+  wheel over it, to scale the panel from 50% to 200%. Panels scale around their
+  centre (the corner follows the cursor) and are nudged back inside the screen if
+  growing pushed them off an edge. The size is saved next to the offset
+  (`[scales]` in the same file); Reset puts sizes back to 100% too.
+
+Rejected: per-screen layouts (players expect "my life bar is here" everywhere) and
+non-uniform stretching (bars and icons would distort).
+
+## Overhead bars **[IMPLEMENTED 2026-10-12]**
+
+A small life bar (and mana bar, where there is mana) floats over the player so
+you can watch it without looking down. `UI/OverheadBars.cs` is a world-space child
+of the Player, drawn above the world; the life bar keeps the same damage trail as
+the HUD and pulses below 30%. Settings → "Life and mana bars over your character"
+turns it off.
+
+## Overlay map **[IMPLEMENTED 2026-10-12]**
+
+**Tab** toggles a large, see-through map over the game in realities, Diablo / Path
+of Exile style, centred on the player so it can stay open while fighting: explored
+floor as a faint wash, walls as bright outlines, the boss gate, the entrance, the
+boss arena (or the exit portal once the boss is down), visible monsters (coloured
+by rarity, bosses bigger) and the player as an arrow pointing where they move.
+The corner minimap stays. `UI/MapOverlay.cs`; the key comes in through `_Input`
+(the overlay is hidden most of the time).
+
+
+## Target frame **[IMPLEMENTED 2026-10-12]**
+
+Replaces the flat boss bar, modelled on AION 2's target frame (`UI/TargetFrame.cs`):
+
+- **Name line:** the monster level in a bronze ring, the name in its rarity colour
+  (bosses in ember).
+- **The bar:** an ornate frame with arrow-tip caps, a recent-damage trail, phase
+  marks at the boss's thresholds (the next one pulses as life closes in), the
+  percentage, a rank badge on the right tip (a star for bosses and uniques, a
+  diamond for rares) and a central emblem showing the boss's element (flame for
+  the Ember Colossus, a skull for the Bone Herald, water for Nereth).
+- **Under it:** the monster's modifiers as tags, a **cast bar** that fills until a
+  telegraphed attack lands (with the attack's name), and the **ailments** on the
+  target (ignite, chill, shock, poison stacks, curse) with their time left.
+- **Who it shows:** the boss during its fight; otherwise the monster under the
+  mouse (kept for 3 s after the cursor leaves it), or the nearest awake rare or
+  unique within ~7 m. So rares get their name, life and modifiers on screen too.
+
+The cast bar needed no per-attack timing: `BossEnemy` records the window of its
+pending telegraphs (`Slam`/`Lane`, and the few direct spawns call
+`NoteTelegraph`), and the bar runs from the first telegraph to the last impact.
+The frame is the "Target / boss life" panel in the HUD editor.

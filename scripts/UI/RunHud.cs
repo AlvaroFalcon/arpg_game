@@ -28,18 +28,7 @@ public partial class RunHud : CanvasLayer
     private Label _levelLabel = null!;
     private Label _timerLabel = null!;
     private Label _killsLabel = null!;
-    private ProgressBar _lifeBar = null!;
-    private ProgressBar _manaBar = null!;
-    private ProgressBar _staminaBar = null!;
-    private Label _lifeLabel = null!;
-    private Label _manaLabel = null!;
-    private HBoxContainer _dodgeRow = null!;
     private HBoxContainer _skillRow = null!;
-    private Control _bossBox = null!;
-    private Label _bossName = null!;
-    private Label _bossAttack = null!;
-    private ProgressBar _bossBar = null!;
-    private Control _bossMarkers = null!;
     private Label _banner = null!;
     private Label _bannerSub = null!;
     private Label _callout = null!;
@@ -47,6 +36,7 @@ public partial class RunHud : CanvasLayer
     private float _bannerTime;
     private float _calloutTime;
     private BossEnemy? _boss;
+    private TargetFrame _target = null!;
     private readonly List<SkillSlotView> _slots = new();
     private string _skillSignature = "";
 
@@ -80,52 +70,23 @@ public partial class RunHud : CanvasLayer
         _killsLabel.OffsetTop = 16f;
 
         // --- boss bar ---
-        _bossBox = new VBoxContainer { Visible = false };
-        root.AddChild(_bossBox);
-        _bossBox.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
-        _bossBox.OffsetLeft = -320f;
-        _bossBox.OffsetRight = 320f;
-        _bossBox.OffsetTop = 56f;
-        _bossName = UiTheme.Label("", 22, UiTheme.Ember, HorizontalAlignment.Center);
-        _bossBox.AddChild(_bossName);
-        var barHolder = new Control { CustomMinimumSize = new Vector2(640f, 20f) };
-        _bossBox.AddChild(barHolder);
-        _bossBar = UiTheme.Bar(new Color(0.8f, 0.22f, 0.12f), 20f);
-        barHolder.AddChild(_bossBar);
-        _bossBar.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _bossMarkers = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
-        barHolder.AddChild(_bossMarkers);
-        _bossMarkers.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _bossAttack = UiTheme.Label("", 18, UiTheme.Text, HorizontalAlignment.Center);
-        _bossBox.AddChild(_bossAttack);
+        _target = new TargetFrame { Player = Player, Boss = () => _boss, Name = "TargetFrame" };
+        root.AddChild(_target);
+        _target.Dock(56f);
 
-        // --- bottom-left: life / mana / dodge ---
-        var vitals = new VBoxContainer();
-        vitals.AddThemeConstantOverride("separation", 4);
-        root.AddChild(vitals);
-        vitals.SetAnchorsPreset(Control.LayoutPreset.BottomLeft, true);
-        vitals.OffsetLeft = 16f;
-        vitals.OffsetTop = -118f;
-        vitals.OffsetRight = 336f;
-        vitals.OffsetBottom = -16f;
-        (_lifeBar, _lifeLabel) = AddVital(vitals, UiTheme.Life);
-        (_manaBar, _manaLabel) = AddVital(vitals, UiTheme.Mana);
-        _staminaBar = UiTheme.Bar(new Color(0.85f, 0.8f, 0.3f), 7f);
-        _staminaBar.CustomMinimumSize = new Vector2(320f, 7f);
-        vitals.AddChild(_staminaBar);
-        // No mana in the Survival Rift: skills are free and automatic.
-        _manaBar.GetParent<Control>().Visible = !Player.Stats.IgnoresResourceCosts;
-        _dodgeRow = UiTheme.HBox(vitals, 6);
+        // --- bottom centre: life, level badge, flask, skills (no mana here) ---
+        var bar = new PlayerHudBar { Player = Player, Progress = () => (State.Level, State.ExperienceFraction) };
+        root.AddChild(bar);
+        bar.Dock();
+        _skillRow = PlayerHudBar.CreateSkillRow(root);
 
-        // --- skill bar ---
-        _skillRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        _skillRow.AddThemeConstantOverride("separation", 10);
-        root.AddChild(_skillRow);
-        _skillRow.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
-        _skillRow.OffsetLeft = -200f;
-        _skillRow.OffsetRight = 200f;
-        _skillRow.OffsetTop = -96f;
-        _skillRow.OffsetBottom = -16f;
+        // Movable in the HUD editor (pause menu → Edit HUD); ids shared with the realities.
+        HudLayout.Register(_levelLabel, "run_level", "Level");
+        HudLayout.Register(_timerLabel, "timer", "Timer");
+        HudLayout.Register(_killsLabel, "kills", "Kills");
+        HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview);
+        HudLayout.Register(bar, "vitals", "Life & flask");
+        HudLayout.Register(_skillRow, "skills", "Skills");
 
         // --- banners ---
         _banner = UiTheme.Label("", 46, UiTheme.Gold, HorizontalAlignment.Center);
@@ -160,19 +121,6 @@ public partial class RunHud : CanvasLayer
         Director.BossSpawned += OnBossSpawned;
     }
 
-    private static (ProgressBar, Label) AddVital(VBoxContainer parent, Color color)
-    {
-        var holder = new Control { CustomMinimumSize = new Vector2(320f, 24f) };
-        parent.AddChild(holder);
-        ProgressBar bar = UiTheme.Bar(color, 24f);
-        holder.AddChild(bar);
-        bar.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        Label label = UiTheme.Label("", 16, UiTheme.Text, HorizontalAlignment.Center);
-        holder.AddChild(label);
-        label.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        label.VerticalAlignment = VerticalAlignment.Center;
-        return (bar, label);
-    }
 
     public void ShowBanner(string title, string subtitle, Color color)
     {
@@ -197,18 +145,6 @@ public partial class RunHud : CanvasLayer
             _calloutTime = 2.2f;
         };
         b.PhaseChanged += (_, message) => ShowBanner($"Phase {b.Phase}", message, UiTheme.Ember);
-        _bossName.Text = b.DisplayName;
-        foreach (Node child in _bossMarkers.GetChildren())
-        {
-            child.QueueFree();
-        }
-
-        foreach (float threshold in b.PhaseThresholds)
-        {
-            var marker = new ColorRect { Color = new Color(1f, 0.9f, 0.6f, 0.9f), Size = new Vector2(3f, 20f), MouseFilter = Control.MouseFilterEnum.Ignore };
-            _bossMarkers.AddChild(marker);
-            marker.Position = new Vector2(640f * threshold - 1.5f, 0f);
-        }
     }
 
     public override void _Process(double delta)
@@ -221,31 +157,11 @@ public partial class RunHud : CanvasLayer
         _timerLabel.AddThemeColorOverride("font_color", toBoss is > 0f and < 30f ? UiTheme.Ember : UiTheme.Text);
         _killsLabel.Text = $"{State.Kills} kills";
 
-        if (Player.Stats.Life is { } life)
-        {
-            _lifeBar.Value = life.Max > 0 ? life.Current / life.Max : 0;
-            _lifeLabel.Text = $"{Mathf.CeilToInt(Mathf.Min(life.Current, life.Max))} / {Mathf.RoundToInt(life.Max)}";
-        }
-
-        if (Player.Stats.Mana is { } mana)
-        {
-            _manaBar.Value = mana.Max > 0 ? mana.Current / mana.Max : 0;
-            _manaLabel.Text = $"{Mathf.FloorToInt(mana.Current)} / {Mathf.RoundToInt(mana.Max)}";
-        }
-
-        if (Player.MaxStamina > 0f)
-        {
-            _staminaBar.Value = Mathf.Max(0f, Player.Stamina) / Player.MaxStamina;
-            _staminaBar.Modulate = Player.Exhausted ? new Color(1f, 0.45f, 0.4f) : Colors.White;
-        }
-
         float hintAlpha = Mathf.Clamp((25f - State.Elapsed) / 3f, 0f, 1f);
         _controlsHint.Visible = hintAlpha > 0f;
         _controlsHint.Modulate = new Color(1f, 1f, 1f, hintAlpha);
 
-        UpdateDodge();
         UpdateSkills();
-        UpdateBoss();
 
         if (_bannerTime > 0f)
         {
@@ -270,27 +186,6 @@ public partial class RunHud : CanvasLayer
         else
         {
             _callout.Text = "";
-        }
-    }
-
-    private void UpdateDodge()
-    {
-        if (Player.Dodge is not { } dodge)
-        {
-            return;
-        }
-
-        int max = dodge.MaxCharges;
-        while (_dodgeRow.GetChildCount() < max)
-        {
-            _dodgeRow.AddChild(new DodgePip());
-        }
-
-        for (int i = 0; i < _dodgeRow.GetChildCount(); i++)
-        {
-            var pip = (DodgePip)_dodgeRow.GetChild(i);
-            pip.Visible = i < max;
-            pip.Fill = i < dodge.Charges ? 1f : i == dodge.Charges ? dodge.RechargeProgress : 0f;
         }
     }
 
@@ -322,16 +217,4 @@ public partial class RunHud : CanvasLayer
         }
     }
 
-    private void UpdateBoss()
-    {
-        bool show = _boss is not null && IsInstanceValid(_boss) && !_boss.Health.IsDead;
-        _bossBox.Visible = show;
-        if (!show)
-        {
-            return;
-        }
-
-        _bossBar.Value = _boss!.LifeFraction;
-        _bossAttack.Text = _boss.CurrentAttack.Length > 0 ? $"« {_boss.CurrentAttack} »" : "";
-    }
 }

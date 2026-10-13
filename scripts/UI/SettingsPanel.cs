@@ -37,6 +37,7 @@ public partial class SettingsPanel : PanelContainer
         AddToggle(box, "Fullscreen", settings?.Fullscreen ?? false, v => settings?.SetFullscreen(v));
         AddToggle(box, "V-Sync", settings?.VSync ?? true, v => settings?.SetVSync(v));
         AddToggle(box, "Voxel graphics (HD-2D) — applies on the next scene", settings?.VoxelGraphics ?? true, v => settings?.SetVoxelGraphics(v));
+        AddToggle(box, "Life and mana bars over your character", settings?.OverheadBars ?? true, v => settings?.SetOverheadBars(v));
         AddToggle(box, "Screen shake", settings?.ScreenShake ?? true, v => settings?.SetScreenShake(v));
         AddToggle(box, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
 

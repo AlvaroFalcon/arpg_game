@@ -1,0 +1,48 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "potted_plant",
+  "width": 14,
+  "height": 18,
+  "palette": [
+    "#14100c",
+    "#a8582e",
+    "#c8743e",
+    "#3f7a2a",
+    "#62a440",
+    "#2e5a1e",
+    "#f0d050"
+  ],
+  "layers": [
+    {
+      "id": "layer_ujv3a10",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_6je0711",
+      "duration": 500
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_oksue12",
+      "name": "idle",
+      "from": 0,
+      "to": 0,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_ujv3a10",
+      "frame": "frame_6je0711",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQQDP8UEAz/FBAM/xQQDP8UEAz/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQQDP8UEAz/P3oq/z96Kv/w0FD/P3oq/z96Kv8UEAz/FBAM/wAAAAAAAAAAAAAAAAAAAAAUEAz/P3oq//DQUP9ipED/P3oq/z96Kv8/eir/P3oq/z96Kv8/eir/FBAM/wAAAAAAAAAAAAAAABQQDP9ipED/YqRA/2KkQP9ipED/YqRA/z96Kv8/eir/P3oq/z96Kv8UEAz/AAAAAAAAAAAUEAz/P3oq/2KkQP9ipED/YqRA/2KkQP9ipED/P3oq/z96Kv/w0FD/P3oq/z96Kv8UEAz/AAAAABQQDP8/eir/YqRA/2KkQP9ipED/YqRA/2KkQP8uWh7/Lloe/y5aHv8/eir/P3oq/xQQDP8AAAAAFBAM/z96Kv8/eir/P3oq/2KkQP8/eir/Lloe/y5aHv8uWh7/Lloe/y5aHv8/eir/FBAM/wAAAAAAAAAAFBAM/z96Kv8/eir/P3oq/z96Kv8/eir/Lloe/y5aHv8uWh7/P3oq/xQQDP8AAAAAAAAAAAAAAAAUEAz/P3oq/z96Kv8/eir/P3oq/z96Kv8/eir/P3oq/z96Kv8/eir/FBAM/wAAAAAAAAAAFBAM/8h0Pv/IdD7/yHQ+/z96Kv8/eir/P3oq/z96Kv8/eir/yHQ+/8h0Pv8UEAz/AAAAAAAAAAAUEAz/yHQ+/8h0Pv/IdD7/yHQ+/8h0Pv/IdD7/yHQ+/8h0Pv/IdD7/yHQ+/xQQDP8AAAAAAAAAAAAAAAAUEAz/qFgu/6hYLv+oWC7/qFgu/6hYLv+oWC7/qFgu/6hYLv8UEAz/AAAAAAAAAAAAAAAAAAAAABQQDP+oWC7/qFgu/6hYLv+oWC7/qFgu/6hYLv+oWC7/qFgu/xQQDP8AAAAAAAAAAAAAAAAAAAAAFBAM/6hYLv+oWC7/qFgu/6hYLv+oWC7/qFgu/6hYLv+oWC7/FBAM/wAAAAAAAAAAAAAAAAAAAAAUEAz/qFgu/6hYLv+oWC7/qFgu/6hYLv+oWC7/qFgu/6hYLv8UEAz/AAAAAAAAAAAAAAAAAAAAABQQDP+oWC7/qFgu/6hYLv+oWC7/qFgu/6hYLv+oWC7/qFgu/xQQDP8AAAAAAAAAAAAAAAAAAAAAAAAAABQQDP8UEAz/FBAM/xQQDP8UEAz/FBAM/xQQDP8UEAz/AAAAAAAAAAAAAAAA"
+    }
+  ]
+}

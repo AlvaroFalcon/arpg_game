@@ -34,9 +34,27 @@ public partial class ItemTooltipControl : CanvasLayer
     public Vector2 CursorOffset = new(18f, 18f);
 
     private RichTextLabel _label = null!;
+    private RichTextLabel _compareLabel = null!;
+    private HBoxContainer _row = null!;
+    private PanelContainer _panel = null!;
+    private PanelContainer _comparePanel = null!;
 
     /// <summary>Whoever most recently called <see cref="Show"/>. See <see cref="Clear"/>.</summary>
     private object? _owner;
+
+    /// <summary>Extra lines under the tooltip while a station is open — the
+    /// merchant's price, what disenchanting yields, what an armed orb does.</summary>
+    public static System.Func<EquipmentItem, string?>? Footer;
+
+    /// <summary>Alt shows modifier tiers (docs/design/crafting.md -> "Tooltip").</summary>
+    public static bool DetailHeld => ForceDetail || Input.IsKeyPressed(Key.Alt);
+
+    /// <summary>Captures: render as if Alt were held.</summary>
+    public static bool ForceDetail;
+
+    private EquipmentItem? _item;
+    private bool _compare;
+    private bool _detailed;
 
     public override void _Ready()
     {
@@ -49,37 +67,76 @@ public partial class ItemTooltipControl : CanvasLayer
         // all. Anchoring the value here means no scene can reintroduce that by
         // reordering nodes.
         Layer = 100;
+        ProcessMode = ProcessModeEnum.Always;
 
-        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        AddChild(panel);
+        // The item on the left, the comparison with what you wear beside it
+        // (Path of Exile style), so a long diff never makes one tower of text.
+        _row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        _row.AddThemeConstantOverride("separation", 6);
+        AddChild(_row);
+        (_panel, _label) = Box(270f);
+        (_comparePanel, _compareLabel) = Box(230f);
+        _row.AddChild(_panel);
+        _row.AddChild(_comparePanel);
 
-        _label = new RichTextLabel
+        Visible = false;
+    }
+
+    private static (PanelContainer, RichTextLabel) Box(float width)
+    {
+        var panel = new PanelContainer { MouseFilter = Control.MouseFilterEnum.Ignore, SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
+        var label = new RichTextLabel
         {
             BbcodeEnabled = true,
             FitContent = true,
             ScrollActive = false,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            CustomMinimumSize = new Vector2(250f, 0f),
+            CustomMinimumSize = new Vector2(width, 0f),
         };
-        panel.AddChild(_label);
+        panel.AddChild(label);
+        return (panel, label);
+    }
 
-        Visible = false;
+    private static StyleBoxFlat Frame(Color border)
+    {
+        var box = new StyleBoxFlat { BgColor = new Color(0.045f, 0.035f, 0.07f, 0.97f), BorderColor = border };
+        box.SetBorderWidthAll(1);
+        box.BorderWidthTop = 2;
+        box.SetCornerRadiusAll(3);
+        box.SetContentMarginAll(10f);
+        return box;
     }
 
     /// <summary>Shows (or refreshes) the tooltip for <paramref name="item"/> at
     /// the current mouse position. Safe to call every frame from a hover-polling
     /// <c>_Process</c> — it only ever overwrites the same label/position, never
     /// accumulates state.</summary>
-    /// <param name="compare">Append the "compared to what you're wearing"
-    /// section. Off for items hovered in the equipment strip itself.</param>
+    /// <param name="compare">Show the "compared to what you're wearing" panel.
+    /// Off for items hovered in the equipment strip itself.</param>
     public void Show(EquipmentItem item, object requester, bool compare = true)
     {
         _owner = requester;
+        _item = item;
+        _compare = compare;
+        _detailed = DetailHeld;
+        Render();
+        Visible = true;
+        Place();
+    }
 
-        string text = ItemTooltipText.Build(item);
-        if (compare && TryComparisonTarget(item, out EquipmentItem? equipped))
+    private void Render()
+    {
+        if (_item is null || !IsInstanceValid(_item))
         {
-            text += "\n[color=#3a3450]──────────────[/color]\n" + ItemTooltipText.BuildComparison(item, equipped);
+            return;
+        }
+
+        // Wider while Alt is held, so the tier notes sit beside their lines.
+        _label.CustomMinimumSize = new Vector2(_detailed ? 400f : 270f, 0f);
+        string text = ItemTooltipText.Build(_item, _detailed);
+        if (Footer?.Invoke(_item) is { Length: > 0 } footer)
+        {
+            text += "\n" + ItemTooltipText.Separator + "\n" + footer;
         }
 
         if (_label.Text != text)
@@ -87,16 +144,42 @@ public partial class ItemTooltipControl : CanvasLayer
             _label.Text = text;
         }
 
-        Visible = true;
+        Color border = (FilterChain.Default.Evaluate(_item.Descriptor).TextColor ?? Colors.White).Darkened(0.25f);
+        _panel.AddThemeStyleboxOverride("panel", Frame(border));
+
+        EquipmentItem? equipped = null;
+        bool comparing = _compare && TryComparisonTarget(_item, out equipped);
+        _comparePanel.Visible = comparing;
+        if (comparing)
+        {
+            string diff = ItemTooltipText.BuildComparison(_item, equipped);
+            if (_compareLabel.Text != diff)
+            {
+                _compareLabel.Text = diff;
+                _comparePanel.AddThemeStyleboxOverride("panel", Frame(new Color(0.35f, 0.3f, 0.48f)));
+            }
+        }
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!Visible)
+        {
+            return;
+        }
+
+        // Ground items only call Show when hovered, so pressing or releasing Alt
+        // while the tooltip is up re-renders it here.
+        if (DetailHeld != _detailed)
+        {
+            _detailed = !_detailed;
+            Render();
+        }
+
+        // Rich text measures itself a frame late: keep the placement current.
         Place();
     }
 
-    /// <summary>
-    /// The slot this item would go into — the same "first free candidate slot,
-    /// else the first one" order right-click equip uses — and what's in it.
-    /// False when there's no player equipment around or the item isn't
-    /// equippable (or is the very item already worn there).
-    /// </summary>
     private bool TryComparisonTarget(EquipmentItem item, out EquipmentItem? equipped)
     {
         equipped = null;
@@ -116,9 +199,8 @@ public partial class ItemTooltipControl : CanvasLayer
     /// tooltip always stays on screen (long ones used to run off the bottom).</summary>
     private void Place()
     {
-        var panel = (Control)_label.GetParent();
-        panel.ResetSize();
-        Vector2 size = panel.Size;
+        _row.ResetSize();
+        Vector2 size = _row.Size;
         Vector2 screen = GetViewport().GetVisibleRect().Size;
         Vector2 mouse = GetViewport().GetMousePosition();
         Vector2 at = mouse + CursorOffset;
@@ -132,7 +214,7 @@ public partial class ItemTooltipControl : CanvasLayer
             at.Y = screen.Y - size.Y;
         }
 
-        panel.Position = new Vector2(Mathf.Clamp(at.X, 0f, Mathf.Max(0f, screen.X - size.X)), Mathf.Max(0f, at.Y));
+        _row.Position = new Vector2(Mathf.Clamp(at.X, 0f, Mathf.Max(0f, screen.X - size.X)), Mathf.Max(0f, at.Y));
     }
 
     /// <summary>
@@ -158,6 +240,7 @@ public partial class ItemTooltipControl : CanvasLayer
         }
 
         _owner = null;
+        _item = null;
         Visible = false;
     }
 }

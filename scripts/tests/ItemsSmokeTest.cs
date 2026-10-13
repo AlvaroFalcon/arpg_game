@@ -293,10 +293,15 @@ public partial class ItemsSmokeTest : Node2D
         Check("TOOLTIP-INCLUDES-ITEM-LEVEL", text.Contains($"Item Level {_equipmentForClick.Descriptor.ItemLevel}"),
             $"tooltip must state the item level ({_equipmentForClick.Descriptor.ItemLevel}) — got:\n{text}");
 
-        Check("TOOLTIP-INCLUDES-AFFIX-TIER", _equipmentForClick.RolledAffixes.Count > 0
-            && text.Contains($"T{_equipmentForClick.RolledAffixes[0].Tier} "),
-            $"a rolled affix's tier number must be visible per docs/design/affixes.md -> 'Tiers are player-visible' " +
-            $"— got:\n{text}");
+        // docs/design/crafting.md -> "Tooltip": tiers only while Alt is held,
+        // in parentheses and small, dim text.
+        string detailed = ItemTooltipText.Build(_equipmentForClick, detailed: true);
+        bool hasAffix = _equipmentForClick.RolledAffixes.Count > 0;
+        int tier = hasAffix ? _equipmentForClick.RolledAffixes[0].Tier : 0;
+        Check("TOOLTIP-HIDES-TIER-BY-DEFAULT", hasAffix && !text.Contains($"(T{tier} ") && text.Contains("Hold Alt"),
+            $"the default tooltip shows the modifier line without its tier, plus an Alt hint — got:\n{text}");
+        Check("TOOLTIP-ALT-SHOWS-TIER-SMALL", hasAffix && detailed.Contains($"[font_size=11][color=#6f6987](T{tier} ") && !detailed.Contains("Hold Alt"),
+            $"with Alt the tier appears in parentheses, small and dim — got:\n{detailed}");
     }
 
     /// <summary>docs/design/items.md -&gt; "Item tooltips": the comparison with

@@ -69,7 +69,7 @@ public partial class TutorialGuide : CanvasLayer
         _steps.Add(new Step
         {
             Title = "Find your feet",
-            Body = $"Move with {Key("W")}{Key("A")}{Key("S")}{Key("D")}, or hold {Key("Ctrl")} and click to walk to the cursor.\nHead east, out of the camp.",
+            Body = $"Move with {Key("W")}{Key("A")}{Key("S")}{Key("D")}, or hold {Key("Ctrl")} and click to walk to the cursor.\nHead east, out of the camp. {Key("Tab")} opens the map.",
             Enter = () => _start = Player.GlobalPosition,
             Done = () => Player.GlobalPosition.DistanceTo(_start) > 420f,
         });
@@ -83,7 +83,7 @@ public partial class TutorialGuide : CanvasLayer
         _steps.Add(new Step
         {
             Title = "First blood",
-            Body = $"Monsters ahead in the yard. Aim with the mouse and press {Key("LMB")} to use {lmb}.\nSkills are bound to {Key("LMB")} {Key("RMB")} {Key("1")}-{Key("4")}; mana refills over time.",
+            Body = $"Monsters ahead in the yard. Aim with the mouse and press {Key("LMB")} to use {lmb}.\nSkills are bound to {Key("LMB")} {Key("RMB")} {Key("1")}-{Key("4")}.\nHurt? {Key("Q")} drinks a life flask, {Key("R")} a mana flask; red orbs from monsters refill them.",
             Enter = () => _killsAtStart = Reality.Kills,
             Done = () => Reality.Kills >= _killsAtStart + 3 || RoomCleared("yard"),
         });
@@ -188,6 +188,7 @@ public partial class TutorialGuide : CanvasLayer
         };
         _panel.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.07f, 0.06f, 0.1f, 0.88f), new Color(1f, 0.82f, 0.45f, 0.7f), 2, 6, 14));
         AddChild(_panel);
+        UI.HudLayout.Register(_panel, "tutorial", "Introduction guide");
         VBoxContainer v = UiTheme.VBox(_panel, 6);
         v.MouseFilter = Control.MouseFilterEnum.Ignore;
         _counter = UiTheme.Label("", 12, UiTheme.TextDim);
