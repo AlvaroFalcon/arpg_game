@@ -45,6 +45,13 @@ public partial class Profile : Node
     public List<List<(EquipmentItem Item, Vector2I Cell)>> StashTabs { get; } = new() { new() };
 
     /// <summary>Gold for the next tab: 150, 300, 600, 1 200… (doubling).</summary>
+    /// <summary>Crafting orbs and dust by id, shared by every character
+    /// (docs/design/crafting.md -> "Shared between characters").</summary>
+    public Dictionary<string, long> Currency { get; } = new();
+
+    /// <summary>The player-arranged hideout town (docs/design/hideout.md).</summary>
+    public World.HideoutData Hideout { get; set; } = new();
+
     public long NextStashTabCost => StashTabs.Count >= MaxStashTabs ? -1 : 150L << (StashTabs.Count - 1);
 
     public int ActiveIndex { get; private set; }
@@ -134,7 +141,7 @@ public partial class Profile : Node
             player.Wallet.Add(GoldId, c.Gold);
         }
 
-        foreach ((string id, long amount) in c.Currency)
+        foreach ((string id, long amount) in Currency)
         {
             if (amount > 0)
             {
@@ -178,13 +185,13 @@ public partial class Profile : Node
         }
 
         c.Gold = player.Wallet.GetBalance(GoldId);
-        c.Currency.Clear();
+        Currency.Clear();
         foreach (CraftingCurrency currency in Crafting.All)
         {
             long amount = player.Wallet.GetBalance(currency.Id);
             if (amount > 0)
             {
-                c.Currency[currency.Id] = amount;
+                Currency[currency.Id] = amount;
             }
         }
 
@@ -269,6 +276,7 @@ public partial class Profile : Node
         public string Name { get; set; } = "";
         public List<float[]> BaseStats { get; set; } = new();
         public List<SaveAffix> Affixes { get; set; } = new();
+        public int SealCount { get; set; }
         public string? Slot { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
@@ -280,6 +288,7 @@ public partial class Profile : Node
         public int Tier { get; set; }
         public float Value { get; set; }
         public bool Crafted { get; set; }
+        public bool Sealed { get; set; }
     }
 
     private sealed class SaveCharacter
@@ -317,6 +326,10 @@ public partial class Profile : Node
 
         public List<List<SaveItem>> Stash { get; set; } = new();
 
+        public Dictionary<string, long> Currency { get; set; } = new();
+
+        public World.HideoutData? Hideout { get; set; }
+
         // Version 1 fields (single character), read for migration only.
         public long Gold { get; set; }
         public List<SaveItem>? Items { get; set; }
@@ -329,7 +342,8 @@ public partial class Profile : Node
         Ilvl = item.Descriptor.ItemLevel,
         Name = item.Descriptor.DisplayName,
         BaseStats = item.RolledBaseStats.Select(s => new[] { (float)s.Stat, (float)s.Type, s.Value, (float)s.Condition }).ToList(),
-        Affixes = item.RolledAffixes.Select(a => new SaveAffix { Id = a.Definition.Id, Tier = a.Tier, Value = a.Value, Crafted = a.Crafted }).ToList(),
+        SealCount = item.SealCount,
+        Affixes = item.RolledAffixes.Select(a => new SaveAffix { Id = a.Definition.Id, Tier = a.Tier, Value = a.Value, Crafted = a.Crafted, Sealed = a.Sealed }).ToList(),
     };
 
     private static EquipmentItem? FromSave(SaveItem s)
@@ -344,7 +358,7 @@ public partial class Profile : Node
         {
             if (ItemFactory.FindAffix(a.Id) is { } def)
             {
-                affixes.Add(new AffixRoller.RolledAffix(def, a.Tier, a.Value, a.Crafted));
+                affixes.Add(new AffixRoller.RolledAffix(def, a.Tier, a.Value, a.Crafted, a.Sealed));
             }
         }
 
@@ -355,6 +369,7 @@ public partial class Profile : Node
 
         EquipmentItem item = ItemFactory.NewBlank();
         item.Restore(baseItem, (Rarity)s.Rarity, s.Ilvl, s.Name, baseStats, affixes);
+        item.SealCount = s.SealCount;
         return item;
     }
 
@@ -374,7 +389,6 @@ public partial class Profile : Node
             Loadout = c.Loadout.ToList(),
             Shards = c.Shards.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
             Gold = c.Gold,
-            Currency = new Dictionary<string, long>(c.Currency),
             HighestTierCleared = c.HighestTierCleared,
             RealitiesCleared = c.RealitiesCleared,
             Deaths = c.Deaths,
@@ -415,6 +429,8 @@ public partial class Profile : Node
             AscendancyPoints = s.AscendancyPoints,
             Gems = s.Gems ?? new List<GemData>(),
             Gold = s.Gold,
+            // Saves from before orbs were account-wide carried them per character;
+            // Load folds these into the account (Profile.Currency).
             Currency = s.Currency is null ? new Dictionary<string, long>() : new Dictionary<string, long>(s.Currency),
             HighestTierCleared = s.HighestTierCleared,
             RealitiesCleared = s.RealitiesCleared,
@@ -475,14 +491,22 @@ public partial class Profile : Node
             return;
         }
 
+        using FileAccess? f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
+        f?.StoreString(ToJson());
+    }
+
+    /// <summary>The whole account as the save-file JSON (tests round-trip it).</summary>
+    public string ToJson()
+    {
         var file = new SaveFile
         {
             Active = ActiveIndex,
             Characters = Characters.Select(ToSave).ToList(),
             Stash = StashTabs.Select(tab => tab.Select(e => { SaveItem si = ToSave(e.Item); si.X = e.Cell.X; si.Y = e.Cell.Y; return si; }).ToList()).ToList(),
+            Currency = new Dictionary<string, long>(Currency),
+            Hideout = Hideout,
         };
-        using FileAccess? f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
-        f?.StoreString(JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true }));
+        return JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true });
     }
 
     public void Load()
@@ -497,46 +521,9 @@ public partial class Profile : Node
         try
         {
             using FileAccess? f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
-            if (f is null || JsonSerializer.Deserialize<SaveFile>(f.GetAsText()) is not { } file)
+            if (f is not null)
             {
-                return;
-            }
-
-            StashTabs.Clear();
-            foreach (List<SaveItem> tab in file.Stash)
-            {
-                var items = new List<(EquipmentItem, Vector2I)>();
-                foreach (SaveItem si in tab)
-                {
-                    if (FromSave(si) is { } item)
-                    {
-                        items.Add((item, new Vector2I(si.X, si.Y)));
-                    }
-                }
-
-                StashTabs.Add(items);
-            }
-
-            if (StashTabs.Count == 0)
-            {
-                StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
-            }
-
-            if (file.Characters.Count > 0)
-            {
-                Characters.AddRange(file.Characters.Select(FromSave));
-                ActiveIndex = Mathf.Clamp(file.Active, 0, Characters.Count - 1);
-                return;
-            }
-
-            // Version 1: one implicit character with gear and gold.
-            if (file.Items is { Count: > 0 } || file.Gold > 0)
-            {
-                CharacterData migrated = CharacterData.Create("Hero", "arcanist");
-                migrated.Gold = file.Gold;
-                LoadItems(migrated, file.Items ?? new List<SaveItem>());
-                Characters.Add(migrated);
-                ActiveIndex = 0;
+                LoadJson(f.GetAsText());
             }
         }
         catch (Exception e)
@@ -545,10 +532,78 @@ public partial class Profile : Node
         }
     }
 
+    /// <summary>Replaces this account with one read from save-file JSON.</summary>
+    public void LoadJson(string json)
+    {
+        Characters.Clear();
+        if (JsonSerializer.Deserialize<SaveFile>(json) is not { } file)
+        {
+            return;
+        }
+
+        StashTabs.Clear();
+        foreach (List<SaveItem> tab in file.Stash)
+        {
+            var items = new List<(EquipmentItem, Vector2I)>();
+            foreach (SaveItem si in tab)
+            {
+                if (FromSave(si) is { } item)
+                {
+                    items.Add((item, new Vector2I(si.X, si.Y)));
+                }
+            }
+
+            StashTabs.Add(items);
+        }
+
+        if (StashTabs.Count == 0)
+        {
+            StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
+        }
+
+        Currency.Clear();
+        foreach ((string id, long n) in file.Currency ?? new Dictionary<string, long>())
+        {
+            Currency[id] = n;
+        }
+
+        Hideout = file.Hideout ?? new World.HideoutData();
+
+        if (file.Characters.Count > 0)
+        {
+            Characters.AddRange(file.Characters.Select(FromSave));
+            ActiveIndex = Mathf.Clamp(file.Active, 0, Characters.Count - 1);
+            // Orbs used to be per character: pool them into the account.
+            foreach (CharacterData c in Characters)
+            {
+                foreach ((string id, long n) in c.Currency)
+                {
+                    Currency[id] = Currency.GetValueOrDefault(id) + n;
+                }
+
+                c.Currency.Clear();
+            }
+
+            return;
+        }
+
+        // Version 1: one implicit character with gear and gold.
+        if (file.Items is { Count: > 0 } || file.Gold > 0)
+        {
+            CharacterData migrated = CharacterData.Create("Hero", "arcanist");
+            migrated.Gold = file.Gold;
+            LoadItems(migrated, file.Items ?? new List<SaveItem>());
+            Characters.Add(migrated);
+            ActiveIndex = 0;
+        }
+    }
+
     /// <summary>Wipes every character.</summary>
     public void Reset()
     {
         Characters.Clear();
+        Currency.Clear();
+        Hideout = new World.HideoutData();
         StashTabs.Clear();
         StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
         ActiveIndex = 0;

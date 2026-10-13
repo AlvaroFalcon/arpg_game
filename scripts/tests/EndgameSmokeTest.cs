@@ -709,11 +709,22 @@ public partial class EndgameSmokeTest : Node2D
         // Crafted flags and currency balances survive the save.
         CharacterData c = CharacterData.Create("Smith", "warrior");
         c.Inventory.Add((forged, Vector2I.Zero));
-        c.Currency["tempest_orb"] = 3;
         CharacterData? back = Profile.DeserializeCharacter(Profile.SerializeCharacter(c));
         EquipmentItem? saved = back?.Inventory.FirstOrDefault().Item;
-        Check("CRAFT-SAVE-ROUND-TRIP", saved is not null && saved.RolledAffixes.Any(a => a.Crafted && a.Definition == chosen) && back!.Currency.GetValueOrDefault("tempest_orb") == 3,
-            $"crafted mod kept={saved?.RolledAffixes.Any(a => a.Crafted)}, tempest orbs={back?.Currency.GetValueOrDefault("tempest_orb")}");
+
+        // Orbs and dust belong to the account; old per-character balances are pooled.
+        var account = new Profile { Persist = false };
+        account.Currency["tempest_orb"] = 3;
+        account.Characters.Add(c);
+        // The character's own (empty) currency table stands in for an old save's.
+        string json = account.ToJson().Replace("\"Currency\": {}", "\"Currency\": { \"tempest_orb\": 2 }");
+        var reloaded = new Profile { Persist = false };
+        reloaded.LoadJson(json);
+        Check("CRAFT-SAVE-ROUND-TRIP", saved is not null && saved.RolledAffixes.Any(a => a.Crafted && a.Definition == chosen)
+            && reloaded.Currency.GetValueOrDefault("tempest_orb") == 5 && reloaded.Characters[0].Currency.Count == 0,
+            $"crafted mod kept={saved?.RolledAffixes.Any(a => a.Crafted)}, account tempest orbs={reloaded.Currency.GetValueOrDefault("tempest_orb")} (3 account + 2 from an old per-character save)");
+        account.Free();
+        reloaded.Free();
 
         // The stations, live: sell + buy back + buy at the merchant; orbs, disenchant
         // and forge at the bench.
@@ -742,9 +753,39 @@ public partial class EndgameSmokeTest : Node2D
         await Frames(1);
         EquipmentItem plain = ItemFactory.Roll(ring, Rarity.Common, 30, rng);
         player.Inventory.TryAdd(plain);
+        // Orbs are used from the inventory's Crafting tab.
+        var inventoryUi = player.GetNode<UI.InventoryUI>("InventoryUI");
+        inventoryUi.SetOpen(true);
+        inventoryUi.ShowCrafting(true);
+        UI.CraftingBoard board = inventoryUi.Board;
+        board.Arm(Orb(CraftAction.Kindle));
+        bool applied = board.ApplyArmed(plain) && plain.Rarity == Rarity.Magic && player.Wallet.GetBalance("kindling_shard") == 0 && board.Armed is null;
+        Check("INVENTORY-CRAFTING-TAB", applied && inventoryUi.CraftingShown && board.Visible && !player.GetNode<Control>("InventoryUI/Panel/StripControl").Visible,
+            $"kindling used from the I panel's Crafting tab: {plain.Descriptor.DisplayName}");
+
+        // Seals: protect one modifier from the next orb; every seal on the same item costs more.
+        EquipmentItem target = ItemFactory.Roll(ring, Rarity.Rare, 60, rng);
+        player.Inventory.TryAdd(target);
+        player.Wallet.Add(Profile.GoldId, 1000);
+        player.Wallet.Add("gilded_dust", 10);
+        player.Wallet.Add("tempest_orb", 2);
+        long firstCost = Crafting.SealCost(target).Gold;
+        AffixDefinition keptDef = target.RolledAffixes[0].Definition;
+        float keptValue = target.RolledAffixes[0].Value;
+        bool sealedOk = board.SealForTest(target, 0);
+        long secondCost = Crafting.SealCost(target).Gold;
+        board.Arm(Orb(CraftAction.Tempest));
+        board.ApplyArmed(target);
+        bool kept = target.RolledAffixes.Any(a => a.Definition == keptDef && Mathf.IsEqualApprox(a.Value, keptValue));
+        bool broke = target.RolledAffixes.All(a => !a.Sealed);
+        bool persisted = Profile.DeserializeCharacter(Profile.SerializeCharacter(new CharacterData { Inventory = { (target, Vector2I.Zero) } }))
+            ?.Inventory.FirstOrDefault().Item?.SealCount == 1;
+        Check("CRAFT-SEAL", sealedOk && kept && broke && secondCost > firstCost && target.SealCount == 1 && persisted,
+            $"sealed mod survived Tempest={kept}, seal broke after it={broke}, cost {firstCost} → {secondCost}, seal count saved={persisted}");
+        inventoryUi.ShowCrafting(false);
+        inventoryUi.SetOpen(false);
+
         bench.Open();
-        bench.Arm(Orb(CraftAction.Kindle));
-        bool applied = bench.ApplyArmed(plain) && plain.Rarity == Rarity.Magic && player.Wallet.GetBalance("kindling_shard") == 0 && bench.Armed is null;
         bench.Show(UI.ArtificerPanel.Tab.Disenchant);
         bool disenchanted = bench.Disenchant(plain) && player.Wallet.GetBalance("azure_dust") >= 1 && !player.Inventory.Placements.ContainsKey(plain);
         bench.Show(UI.ArtificerPanel.Tab.Forge);
@@ -763,14 +804,127 @@ public partial class EndgameSmokeTest : Node2D
         merchant.QueueFree();
         bench.QueueFree();
         await Frames(2);
-        var hideout = GD.Load<PackedScene>("res://scenes/Hideout.tscn").Instantiate<Node2D>();
+        await HideoutChecks();
+    }
+
+    // --- the hideout town, its editor and shop (docs/design/hideout.md) ----------------
+
+    private async Task HideoutChecks()
+    {
+        // Never touch the real account: an empty town, nothing written to disk.
+        Profile? profile = Profile.Get(this);
+        bool persisted = profile?.Persist ?? false;
+        HideoutData? realTown = profile?.Hideout;
+        if (profile is not null)
+        {
+            profile.Persist = false;
+            profile.Hideout = new HideoutData();
+        }
+
+        var hideout = GD.Load<PackedScene>("res://scenes/Hideout.tscn").Instantiate<Hideout>();
         AddChild(hideout);
-        await Frames(3);
-        Check("HIDEOUT-STATIONS", hideout.GetNodeOrNull("Merchant") is not null && hideout.GetNodeOrNull("Artificer") is not null
-            && hideout.GetNodeOrNull<UI.MerchantPanel>("MerchantPanel") is not null && hideout.GetNodeOrNull<UI.ArtificerPanel>("ArtificerPanel") is not null,
-            "Odran the Trader and the Artificer's Bench stand in the hideout");
+        await Frames(4);
+
+        bool stations = new[] { "Mirror", "Merchant", "Artificer", "Stash", "Altar", "Decorator" }.All(n => hideout.GetNodeOrNull(n) is not null)
+            && hideout.GetNodeOrNull<UI.MerchantPanel>("MerchantPanel") is not null && hideout.GetNodeOrNull<UI.ArtificerPanel>("ArtificerPanel") is not null;
+        Vector2 mirror = hideout.Data.Find("mirror")!.Position;
+        Vector2I forgeCell = HideoutTown.CellOf(hideout.Data.Find("forge")!.Position);
+        bool inPlaza = mirror.DistanceTo(HideoutTown.World(new Vector2I(25, 15))) < 40f && HideoutTown.BaseChar(HideoutTown.CellOf(hideout.Data.Find("merchant")!.Position)) is '.' or 'o';
+        bool inSmithy = HideoutTown.BaseChar(forgeCell) == 'p';
+        Check("HIDEOUT-STATIONS", stations && inPlaza && inSmithy,
+            $"Mirror and Odran in the plaza, the forge in the smithy ({forgeCell}), stash, altar and Ysolde's shop in town");
+
+        // Walls block, and click-to-move can path from the plaza into the smithy.
+        Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);
+        Vector2 to = HideoutTown.World(forgeCell + new Vector2I(1, 2));
+        Vector2[] path = NavigationServer2D.MapGetPath(hideout.GetWorld2D().NavigationMap, from, to, true);
+        bool reaches = path.Length > 1 && path[^1].DistanceTo(to) < 20f;
+        bool walled = !HideoutTown.Walkable(new Vector2I(3, 12)) && !HideoutTown.Walkable(new Vector2I(5, 24)) && HideoutTown.Walkable(HideoutTown.SpawnCell);
+        Check("HIDEOUT-TOWN", reaches && walled && hideout.Town.Maps.Count() >= 4,
+            $"path plaza → smithy: {path.Length} points, ends {(path.Length > 0 ? path[^1].DistanceTo(to) : -1):0} px from the forge; walls and canal block");
+
+        // Ysolde's shop: floor tiles come in packs, decorations one at a time.
+        var shop = hideout.GetNode<UI.DecorShopPanel>("DecorShopPanel");
+        hideout.Player.Wallet.Add(Profile.GoldId, 2000);
+        FloorStyle marble = HideoutCatalog.Floor("marble");
+        PropDef statueDef = HideoutCatalog.Prop("statue")!;
+        long gold0 = hideout.Player.Wallet.GetBalance(Profile.GoldId);
+        bool boughtFloor = shop.BuyFloor(marble) && hideout.Data.StockOf("marble") == HideoutCatalog.FloorPack;
+        bool boughtDecor = shop.BuyDecor(statueDef) && hideout.Data.StockOf("statue") == 1;
+        bool noStations = !shop.BuyDecor(HideoutCatalog.Prop("mirror")!);
+        Check("HIDEOUT-SHOP", boughtFloor && boughtDecor && noStations && hideout.Player.Wallet.GetBalance(Profile.GoldId) == gold0 - marble.PackPrice - statueDef.Price,
+            $"bought {HideoutCatalog.FloorPack} marble tiles ({marble.PackPrice}g) and a statue ({statueDef.Price}g); stations aren't for sale");
+
+        // Edit mode: drag the Mirror, store a brazier, place the statue, pave a cell.
+        hideout.OpenEditor();
+        await Frames(1);
+        UI.HideoutEditor editor = hideout.Editor!;
+        editor.Use(UI.HideoutEditor.Tool.Move);
+        float pick = HideoutCatalog.Prop("mirror")!.PickRadius;
+        Vector2 grabAt = mirror + new Vector2(0f, -pick * 0.6f);
+        Vector2 newSpot = HideoutTown.World(new Vector2I(25, 12));
+        editor.PressAt(grabAt);
+        editor.DragTo(grabAt + (newSpot - mirror));
+        editor.Release();
+        bool moved = hideout.Data.Find("mirror")!.Position.DistanceTo(newSpot) < 6f && hideout.Props["mirror"].GlobalPosition.DistanceTo(newSpot) < 6f;
+        editor.PressAt(HideoutTown.World(new Vector2I(4, 12)) + new Vector2(0f, -pick * 0.6f));
+        editor.DragTo(HideoutTown.World(new Vector2I(3, 12)));
+        editor.Release();
+        bool notIntoWalls = hideout.Data.Props.All(p => HideoutTown.Walkable(HideoutTown.CellOf(p.Position)));
+
+        string brazier = hideout.Data.Props.First(p => p.Kind == "brazier").Uid;
+        Vector2 brazierAt = hideout.Data.Find(brazier)!.Position;
+        int propsBefore = hideout.Data.Props.Count;
+        editor.RightAt(brazierAt + new Vector2(0f, -15f));
+        bool stored = hideout.Data.Find(brazier) is null && hideout.Data.StockOf("brazier") == 1 && hideout.Data.Props.Count == propsBefore - 1;
+        editor.RightAt(hideout.Data.Find("stash")!.Position + new Vector2(0f, -15f));
+        bool stationsStay = hideout.Data.Find("stash") is not null;
+        editor.Use(UI.HideoutEditor.Tool.Decorations);
+        editor.SelectDecor("statue");
+        Vector2 statueSpot = HideoutTown.World(new Vector2I(22, 23));
+        editor.PressAt(statueSpot);
+        bool placed = hideout.Data.Props.Any(p => p.Kind == "statue" && p.Position.DistanceTo(statueSpot) < 8f) && hideout.Data.StockOf("statue") == 0;
+
+        editor.Use(UI.HideoutEditor.Tool.Floors);
+        editor.SelectFloor("marble");
+        Vector2I paveCell = new(24, 22);
+        editor.PressAt(HideoutTown.World(paveCell));
+        editor.Release();
+        bool paved = hideout.Town.StyleAt(paveCell) == "marble" && hideout.Data.StockOf("marble") == HideoutCatalog.FloorPack - 1;
+        editor.PressAt(HideoutTown.World(new Vector2I(3, 12)));
+        editor.Release();
+        bool wallsUnpaved = hideout.Town.StyleAt(new Vector2I(3, 12)) == "wall";
+        editor.RightAt(HideoutTown.World(paveCell));
+        bool refunded = hideout.Town.StyleAt(paveCell) == "cobble" && hideout.Data.StockOf("marble") == HideoutCatalog.FloorPack;
+        editor.Use(UI.HideoutEditor.Tool.Floors);
+        editor.SelectFloor("marble");
+        editor.PressAt(HideoutTown.World(paveCell));
+        editor.Release();
+        editor.Close();
+        await Frames(1);
+        Check("HIDEOUT-EDIT", moved && notIntoWalls && stored && stationsStay && placed && paved && wallsUnpaved && refunded && !hideout.Editing,
+            $"moved the Mirror={moved}, props stay off walls={notIntoWalls}, brazier stored={stored}, stash can't be stored={stationsStay}, statue placed={placed}, paved={paved}, walls unpaintable={wallsUnpaved}, right-click refunds={refunded}");
+
+        // The arrangement is the account's: it survives the save file.
+        var account = new Profile { Persist = false };
+        account.Hideout = hideout.Data;
+        var reread = new Profile { Persist = false };
+        reread.LoadJson(account.ToJson());
+        HideoutData back = reread.Hideout;
+        bool same = back.Initialized && back.Props.Count == hideout.Data.Props.Count
+            && back.Find("mirror")!.Position.DistanceTo(newSpot) < 6f && back.Floors.GetValueOrDefault(HideoutData.Key(paveCell)) == "marble"
+            && back.StockOf("brazier") == 1;
+        Check("HIDEOUT-SAVE", same, $"{back.Props.Count} props, mirror at {back.Find("mirror")?.Position}, {back.Floors.Count} paved cell(s), stock {string.Join(", ", back.Stock.Select(kv => $"{kv.Key}×{kv.Value}"))}");
+        account.Free();
+        reread.Free();
+
         hideout.QueueFree();
         await Frames(2);
+        if (profile is not null)
+        {
+            profile.Hideout = realTown ?? new HideoutData();
+            profile.Persist = persisted;
+        }
     }
 
     private static IEnumerable<Enemy> RoomMonsters(RealityController reality, string room) =>

@@ -34,13 +34,20 @@ public static class AffixRoller
         /// (docs/design/crafting.md -> "Forging"); shown in its own colour.</summary>
         public bool Crafted { get; }
 
-        public RolledAffix(AffixDefinition definition, int tier, float value, bool crafted = false)
+        /// <summary>Protected from the next orb by an Artificer's seal
+        /// (docs/design/crafting.md -> "Seals").</summary>
+        public bool Sealed { get; }
+
+        public RolledAffix(AffixDefinition definition, int tier, float value, bool crafted = false, bool isSealed = false)
         {
             Definition = definition;
             Tier = tier;
             Value = value;
             Crafted = crafted;
+            Sealed = isSealed;
         }
+
+        public RolledAffix WithSeal(bool isSealed) => new(Definition, Tier, Value, Crafted, isSealed);
     }
 
     /// <summary>How many affixes an item of this rarity can carry

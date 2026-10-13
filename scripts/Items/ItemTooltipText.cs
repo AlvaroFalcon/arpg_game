@@ -161,6 +161,10 @@ public static class ItemTooltipText
     /// small fractional values keep two decimals.</summary>
     public static string Number(float v) => Mathf.Abs(v) >= 1f ? Mathf.RoundToInt(v).ToString() : v.ToString("0.##");
 
+    /// <summary>"+7 Fire Damage", plain text.</summary>
+    public static string AffixLine(AffixRoller.RolledAffix affix) =>
+        $"{(affix.Value >= 0f ? "+" : "")}{Number(affix.Value)}{Unit(affix.Definition.Type)} {SpacedStatName(affix.Definition.Stat)}";
+
     /// <summary>"+7 Fire Damage" — and with <paramref name="detailed"/> (Alt held),
     /// the tier, pool, name and roll range after it in small dim text.</summary>
     private static string FormatAffix(AffixRoller.RolledAffix affix, bool detailed)
@@ -172,6 +176,11 @@ public static class ItemTooltipText
         sb.Append("[color=#").Append(affix.Crafted ? CraftedMod : Explicit).Append(']')
             .Append(sign).Append(Number(affix.Value)).Append(unit).Append(' ').Append(SpacedStatName(definition.Stat))
             .Append("[/color]");
+        if (affix.Sealed)
+        {
+            sb.Append(" [font_size=11][color=#e8b84a](sealed)[/color][/font_size]");
+        }
+
         if (detailed)
         {
             (float min, float max) = definition.ValueRangeForTier(affix.Tier);

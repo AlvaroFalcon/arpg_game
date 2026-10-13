@@ -21,6 +21,11 @@ public partial class PauseMenu : CanvasLayer
 
     public Action? OnLeave { get; set; }
 
+    /// <summary>An extra entry above the leave button (the hideout's "Edit hideout").</summary>
+    public string? ExtraText { get; set; }
+
+    public Action? OnExtra { get; set; }
+
     public bool IsOpen { get; private set; }
 
     private Control _root = null!;
@@ -49,6 +54,11 @@ public partial class PauseMenu : CanvasLayer
         _menu.AddChild(UiTheme.Button("Settings", OpenSettings));
         _editHud = UiTheme.Button("Edit HUD", OpenHudEditor);
         _menu.AddChild(_editHud);
+        if (ExtraText is not null)
+        {
+            _menu.AddChild(UiTheme.Button(ExtraText, () => { Close(); OnExtra?.Invoke(); }));
+        }
+
         _menu.AddChild(UiTheme.Button(LeaveText, () => { Close(); OnLeave?.Invoke(); }));
         _menu.AddChild(UiTheme.Button("Quit to desktop", () => GetTree().Quit()));
         _root.Visible = false;

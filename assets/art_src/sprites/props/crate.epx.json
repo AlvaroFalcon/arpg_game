@@ -1,0 +1,45 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "crate",
+  "width": 16,
+  "height": 16,
+  "palette": [
+    "#1e140c",
+    "#6e4824",
+    "#9a6a3a",
+    "#b8844c"
+  ],
+  "layers": [
+    {
+      "id": "layer_2zp9513",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_e0g6x14",
+      "duration": 500
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_6hhmy15",
+      "name": "idle",
+      "from": 0,
+      "to": 0,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_2zp9513",
+      "frame": "frame_e0g6x14",
+      "data": "bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP+aajr/mmo6/5pqOv+aajr/mmo6/5pqOv+aajr/mmo6/5pqOv+aajr/bkgk/25IJP9uSCT/bkgk/25IJP+aajr/bkgk/5pqOv+aajr/mmo6/5pqOv+aajr/mmo6/5pqOv+aajr/bkgk/5pqOv9uSCT/bkgk/25IJP9uSCT/mmo6/5pqOv9uSCT/mmo6/5pqOv+aajr/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/25IJP9uSCT/bkgk/5pqOv+aajr/mmo6/25IJP+aajr/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/mmo6/25IJP9uSCT/bkgk/25IJP+aajr/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/5pqOv+aajr/mmo6/5pqOv9uSCT/bkgk/25IJP9uSCT/mmo6/5pqOv+aajr/mmo6/5pqOv9uSCT/bkgk/5pqOv+aajr/mmo6/5pqOv+aajr/bkgk/25IJP9uSCT/bkgk/5pqOv+aajr/mmo6/5pqOv+aajr/bkgk/25IJP+aajr/mmo6/5pqOv+aajr/mmo6/25IJP9uSCT/bkgk/25IJP+aajr/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/5pqOv+aajr/mmo6/5pqOv9uSCT/bkgk/25IJP9uSCT/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/mmo6/5pqOv9uSCT/mmo6/5pqOv+aajr/bkgk/25IJP9uSCT/bkgk/5pqOv+aajr/bkgk/5pqOv+aajr/mmo6/5pqOv+aajr/mmo6/25IJP+aajr/mmo6/25IJP9uSCT/bkgk/25IJP+aajr/bkgk/5pqOv+aajr/mmo6/5pqOv+aajr/mmo6/5pqOv+aajr/bkgk/5pqOv9uSCT/bkgk/25IJP9uSCT/bkgk/5pqOv+aajr/mmo6/5pqOv+aajr/mmo6/5pqOv+aajr/mmo6/5pqOv9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/25IJP9uSCT/bkgk/w=="
+    }
+  ]
+}

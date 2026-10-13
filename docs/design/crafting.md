@@ -7,10 +7,11 @@ merchant, disenchanting gear into a material per rarity, and forging a piece wit
 chosen modifier. Everything below is a first proposal meant to be tuned. Numbers,
 names and recipes are all expected to change.
 
-Code: `scripts/Items/Crafting.cs` (rules), `scripts/UI/MerchantPanel.cs`,
-`scripts/UI/ArtificerPanel.cs`, `scripts/Hideout.cs` (the two stations).
+Code: `scripts/Items/Crafting.cs` (rules), `scripts/UI/CraftingBoard.cs` (the
+inventory's Crafting tab), `scripts/UI/MerchantPanel.cs`, `scripts/UI/ArtificerPanel.cs`,
+`scripts/Hideout.cs` (the stations).
 Tests: `EndgameSmokeTest` (`CRAFT-*`, `MERCHANT-*`, `DISENCHANT-YIELD`, `FORGE-*`,
-`ARTIFICER-BENCH`, `HIDEOUT-STATIONS`) and `ItemsSmokeTest` (`TOOLTIP-*`).
+`ARTIFICER-BENCH`, `INVENTORY-CRAFTING-TAB`, `CRAFT-SEAL`) and `ItemsSmokeTest` (`TOOLTIP-*`).
 
 ## What it is
 
@@ -58,7 +59,7 @@ Rules every orb follows:
 
 **Orbs are counters, not grid items.** `items.md` -> "Currency" rejected PoE's
 "currency takes inventory slots" model, and this keeps that: orbs live in the wallet
-next to gold (saved per character), so they never clutter the bag. What changed is
+next to gold, so they never clutter the bag. What changed is
 the earlier "this project is taking the Diablo model": the owner wants PoE-style
 crafting, so orbs *are* now a crafting economy, just without the inventory Tetris.
 
@@ -70,25 +71,51 @@ unique-rare (scaled by the reality's quantity bonus), and a boss drops
 beam, and are collected by walking over them with a toast naming them. No Survival
 Rift drops yet.
 
-### Using orbs: the Artificer's bench **[IMPLEMENTED]**
+### Shared between characters **[DECIDED 2026-10-13]**
 
-Hideout → Artificer's Bench (E) → Orbs tab. Click an orb to pick it up (its name
-follows the cursor), then left-click an item: PoE's right-click-orb,
-left-click-item flow. **Shift** keeps the orb in hand for repeated use; right-click
-or Esc puts it away (Esc a second time closes the bench). While an orb is in hand,
-items it can be used on light up green and the rest dim, and the tooltip says what
-it will do or why it can't.
+Orbs and dust belong to the **account** (`Profile.Currency`, saved in `profile.json`),
+like the stash: farm on one character, craft for another. Gold stays per character.
+Saves from before this carried orbs per character; loading pools them into the
+account once.
+
+### Using orbs: the inventory's Crafting tab **[IMPLEMENTED 2026-10-13]**
+
+The inventory (I) has two tabs, **Inventory** and **Crafting**. Crafting swaps the
+paper doll for the orb board (every orb with its count, the Artificer's Seal, the
+dust and gold totals); the item grid stays below it. Click an orb to pick it up (its
+name follows the cursor), then left-click an item: PoE's right-click-orb,
+left-click-item flow, available anywhere, not just in the hideout. **Shift** keeps
+the orb in hand for repeated use; right-click or Esc puts it away (Esc a second time
+closes the panel). While an orb is in hand, items it can be used on light up green
+and the rest dim, and the tooltip says what it will do or why it can't.
 
 Crafting only touches items in the inventory: unequip to craft. That avoids having to
 re-apply the equipment's stats mid-craft, and is the usual ARPG convention anyway.
 
-Rejected for now: using orbs from the regular inventory (I) anywhere, as in PoE.
-Possible later, but it puts crafting in the middle of combat and needs a currency
-strip on the inventory panel; a hideout bench was the smaller, testable first step.
+The first pass had the orbs at the Artificer's bench; the owner asked for them under
+I, so the bench now does disenchanting and forging only.
+
+### Seals **[IMPLEMENTED 2026-10-13]**
+
+The owner's answer to "lock a modifier": the **Artificer's Seal** protects one
+modifier of an item from the next orb, and every seal on the same item costs more.
+
+- Crafting tab → Artificer's Seal → click an item → choose the modifier.
+- Cost: **40 gold, doubling with every seal on that item**, plus **1 + (seals so far)
+  dust of the item's rarity** (gilded for a rare). The count is stored on the item
+  (`SealCount`, saved), so the price follows the item, not the player.
+- The sealed modifier keeps its tier and value through the next orb: Tempest and
+  Flux reroll everything else around it, Sundering can't pick it, Ash keeps it (and
+  the item's rarity), Tuning leaves its value alone.
+- **The seal breaks after that one orb.** A permanent lock would make Tempest spam
+  free after one payment; a one-orb seal makes each protected attempt cost more,
+  which is the sink the owner asked for.
+- One seal at a time per item; sealing another modifier moves it (and still counts
+  as a new, more expensive seal). The tooltip marks the sealed line "(sealed)".
 
 ## Merchant **[IMPLEMENTED]**
 
-Odran the Trader stands in the hideout. Right-click an inventory item to sell it:
+Odran the Trader has a stall in the hideout plaza (docs/design/hideout.md). Right-click an inventory item to sell it:
 
 | Rarity | Price |
 |---|---|
@@ -105,7 +132,7 @@ respecs.
 
 ## Dust and disenchanting **[IMPLEMENTED]**
 
-Bench → Disenchant tab → right-click an item. It becomes dust of its own rarity:
+Artificer's forge (in the smithy) → Disenchant tab → right-click an item. It becomes dust of its own rarity:
 
 | Item | Dust | Amount |
 |---|---|---|
@@ -119,7 +146,7 @@ compete on purpose: gold now or crafting power later.
 
 ## Forging **[IMPLEMENTED]**
 
-Bench → Forge tab: choose a base, choose a modifier it can carry, choose a grade.
+Artificer's forge → Forge tab: choose a base, choose a modifier it can carry, choose a grade.
 The new item carries that modifier, marked **crafted** (its own light-cyan colour
 and a "(crafted)" note in the tooltip), plus some random modifiers:
 
@@ -169,10 +196,7 @@ are still fully visible, one key away, and still in the drop descriptor for filt
 
 - Balance: drop rates, prices, dust yields and forge costs are first guesses. The
   autoplay bot doesn't craft, so this needs play.
-- Orbs from the regular inventory, anywhere (PoE-style), or keep crafting at the bench?
-- Should forging let you choose **two** modifiers at a higher grade, or lock a
-  modifier so Tempest keeps it (PoE's "prefixes cannot be changed")?
+- Should forging let you choose **two** modifiers at a higher grade?
 - Orb icons: currently coloured circles and text buttons; proper pixel-art orbs
   belong in the art pipeline.
-- Should orbs and dust be account-wide (in the stash) instead of per character?
 - NPCs reuse the Paladin and Sage ascendancy sprites; they deserve their own.

@@ -1,0 +1,48 @@
+{
+  "format": "easypixel",
+  "version": 1,
+  "name": "barrel",
+  "width": 14,
+  "height": 18,
+  "palette": [
+    "#1e140c",
+    "#6e4824",
+    "#9a6a3a",
+    "#b8844c",
+    "#3a3c44",
+    "#6a6e7a",
+    "#9aa0ae"
+  ],
+  "layers": [
+    {
+      "id": "layer_i08hi16",
+      "name": "Layer 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_ja48f17",
+      "duration": 500
+    }
+  ],
+  "tags": [
+    {
+      "id": "anim_1na3u18",
+      "name": "idle",
+      "from": 0,
+      "to": 0,
+      "direction": "forward",
+      "loop": true
+    }
+  ],
+  "cels": [
+    {
+      "layer": "layer_i08hi16",
+      "frame": "frame_ja48f17",
+      "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAAeFAz/HhQM/x4UDP8eFAz/HhQM/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHhQM/5pqOv+aajr/bkgk/5pqOv+aajr/HhQM/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4UDP+aajr/mmo6/5pqOv9uSCT/mmo6/5pqOv9uSCT/HhQM/wAAAAAAAAAAAAAAAAAAAAAeFAz/am56/2puev9qbnr/am56/2puev9qbnr/am56/2puev9qbnr/HhQM/wAAAAAAAAAAAAAAAB4UDP9uSCT/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/5pqOv8eFAz/AAAAAAAAAAAeFAz/mmo6/25IJP+aajr/mmo6/5pqOv9uSCT/mmo6/5pqOv9uSCT/mmo6/5pqOv8eFAz/AAAAAB4UDP+aajr/bkgk/5pqOv+aajr/mmo6/25IJP+aajr/mmo6/25IJP+aajr/mmo6/x4UDP8AAAAAHhQM/5pqOv9uSCT/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/5pqOv+aajr/HhQM/wAAAAAeFAz/mmo6/25IJP+aajr/mmo6/5pqOv9uSCT/mmo6/5pqOv9uSCT/mmo6/5pqOv8eFAz/HhQM/5pqOv+aajr/bkgk/5pqOv+aajr/mmo6/25IJP+aajr/mmo6/25IJP+aajr/mmo6/5pqOv8AAAAAHhQM/5pqOv9uSCT/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/5pqOv+aajr/HhQM/wAAAAAeFAz/mmo6/25IJP+aajr/mmo6/5pqOv9uSCT/mmo6/5pqOv9uSCT/mmo6/5pqOv8eFAz/AAAAAB4UDP+aajr/bkgk/5pqOv+aajr/mmo6/25IJP+aajr/mmo6/25IJP+aajr/mmo6/x4UDP8AAAAAHhQM/5pqOv9uSCT/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/5pqOv+aajr/HhQM/wAAAAAAAAAAHhQM/2puev9qbnr/am56/2puev9qbnr/am56/2puev9qbnr/am56/x4UDP8AAAAAAAAAAAAAAAAeFAz/bkgk/5pqOv+aajr/mmo6/25IJP+aajr/mmo6/25IJP+aajr/HhQM/wAAAAAAAAAAAAAAAAAAAAAeFAz/mmo6/5pqOv+aajr/bkgk/5pqOv+aajr/bkgk/x4UDP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeFAz/mmo6/5pqOv9uSCT/mmo6/5pqOv8eFAz/AAAAAAAAAAAAAAAA"
+    }
+  ]
+}

@@ -200,6 +200,9 @@ public partial class VoxelStage : Node3D
             return;
         }
 
+        var created = new List<Node>();
+        _terrain[map.GetInstanceId()] = created;
+
         var byPiece = new Dictionary<string, List<Transform3D>>();
         var hazards = new List<Vector3>();
         foreach (Vector2I cell in map.GetUsedCells(0))
@@ -257,16 +260,46 @@ public partial class VoxelStage : Node3D
                 multimesh.SetInstanceTransform(i, transforms[i]);
             }
 
-            World.AddChild(new MultiMeshInstance3D
+            var instance = new MultiMeshInstance3D
             {
                 Multimesh = multimesh,
                 Name = $"Terrain_{piece}",
                 CastShadow = piece == "wall" ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off,
-            });
+            };
+            World.AddChild(instance);
+            created.Add(instance);
         }
 
-        AddHazardLights(hazards);
+        created.AddRange(AddHazardLights(hazards));
         map.Visible = false;
+    }
+
+    private readonly Dictionary<ulong, List<Node>> _terrain = new();
+
+    /// <summary>Rebuilds one TileMap's terrain after its cells changed (the hideout
+    /// floor being repaved — docs/design/hideout.md).</summary>
+    public void RebuildTerrain(TileMap map)
+    {
+        if (_terrain.Remove(map.GetInstanceId(), out List<Node>? old))
+        {
+            foreach (Node n in old)
+            {
+                if (n is MultiMeshInstance3D mm && mm.Multimesh?.Mesh is ArrayMesh mesh)
+                {
+                    for (int s = 0; s < mesh.GetSurfaceCount(); s++)
+                    {
+                        if (mesh.SurfaceGetMaterial(s) is ShaderMaterial m)
+                        {
+                            _wallMaterials.Remove(m);
+                        }
+                    }
+                }
+
+                n.QueueFree();
+            }
+        }
+
+        BuildTerrain(map);
     }
 
     /// <summary>Copies the wall mesh with the dithering wall shader on every colour surface.</summary>
@@ -292,8 +325,9 @@ public partial class VoxelStage : Node3D
     }
 
     /// <summary>A light over every few liquid tiles (spaced out, capped) so lava and water glow on their surroundings.</summary>
-    private void AddHazardLights(List<Vector3> hazards)
+    private List<Node> AddHazardLights(List<Vector3> hazards)
     {
+        var lights = new List<Node>();
         var placed = new List<Vector3>();
         foreach (Vector3 h in hazards)
         {
@@ -318,14 +352,18 @@ public partial class VoxelStage : Node3D
             }
 
             placed.Add(h);
-            World.AddChild(new OmniLight3D
+            var light = new OmniLight3D
             {
                 Position = h + new Vector3(0f, 0.6f, 0f),
                 OmniRange = 3.5f,
                 LightEnergy = 1.3f,
                 LightColor = HazardLightColor,
-            });
+            };
+            World.AddChild(light);
+            lights.Add(light);
         }
+
+        return lights;
     }
 
     // --- actors ------------------------------------------------------------------------

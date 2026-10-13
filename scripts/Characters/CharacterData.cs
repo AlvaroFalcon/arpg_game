@@ -88,7 +88,8 @@ public sealed class CharacterData
 
     public long Gold { get; set; }
 
-    /// <summary>Crafting orbs and dust by id (docs/design/crafting.md).</summary>
+    /// <summary>Orbs and dust from saves older than account-wide currency; Profile.LoadJson
+    /// moves them into Profile.Currency (docs/design/crafting.md).</summary>
     public Dictionary<string, long> Currency { get; set; } = new();
     public int HighestTierCleared { get; set; }
     public int RealitiesCleared { get; set; }

@@ -145,6 +145,7 @@ public static class Crafting
             CraftAction.Ascend when item.Rarity != Rarity.Rare => $"{orb.Name} needs a rare item",
             CraftAction.Ascend when count >= AffixRoller.MaxAffixes(Rarity.Rare) => "This item has no room for another modifier",
             CraftAction.Sunder when count == 0 => "This item has no modifiers to remove",
+            CraftAction.Sunder when item.RolledAffixes.All(a => a.Sealed) => "Only the sealed modifier is left",
             CraftAction.Ash when item.Rarity == Rarity.Common => "This item is already common",
             CraftAction.Tune when count == 0 && item.RolledBaseStats.Count == 0 => "This item has nothing to tune",
             CraftAction.Graft or CraftAction.Crown or CraftAction.Ascend
@@ -170,13 +171,15 @@ public static class Crafting
         BaseItemDefinition baseItem = item.Base!;
         int ilvl = item.Descriptor.ItemLevel;
         var affixes = item.RolledAffixes.ToList();
+        // A sealed modifier survives the orb untouched (docs/design/crafting.md -> "Seals").
+        AffixRoller.RolledAffix? sealedMod = affixes.FirstOrDefault(a => a.Sealed);
         switch (orb.Action)
         {
             case CraftAction.Kindle:
                 Rewrite(item, Rarity.Magic, AffixRoller.Roll(baseItem, Rarity.Magic, ilvl, pool, rng), rng, rename: true);
                 break;
             case CraftAction.Flux:
-                Rewrite(item, Rarity.Magic, AffixRoller.Roll(baseItem, Rarity.Magic, ilvl, pool, rng), rng, rename: true);
+                Rewrite(item, Rarity.Magic, Reroll(baseItem, Rarity.Magic, ilvl, pool, sealedMod, rng), rng, rename: true);
                 break;
             case CraftAction.Graft:
             case CraftAction.Ascend:
@@ -188,14 +191,16 @@ public static class Crafting
                 Rewrite(item, Rarity.Rare, affixes, rng, rename: true);
                 break;
             case CraftAction.Tempest:
-                Rewrite(item, Rarity.Rare, AffixRoller.Roll(baseItem, Rarity.Rare, ilvl, pool, rng), rng, rename: true);
+                Rewrite(item, Rarity.Rare, Reroll(baseItem, Rarity.Rare, ilvl, pool, sealedMod, rng), rng, rename: true);
                 break;
             case CraftAction.Sunder:
-                affixes.RemoveAt(rng.RandiRange(0, affixes.Count - 1));
+                var removable = affixes.Where(a => !a.Sealed).ToList();
+                affixes.Remove(removable[rng.RandiRange(0, removable.Count - 1)]);
                 Rewrite(item, item.Rarity, affixes, rng, rename: item.Rarity == Rarity.Magic);
                 break;
             case CraftAction.Ash:
-                Rewrite(item, Rarity.Common, new List<AffixRoller.RolledAffix>(), rng, rename: true);
+                var kept = sealedMod is null ? new List<AffixRoller.RolledAffix>() : new List<AffixRoller.RolledAffix> { sealedMod };
+                Rewrite(item, kept.Count == 0 ? Rarity.Common : item.Rarity, kept, rng, rename: kept.Count == 0);
                 break;
             case CraftAction.Tune:
                 Retune(item, rng);
@@ -203,6 +208,85 @@ public static class Crafting
         }
 
         message = $"{orb.Name}: {item.Descriptor.DisplayName}";
+        if (item.RolledAffixes.Any(a => a.Sealed))
+        {
+            // The seal holds for one orb only.
+            Unseal(item);
+            message += " — the seal breaks";
+        }
+
+        return true;
+    }
+
+    /// <summary>New modifiers for a reroll, keeping <paramref name="keep"/> (a sealed one).</summary>
+    private static List<AffixRoller.RolledAffix> Reroll(BaseItemDefinition baseItem, Rarity rarity, int ilvl,
+        IReadOnlyList<AffixDefinition> pool, AffixRoller.RolledAffix? keep, RandomNumberGenerator rng)
+    {
+        if (keep is null)
+        {
+            return AffixRoller.Roll(baseItem, rarity, ilvl, pool, rng);
+        }
+
+        int count = rarity == Rarity.Magic ? rng.RandiRange(1, 2) : rng.RandiRange(3, 4);
+        var result = new List<AffixRoller.RolledAffix> { keep };
+        while (result.Count < count && AffixRoller.RollAdditional(baseItem, ilvl, pool, result, rng) is { } more)
+        {
+            result.Add(more);
+        }
+
+        return result;
+    }
+
+    private static void Unseal(EquipmentItem item) =>
+        item.Restore(item.Base!, item.Rarity, item.Descriptor.ItemLevel, item.Descriptor.DisplayName, item.RolledBaseStats,
+            item.RolledAffixes.Select(a => a.WithSeal(false)).ToList());
+
+    // --- seals -----------------------------------------------------------------------
+
+    /// <summary>What sealing a modifier on this item costs: doubling gold and one
+    /// more dust of its rarity each time the same item is sealed again.</summary>
+    public static (long Gold, CraftingCurrency Dust, int Amount) SealCost(EquipmentItem item) =>
+        (40L << Mathf.Min(item.SealCount, 20), DustFor(item.Rarity), 1 + item.SealCount);
+
+    public static string? CannotSeal(EquipmentItem item)
+    {
+        if (item.Base is null || item.RolledAffixes.Count == 0)
+        {
+            return "Only items with modifiers can be sealed";
+        }
+
+        return item.Rarity >= Rarity.Majestic ? $"{item.Rarity} items can't be altered" : null;
+    }
+
+    /// <summary>Seals modifier <paramref name="index"/> of <paramref name="item"/> (any
+    /// earlier seal moves to it), paying from <paramref name="wallet"/>.</summary>
+    public static bool Seal(EquipmentItem item, int index, Wallet wallet, out string message)
+    {
+        if (CannotSeal(item) is { } reason)
+        {
+            message = reason;
+            return false;
+        }
+
+        if (index < 0 || index >= item.RolledAffixes.Count)
+        {
+            message = "No such modifier";
+            return false;
+        }
+
+        (long gold, CraftingCurrency dust, int amount) = SealCost(item);
+        if (wallet.GetBalance(Core.Profile.GoldId) < gold || wallet.GetBalance(dust.Id) < amount)
+        {
+            message = $"Sealing costs {gold} gold and {amount} {dust.Name}";
+            return false;
+        }
+
+        wallet.TrySpend(Core.Profile.GoldId, gold);
+        wallet.TrySpend(dust.Id, amount);
+        item.SealCount++;
+        item.Restore(item.Base!, item.Rarity, item.Descriptor.ItemLevel, item.Descriptor.DisplayName, item.RolledBaseStats,
+            item.RolledAffixes.Select((a, i) => a.WithSeal(i == index)).ToList());
+        message = $"Sealed {ItemTooltipText.AffixLine(item.RolledAffixes[index])} — safe from the next orb";
         return true;
     }
 
@@ -231,6 +315,11 @@ public static class Crafting
         }).ToList();
         var affixes = item.RolledAffixes.Select(a =>
         {
+            if (a.Sealed)
+            {
+                return a;
+            }
+
             (float min, float max) = a.Definition.ValueRangeForTier(a.Tier);
             return new AffixRoller.RolledAffix(a.Definition, a.Tier, AffixRoller.RollValue(min, max, rng), a.Crafted);
         }).ToList();

@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : Script();
     }
 
     private async Task Script()
@@ -169,6 +169,8 @@ public partial class RunCapture : Node
         }
 
         profile.Persist = false;
+        profile.Hideout = new World.HideoutData();
+        profile.Currency.Clear();
         while (profile.Characters.Count > 0)
         {
             profile.DeleteCharacter(0);
@@ -353,7 +355,7 @@ public partial class RunCapture : Node
             k.Gold = 2400;
             foreach (Items.CraftingCurrency c in Items.Crafting.All)
             {
-                k.Currency[c.Id] = c.IsDust ? 12 : 3 + (int)(c.DropWeight / 4f);
+                profile.Currency[c.Id] = c.IsDust ? 12 : 3 + (int)(c.DropWeight / 4f);
             }
 
             var rng = new RandomNumberGenerator { Seed = 99 };
@@ -370,7 +372,7 @@ public partial class RunCapture : Node
         await Wait(1.0f);
         Node hideout = GetTree().CurrentScene;
         var player = hideout.GetNode<Player>("Player");
-        player.GlobalPosition = new Vector2(480f, 330f);
+        player.GlobalPosition = World.HideoutTown.World(new Vector2I(25, 19));
         await Wait(0.8f);
         await Snap("hideout-stations.png");
 
@@ -381,18 +383,27 @@ public partial class RunCapture : Node
         await Snap("panel-merchant.png");
         merchant.Close();
 
-        var bench = hideout.GetNode<ArtificerPanel>("ArtificerPanel");
-        bench.Open();
+        var inventoryUi = player.GetNode<InventoryUI>("InventoryUI");
+        inventoryUi.SetOpen(true);
+        inventoryUi.ShowCrafting(true);
         await Wait(0.3f);
-        await HoverFirstItem(bench, player);
+        await HoverFirstItem(inventoryUi, player);
         await Snap("craft-tooltip.png");
         ItemTooltipControl.ForceDetail = true;
         await Wait(0.2f);
         await Snap("craft-tooltip-alt.png");
         ItemTooltipControl.ForceDetail = false;
-        bench.Arm(Items.Crafting.Orbs.First(o => o.Action == Items.CraftAction.Tempest));
+        inventoryUi.Board.Arm(Items.Crafting.Orbs.First(o => o.Action == Items.CraftAction.Tempest));
         await Wait(0.2f);
         await Snap("craft-orbs.png");
+        inventoryUi.Board.ArmSeal();
+        await Wait(0.2f);
+        await Snap("craft-seal.png");
+        inventoryUi.ShowCrafting(false);
+        inventoryUi.SetOpen(false);
+
+        var bench = hideout.GetNode<ArtificerPanel>("ArtificerPanel");
+        bench.Open();
         bench.Show(ArtificerPanel.Tab.Disenchant);
         await Wait(0.2f);
         await HoverFirstItem(bench, player);
@@ -401,6 +412,79 @@ public partial class RunCapture : Node
         await Wait(0.3f);
         await Snap("craft-forge.png");
         bench.Close();
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>The hideout town: views of its quarters, an overview, Ysolde's
+    /// shop and the three edit-mode tools (docs/design/hideout.md).</summary>
+    private async Task TownScript()
+    {
+        SetupDemoProfile();
+        if (ArpgGame.Core.Profile.Get(this) is { } profile)
+        {
+            profile.Active.Gold = 3000;
+        }
+
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
+        await Wait(1.2f);
+        var hideout = (Hideout)GetTree().CurrentScene;
+        Player player = hideout.Player;
+        player.Health!.IgnoreDamage = true;
+        foreach ((string file, Vector2I cell) in new[] { ("town-plaza.png", new Vector2I(25, 20)), ("town-smithy.png", new Vector2I(11, 16)), ("town-south.png", new Vector2I(25, 28)), ("town-gate.png", new Vector2I(25, 7)), ("town-yard.png", new Vector2I(40, 16)) })
+        {
+            player.GlobalPosition = World.HideoutTown.World(cell);
+            await Wait(0.6f);
+            await Snap(file);
+        }
+
+        var camera = player.GetNode<Camera2D>("Camera2D");
+        player.GlobalPosition = World.HideoutTown.World(new Vector2I(25, 17));
+        camera.Zoom = Vector2.One * 0.62f;
+        await Wait(0.8f);
+        await Snap("town-overview.png");
+        camera.Zoom = Vector2.One * Player.CloseZoom;
+
+        var shop = hideout.GetNode<DecorShopPanel>("DecorShopPanel");
+        shop.Open();
+        await Wait(0.3f);
+        shop.BuyFloor(World.HideoutCatalog.Floor("carpet"));
+        shop.BuyFloor(World.HideoutCatalog.Floor("grass"));
+        shop.BuyDecor(World.HideoutCatalog.Prop("statue")!);
+        shop.BuyDecor(World.HideoutCatalog.Prop("tree")!);
+        await Wait(0.2f);
+        await Snap("town-shop.png");
+        shop.Close();
+
+        player.GlobalPosition = World.HideoutTown.World(new Vector2I(25, 20));
+        await Wait(0.4f);
+        hideout.OpenEditor();
+        await Wait(0.3f);
+        HideoutEditor editor = hideout.Editor!;
+        Vector2 stall = hideout.Data.Find("merchant")!.Position;
+        GetViewport().WarpMouse(hideout.GetGlobalTransformWithCanvas() * (stall + new Vector2(0f, -24f)));
+        await Wait(0.3f);
+        await Snap("town-edit-move.png");
+        editor.Use(HideoutEditor.Tool.Floors);
+        editor.SelectFloor("carpet");
+        for (int x = 23; x <= 27; x++)
+        {
+            for (int y = 21; y <= 22; y++)
+            {
+                hideout.Town.Paint(new Vector2I(x, y), "carpet");
+            }
+        }
+
+        editor.SelectFloor("carpet");
+        await Wait(0.8f);
+        await Snap("town-edit-floors.png");
+        editor.Use(HideoutEditor.Tool.Decorations);
+        editor.SelectDecor("statue");
+        hideout.PlaceFromStock("tree", World.HideoutTown.World(new Vector2I(21, 22)));
+        await Wait(0.4f);
+        await Snap("town-edit-decor.png");
+        editor.Close();
 
         GD.Print("[CAPTURE] done");
         GetTree().Quit();
@@ -535,7 +619,7 @@ public partial class RunCapture : Node
         GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
         await Wait(1.2f);
         Node hideout = GetTree().CurrentScene;
-        hideout.GetNode<Player>("Player").GlobalPosition = new Vector2(420f, 330f);
+        hideout.GetNode<Player>("Player").GlobalPosition = World.HideoutTown.World(new Vector2I(25, 19));
         await Wait(0.6f);
         await Snap("voxel-hideout.png");
         foreach ((string layout, int tier, string name) in new[] { ("ashen_halls", 5, "ashen"), ("bone_crypt", 8, "crypt"), ("drowned_mirror", 12, "drowned") })

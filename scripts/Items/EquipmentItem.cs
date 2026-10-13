@@ -84,6 +84,10 @@ public partial class EquipmentItem : Area2D, IDroppable
 
     public ItemDescriptor Descriptor { get; private set; } = new();
 
+    /// <summary>How many times this item has been sealed: every seal costs more
+    /// than the last (docs/design/crafting.md -> "Seals").</summary>
+    public int SealCount { get; set; }
+
     private GroundLabelPool? _labelPool;
     private int? _labelHandle;
     private UI.ItemTooltipControl? _tooltip;
