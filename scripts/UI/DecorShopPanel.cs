@@ -69,6 +69,7 @@ public partial class DecorShopPanel : ModalPanel
         {
             PropDef d = def;
             HBoxContainer row = Row(_decor);
+            row.AddChild(UiTheme.PixelIcon(Items.ItemArt.ForProp(def.Sprite), 32f));
             row.AddChild(Text(def.Name, $"{Data.StockOf(def.Id)} in storage · {Data.Props.Count(p => p.Kind == def.Id)} placed"));
             Button buy = UiTheme.Button($"Buy · {def.Price}g", () => BuyDecor(d), 14, 120f);
             buy.Disabled = gold < def.Price;

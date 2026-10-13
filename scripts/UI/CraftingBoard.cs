@@ -29,6 +29,7 @@ public partial class CraftingBoard : Control
 
     private readonly RandomNumberGenerator _rng = new();
     private readonly List<(CraftingCurrency Orb, Button Button)> _orbButtons = new();
+    private readonly Dictionary<string, Label> _counts = new();
     private Button _sealButton = null!;
     private Label _dust = null!;
     private Label _message = null!;
@@ -55,6 +56,8 @@ public partial class CraftingBoard : Control
             CraftingCurrency picked = orb;
             Button b = UiTheme.Button("", () => Arm(picked), 12, 125f);
             b.CustomMinimumSize = new Vector2(125f, 40f);
+            b.Icon = ItemArt.Fit(ItemArt.ForCurrency(orb.Id), 32);
+            b.Alignment = HorizontalAlignment.Left;
             b.AddThemeColorOverride("font_color", orb.Color);
             b.AddThemeColorOverride("font_hover_color", orb.Color.Lightened(0.3f));
             b.AddThemeColorOverride("font_disabled_color", orb.Color with { A = 0.35f });
@@ -66,8 +69,27 @@ public partial class CraftingBoard : Control
         _sealButton = UiTheme.Button("Artificer's Seal — protect a modifier from the next orb", ArmSeal, 12, WidthPx);
         _sealButton.CustomMinimumSize = new Vector2(WidthPx, 30f);
         _sealButton.AddThemeColorOverride("font_color", UiTheme.Gold);
+        _sealButton.Icon = ItemArt.Fit(ItemArt.ForCurrency("artificer_seal"), 24);
         column.AddChild(_sealButton);
-        _dust = UiTheme.Label("", 13, UiTheme.TextDim);
+        // Dust and gold: an icon and a count each.
+        HBoxContainer dustRow = UiTheme.HBox(column, 4);
+        foreach (string id in Crafting.Dusts.Select(d => d.Id).Append("gold"))
+        {
+            dustRow.AddChild(new TextureRect
+            {
+                Texture = ItemArt.Fit(ItemArt.ForCurrency(id), 16),
+                StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+                CustomMinimumSize = new Vector2(18f, 18f),
+                TooltipText = Crafting.Find(id)?.Name ?? "Gold",
+            });
+            Label count = UiTheme.Label("", 13, Crafting.Find(id)?.Color ?? UiTheme.Gold);
+            count.CustomMinimumSize = new Vector2(id == "gold" ? 60f : 44f, 0f);
+            dustRow.AddChild(count);
+            _counts[id] = count;
+        }
+
+        _dust = UiTheme.Label("", 1, UiTheme.TextDim);
+        _dust.Visible = false;
         column.AddChild(_dust);
         _message = UiTheme.Label("Click an orb, then click an item. Shift keeps it in hand.", 13, UiTheme.TextDim);
         _message.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -126,15 +148,17 @@ public partial class CraftingBoard : Control
         foreach ((CraftingCurrency orb, Button b) in _orbButtons)
         {
             long n = Player.Wallet.GetBalance(orb.Id);
-            b.Text = $"{orb.Name}\n×{n}";
+            b.Text = $"{orb.Name.Replace(" Shard", "").Replace(" Orb", "")}\n×{n}";
             b.Disabled = n <= 0;
             bool held = Armed == orb;
             b.AddThemeStyleboxOverride("normal", UiTheme.Box(new Color(0.1f, 0.085f, 0.14f), held ? orb.Color : UiTheme.PanelBorder, held ? 3 : 1, 4, 4));
         }
 
         _sealButton.AddThemeStyleboxOverride("normal", UiTheme.Box(new Color(0.1f, 0.085f, 0.14f), SealArmed ? UiTheme.Gold : UiTheme.PanelBorder, SealArmed ? 3 : 1, 4, 4));
-        _dust.Text = "Dust  " + string.Join("   ", Crafting.Dusts.Select(d => $"{d.Name.Split(' ')[0]} {Player.Wallet.GetBalance(d.Id)}"))
-            + $"   ·   Gold {Player.Wallet.GetBalance(Profile.GoldId)}";
+        foreach ((string id, Label count) in _counts)
+        {
+            count.Text = Player.Wallet.GetBalance(id == "gold" ? Profile.GoldId : id).ToString();
+        }
     }
 
     public void Arm(CraftingCurrency orb)

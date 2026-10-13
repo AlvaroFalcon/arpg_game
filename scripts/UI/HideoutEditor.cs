@@ -165,7 +165,11 @@ public partial class HideoutEditor : CanvasLayer, IClosablePanel
             }
 
             PropDef d = def;
-            _palette.AddChild(Chip($"{def.Name}\n×{data.StockOf(def.Id)}", def.Id == SelectedDecor, () => { SelectedDecor = d.Id; RebuildPalette(); }));
+            Button chip = Chip($"{def.Name}\n×{data.StockOf(def.Id)}", def.Id == SelectedDecor, () => { SelectedDecor = d.Id; RebuildPalette(); });
+            chip.Icon = Items.ItemArt.Fit(Items.ItemArt.ForProp(def.Sprite), 40);
+            chip.ExpandIcon = false;
+            chip.CustomMinimumSize = new Vector2(160f, 54f);
+            _palette.AddChild(chip);
         }
 
         if (_palette.GetChildCount() == 0)

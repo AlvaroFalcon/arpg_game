@@ -147,6 +147,17 @@ public static class UiTheme
         return box;
     }
 
+    /// <summary>A pixel-art icon (orbs, dust, items) kept crisp at <paramref name="size"/>.</summary>
+    public static TextureRect PixelIcon(Texture2D? texture, float size) => new()
+    {
+        Texture = texture,
+        TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        CustomMinimumSize = new Vector2(size, size),
+        MouseFilter = Control.MouseFilterEnum.Ignore,
+    };
+
     public static TextureRect Icon(Texture2D? texture, float size)
     {
         return new TextureRect

@@ -85,6 +85,7 @@ public partial class InventoryGridControl : Control
 
         CustomMinimumSize = new Vector2(_inventory.Columns * CellPx, _inventory.Rows * CellPx);
         MouseFilter = MouseFilterEnum.Stop;
+        TextureFilter = TextureFilterEnum.Nearest;
     }
 
     public override void _Process(double delta)
@@ -232,6 +233,18 @@ public partial class InventoryGridControl : Control
 
     private static Control BuildPreview(EquipmentItem item)
     {
+        if (ItemArt.ForItem(item) is { } icon)
+        {
+            return new TextureRect
+            {
+                Texture = icon,
+                TextureFilter = TextureFilterEnum.Nearest,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                Size = icon.GetSize() * 2f,
+                Modulate = new Color(1, 1, 1, 0.85f),
+            };
+        }
+
         return new Label
         {
             Text = item.Descriptor.DisplayName,
@@ -270,6 +283,23 @@ public partial class InventoryGridControl : Control
                 origin.Y * CellPx + 1,
                 item.Base.Width * CellPx - 2,
                 item.Base.Height * CellPx - 2);
+
+            if (ItemArt.ForItem(item) is { } icon)
+            {
+                // A soft backdrop in the rarity colour, the icon, then the rarity edge
+                // (docs/design/items.md -> "Item art").
+                Color fill = RarityFill(item.Rarity);
+                DrawRect(rect, new Color(fill.R * 0.35f, fill.G * 0.35f, fill.B * 0.35f, 0.9f));
+                // Exactly 2x: the art is 16 px per cell, cells are 32 px.
+                ItemArt.DrawFitted(this, icon, new Rect2(origin.X * CellPx, origin.Y * CellPx, item.Base.Width * CellPx, item.Base.Height * CellPx));
+                if (Tint?.Invoke(item) is { } over)
+                {
+                    DrawRect(rect, over);
+                }
+
+                DrawRect(rect, fill with { A = 0.85f }, filled: false);
+                continue;
+            }
 
             DrawRect(rect, RarityFill(item.Rarity));
             if (Tint?.Invoke(item) is { } tint)

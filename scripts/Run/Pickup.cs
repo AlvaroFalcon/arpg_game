@@ -91,6 +91,7 @@ public partial class Pickup : Node2D
     public override void _Ready()
     {
         AddToGroup(RunState.PickupGroup);
+        TextureFilter = TextureFilterEnum.Nearest;
         _sprite = new AnimatedSprite2D { Scale = new Vector2(2f, 2f), TextureFilter = TextureFilterEnum.Nearest };
         AddChild(_sprite);
         RefreshVisual();
@@ -139,6 +140,18 @@ public partial class Pickup : Node2D
         if (Kind == PickupKind.Currency)
         {
             Color c = Items.Crafting.Find(CurrencyKey)?.Color ?? Colors.White;
+            if (Items.ItemArt.ForCurrency(CurrencyKey) is { } art)
+            {
+                if (Items.Crafting.Find(CurrencyKey) is { DropWeight: < 10f })
+                {
+                    DrawRect(new Rect2(-2f, -70f, 4f, 70f), c with { A = 0.2f });
+                }
+
+                DrawCircle(new Vector2(0f, 6f), 7f, new Color(0f, 0f, 0f, 0.3f));
+                DrawTextureRect(art, new Rect2(new Vector2(-12f, -14f), new Vector2(24f, 24f)), false);
+                return;
+            }
+
             // Rarer orbs get a beam like shards and gems do.
             if (Items.Crafting.Find(CurrencyKey) is { DropWeight: < 10f })
             {

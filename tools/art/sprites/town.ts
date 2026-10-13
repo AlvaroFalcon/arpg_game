@@ -1,52 +1,9 @@
 import { mulberry32, recolor, type SpriteSpec } from '../lib';
+import { Pix } from '../pix';
 
 // The hideout town (docs/design/hideout.md): its tilesets, the station props and
 // the decorations the hideout shop sells. Drawn procedurally with a tiny raster
 // helper so every piece stays an ordinary EasyPixel document.
-
-/** A character grid with drawing helpers ('.' is transparent). */
-class Pix {
-  g: string[][];
-  constructor(public w: number, public h: number, fill = '.') {
-    this.g = Array.from({ length: h }, () => Array(w).fill(fill));
-  }
-  set(x: number, y: number, c: string): this {
-    if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.g[y][x] = c;
-    return this;
-  }
-  rect(x: number, y: number, w: number, h: number, c: string): this {
-    for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) this.set(i, j, c);
-    return this;
-  }
-  box(x: number, y: number, w: number, h: number, c: string): this {
-    for (let i = x; i < x + w; i++) this.set(i, y, c).set(i, y + h - 1, c);
-    for (let j = y; j < y + h; j++) this.set(x, j, c).set(x + w - 1, j, c);
-    return this;
-  }
-  disc(cx: number, cy: number, rx: number, ry: number, c: string): this {
-    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
-      for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
-        if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1) this.set(x, y, c);
-      }
-    }
-    return this;
-  }
-  /** Outlines every filled pixel that touches transparency with `c`. */
-  outline(c: string): this {
-    const src = this.g.map((r) => [...r]);
-    for (let y = 0; y < this.h; y++) {
-      for (let x = 0; x < this.w; x++) {
-        if (src[y][x] !== '.') continue;
-        const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => src[y + dy]?.[x + dx] && src[y + dy][x + dx] !== '.');
-        if (n) this.g[y][x] = c;
-      }
-    }
-    return this;
-  }
-  rows(): string[] {
-    return this.g.map((r) => r.join(''));
-  }
-}
 
 const T = 16;
 

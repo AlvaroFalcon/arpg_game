@@ -376,6 +376,34 @@ public partial class RunCapture : Node
         await Wait(0.8f);
         await Snap("hideout-stations.png");
 
+        // Loot on the ground: a few items and orbs in the plaza.
+        var lootRng = new RandomNumberGenerator { Seed = 5 };
+        Vector2 lootAt = player.GlobalPosition + new Vector2(0f, 60f);
+        int n = 0;
+        foreach (Items.BaseItemDefinition b in Items.ItemFactory.Bases.Take(6))
+        {
+            Items.EquipmentItem drop = Items.ItemFactory.NewBlank();
+            hideout.AddChild(drop);
+            drop.GlobalPosition = lootAt + new Vector2(-150f + n * 60f, (n % 2) * 26f);
+            drop.Initialize(b, (Items.Rarity)(n % 3), 30, Items.ItemFactory.Affixes.Entries, lootRng);
+            n++;
+        }
+
+        foreach ((string id, int i) in new[] { ("tempest_orb", 0), ("kindling_shard", 1), ("crown_orb", 2) })
+        {
+            Pickup orb = Pickup.Spawn(hideout, PickupKind.Currency, 1f, lootAt + new Vector2(-60f + i * 60f, 80f));
+            orb.CurrencyKey = id;
+            orb.QueueRedraw();
+        }
+
+        await Wait(0.6f);
+        await Snap("items-ground.png");
+        var inventoryPanel = player.GetNode<InventoryUI>("InventoryUI");
+        inventoryPanel.SetOpen(true);
+        await Wait(0.3f);
+        await Snap("items-inventory.png");
+        inventoryPanel.SetOpen(false);
+
         var merchant = hideout.GetNode<MerchantPanel>("MerchantPanel");
         merchant.Open();
         await Wait(0.3f);

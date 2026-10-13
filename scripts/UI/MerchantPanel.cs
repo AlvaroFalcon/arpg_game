@@ -81,6 +81,7 @@ public partial class MerchantPanel : ModalPanel
         foreach (CraftingCurrency orb in Crafting.Orbs.Where(o => o.BuyPrice > 0))
         {
             HBoxContainer row = UiTheme.HBox(_wares, 10);
+            row.AddChild(UiTheme.PixelIcon(Items.ItemArt.ForCurrency(orb.Id), 32f));
             VBoxContainer text = UiTheme.VBox(row, 0);
             text.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             text.AddChild(UiTheme.Label($"{orb.Name}   ×{Player.Wallet.GetBalance(orb.Id)}", 16, orb.Color));

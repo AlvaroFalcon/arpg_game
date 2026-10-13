@@ -376,6 +376,35 @@ drag out of would be shipping something the player cannot fully use.
 Removes the milestone-2b auto-equip-on-pickup bridge, which existed only so gear was
 usable before this screen existed.
 
+## Item art **[IMPLEMENTED 2026-10-13]**
+
+Every base item has a pixel-art icon instead of a coloured box with its name (the
+owner: "we only have a box with a name, which is odd"). Icons are drawn at **16 px
+per inventory cell** and shown at 2x, so each fills its grid footprint exactly: the
+iron axe is 32x48 (2x3 cells), the rope belt 32x16. They come from
+`tools/art/sprites/items.ts` (procedural pixel art on the shared `tools/art/pix.ts`
+raster, like the town props) into `assets/sprites/items/<base id>.png`.
+
+Where they show:
+
+- **Grids** (inventory, stash, merchant, bench): the icon over a dim backdrop in the
+  rarity colour with a rarity edge. A base without art falls back to the old box.
+- **Paper doll**: the icon fitted in its slot.
+- **Dragging**: the icon is the drag preview.
+- **On the ground**: the icon lying tilted with a small shadow, under its label.
+- **The forge's base list** shows each base's icon.
+
+Crafting currencies have 16x16 icons in `assets/sprites/currency/`. The three
+Shards are faceted crystals; the Orbs are round with a symbol (a crown, lightning, a
+crack, a halo, a radiant cross); dust is a sparkling pile in its rarity colour; the
+Artificer's Seal is a wax seal, and gold a stack of coins. They are used in the
+Crafting tab's buttons, the dust and gold counts, Odran's wares, the bench's dust
+list, and for orbs lying on the ground. `ItemArt` (`scripts/Items/ItemArt.cs`)
+loads them and makes crisp nearest-neighbour copies for button icons.
+
+`EndgameSmokeTest` `ITEM-ART` fails if a base or a currency has no icon, or if an
+item icon doesn't match its footprint, so new bases must come with art.
+
 ## Currency **[DECIDED]**
 
 Gold is instance 1 of N, built generically from the start:

@@ -696,6 +696,13 @@ public partial class EndgameSmokeTest : Node2D
             && Crafting.DisenchantYield(rare).Dust.Id == "gilded_dust" && Crafting.DisenchantYield(rare).Amount >= 1,
             $"common → {Crafting.DisenchantYield(common).Dust.Name}, magic → {Crafting.DisenchantYield(magic).Dust.Name}, rare → {Crafting.DisenchantYield(rare).Amount} {Crafting.DisenchantYield(rare).Dust.Name}");
 
+        // Every base item and every currency has inventory art (docs/design/items.md -> "Item art").
+        var missing = ItemFactory.Bases.Where(b => ItemArt.ForBase(b.Id) is null).Select(b => b.Id)
+            .Concat(Crafting.All.Where(c => ItemArt.ForCurrency(c.Id) is null).Select(c => c.Id)).ToList();
+        bool sized = ItemFactory.Bases.All(b => ItemArt.ForBase(b.Id) is not { } t || (t.GetWidth() == b.Width * 16 && t.GetHeight() == b.Height * 16));
+        Check("ITEM-ART", missing.Count == 0 && sized && ItemArt.ForCurrency("artificer_seal") is not null,
+            missing.Count == 0 ? $"{ItemFactory.Bases.Count} item icons sized to their grid footprint, {Crafting.All.Count()} currency icons" : $"missing: {string.Join(", ", missing)}");
+
         AffixDefinition chosen = Crafting.ForgeableAffixes(ring, 80).First();
         Crafting.ForgeGrade gilded = Crafting.Grades.First(g => g.Name.StartsWith("Gilded"));
         Crafting.ForgeGrade grey = Crafting.Grades.First(g => g.Name.StartsWith("Grey"));

@@ -171,7 +171,43 @@ public partial class EquipmentItem : Area2D, IDroppable
             DisplayName = displayName,
         };
 
+        ShowIcon();
         RegisterLabel();
+    }
+
+    /// <summary>On the ground the item shows its inventory icon (docs/design/items.md ->
+    /// "Item art"), lying a little tilted with a shadow, instead of a grey square.</summary>
+    private void ShowIcon()
+    {
+        if (Base is null || ItemArt.ForBase(Base.Id) is not { } icon || GetNodeOrNull<Polygon2D>("Visual") is not { } square)
+        {
+            return;
+        }
+
+        square.Visible = false;
+        if (GetNodeOrNull<Sprite2D>("Icon") is null)
+        {
+            AddChild(new Polygon2D
+            {
+                Name = "Shadow",
+                Color = new Color(0f, 0f, 0f, 0.3f),
+                Polygon = Circle(9f, 4f),
+                Position = new Vector2(0f, icon.GetHeight() * 0.35f),
+            });
+            AddChild(new Sprite2D { Name = "Icon", Texture = icon, TextureFilter = TextureFilterEnum.Nearest, RotationDegrees = -20f });
+        }
+    }
+
+    private static Vector2[] Circle(float rx, float ry)
+    {
+        var points = new Vector2[16];
+        for (int i = 0; i < points.Length; i++)
+        {
+            float a = Mathf.Tau * i / points.Length;
+            points[i] = new Vector2(Mathf.Cos(a) * rx, Mathf.Sin(a) * ry);
+        }
+
+        return points;
     }
 
     private void RegisterLabel()

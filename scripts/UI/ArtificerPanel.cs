@@ -136,10 +136,14 @@ public partial class ArtificerPanel : ModalPanel
         ClearChildren(_dustList);
         foreach (CraftingCurrency dust in Crafting.Dusts)
         {
-            _dustList.AddChild(UiTheme.Label($"{dust.Name}   ×{Player.Wallet.GetBalance(dust.Id)}", 16, dust.Color));
+            HBoxContainer line = UiTheme.HBox(_dustList, 6);
+            line.AddChild(UiTheme.PixelIcon(ItemArt.ForCurrency(dust.Id), 24f));
+            line.AddChild(UiTheme.Label($"{dust.Name}   ×{Player.Wallet.GetBalance(dust.Id)}", 16, dust.Color));
         }
 
-        _dustList.AddChild(UiTheme.Label($"Gold   {Player.Wallet.GetBalance(Core.Profile.GoldId)}", 16, UiTheme.Gold));
+        HBoxContainer goldLine = UiTheme.HBox(_dustList, 6);
+        goldLine.AddChild(UiTheme.PixelIcon(ItemArt.ForCurrency("gold"), 24f));
+        goldLine.AddChild(UiTheme.Label($"Gold   {Player.Wallet.GetBalance(Core.Profile.GoldId)}", 16, UiTheme.Gold));
     }
 
     public bool Disenchant(EquipmentItem item)
@@ -178,7 +182,14 @@ public partial class ArtificerPanel : ModalPanel
         _forgeBase ??= all.FirstOrDefault();
         for (int i = 0; i < all.Count; i++)
         {
-            bases.AddItem($"{all[i].DisplayName}  ({all[i].ItemClass})", i);
+            if (ItemArt.Fit(ItemArt.ForBase(all[i].Id), 32) is { } icon)
+            {
+                bases.AddIconItem(icon, $"{all[i].DisplayName}  ({all[i].ItemClass})", i);
+            }
+            else
+            {
+                bases.AddItem($"{all[i].DisplayName}  ({all[i].ItemClass})", i);
+            }
             if (all[i] == _forgeBase)
             {
                 bases.Selected = i;
