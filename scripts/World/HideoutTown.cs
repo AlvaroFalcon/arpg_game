@@ -97,6 +97,28 @@ public partial class HideoutTown : Node2D
         _ => "cobble",
     };
 
+    /// <summary>The part of town a point is in ("Plaza", "Smithy"...), for the town guide.</summary>
+    public static string QuarterOf(Vector2 world)
+    {
+        Vector2I c = CellOf(world);
+        if (((Vector2)(c - new Vector2I(25, 15))).Length() < 7.5f)
+        {
+            return "Plaza";
+        }
+
+        return c switch
+        {
+            { X: >= 3 and <= 14, Y: >= 9 and <= 21 } => "Smithy",
+            { X: >= 3 and <= 16, Y: >= 27 } => "Temple",
+            { X: >= 33 and <= 46, Y: >= 27 } => "Vault",
+            { X: >= 19 and <= 30, Y: >= 27 } => "Garden",
+            { X: >= 35, Y: >= 8 and <= 21 } => "Training yard",
+            { Y: <= 7 } => "North gate",
+            { Y: >= 23 and <= 26 } => "Canal",
+            _ => "Streets",
+        };
+    }
+
     public string StyleAt(Vector2I c) =>
         Walkable(c) && Data.Floors.TryGetValue(HideoutData.Key(c), out string? id) ? id : BaseStyle(c);
 

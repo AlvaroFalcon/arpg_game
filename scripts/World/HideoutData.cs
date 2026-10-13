@@ -42,6 +42,9 @@ public sealed class HideoutData
 
     public bool Initialized { get; set; }
 
+    /// <summary>The town guide has been shown (it opens by itself on the first visit).</summary>
+    public bool GuideSeen { get; set; }
+
     public static string Key(Vector2I cell) => $"{cell.X},{cell.Y}";
 
     public static Vector2I Cell(string key)

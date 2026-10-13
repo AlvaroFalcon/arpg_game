@@ -227,3 +227,37 @@ The cast bar needed no per-attack timing: `BossEnemy` records the window of its
 pending telegraphs (`Slam`/`Lane`, and the few direct spawns call
 `NoteTelegraph`), and the bar runs from the first telegraph to the last impact.
 The frame is the "Target / boss life" panel in the HUD editor.
+
+## Hideout HUD **[IMPLEMENTED 2026-10-13]**
+
+The owner found the hideout's explanations unintuitive: a status line top-left, a
+two-line wall of key hints along the bottom and a bare "[E] Mirror of Realities"
+text. They became pieces that each explain one thing, styled like the rest of the
+HUD (dark glass panels, gold accents, the AION-style cluster):
+
+- **Character plate** (top left): class portrait, name, level and class, best tier
+  cleared, an XP bar, gold with its coin icon, and a gold pill when there are points
+  to spend ("2 passive points to spend ›" opens the tree; "Ascendancy ready at the
+  altar ›" walks you there).
+- **Menu bar** (top centre): key caps for I, C, K, P, H, ? and Esc with what they do
+  underneath. They are buttons too, so the keys are learnt by seeing them; P shows a
+  badge with unspent passive points.
+- **Town directory** (top right): every station, coloured by its accent, with the
+  quarter it's in, the distance and an arrow pointing at it from you. Clicking a row
+  walks you there on the navigation mesh; the altar row gets a dot when ascendancy
+  points are waiting. Since stations can be moved in edit mode, quarters and
+  arrows are computed from where they stand now.
+- **E prompt**: a card floating over the station you stand next to: a key cap, the
+  station's name in its accent colour and what it does ("Craft", "Open realities",
+  "Walk in — endless waves..."). That station's own world label hides while the
+  card shows.
+- **Life, mana, flasks and skills**: the same cluster and skill row as in realities,
+  so the training dummies are a real place to try skills.
+- **Town guide** ("Your hideout"): opens by itself on an account's first visit and
+  from ? / F1 or the menu bar afterwards. A card per station (picture, what it's
+  for, which quarter it's in now, a "Show me" button that walks you there) and the
+  controls that matter in town.
+- A "Hideout" banner fades in on arrival.
+
+All new panels are movable in Edit HUD (`character`, `hideout_menu`, `town`,
+`vitals`, `skills`). The whole HUD hides while the town editor is open.

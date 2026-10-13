@@ -40,6 +40,15 @@ public sealed class PropDef
     /// <summary>Stations can be moved but never stored or sold.</summary>
     public bool Station { get; init; }
 
+    /// <summary>What a station is for, in a few words (the town guide and the E prompt).</summary>
+    public string Blurb { get; init; } = "";
+
+    /// <summary>The verb on the E prompt ("Open", "Trade"...).</summary>
+    public string Verb { get; init; } = "Use";
+
+    /// <summary>Accent colour of the station in the HUD.</summary>
+    public Color Accent { get; init; } = new(0.91f, 0.72f, 0.29f);
+
     /// <summary>Radius used to pick it with the mouse in edit mode.</summary>
     public float PickRadius { get; init; } = 26f;
 }
@@ -84,13 +93,20 @@ public static class HideoutCatalog
     public static readonly IReadOnlyList<PropDef> Props = new PropDef[]
     {
         // Stations.
-        new() { Id = "mirror", Name = "Mirror of Realities", Sprite = "props/mirror", Scale = 2.5f, Station = true, Radius = 18f, PickRadius = 40f },
-        new() { Id = "merchant", Name = "Odran the Trader", Sprite = "props/market_stall", Station = true, PickRadius = 44f },
-        new() { Id = "decorator", Name = "Ysolde's Furnishings", Sprite = "props/crate", Station = true, PickRadius = 36f },
-        new() { Id = "forge", Name = "Artificer's Forge", Sprite = "props/forge", Station = true, Radius = 22f, PickRadius = 40f },
-        new() { Id = "stash", Name = "Stash", Sprite = "props/stash_chest", Station = true, Radius = 16f, PickRadius = 30f },
-        new() { Id = "altar", Name = "Altar of Ascension", Station = true, PickRadius = 40f },
-        new() { Id = "portal", Name = "Survival Rift", Station = true, PickRadius = 40f },
+        new() { Id = "mirror", Name = "Mirror of Realities", Sprite = "props/mirror", Scale = 2.5f, Station = true, Radius = 18f, PickRadius = 40f,
+            Verb = "Open realities", Blurb = "Spend Mirror Shards to step into an Altered Reality.", Accent = new Color(0.55f, 0.75f, 1f) },
+        new() { Id = "merchant", Name = "Odran the Trader", Sprite = "props/market_stall", Station = true, PickRadius = 44f,
+            Verb = "Trade", Blurb = "Sell gear for gold, buy it back, buy crafting shards.", Accent = new Color(0.95f, 0.75f, 0.35f) },
+        new() { Id = "decorator", Name = "Ysolde's Furnishings", Sprite = "props/crate", Station = true, PickRadius = 36f,
+            Verb = "Browse", Blurb = "Floor tiles and decorations for your town.", Accent = new Color(0.55f, 0.85f, 0.75f) },
+        new() { Id = "forge", Name = "Artificer's Forge", Sprite = "props/forge", Station = true, Radius = 22f, PickRadius = 40f,
+            Verb = "Craft", Blurb = "Disenchant gear into dust and forge items with a chosen modifier.", Accent = new Color(1f, 0.55f, 0.25f) },
+        new() { Id = "stash", Name = "Stash", Sprite = "props/stash_chest", Station = true, Radius = 16f, PickRadius = 30f,
+            Verb = "Open stash", Blurb = "Storage shared by all your characters.", Accent = new Color(0.8f, 0.6f, 0.4f) },
+        new() { Id = "altar", Name = "Altar of Ascension", Station = true, PickRadius = 40f,
+            Verb = "Ascend", Blurb = "Choose an ascendancy and spend ascendancy points.", Accent = new Color(0.8f, 0.6f, 1f) },
+        new() { Id = "portal", Name = "Survival Rift", Station = true, PickRadius = 40f,
+            Verb = "Walk in", Blurb = "Endless waves: survive as long as you can.", Accent = new Color(0.75f, 0.5f, 1f) },
         // Decorations sold by Ysolde.
         new() { Id = "brazier", Name = "Brazier", Sprite = "props/brazier", Price = 120, Radius = 8f },
         new() { Id = "lamp_post", Name = "Lamp post", Sprite = "props/lamp_post", Price = 80, Radius = 5f },
