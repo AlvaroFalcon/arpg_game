@@ -518,6 +518,16 @@ public partial class RealityController : Node2D, IPickupHandler
             Pickup.Spawn(this, PickupKind.Gold, (2 + Tier) * (enemy.Rarity >= MonsterRarity.Rare ? 6 : 1), at + Jitter(12f));
         }
 
+        // Crafting orbs (docs/design/crafting.md -> "Where orbs come from").
+        float craft = enemy.Rarity switch { MonsterRarity.Magic => 0.1f, MonsterRarity.Rare => 0.45f, MonsterRarity.Unique => 1.2f, _ => 0.035f };
+        for (float roll = craft * q; roll > 0f; roll -= 1f)
+        {
+            if (_rng.Randf() < roll)
+            {
+                DropCurrency(at + Jitter(24f));
+            }
+        }
+
         // Flask refill orbs (docs/design/items.md -> "Flasks and refill orbs").
         float orb = enemy.Rarity switch { MonsterRarity.Normal => 0.05f, MonsterRarity.Magic => 0.15f, _ => 0.6f };
         if (_rng.Randf() < orb)
@@ -557,6 +567,13 @@ public partial class RealityController : Node2D, IPickupHandler
         gem.QueueRedraw();
     }
 
+    public void DropCurrency(Vector2 at)
+    {
+        Pickup orb = Pickup.Spawn(this, PickupKind.Currency, 1f, at);
+        orb.CurrencyKey = Crafting.RollOrb(_rng).Id;
+        orb.QueueRedraw();
+    }
+
     public void DropShard(Vector2 at, int tier) => Pickup.Spawn(this, PickupKind.Shard, Mathf.Clamp(tier, 1, RealityTiers.MaxTier), at);
 
     public void OnPickup(Pickup pickup, Player player)
@@ -577,6 +594,11 @@ public partial class RealityController : Node2D, IPickupHandler
                 c.AddShards(tier);
                 Sfx.Play(this, "levelup", -4f);
                 EmitSignal(SignalName.Toast, $"Mirror Shard (tier {tier})", RealityTiers.ShardColor(tier));
+                break;
+            case PickupKind.Currency when Crafting.Find(pickup.CurrencyKey) is { } currency:
+                Sfx.Play(this, "pickup", -2f);
+                player.Wallet.Add(currency.Id, Mathf.Max(1, Mathf.RoundToInt(pickup.Value)));
+                EmitSignal(SignalName.Toast, currency.Name, currency.Color);
                 break;
             case PickupKind.Gem when c is not null:
                 Sfx.Play(this, "levelup", -6f);
@@ -616,6 +638,10 @@ public partial class RealityController : Node2D, IPickupHandler
         }
 
         Pickup.Spawn(this, PickupKind.Gold, (10 + Tier * 4) * 5, at + Jitter(30f));
+        for (int i = 0; i < 2 + Tier / 4; i++)
+        {
+            DropCurrency(at + Jitter(50f));
+        }
 
         if (Profile.Get(this) is { } profile)
         {

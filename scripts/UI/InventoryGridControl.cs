@@ -55,6 +55,18 @@ public partial class InventoryGridControl : Control
     /// items between the stash and the inventory). Returns whether it acted.</summary>
     public System.Func<EquipmentItem, bool>? RightClickOverride { get; set; }
 
+    /// <summary>Left-click on an item (an armed crafting orb, docs/design/crafting.md).
+    /// Returning true consumes the click: no drag starts from it.</summary>
+    public System.Func<EquipmentItem, bool>? LeftClickOverride { get; set; }
+
+    /// <summary>Right-click on an empty cell (cancels an armed orb).</summary>
+    public System.Action? RightClickEmpty { get; set; }
+
+    /// <summary>An overlay colour per item (which items an armed orb can touch).</summary>
+    public System.Func<EquipmentItem, Color?>? Tint { get; set; }
+
+    private bool _clickConsumed;
+
     public Inventory Inventory => _inventory;
 
     public override void _Ready()
@@ -102,6 +114,16 @@ public partial class InventoryGridControl : Control
     /// has to be recomputed per cell anyway, and doing it here piggybacks on
     /// the redraw poll this method already runs alongside.
     /// </summary>
+    /// <summary>A grid rebuilt or closed under the cursor (a panel switching tabs)
+    /// must take its tooltip with it.</summary>
+    public override void _ExitTree()
+    {
+        if (_tooltip is not null && IsInstanceValid(_tooltip))
+        {
+            _tooltip.Clear(this);
+        }
+    }
+
     private void UpdateHoverTooltip()
     {
         var gridRect = new Rect2(Vector2.Zero, new Vector2(_inventory.Columns * CellPx, _inventory.Rows * CellPx));
@@ -127,6 +149,22 @@ public partial class InventoryGridControl : Control
     /// drag machinery detects the press-and-move itself.</summary>
     public override void _GuiInput(InputEvent @event)
     {
+        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left } left)
+        {
+            if (!left.Pressed)
+            {
+                _clickConsumed = false;
+            }
+            else if (LeftClickOverride is { } onLeft && _inventory.GetItemAt(CellAt(left.Position)) is { } clicked && onLeft(clicked))
+            {
+                _clickConsumed = true;
+                QueueRedraw();
+                AcceptEvent();
+            }
+
+            return;
+        }
+
         if (@event is not InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } mouseButton)
         {
             return;
@@ -135,6 +173,7 @@ public partial class InventoryGridControl : Control
         EquipmentItem? item = _inventory.GetItemAt(CellAt(mouseButton.Position));
         if (item is null)
         {
+            RightClickEmpty?.Invoke();
             return;
         }
 
@@ -154,7 +193,7 @@ public partial class InventoryGridControl : Control
     public override Variant _GetDragData(Vector2 atPosition)
     {
         EquipmentItem? item = _inventory.GetItemAt(CellAt(atPosition));
-        if (item is null || !_inventory.Placements.TryGetValue(item, out Vector2I origin))
+        if (_clickConsumed || item is null || !_inventory.Placements.TryGetValue(item, out Vector2I origin))
         {
             return default;
         }
@@ -233,6 +272,11 @@ public partial class InventoryGridControl : Control
                 item.Base.Height * CellPx - 2);
 
             DrawRect(rect, RarityFill(item.Rarity));
+            if (Tint?.Invoke(item) is { } tint)
+            {
+                DrawRect(rect, tint);
+            }
+
             DrawRect(rect, new Color(0, 0, 0, 0.6f), filled: false);
             DrawString(font, rect.Position + new Vector2(4, 16), item.Base.DisplayName,
                 HorizontalAlignment.Left, rect.Size.X - 8, fontSize);

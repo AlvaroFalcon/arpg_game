@@ -27,6 +27,8 @@ public partial class Hideout : Node2D
     private MirrorPanel _mirror = null!;
     private AscendancyPanel _altar = null!;
     private StashPanel _stash = null!;
+    private MerchantPanel _merchant = null!;
+    private ArtificerPanel _artificer = null!;
     private Label _prompt = null!;
     private Label _status = null!;
     private ProgressBar _xp = null!;
@@ -69,12 +71,40 @@ public partial class Hideout : Node2D
         _interactables.Add(("Stash", chest, _stash.Open));
         AddLabel("Stash", chest.Position + new Vector2(0f, -44f));
 
+        // Trade and crafting (docs/design/crafting.md).
+        _merchant = new MerchantPanel { Player = _player, Name = "MerchantPanel" };
+        AddChild(_merchant);
+        Node2D trader = Npc("Merchant", "paladin", new Vector2(610f, 290f));
+        _interactables.Add(("Odran the Trader", trader, _merchant.Open));
+        AddLabel("Odran the Trader", trader.Position + new Vector2(0f, -54f));
+
+        _artificer = new ArtificerPanel { Player = _player, Name = "ArtificerPanel" };
+        AddChild(_artificer);
+        var bench = new Anvil { Name = "Artificer", Position = new Vector2(350f, 300f) };
+        AddChild(bench);
+        Npc("ArtificerNpc", "sage", bench.Position + new Vector2(-38f, -18f));
+        _interactables.Add(("Artificer's Bench", bench, _artificer.Open));
+        AddLabel("Artificer's Bench", bench.Position + new Vector2(-10f, -66f));
+
         _portal.Position = new Vector2(680f, 150f);
         AddLabel("Survival Rift", _portal.Position + new Vector2(0f, -70f));
         AddLabel("Mirror of Realities", mirrorNode.Position + new Vector2(0f, -80f));
         AddLabel("Altar of Ascension", altar.Position + new Vector2(0f, -56f));
 
         BuildHud();
+    }
+
+    /// <summary>A standing character from an existing class sprite (shown as a
+    /// voxel figure in the HD-2D view like everyone else).</summary>
+    private Node2D Npc(string name, string sprite, Vector2 at)
+    {
+        var npc = new Node2D { Name = name, Position = at };
+        AddChild(npc);
+        var body = GD.Load<PackedScene>($"res://assets/sprites/player/{sprite}.tscn").Instantiate<AnimatedSprite2D>();
+        body.Position = new Vector2(0f, -6f);
+        npc.AddChild(body);
+        body.Play("idle");
+        return npc;
     }
 
     private void AddLabel(string text, Vector2 at)
@@ -105,7 +135,7 @@ public partial class Hideout : Node2D
         hintBack.SetAnchorsPreset(Control.LayoutPreset.BottomWide, true);
         hintBack.OffsetTop = -72f;
         Label hint = UiTheme.Label(
-            "HIDEOUT — E at the Mirror to open a reality, at the chest for your stash · portal: Survival Rift\nI inventory · C character · K skills · P passive tree · Shift sprint · Space dodge · Q/R flasks · Esc menu",
+            "HIDEOUT — E to use: Mirror (realities) · chest (stash) · Odran (trade) · Artificer (craft) · portal: Survival Rift\nI inventory · C character · K skills · P passive tree · Shift sprint · Space dodge · Q/R flasks · Esc menu",
             17, UiTheme.Text, HorizontalAlignment.Center);
         root.AddChild(hint);
         hint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
@@ -190,6 +220,36 @@ public partial class Hideout : Node2D
     }
 
     /// <summary>The Altar of Ascension: a rune circle that glows once points are waiting.</summary>
+    /// <summary>The Artificer's anvil and crucible.</summary>
+    private sealed partial class Anvil : Node2D
+    {
+        private float _t;
+
+        public override void _Process(double delta)
+        {
+            _t += (float)delta;
+            QueueRedraw();
+        }
+
+        public override void _Draw()
+        {
+            // Crucible with a glowing melt.
+            float glow = 0.75f + 0.25f * Mathf.Sin(_t * 3f);
+            DrawRect(new Rect2(18f, -14f, 26f, 22f), new Color(0.22f, 0.2f, 0.24f));
+            DrawRect(new Rect2(18f, -14f, 26f, 22f), new Color(0.08f, 0.07f, 0.1f), false, 2f);
+            DrawRect(new Rect2(21f, -12f, 20f, 5f), new Color(1f, 0.55f, 0.2f) * glow);
+            DrawCircle(new Vector2(31f, -18f - Mathf.PosMod(_t * 14f, 16f)), 2f, new Color(1f, 0.7f, 0.3f, 0.6f));
+            // Anvil: base, waist, face and horn.
+            DrawRect(new Rect2(-22f, 4f, 30f, 10f), new Color(0.2f, 0.2f, 0.24f));
+            DrawRect(new Rect2(-14f, -6f, 14f, 10f), new Color(0.3f, 0.3f, 0.35f));
+            DrawRect(new Rect2(-28f, -14f, 40f, 9f), new Color(0.48f, 0.48f, 0.55f));
+            DrawColoredPolygon(new[] { new Vector2(12f, -14f), new Vector2(24f, -11f), new Vector2(12f, -6f) }, new Color(0.42f, 0.42f, 0.5f));
+            DrawRect(new Rect2(-28f, -14f, 40f, 2f), new Color(0.75f, 0.75f, 0.82f));
+            // An orb resting on the face.
+            DrawCircle(new Vector2(-10f, -18f), 4f, new Color(0.75f, 0.45f, 1f) with { A = glow });
+        }
+    }
+
     private sealed partial class Altar : Node2D
     {
         private float _t;

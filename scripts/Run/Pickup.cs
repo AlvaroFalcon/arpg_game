@@ -16,6 +16,9 @@ public enum PickupKind
 
     /// <summary>A skill or support gem; see <see cref="Pickup.GemId"/>.</summary>
     Gem,
+
+    /// <summary>A crafting orb; see <see cref="Pickup.CurrencyKey"/>.</summary>
+    Currency,
 }
 
 /// <summary>Whoever runs the current activity (survival run, reality) and
@@ -43,6 +46,9 @@ public partial class Pickup : Node2D
     public float Value;
     public string GemId = "";
     public bool GemSupport;
+
+    /// <summary>For <see cref="PickupKind.Currency"/>: the <see cref="Items.CraftingCurrency"/> id.</summary>
+    public string CurrencyKey = "";
 
     public const string HandlerGroup = "pickup_handler";
 
@@ -104,6 +110,7 @@ public partial class Pickup : Node2D
             PickupKind.Life => LifeFrames,
             PickupKind.Gold => null,
             PickupKind.Gem => null,
+            PickupKind.Currency => null,
             PickupKind.Shard => ShardFramesFor(Mathf.RoundToInt(Value)),
             _ => Value >= 20f ? LargeFrames : Value >= 4f ? MediumFrames : SmallFrames,
         };
@@ -127,6 +134,22 @@ public partial class Pickup : Node2D
                 : GemSupport ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.55f, 0.3f);
             DrawRect(new Rect2(-3f, -90f, 6f, 90f), beam with { A = 0.18f });
             DrawRect(new Rect2(-1f, -90f, 2f, 90f), beam with { A = 0.35f });
+        }
+
+        if (Kind == PickupKind.Currency)
+        {
+            Color c = Items.Crafting.Find(CurrencyKey)?.Color ?? Colors.White;
+            // Rarer orbs get a beam like shards and gems do.
+            if (Items.Crafting.Find(CurrencyKey) is { DropWeight: < 10f })
+            {
+                DrawRect(new Rect2(-2f, -70f, 4f, 70f), c with { A = 0.2f });
+            }
+
+            DrawCircle(Vector2.Zero, 7f, new Color(0.08f, 0.06f, 0.1f));
+            DrawCircle(Vector2.Zero, 5.5f, c);
+            DrawArc(Vector2.Zero, 7f, 0f, Mathf.Tau, 16, c.Lightened(0.4f), 1.2f, true);
+            DrawCircle(new Vector2(-2f, -2f), 1.8f, new Color(1f, 1f, 1f, 0.85f));
+            return;
         }
 
         if (Kind == PickupKind.Gem)

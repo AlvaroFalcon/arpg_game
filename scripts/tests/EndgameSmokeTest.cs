@@ -97,6 +97,7 @@ public partial class EndgameSmokeTest : Node2D
         await BuildChecks();
         await RealityChecks();
         await TutorialChecks();
+        await CraftingChecks();
     }
 
     // --- layouts ---------------------------------------------------------------------
@@ -641,6 +642,134 @@ public partial class EndgameSmokeTest : Node2D
         Check("TUTORIAL-STEPS", guide.StepIndex == guide.StepCount - 1 && steps.Distinct().Count() == guide.StepCount,
             $"reached step {guide.StepIndex + 1}/{guide.StepCount}: {string.Join(" → ", steps.Distinct())}");
         reality.QueueFree();
+        await Frames(2);
+    }
+
+    // --- crafting, merchant, disenchanting, forging (docs/design/crafting.md) --------
+
+    private async Task CraftingChecks()
+    {
+        var rng = new RandomNumberGenerator { Seed = 1234 };
+        IReadOnlyList<AffixDefinition> pool = ItemFactory.Affixes.Entries;
+        // A base with plenty of modifiers to choose from, at a high item level.
+        BaseItemDefinition ring = ItemFactory.Bases.OrderByDescending(b => Crafting.ForgeableAffixes(b, 80).Count).First();
+        CraftingCurrency Orb(CraftAction a) => Crafting.Orbs.First(o => o.Action == a);
+
+        EquipmentItem item = ItemFactory.Roll(ring, Rarity.Common, 80, rng);
+        bool refused = !Crafting.Apply(Orb(CraftAction.Tempest), item, rng, out string why) && item.Rarity == Rarity.Common;
+        Check("CRAFT-WRONG-RARITY-REFUSED", refused && why.Contains("rare"), $"Tempest on a common item: '{why}', item still {item.Rarity}");
+
+        bool kindled = Crafting.Apply(Orb(CraftAction.Kindle), item, rng, out _) && item.Rarity == Rarity.Magic && item.RolledAffixes.Count is >= 1 and <= 2;
+        bool fluxed = Crafting.Apply(Orb(CraftAction.Flux), item, rng, out _) && item.Rarity == Rarity.Magic;
+        if (item.RolledAffixes.Count == 2)
+        {
+            Crafting.Apply(Orb(CraftAction.Sunder), item, rng, out _);
+        }
+
+        bool grafted = Crafting.Apply(Orb(CraftAction.Graft), item, rng, out _) && item.RolledAffixes.Count == 2;
+        Check("CRAFT-MAGIC-ORBS", kindled && fluxed && grafted, $"kindle → magic, flux keeps magic, graft fills to 2 — now {item.Descriptor.DisplayName} ({item.RolledAffixes.Count} mods)");
+
+        int before = item.RolledAffixes.Count;
+        bool crowned = Crafting.Apply(Orb(CraftAction.Crown), item, rng, out _) && item.Rarity == Rarity.Rare && item.RolledAffixes.Count == before + 1;
+        bool ascended = Crafting.Apply(Orb(CraftAction.Ascend), item, rng, out _) && item.RolledAffixes.Count == 4;
+        bool full = Crafting.CannotApply(Orb(CraftAction.Ascend), item) is not null;
+        bool tempest = Crafting.Apply(Orb(CraftAction.Tempest), item, rng, out _) && item.Rarity == Rarity.Rare && item.RolledAffixes.Count is >= 3 and <= 4;
+        var pools = item.RolledAffixes.GroupBy(a => a.Definition.Pool).Select(g => g.Count()).ToList();
+        Check("CRAFT-RARE-ORBS", crowned && ascended && full && tempest && pools.All(n => n <= AffixRoller.MaxPerPool),
+            $"crown +1 → rare, ascend fills to 4 then refuses, tempest rerolls 3–4 (pools {string.Join("/", pools)})");
+
+        var tiers = item.RolledAffixes.Select(a => (a.Definition.Id, a.Tier)).ToList();
+        bool tuned = Crafting.Apply(Orb(CraftAction.Tune), item, rng, out _)
+            && item.RolledAffixes.Select(a => (a.Definition.Id, a.Tier)).SequenceEqual(tiers)
+            && item.RolledAffixes.All(a => a.Value >= a.Definition.ValueRangeForTier(a.Tier).Min - 0.01f && a.Value <= a.Definition.ValueRangeForTier(a.Tier).Max + 0.01f);
+        int count = item.RolledAffixes.Count;
+        bool sundered = Crafting.Apply(Orb(CraftAction.Sunder), item, rng, out _) && item.RolledAffixes.Count == count - 1 && item.Rarity == Rarity.Rare;
+        bool ashed = Crafting.Apply(Orb(CraftAction.Ash), item, rng, out _) && item.Rarity == Rarity.Common && item.RolledAffixes.Count == 0 && item.Descriptor.DisplayName == ring.DisplayName;
+        Check("CRAFT-TUNE-SUNDER-ASH", tuned && sundered && ashed, $"tune keeps mods and tiers, sunder removes one, ash → common '{item.Descriptor.DisplayName}'");
+
+        EquipmentItem common = ItemFactory.Roll(ring, Rarity.Common, 20, rng);
+        EquipmentItem magic = ItemFactory.Roll(ring, Rarity.Magic, 20, rng);
+        EquipmentItem rare = ItemFactory.Roll(ring, Rarity.Rare, 20, rng);
+        Check("MERCHANT-PRICES", Crafting.SellPrice(common) > 0 && Crafting.SellPrice(common) < Crafting.SellPrice(magic) && Crafting.SellPrice(magic) < Crafting.SellPrice(rare),
+            $"common {Crafting.SellPrice(common)} < magic {Crafting.SellPrice(magic)} < rare {Crafting.SellPrice(rare)} gold");
+        Check("DISENCHANT-YIELD", Crafting.DisenchantYield(common).Dust.Id == "grey_dust" && Crafting.DisenchantYield(magic).Dust.Id == "azure_dust"
+            && Crafting.DisenchantYield(rare).Dust.Id == "gilded_dust" && Crafting.DisenchantYield(rare).Amount >= 1,
+            $"common → {Crafting.DisenchantYield(common).Dust.Name}, magic → {Crafting.DisenchantYield(magic).Dust.Name}, rare → {Crafting.DisenchantYield(rare).Amount} {Crafting.DisenchantYield(rare).Dust.Name}");
+
+        AffixDefinition chosen = Crafting.ForgeableAffixes(ring, 80).First();
+        Crafting.ForgeGrade gilded = Crafting.Grades.First(g => g.Name.StartsWith("Gilded"));
+        Crafting.ForgeGrade grey = Crafting.Grades.First(g => g.Name.StartsWith("Grey"));
+        EquipmentItem forged = Crafting.Forge(ring, chosen, gilded, 80, rng);
+        EquipmentItem rough = Crafting.Forge(ring, chosen, grey, 80, rng);
+        AffixRoller.RolledAffix? mine = forged.RolledAffixes.FirstOrDefault(a => a.Definition == chosen);
+        Check("FORGE-GUARANTEED-MOD", forged.Rarity == Rarity.Rare && mine is { Crafted: true } && mine.Tier == chosen.MaxReachableTier(80)
+            && forged.RolledAffixes.Count >= 3 && rough.Rarity == Rarity.Magic && rough.RolledAffixes[0].Tier == Mathf.Max(1, chosen.MaxReachableTier(80) - 2),
+            $"gilded: {forged.Descriptor.DisplayName} with {chosen.Id} T{mine?.Tier} crafted={mine?.Crafted} (+{forged.RolledAffixes.Count - 1} random); grey: magic T{rough.RolledAffixes[0].Tier}");
+
+        // Crafted flags and currency balances survive the save.
+        CharacterData c = CharacterData.Create("Smith", "warrior");
+        c.Inventory.Add((forged, Vector2I.Zero));
+        c.Currency["tempest_orb"] = 3;
+        CharacterData? back = Profile.DeserializeCharacter(Profile.SerializeCharacter(c));
+        EquipmentItem? saved = back?.Inventory.FirstOrDefault().Item;
+        Check("CRAFT-SAVE-ROUND-TRIP", saved is not null && saved.RolledAffixes.Any(a => a.Crafted && a.Definition == chosen) && back!.Currency.GetValueOrDefault("tempest_orb") == 3,
+            $"crafted mod kept={saved?.RolledAffixes.Any(a => a.Crafted)}, tempest orbs={back?.Currency.GetValueOrDefault("tempest_orb")}");
+
+        // The stations, live: sell + buy back + buy at the merchant; orbs, disenchant
+        // and forge at the bench.
+        var player = GD.Load<PackedScene>("res://scenes/Player.tscn").Instantiate<Player>();
+        AddChild(player);
+        player.GlobalPosition = new Vector2(-4000f, 0f);
+        var merchant = new UI.MerchantPanel { Player = player };
+        AddChild(merchant);
+        await Frames(1);
+        EquipmentItem loot = ItemFactory.Roll(ring, Rarity.Rare, 30, rng);
+        player.Inventory.TryAdd(loot);
+        merchant.Open();
+        long gold0 = player.Wallet.GetBalance(Profile.GoldId);
+        bool sold = merchant.Sell(loot) && !player.Inventory.Placements.ContainsKey(loot) && merchant.Buyback.Placements.ContainsKey(loot);
+        long gold1 = player.Wallet.GetBalance(Profile.GoldId);
+        bool boughtBack = merchant.BuyBack(loot) && player.Inventory.Placements.ContainsKey(loot) && player.Wallet.GetBalance(Profile.GoldId) == gold0;
+        merchant.Sell(loot);
+        player.Wallet.Add(Profile.GoldId, 100);
+        bool bought = merchant.Buy(Orb(CraftAction.Kindle)) && player.Wallet.GetBalance("kindling_shard") == 1;
+        merchant.Close();
+        Check("MERCHANT-SELL-BUYBACK", sold && gold1 == gold0 + Crafting.SellPrice(loot) && boughtBack && bought && merchant.Buyback.Placements.Count == 0,
+            $"sold for {gold1 - gold0}, bought back={boughtBack}, bought a shard={bought}, buyback cleared on close");
+
+        var bench = new UI.ArtificerPanel { Player = player };
+        AddChild(bench);
+        await Frames(1);
+        EquipmentItem plain = ItemFactory.Roll(ring, Rarity.Common, 30, rng);
+        player.Inventory.TryAdd(plain);
+        bench.Open();
+        bench.Arm(Orb(CraftAction.Kindle));
+        bool applied = bench.ApplyArmed(plain) && plain.Rarity == Rarity.Magic && player.Wallet.GetBalance("kindling_shard") == 0 && bench.Armed is null;
+        bench.Show(UI.ArtificerPanel.Tab.Disenchant);
+        bool disenchanted = bench.Disenchant(plain) && player.Wallet.GetBalance("azure_dust") >= 1 && !player.Inventory.Placements.ContainsKey(plain);
+        bench.Show(UI.ArtificerPanel.Tab.Forge);
+        player.Wallet.Add("grey_dust", 6);
+        player.Wallet.Add(Profile.GoldId, grey.Gold);
+        bench.SelectForge(ring, chosen);
+        long greyBefore = player.Wallet.GetBalance("grey_dust");
+        EquipmentItem? made = bench.Forge(grey);
+        Check("ARTIFICER-BENCH", applied && disenchanted && made is not null && player.Inventory.Placements.ContainsKey(made)
+            && made.RolledAffixes.Any(a => a.Crafted && a.Definition == chosen) && player.Wallet.GetBalance("grey_dust") == greyBefore - 6,
+            $"orb applied={applied}, disenchant={disenchanted}, forged={made?.Descriptor.DisplayName}");
+        bench.Close();
+
+        // The hideout has both stations.
+        player.QueueFree();
+        merchant.QueueFree();
+        bench.QueueFree();
+        await Frames(2);
+        var hideout = GD.Load<PackedScene>("res://scenes/Hideout.tscn").Instantiate<Node2D>();
+        AddChild(hideout);
+        await Frames(3);
+        Check("HIDEOUT-STATIONS", hideout.GetNodeOrNull("Merchant") is not null && hideout.GetNodeOrNull("Artificer") is not null
+            && hideout.GetNodeOrNull<UI.MerchantPanel>("MerchantPanel") is not null && hideout.GetNodeOrNull<UI.ArtificerPanel>("ArtificerPanel") is not null,
+            "Odran the Trader and the Artificer's Bench stand in the hideout");
+        hideout.QueueFree();
         await Frames(2);
     }
 

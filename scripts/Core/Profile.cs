@@ -134,6 +134,14 @@ public partial class Profile : Node
             player.Wallet.Add(GoldId, c.Gold);
         }
 
+        foreach ((string id, long amount) in c.Currency)
+        {
+            if (amount > 0)
+            {
+                player.Wallet.Add(id, amount);
+            }
+        }
+
         CharacterBuild.Attach(player, c);
 
         // Equipping must never leave the character spawning hurt.
@@ -170,6 +178,16 @@ public partial class Profile : Node
         }
 
         c.Gold = player.Wallet.GetBalance(GoldId);
+        c.Currency.Clear();
+        foreach (CraftingCurrency currency in Crafting.All)
+        {
+            long amount = player.Wallet.GetBalance(currency.Id);
+            if (amount > 0)
+            {
+                c.Currency[currency.Id] = amount;
+            }
+        }
+
         Save();
     }
 
@@ -261,6 +279,7 @@ public partial class Profile : Node
         public string Id { get; set; } = "";
         public int Tier { get; set; }
         public float Value { get; set; }
+        public bool Crafted { get; set; }
     }
 
     private sealed class SaveCharacter
@@ -277,6 +296,7 @@ public partial class Profile : Node
         public List<LoadoutSlot> Loadout { get; set; } = new();
         public Dictionary<string, int> Shards { get; set; } = new();
         public long Gold { get; set; }
+        public Dictionary<string, long> Currency { get; set; } = new();
         public int HighestTierCleared { get; set; }
         public int RealitiesCleared { get; set; }
         public int Deaths { get; set; }
@@ -309,7 +329,7 @@ public partial class Profile : Node
         Ilvl = item.Descriptor.ItemLevel,
         Name = item.Descriptor.DisplayName,
         BaseStats = item.RolledBaseStats.Select(s => new[] { (float)s.Stat, (float)s.Type, s.Value, (float)s.Condition }).ToList(),
-        Affixes = item.RolledAffixes.Select(a => new SaveAffix { Id = a.Definition.Id, Tier = a.Tier, Value = a.Value }).ToList(),
+        Affixes = item.RolledAffixes.Select(a => new SaveAffix { Id = a.Definition.Id, Tier = a.Tier, Value = a.Value, Crafted = a.Crafted }).ToList(),
     };
 
     private static EquipmentItem? FromSave(SaveItem s)
@@ -324,7 +344,7 @@ public partial class Profile : Node
         {
             if (ItemFactory.FindAffix(a.Id) is { } def)
             {
-                affixes.Add(new AffixRoller.RolledAffix(def, a.Tier, a.Value));
+                affixes.Add(new AffixRoller.RolledAffix(def, a.Tier, a.Value, a.Crafted));
             }
         }
 
@@ -354,6 +374,7 @@ public partial class Profile : Node
             Loadout = c.Loadout.ToList(),
             Shards = c.Shards.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
             Gold = c.Gold,
+            Currency = new Dictionary<string, long>(c.Currency),
             HighestTierCleared = c.HighestTierCleared,
             RealitiesCleared = c.RealitiesCleared,
             Deaths = c.Deaths,
@@ -394,6 +415,7 @@ public partial class Profile : Node
             AscendancyPoints = s.AscendancyPoints,
             Gems = s.Gems ?? new List<GemData>(),
             Gold = s.Gold,
+            Currency = s.Currency is null ? new Dictionary<string, long>() : new Dictionary<string, long>(s.Currency),
             HighestTierCleared = s.HighestTierCleared,
             RealitiesCleared = s.RealitiesCleared,
             Deaths = s.Deaths,

@@ -8,12 +8,11 @@ namespace ArpgGame.Items;
 
 /// <summary>
 /// Builds the BBCode body for <see cref="UI.ItemTooltipControl"/> —
-/// docs/design/items.md -&gt; "Item tooltips": "Hovering an item — in the grid,
-/// in an equipment slot, or on the ground — shows its name in its rarity
-/// colour, its base type, item level, and its rolled affixes with their tier
-/// numbers." Tiers are shown deliberately (see that section's own rationale,
-/// and docs/design/affixes.md's "Tiers are player-visible": PoE hides them and
-/// its playerbase installed third-party tools to read them anyway).
+/// docs/design/items.md -&gt; "Item tooltips": name in its rarity colour, base
+/// type, item level and base stats, then the rolled modifiers (tempers before
+/// sigils). Tiers are hidden by default and shown, small and dim, while Alt is
+/// held (docs/design/crafting.md -&gt; "Tooltip": the Path of Exile convention —
+/// a clean read at a glance, the crafting detail on demand).
 ///
 /// A static text builder, not a <see cref="Node"/> — same "pure function over
 /// an item's identity" shape <see cref="AffixRoller"/> and <see cref="ItemNaming"/>
@@ -38,36 +37,55 @@ public static class ItemTooltipText
     /// reaches an <see cref="EquipmentItem"/> that is already sitting on the
     /// ground or in the grid, both of which require initialization first.
     /// </summary>
-    public static string Build(EquipmentItem item)
+    public static string Build(EquipmentItem item, bool detailed = false)
     {
         DisplayStyle style = FilterChain.Default.Evaluate(item.Descriptor);
         Color nameColor = style.TextColor ?? Colors.White;
 
         var sb = new StringBuilder();
-        sb.Append("[color=#").Append(nameColor.ToHtml(false)).Append(']')
-            .Append(Escape(item.Descriptor.DisplayName)).Append("[/color]\n");
+        sb.Append("[color=#").Append(nameColor.ToHtml(false)).Append("][font_size=17]")
+            .Append(Escape(item.Descriptor.DisplayName)).Append("[/font_size][/color]");
 
-        if (item.Base is not null)
+        // The base type, unless the name already is the base (common items).
+        if (item.Base is not null && item.Descriptor.DisplayName != item.Base.DisplayName)
         {
-            sb.Append(Escape(item.Base.DisplayName)).Append('\n');
+            sb.Append("\n[color=#").Append(BaseName).Append(']').Append(Escape(item.Base.DisplayName)).Append("[/color]");
         }
 
-        sb.Append("Item Level ").Append(item.Descriptor.ItemLevel);
+        sb.Append('\n').Append(Separator);
+        sb.Append("\n[color=#").Append(Muted).Append("]Item Level ").Append(item.Descriptor.ItemLevel).Append("[/color]");
 
         foreach ((Stats.StatId stat, Stats.ModifierType type, float value, _) in item.RolledBaseStats)
         {
-            string unit = type == Stats.ModifierType.Flat ? "" : "%";
-            sb.Append("\n[color=#c8c8d0]").Append(value >= 0f ? "+" : "").Append(Number(value)).Append(unit).Append(' ')
+            sb.Append("\n[color=#").Append(BaseStat).Append(']').Append(value >= 0f ? "+" : "").Append(Number(value)).Append(Unit(type)).Append(' ')
                 .Append(SpacedStatName(stat)).Append("[/color]");
         }
 
-        foreach (AffixRoller.RolledAffix affix in item.RolledAffixes.OrderByDescending(a => a.Tier))
+        if (item.RolledAffixes.Count > 0)
         {
-            sb.Append('\n').Append(FormatAffix(affix));
+            sb.Append('\n').Append(Separator);
+            // Tempers (prefix-like) first, then sigils, each in rolled order.
+            foreach (AffixRoller.RolledAffix affix in item.RolledAffixes.OrderBy(a => a.Definition.Pool))
+            {
+                sb.Append('\n').Append(FormatAffix(affix, detailed));
+            }
+
+            if (!detailed)
+            {
+                sb.Append("\n[font_size=12][color=#").Append(Hint).Append("]Hold Alt for modifier tiers[/color][/font_size]");
+            }
         }
 
         return sb.ToString();
     }
+
+    public const string Separator = "[color=#3a3450]────────────────[/color]";
+    private const string BaseName = "b8b0c8";
+    private const string BaseStat = "c8c8d0";
+    private const string Explicit = "8fb0ff";
+    private const string CraftedMod = "b8f0ff";
+    private const string Detail = "6f6987";
+    private const string Hint = "7a7390";
 
     private const string Better = "6ee06e";
     private const string Worse = "ff6a5a";
@@ -131,7 +149,7 @@ public static class ItemTooltipText
         return totals;
     }
 
-    private static string Unit(Stats.ModifierType type) => type switch
+    public static string Unit(Stats.ModifierType type) => type switch
     {
         Stats.ModifierType.Flat => "",
         Stats.ModifierType.Increased => "%",
@@ -143,18 +161,34 @@ public static class ItemTooltipText
     /// small fractional values keep two decimals.</summary>
     public static string Number(float v) => Mathf.Abs(v) >= 1f ? Mathf.RoundToInt(v).ToString() : v.ToString("0.##");
 
-    private static string FormatAffix(AffixRoller.RolledAffix affix)
+    /// <summary>"+7 Fire Damage" — and with <paramref name="detailed"/> (Alt held),
+    /// the tier, pool, name and roll range after it in small dim text.</summary>
+    private static string FormatAffix(AffixRoller.RolledAffix affix, bool detailed)
     {
         AffixDefinition definition = affix.Definition;
         string sign = affix.Value >= 0f ? "+" : "";
-        return $"T{affix.Tier} {Escape(definition.DisplayWord)} ({sign}{Number(affix.Value)}{Unit(definition.Type)} {SpacedStatName(definition.Stat)})";
+        string unit = Unit(definition.Type);
+        var sb = new StringBuilder();
+        sb.Append("[color=#").Append(affix.Crafted ? CraftedMod : Explicit).Append(']')
+            .Append(sign).Append(Number(affix.Value)).Append(unit).Append(' ').Append(SpacedStatName(definition.Stat))
+            .Append("[/color]");
+        if (detailed)
+        {
+            (float min, float max) = definition.ValueRangeForTier(affix.Tier);
+            string range = Mathf.IsEqualApprox(min, max) ? Number(min) : $"{Number(min)}–{Number(max)}";
+            sb.Append(" [font_size=11][color=#").Append(Detail).Append("](T").Append(affix.Tier).Append(' ')
+                .Append(definition.Pool).Append(" \"").Append(Escape(definition.DisplayWord)).Append("\" · ")
+                .Append(range).Append(unit)
+                .Append(affix.Crafted ? " · crafted" : "").Append(")[/color][/font_size]");
+        }
+        else if (affix.Crafted)
+        {
+            sb.Append(" [font_size=11][color=#").Append(Detail).Append("](crafted)[/color][/font_size]");
+        }
+
+        return sb.ToString();
     }
 
-    /// <summary>"FireResistance" -&gt; "Fire Resistance". <see cref="Stats.StatId"/>
-    /// has no author-facing display name of its own yet (docs/design/stats.md
-    /// doesn't specify one) — this is a minimal, mechanical readability pass
-    /// rather than a real localisation/display-name system, which is out of
-    /// scope for this milestone.</summary>
     private static string SpacedStatName(Stats.StatId stat)
     {
         string raw = stat.ToString();

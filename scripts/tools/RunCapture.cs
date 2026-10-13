@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : Script();
     }
 
     private async Task Script()
@@ -339,6 +339,86 @@ public partial class RunCapture : Node
 
         GD.Print("[CAPTURE] done");
         GetTree().Quit();
+    }
+
+    /// <summary>The merchant, the Artificer's bench and the tooltip with and
+    /// without Alt (docs/design/crafting.md).</summary>
+    private async Task CraftingScript()
+    {
+        SetupDemoProfile();
+        if (ArpgGame.Core.Profile.Get(this) is { } profile)
+        {
+            CharacterData k = profile.Active;
+            k.HighestTierCleared = 9;
+            k.Gold = 2400;
+            foreach (Items.CraftingCurrency c in Items.Crafting.All)
+            {
+                k.Currency[c.Id] = c.IsDust ? 12 : 3 + (int)(c.DropWeight / 4f);
+            }
+
+            var rng = new RandomNumberGenerator { Seed = 99 };
+            k.Inventory.Clear();
+            Items.BaseItemDefinition[] picks = Items.ItemFactory.Bases.Take(5).ToArray();
+            for (int i = 0; i < picks.Length; i++)
+            {
+                Items.Rarity r = i == 0 ? Items.Rarity.Rare : i % 2 == 0 ? Items.Rarity.Magic : Items.Rarity.Common;
+                k.Inventory.Add((Items.ItemFactory.Roll(picks[i], r, 38, rng), new Vector2I(i * 2, 0)));
+            }
+        }
+
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
+        await Wait(1.0f);
+        Node hideout = GetTree().CurrentScene;
+        var player = hideout.GetNode<Player>("Player");
+        player.GlobalPosition = new Vector2(480f, 330f);
+        await Wait(0.8f);
+        await Snap("hideout-stations.png");
+
+        var merchant = hideout.GetNode<MerchantPanel>("MerchantPanel");
+        merchant.Open();
+        await Wait(0.3f);
+        await HoverFirstItem(merchant, player);
+        await Snap("panel-merchant.png");
+        merchant.Close();
+
+        var bench = hideout.GetNode<ArtificerPanel>("ArtificerPanel");
+        bench.Open();
+        await Wait(0.3f);
+        await HoverFirstItem(bench, player);
+        await Snap("craft-tooltip.png");
+        ItemTooltipControl.ForceDetail = true;
+        await Wait(0.2f);
+        await Snap("craft-tooltip-alt.png");
+        ItemTooltipControl.ForceDetail = false;
+        bench.Arm(Items.Crafting.Orbs.First(o => o.Action == Items.CraftAction.Tempest));
+        await Wait(0.2f);
+        await Snap("craft-orbs.png");
+        bench.Show(ArtificerPanel.Tab.Disenchant);
+        await Wait(0.2f);
+        await HoverFirstItem(bench, player);
+        await Snap("craft-disenchant.png");
+        bench.Show(ArtificerPanel.Tab.Forge);
+        await Wait(0.3f);
+        await Snap("craft-forge.png");
+        bench.Close();
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>Puts the mouse over the first (top-left) item in a panel's
+    /// inventory grid so its tooltip shows.</summary>
+    private async Task HoverFirstItem(Node panel, Player player)
+    {
+        if (FindChild<InventoryGridControl>(panel) is not { } grid || player.Inventory.Placements.Count == 0)
+        {
+            return;
+        }
+
+        Vector2I cell = player.Inventory.Placements.Values.OrderBy(c => c.Y).ThenBy(c => c.X).First();
+        Vector2 at = grid.GetGlobalTransformWithCanvas() * ((new Vector2(cell.X, cell.Y) + new Vector2(0.5f, 0.5f)) * InventoryGridControl.CellPx);
+        GetViewport().WarpMouse(at);
+        await Wait(0.25f);
     }
 
     /// <summary>The Tab overlay map and the HUD editor, in a reality.</summary>

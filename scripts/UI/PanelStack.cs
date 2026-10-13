@@ -84,6 +84,10 @@ public static class PanelStack
     /// themselves are being freed.</summary>
     public static void Clear() => Open.Clear();
 
+    /// <summary>A panel consumed this frame's Escape itself (e.g. putting away a
+    /// crafting orb): nothing else should treat it as a close request.</summary>
+    public static void MarkClosedThisFrame() => _lastClosedFrame = Godot.Engine.GetProcessFrames();
+
     /// <summary>Whether any panel is currently open.</summary>
     public static bool HasOpen => Open.Count > 0;
 

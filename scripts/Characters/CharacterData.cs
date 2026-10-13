@@ -87,6 +87,9 @@ public sealed class CharacterData
     public Dictionary<int, int> Shards { get; set; } = new();
 
     public long Gold { get; set; }
+
+    /// <summary>Crafting orbs and dust by id (docs/design/crafting.md).</summary>
+    public Dictionary<string, long> Currency { get; set; } = new();
     public int HighestTierCleared { get; set; }
     public int RealitiesCleared { get; set; }
     public int Deaths { get; set; }

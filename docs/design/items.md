@@ -156,6 +156,9 @@ most-wanted filter rule in the genre, and hiding tiers is a known mistake — Po
 them and effectively the entire playerbase installed third-party tools to read them.
 D4 and Last Epoch show them natively.
 
+**Update 2026-10-13:** the tooltip now shows tiers while Alt is held, small and dim,
+instead of always (crafting.md -> "Tooltip"). They are one key away, never hidden.
+
 ## Base items **[DECIDED]**
 
 ```
@@ -313,8 +316,9 @@ ignores clicks the GUI has taken.
 ### Item tooltips **[DECIDED]**
 
 Hovering an item — in the grid, in an equipment slot, or on the ground — shows its
-name in its rarity colour, its base type, item level, and its rolled affixes with
-their tier numbers.
+name in its rarity colour, its base type, item level, and its rolled affixes; their
+tier numbers appear while Alt is held. The layout was reorganised on 2026-10-13, see
+crafting.md -> "Tooltip".
 
 Showing the tier is deliberate and matches `affixes.md`: PoE hides tiers and its
 entire playerbase installed third-party tools to see them. A cell that currently
@@ -386,9 +390,9 @@ Player.Wallet : Dictionary<CurrencyId, long>
 ```
 
 Currency is **never a grid item** — it's a counter, collected by walking over it.
-Rejected: PoE's model where currency items occupy inventory slots and *are* the
-crafting economy. That only pays for its cost if item-based crafting currency is the
-economy; this project is taking the Diablo model.
+Rejected: PoE's model where currency items occupy inventory slots. (Since 2026-10-13
+crafting orbs *are* a PoE-style crafting economy, but still as wallet counters, never
+grid items — see crafting.md.)
 
 `AutoPickup` is per-currency rather than a global rule, because a future crafting
 currency may want manual pickup or stash routing, and discovering that after gold has
