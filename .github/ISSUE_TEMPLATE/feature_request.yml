@@ -1,0 +1,21 @@
+name: Feature request
+description: Something you'd like the game to have.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it help?
+  - type: textarea
+    id: game-info
+    attributes:
+      label: Game info
+      description: Filled in automatically when sent from the game (Esc → Send feedback).
+      render: text

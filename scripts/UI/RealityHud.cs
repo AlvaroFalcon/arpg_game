@@ -127,8 +127,8 @@ public partial class RealityHud : CanvasLayer
 
         // Movable in the HUD editor (pause menu → Edit HUD).
         HudLayout.Register(_levelLabel, "character", "Character");
-        HudLayout.Register(info, "reality_info", "Reality info & minimap");
-        HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview);
+        HudLayout.Register(info, "reality_info", "Reality info & minimap", avoid: HudAvoid.Hide);
+        HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview, HudAvoid.Slide);
         HudLayout.Register(_bar, "vitals", "Life, mana & flasks");
         HudLayout.Register(_skillRow, "skills", "Skills");
         HudLayout.Register(_toasts, "toasts", "Notifications", on => PreviewToasts(_toasts, on));

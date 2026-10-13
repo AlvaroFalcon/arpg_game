@@ -1,0 +1,25 @@
+# Makes sure the labels the issue forms apply (bug / idea / enhancement) exist,
+# so feedback sent from the game is tagged (docs/design/menus.md -> "Feedback").
+name: Labels
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/ISSUE_TEMPLATE/**", ".github/workflows/labels.yml"]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create bug --color d73a4a --description "Something is broken (player feedback)" --force
+          gh label create idea --color fbca04 --description "A player's idea about the game" --force
+          gh label create enhancement --color a2eeef --description "Feature request" --force

@@ -13,6 +13,19 @@ namespace ArpgGame.UI;
 /// shared between screens, so moving the life cluster or the boss bar in a
 /// reality moves it in the Survival Rift too.
 /// </summary>
+/// <summary>What a HUD panel does when a side panel (the inventory) opens over it.</summary>
+public enum HudAvoid
+{
+    /// <summary>Stay put; the side panel draws over it (the life/mana cluster).</summary>
+    Stay,
+
+    /// <summary>Slide sideways out from under the panel, if it fits.</summary>
+    Slide,
+
+    /// <summary>Fade out while the panel covers it.</summary>
+    Hide,
+}
+
 public static class HudLayout
 {
     public const string Group = "hud_movable";
@@ -54,11 +67,34 @@ public static class HudLayout
     /// called with true while the editor is open, so panels that are usually
     /// hidden (the boss bar, notifications) can show a placeholder.
     /// </summary>
-    public static HudMovable Register(Control target, string id, string label, Action<bool>? preview = null)
+    public static HudMovable Register(Control target, string id, string label, Action<bool>? preview = null, HudAvoid avoid = HudAvoid.Stay)
     {
-        var movable = new HudMovable { Id = id, Label = label, Target = target, Preview = preview, Name = $"HudMovable_{id}" };
+        var movable = new HudMovable { Id = id, Label = label, Target = target, Preview = preview, Avoid = avoid, Name = $"HudMovable_{id}" };
         target.AddChild(movable);
         return movable;
+    }
+
+    private static readonly List<Func<Rect2?>> Blockers = new();
+
+    /// <summary>A side panel (the inventory) that HUD panels make room for while it
+    /// is open: <paramref name="rect"/> returns its screen rect, or null when closed.</summary>
+    public static void AddBlocker(Func<Rect2?> rect) => Blockers.Add(rect);
+
+    public static void RemoveBlocker(Func<Rect2?> rect) => Blockers.Remove(rect);
+
+    /// <summary>Screen rects of the side panels open right now.</summary>
+    public static List<Rect2> OpenBlockers()
+    {
+        var list = new List<Rect2>();
+        foreach (Func<Rect2?> b in Blockers)
+        {
+            if (b() is { } r)
+            {
+                list.Add(r);
+            }
+        }
+
+        return list;
     }
 
     public static Vector2 OffsetOf(string id) => Offsets.TryGetValue(id, out Vector2 o) ? o : Vector2.Zero;
@@ -164,6 +200,11 @@ public partial class HudMovable : Node
     public string Label = "";
     public Control Target = null!;
     public Action<bool>? Preview;
+    public HudAvoid Avoid = HudAvoid.Stay;
+
+    /// <summary>The temporary sideways shift while a side panel is open (Slide).</summary>
+    public Vector2 AvoidShift { get; private set; }
+    private float _fade = 1f;
 
     public Vector2 Default { get; private set; }
     public bool IsSettled { get; private set; }
@@ -174,6 +215,57 @@ public partial class HudMovable : Node
         ProcessMode = ProcessModeEnum.Always;
         // Anchored controls only know their position once their parent has a size.
         CallDeferred(nameof(Settle));
+    }
+
+    /// <summary>Makes room for open side panels: slide out from under them, or fade.</summary>
+    public override void _Process(double delta)
+    {
+        if (!IsSettled || Avoid == HudAvoid.Stay || !IsInstanceValid(Target))
+        {
+            return;
+        }
+
+        Rect2 home = Target.GetGlobalRect();
+        home.Position -= AvoidShift;
+        Vector2 want = Vector2.Zero;
+        bool cover = false;
+        foreach (Rect2 b in HudLayout.OpenBlockers())
+        {
+            if (!home.Intersects(b))
+            {
+                continue;
+            }
+
+            if (Avoid == HudAvoid.Slide)
+            {
+                // Slide left of the panel if it fits there, else right of it.
+                float left = b.Position.X - 8f - home.End.X;
+                float right = b.End.X + 8f - home.Position.X;
+                want.X = home.Position.X + left >= 0f ? left : home.End.X + right <= Target.GetViewportRect().Size.X ? right : 0f;
+                cover |= want.X == 0f;
+            }
+            else
+            {
+                cover = true;
+            }
+        }
+
+        // A quick, constant-speed slide that always lands exactly.
+        Vector2 shift = AvoidShift.MoveToward(want, (float)delta * 2400f);
+
+        if (shift != AvoidShift)
+        {
+            Target.Position += shift - AvoidShift;
+            AvoidShift = shift;
+        }
+
+        float fade = Mathf.MoveToward(_fade, cover ? 0f : 1f, (float)delta * 8f);
+        if (!Mathf.IsEqualApprox(fade, _fade))
+        {
+            _fade = fade;
+            Target.Modulate = Target.Modulate with { A = fade };
+            Target.Visible = fade > 0.02f;
+        }
     }
 
     private void Settle()
@@ -229,6 +321,7 @@ public partial class HudMovable : Node
     /// <summary>Moves the panel by <paramref name="delta"/>, keeping it on screen, and records the offset.</summary>
     public void MoveBy(Vector2 delta, Vector2 screen)
     {
+        ClearAvoid();
         Rect2 rect = Target.GetGlobalRect();
         Vector2 size = rect.Size;
         Vector2 to = rect.Position + delta;
@@ -237,8 +330,20 @@ public partial class HudMovable : Node
         HudLayout.SetOffset(Id, Target.Position - Default);
     }
 
+    /// <summary>Drops any temporary avoid shift (the HUD editor works on real positions).</summary>
+    public void ClearAvoid()
+    {
+        if (AvoidShift != Vector2.Zero && IsInstanceValid(Target))
+        {
+            Target.Position -= AvoidShift;
+        }
+
+        AvoidShift = Vector2.Zero;
+    }
+
     public void ResetPosition()
     {
+        AvoidShift = Vector2.Zero;
         if (IsSettled)
         {
             Target.Position = Default;

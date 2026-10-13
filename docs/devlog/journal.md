@@ -296,3 +296,11 @@ The owner pointed out that items were still coloured boxes with a name. Every ba
 ## 2026-10-13 — A hideout HUD that explains itself
 
 The owner found the hideout's explanations unintuitive and old-fashioned: a status line, a two-line wall of key hints and a bare "[E] Mirror" label. They became a character plate (portrait, level, XP, gold with its coin, a gold pill when points are waiting), a menu bar of key caps that are also buttons (I, C, K, P with a points badge, H, ?, Esc), a town directory listing every station with its quarter, distance and an arrow — click one and you walk there — and an E card floating over the station you're next to, saying what it does. The life/mana cluster and skill row from the realities are there too, and a "Your hideout" guide opens on the account's first visit (and from ? or F1) with a card per station, each with a "Show me" button. Testing the prompt taught one more headless lesson: physics frames outnumber process frames there, so a HUD that updates in `_Process` needs the test to wait on `ProcessFrame`, not `PhysicsFrame`. Screenshots: `hideout-guide.png`, `hideout-hud.png`, `hideout-prompt-forge.png`.
+
+## 2026-10-13 — Feedback from inside the game
+
+Esc → Send feedback: a bug / idea / feature-request form that opens the project's GitHub new-issue page with the matching issue form and every field filled in, so the right label is applied and the player just presses Submit. Creating issues straight from the client was ruled out: it would mean shipping a GitHub token anyone could pull out of the build. Labels come from issue forms rather than the URL (URL labels are ignored for non-collaborators), and a small workflow creates the labels. A Discord relay is the likely next step. Screenshot: `feedback-panel.png`.
+
+## 2026-10-13 — The HUD makes room for the inventory
+
+The owner sent a screenshot of the new hideout HUD drawn over the open inventory. The inventory now sits above every HUD layer, and HUD panels in its way either slide aside (menu bar, target frame) or fade (town directory, reality info) until it closes. The first version slid back with a lerp that never quite reached zero: a test that waits for the panels to return caught it, so the slide now moves at a constant speed and lands exactly. Screenshot: `items-inventory.png`.

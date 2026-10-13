@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using Godot;
 
 namespace ArpgGame.UI;
@@ -48,6 +49,12 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
     {
         _panel = GetNode<Control>("Panel");
         _panel.Visible = false;
+
+        // Above every HUD (realities draw theirs at 10), below modal panels (20)
+        // and the tooltip: the open inventory is never painted over, and HUD
+        // panels in its way slide aside or fade (HudLayout blockers).
+        Layer = 12;
+        HudLayout.AddBlocker(_blockRect);
         _strip = _panel.GetNode<Control>("StripControl");
 
         // Inventory | Crafting tabs over the panel. Crafting swaps the paper doll
@@ -143,6 +150,15 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
     /// <see cref="Close"/> (Escape, via <see cref="PanelStack.CloseTopmost"/>)
     /// go through this one method.</summary>
     public bool IsOpen => _panel.Visible;
+
+    private Rect2? BlockRect() => _panel.Visible
+        ? new Rect2(_panel.GetGlobalRect().Position + new Vector2(-4f, -42f), new Vector2(424f, 600f))
+        : null;
+
+    private Func<Rect2?>? _block;
+    private Func<Rect2?> _blockRect => _block ??= BlockRect;
+
+    public override void _ExitTree() => HudLayout.RemoveBlocker(_blockRect);
 
     public void SetOpen(bool open)
     {
