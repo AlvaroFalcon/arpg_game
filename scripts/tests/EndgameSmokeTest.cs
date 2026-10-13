@@ -865,6 +865,31 @@ public partial class EndgameSmokeTest : Node2D
             $"directory: {string.Join(", ", hud.DirectoryEntries)}; prompt '{prompt}' (paused={GetTree().Paused}, panels open={UI.PanelStack.HasOpen}, near={hideout.NearestStation()?.Def.Id}, player at {hideout.Player.GlobalPosition}, mirror {mirror}); walk-to target {target.DistanceTo(hideout.Data.Find("forge")!.Position):0} px from the forge; guide opened={guideOpen}");
         hideout.Player.GetNode<NavigationAgent2D>("NavigationAgent2D").TargetPosition = hideout.Player.GlobalPosition;
 
+        // Opening the inventory never paints HUD over it: it draws above the HUD, the
+        // town directory fades and the menu bar slides out from under it.
+        var inv = hideout.Player.GetNode<UI.InventoryUI>("InventoryUI");
+        var movables = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().Where(m => m.IsAncestorOf(hud) || hud.IsAncestorOf(m)).ToList();
+        UI.HudMovable? town = movables.FirstOrDefault(m => m.Id == "town");
+        UI.HudMovable? menuBar = movables.FirstOrDefault(m => m.Id == "hideout_menu");
+        inv.SetOpen(true);
+        for (int i = 0; i < 40; i++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        Rect2 block = UI.HudLayout.OpenBlockers().FirstOrDefault();
+        bool townHidden = town is not null && !town.Target.Visible;
+        bool menuClear = menuBar is not null && !menuBar.Target.GetGlobalRect().Intersects(block);
+        inv.SetOpen(false);
+        for (int i = 0; i < 40; i++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        bool restored = town is not null && town.Target.Visible && menuBar is not null && menuBar.AvoidShift == Vector2.Zero;
+        Check("HUD-AVOIDS-INVENTORY", inv.Layer > 10 && townHidden && menuClear && restored,
+            $"inventory layer {inv.Layer}, town directory hidden={townHidden}, menu bar clear of the panel={menuClear}, back in place after closing={restored} (town visible={town?.Target.Visible}, menu shift={menuBar?.AvoidShift}, blockers open={UI.HudLayout.OpenBlockers().Count})");
+
         // Walls block, and click-to-move can path from the plaza into the smithy.
         Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);
         Vector2 to = HideoutTown.World(forgeCell + new Vector2I(1, 2));

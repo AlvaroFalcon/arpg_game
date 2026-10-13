@@ -164,7 +164,7 @@ public partial class HideoutHud : CanvasLayer
         AddChip(row, "H", "Edit town", Hideout.OpenEditor);
         AddChip(row, "?", "Guide", Hideout.OpenGuide);
         AddChip(row, "Esc", "Menu", OpenPauseMenu);
-        HudLayout.Register(bar, "hideout_menu", "Menu bar");
+        HudLayout.Register(bar, "hideout_menu", "Menu bar", avoid: HudAvoid.Slide);
     }
 
     private void AddChip(HBoxContainer row, string key, string label, Action press, Func<int>? badge = null)
@@ -215,7 +215,7 @@ public partial class HideoutHud : CanvasLayer
             _rows.Add(row);
         }
 
-        HudLayout.Register(panel, "town", "Town directory");
+        HudLayout.Register(panel, "town", "Town directory", avoid: HudAvoid.Hide);
     }
 
     // --- vitals and skills (bottom centre, as in realities) ------------------------

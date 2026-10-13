@@ -286,3 +286,17 @@ planned next step is a relay (most likely a Discord integration: a webhook into 
 forum channel with tags, behind a small relay that holds the secret), which would
 let players send feedback without a GitHub account. The form stays the same; only
 `Feedback`'s sending step changes.
+
+## HUD and side panels **[IMPLEMENTED 2026-10-13]**
+
+The owner caught the hideout HUD painting over the open inventory (town directory,
+menu bar and the mana end of the life/mana cluster all drew on top of it). Two fixes:
+
+- The inventory draws **above every HUD** (layer 12; realities and the Survival Rift
+  draw their HUD at 10, the hideout at 4), still under modal panels and the tooltip.
+- An open inventory is a **blocker** (`HudLayout.AddBlocker`). Each movable HUD panel
+  says what it does when one opens over it (`HudAvoid`): the menu bar and the boss /
+  target frame **slide** sideways out from under it; the town directory and the
+  reality info and minimap **fade** out; the life/mana cluster **stays** and the
+  panel covers its right end, as in Path of Exile. Everything slides back when the
+  inventory closes; the shift is temporary and never saved into the HUD layout.

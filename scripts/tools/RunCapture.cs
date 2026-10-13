@@ -352,6 +352,7 @@ public partial class RunCapture : Node
         {
             CharacterData k = profile.Active;
             k.HighestTierCleared = 9;
+            profile.Hideout.GuideSeen = true;
             k.Gold = 2400;
             foreach (Items.CraftingCurrency c in Items.Crafting.All)
             {

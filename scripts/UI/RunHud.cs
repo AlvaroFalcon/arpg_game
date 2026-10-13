@@ -84,7 +84,7 @@ public partial class RunHud : CanvasLayer
         HudLayout.Register(_levelLabel, "run_level", "Level");
         HudLayout.Register(_timerLabel, "timer", "Timer");
         HudLayout.Register(_killsLabel, "kills", "Kills");
-        HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview);
+        HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview, HudAvoid.Slide);
         HudLayout.Register(bar, "vitals", "Life & flask");
         HudLayout.Register(_skillRow, "skills", "Skills");
 
