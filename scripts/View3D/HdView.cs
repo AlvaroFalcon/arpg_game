@@ -82,13 +82,14 @@ public partial class HdView : Node
             _stage.SetMood(
                 new Color(ambient.R * 0.75f, ambient.G * 0.75f, ambient.B * 0.8f),
                 ambient.Lerp(Colors.White, 0.3f),
-                HazardColor(reality.Theme.Id));
+                HazardColor(reality.Theme.Id),
+                reality.Theme.Id switch { "drowned" => LiquidStyle.Water, "crypt" => LiquidStyle.Ooze, _ => LiquidStyle.Lava });
         }
 
         else if (scene is Hideout)
         {
             // A sunny town; the canal glows a soft blue.
-            _stage.SetMood(new Color(0.78f, 0.76f, 0.72f), new Color(1f, 0.93f, 0.82f), new Color(0.4f, 0.7f, 1f));
+            _stage.SetMood(new Color(0.78f, 0.76f, 0.72f), new Color(1f, 0.93f, 0.82f), new Color(0.4f, 0.7f, 1f), LiquidStyle.Water);
         }
 
         scene.AddChild(_stage);

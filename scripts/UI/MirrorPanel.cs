@@ -13,7 +13,8 @@ namespace ArpgGame.UI;
 /// The Mirror of Realities — docs/design/endgame.md -> "The Mirror". Pick a
 /// shard tier (tier 1 is always free), optionally empower it for gold (rolls
 /// one to three shard modifiers: harder, more loot), and step through. The
-/// Survival Rift (the original survivor mode) is offered here too.
+/// Survival Rift (the original survivor mode) is offered here too. The Jewels tab
+/// holds the Mirror's jewel tree (docs/design/endgame.md -> "Mirror jewels").
 /// </summary>
 public partial class MirrorPanel : ModalPanel
 {
@@ -23,6 +24,22 @@ public partial class MirrorPanel : ModalPanel
     public Action<string>? Travel { get; set; }
 
     protected override string Title => "Mirror of Realities";
+
+    protected override Vector2 FrameSize => new(1060f, 660f);
+
+    private Button _realitiesTab = null!;
+    private Button _jewelsTab = null!;
+    private VBoxContainer _realityPage = null!;
+    private VBoxContainer _jewelPage = null!;
+    private JewelTreeView _jewelView = null!;
+    private Label _jewelSummary = null!;
+    private Label _jewelTotals = null!;
+    private HoverTooltip _tooltip = null!;
+
+    /// <summary>The Jewels tab is showing.</summary>
+    public bool ShowingJewels { get; private set; }
+
+    public JewelTreeView JewelView => _jewelView;
 
     private GridContainer _tiers = null!;
     private Label _tierTitle = null!;
@@ -39,9 +56,18 @@ public partial class MirrorPanel : ModalPanel
 
     private long Gold => Player.Wallet.GetBalance(Profile.GoldId);
 
-    protected override void Build(VBoxContainer body)
+    protected override void Build(VBoxContainer outer)
     {
         _rng.Randomize();
+        HBoxContainer tabs = UiTheme.HBox(outer, 6);
+        _realitiesTab = UiTheme.Button("Realities", () => ShowTab(false), 16, 160f);
+        _jewelsTab = UiTheme.Button("Jewels", () => ShowTab(true), 16, 160f);
+        tabs.AddChild(_realitiesTab);
+        tabs.AddChild(_jewelsTab);
+        _realityPage = UiTheme.VBox(outer, 10);
+        _realityPage.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        BuildJewelPage(outer);
+        VBoxContainer body = _realityPage;
         body.AddChild(UiTheme.Label("Each Mirror Shard opens one Altered Reality of its tier. Bosses drop shards of the same tier or higher.", 16, UiTheme.TextDim));
         HBoxContainer columns = UiTheme.HBox(body, 24);
         columns.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
@@ -72,10 +98,118 @@ public partial class MirrorPanel : ModalPanel
         right.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill });
         right.AddChild(UiTheme.Label("Survival Rift: the endless arena — gear, gold and character experience.", 15, UiTheme.TextDim));
         right.AddChild(UiTheme.Button("Enter the Survival Rift", () => Leave(Scenes.Run), 18, 320f));
+        ShowTab(false);
     }
+
+    private void BuildJewelPage(VBoxContainer outer)
+    {
+        _jewelPage = UiTheme.VBox(outer, 8);
+        _jewelPage.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        _jewelSummary = UiTheme.Label("", 16, UiTheme.Text);
+        _jewelPage.AddChild(_jewelSummary);
+        HBoxContainer row = UiTheme.HBox(_jewelPage, 12);
+        row.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+        _jewelView = new JewelTreeView { CustomMinimumSize = new Vector2(740f, 500f), SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        _jewelView.Hovered = HoverJewel;
+        _jewelView.Clicked = (n, remove) => ClickJewel(n, remove);
+        row.AddChild(_jewelView);
+        VBoxContainer side = UiTheme.VBox(row, 6);
+        side.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        side.AddChild(UiTheme.Label("Your jewels grant", 17, UiTheme.Gold));
+        _jewelTotals = UiTheme.Label("", 14, new Color(0.8f, 0.72f, 1f));
+        _jewelTotals.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _jewelTotals.CustomMinimumSize = new Vector2(250f, 0f);
+        side.AddChild(_jewelTotals);
+        _tooltip = new HoverTooltip();
+        Root.AddChild(_tooltip);
+        _jewelPage.Visible = false;
+    }
+
+    public void ShowTab(bool jewels)
+    {
+        ShowingJewels = jewels;
+        _realityPage.Visible = !jewels;
+        _jewelPage.Visible = jewels;
+        foreach ((Button b, bool on) in new[] { (_realitiesTab, !jewels), (_jewelsTab, jewels) })
+        {
+            b.AddThemeStyleboxOverride("normal", UiTheme.Box(on ? new Color(0.2f, 0.15f, 0.3f) : new Color(0.08f, 0.07f, 0.11f), on ? UiTheme.Gold : UiTheme.PanelBorder, on ? 2 : 1));
+            b.AddThemeColorOverride("font_color", on ? UiTheme.Gold : UiTheme.TextDim);
+        }
+
+        _tooltip.HideTooltip();
+        Refresh();
+    }
+
+    private JewelData Jewels => Profile.Get(this)?.Jewels ?? _testJewels;
+
+    private readonly JewelData _testJewels = new();
+
+    private void RefreshJewels()
+    {
+        JewelData data = Jewels;
+        _jewelView.Data = data;
+        int next = JewelTree.RequiredTier(data.Found);
+        string source = next == 0 ? "every socket can be filled — no more jewels drop"
+            : next == 1 ? $"any reality boss can drop one (first {JewelTree.EasyJewels})"
+            : $"only bosses of tier {next}+ drop more";
+        _jewelSummary.Text = $"{data.Free} jewel{(data.Free == 1 ? "" : "s")} to socket  ·  {data.Socketed.Count}/{JewelTree.Sockets} sockets filled  ·  {data.Found} found — {source}   ·   LMB socket · RMB remove · drag · wheel";
+        JewelBonuses b = JewelTree.Bonuses(data);
+        var lines = Enum.GetValues<JewelStat>().Where(s => b[s] > 0f).Select(s => "• " + JewelTree.Text(s, b[s])).ToList();
+        _jewelTotals.Text = lines.Count == 0 ? "Nothing yet. Socket a jewel next to the Mirror's Heart." : string.Join("\n", lines);
+        _jewelsTab.Text = data.Free > 0 ? $"Jewels ({data.Free})" : "Jewels";
+        _jewelView.QueueRedraw();
+    }
+
+    private void HoverJewel(JewelNode? node)
+    {
+        if (node is null)
+        {
+            _tooltip.HideTooltip();
+            return;
+        }
+
+        JewelData data = Jewels;
+        Color title = node.Branch >= 0 ? JewelTree.BranchColors[node.Branch] : new Color(0.85f, 0.7f, 1f);
+        _tooltip.Begin(node.Name, title);
+        _tooltip.AddLine(node.Kind switch { JewelNodeKind.Heart => "The root of the tree", JewelNodeKind.Notable => "Notable socket", _ => "Socket" }, UiTheme.TextDim, 13);
+        foreach (string line in node.Describe().Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            _tooltip.AddLine(line, new Color(0.8f, 0.72f, 1f));
+        }
+
+        if (node.Kind != JewelNodeKind.Heart)
+        {
+            bool on = data.Socketed.Contains(node.Id);
+            string state = on ? (JewelTree.CanUnsocket(data, node.Id) ? "Socketed — right-click to take the jewel out" : "Socketed (others depend on it)")
+                : JewelTree.CanSocket(data, node.Id) ? "Left-click to socket a jewel"
+                : data.Free == 0 ? "No jewels to socket" : "Not connected yet";
+            _tooltip.AddLine(state, on ? UiTheme.Gold : JewelTree.CanSocket(data, node.Id) ? UiTheme.Experience : UiTheme.TextDim, 13);
+        }
+
+        _tooltip.ShowTooltip();
+    }
+
+    public bool ClickJewel(JewelNode node, bool remove)
+    {
+        JewelData data = Jewels;
+        bool changed = remove ? JewelTree.Unsocket(data, node.Id) : JewelTree.Socket(data, node.Id);
+        if (!changed)
+        {
+            return false;
+        }
+
+        Sfx.Play(this, remove ? "ui" : "levelup", -8f);
+        Profile.Get(this)?.Save();
+        RefreshJewels();
+        HoverJewel(node);
+        return true;
+    }
+
+    protected override void OnClosed() => _tooltip.HideTooltip();
 
     public override void Refresh()
     {
+        RefreshJewels();
         CharacterData? c = Character;
         ClearChildren(_tiers);
         for (int tier = 1; tier <= RealityTiers.MaxTier; tier++)

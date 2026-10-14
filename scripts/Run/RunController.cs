@@ -66,7 +66,7 @@ public partial class RunController : Node2D
         {
             Name = "Pause",
             LeaveText = "Abandon run",
-            OnLeave = () => State.EndRun(false),
+            OnLeave = () => State.EndRun(Director.ColossusDefeated),
             Summary = () => LevelUpScreen.BuildSummary(Build),
         };
         AddChild(Pause);
@@ -136,7 +136,8 @@ public partial class RunController : Node2D
 
         State.Player = Player;
         State.Build = Build;
-        Player.Health!.Died += () => State.EndRun(false);
+        // After the Colossus the run is already won; falling in the endless phase keeps that.
+        Player.Health!.Died += () => State.EndRun(Director.ColossusDefeated);
         Player.Dodge!.Dodged += OnPlayerDodged;
 
         var camera = Player.GetNode<Camera2D>("Camera2D");
@@ -209,9 +210,13 @@ public partial class RunController : Node2D
             dodge.InputEnabled = false;
         }
 
+        var rng = new RandomNumberGenerator();
+        rng.Randomize();
+        RunRewards rewards = RunRewards.For(State.Elapsed, State.BossesKilled, State.Kills, victory, rng);
         Profile? profile = Profile.Get(this);
         if (profile is not null)
         {
+            rewards.GrantTo(Player);
             // Strip the run's build and baseline before capturing, so nothing
             // run-only is ever saved as part of the character.
             Player.Stats.RemoveModifiersFromSource(Build.Source);
@@ -227,7 +232,7 @@ public partial class RunController : Node2D
             Engine.TimeScale = 1.0;
         }
 
-        Results.ShowResults(State, Build);
+        Results.ShowResults(State, Build, rewards);
     }
 
     public override void _ExitTree()

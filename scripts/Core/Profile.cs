@@ -52,6 +52,9 @@ public partial class Profile : Node
     /// <summary>The player-arranged hideout town (docs/design/hideout.md).</summary>
     public World.HideoutData Hideout { get; set; } = new();
 
+    /// <summary>The Mirror's jewels, account-wide (docs/design/endgame.md -> "Mirror jewels").</summary>
+    public World.JewelData Jewels { get; set; } = new();
+
     public long NextStashTabCost => StashTabs.Count >= MaxStashTabs ? -1 : 150L << (StashTabs.Count - 1);
 
     public int ActiveIndex { get; private set; }
@@ -308,6 +311,8 @@ public partial class Profile : Node
         public Dictionary<string, long> Currency { get; set; } = new();
         public int HighestTierCleared { get; set; }
         public int RealitiesCleared { get; set; }
+        public int? ShardVendorStock { get; set; }
+        public int ShardVendorSince { get; set; }
         public int Deaths { get; set; }
 
         /// <summary>Null in saves from before the tutorial existed: those characters skip it.</summary>
@@ -329,6 +334,8 @@ public partial class Profile : Node
         public Dictionary<string, long> Currency { get; set; } = new();
 
         public World.HideoutData? Hideout { get; set; }
+
+        public World.JewelData? Jewels { get; set; }
 
         // Version 1 fields (single character), read for migration only.
         public long Gold { get; set; }
@@ -391,6 +398,8 @@ public partial class Profile : Node
             Gold = c.Gold,
             HighestTierCleared = c.HighestTierCleared,
             RealitiesCleared = c.RealitiesCleared,
+            ShardVendorStock = c.ShardVendorStock,
+            ShardVendorSince = c.ShardVendorSince,
             Deaths = c.Deaths,
             TutorialDone = c.TutorialDone,
             TotalKills = c.TotalKills,
@@ -434,6 +443,8 @@ public partial class Profile : Node
             Currency = s.Currency is null ? new Dictionary<string, long>() : new Dictionary<string, long>(s.Currency),
             HighestTierCleared = s.HighestTierCleared,
             RealitiesCleared = s.RealitiesCleared,
+            ShardVendorStock = Mathf.Clamp(s.ShardVendorStock ?? World.ShardVendor.StockSize, 0, World.ShardVendor.StockSize),
+            ShardVendorSince = s.ShardVendorSince,
             Deaths = s.Deaths,
             TutorialDone = s.TutorialDone ?? true,
             TotalKills = s.TotalKills,
@@ -505,6 +516,7 @@ public partial class Profile : Node
             Stash = StashTabs.Select(tab => tab.Select(e => { SaveItem si = ToSave(e.Item); si.X = e.Cell.X; si.Y = e.Cell.Y; return si; }).ToList()).ToList(),
             Currency = new Dictionary<string, long>(Currency),
             Hideout = Hideout,
+            Jewels = Jewels,
         };
         return JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true });
     }
@@ -568,6 +580,9 @@ public partial class Profile : Node
         }
 
         Hideout = file.Hideout ?? new World.HideoutData();
+        Jewels = file.Jewels ?? new World.JewelData();
+        // Sockets that no longer exist (a reshaped tree) give their jewel back.
+        Jewels.Socketed.RemoveWhere(id => World.JewelTree.Get(id) is null);
 
         if (file.Characters.Count > 0)
         {
@@ -604,6 +619,7 @@ public partial class Profile : Node
         Characters.Clear();
         Currency.Clear();
         Hideout = new World.HideoutData();
+        Jewels = new World.JewelData();
         StashTabs.Clear();
         StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
         ActiveIndex = 0;

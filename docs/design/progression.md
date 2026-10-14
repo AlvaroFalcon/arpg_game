@@ -65,9 +65,10 @@ which skills accept it by tags (`RequiresAny` / `Excludes`), so a non-projectile
 never sees Pierce. Priority bands: conversions 5, additive counts 10, repeats 20,
 multiplicative 30 — so "+2 projectiles" resolves before anything multiplies.
 
-## Passives (29)
+## Passives (30)
 
 Elemental/spell/projectile/area damage, life, regen, armour, movement, cast speed,
+**Quickening** (+12 % auto-cast speed — skills fire more often, run.md -> "Cast timers"),
 cooldown recovery, crit chance and multiplier, mana and mana regen, mana cost,
 area, projectile speed, pickup radius, experience, ignite and shock chance, skill
 duration, life on kill, elemental resistances, dodge recovery, and three notables:

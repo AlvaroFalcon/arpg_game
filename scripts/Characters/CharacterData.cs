@@ -95,6 +95,12 @@ public sealed class CharacterData
     public int RealitiesCleared { get; set; }
     public int Deaths { get; set; }
 
+    /// <summary>Arehucaz's shards left for this character (World.ShardVendor).</summary>
+    public int ShardVendorStock { get; set; } = World.ShardVendor.StockSize;
+
+    /// <summary><see cref="RealitiesCleared"/> at Arehucaz's last restock.</summary>
+    public int ShardVendorSince { get; set; }
+
     /// <summary>False for a freshly created character until they finish (or
     /// skip) the introduction reality — docs/design/tutorial.md.</summary>
     public bool TutorialDone { get; set; } = true;

@@ -72,6 +72,9 @@ public partial class RealityController : Node2D, IPickupHandler
     private float _fieldTimer;
     private float _quantity;
     private float _rarityBonus;
+
+    /// <summary>The Mirror's socketed jewels (account-wide; none in the tutorial).</summary>
+    public JewelBonuses Jewels { get; private set; } = JewelBonuses.None;
     private bool _leaving;
     private static readonly object ModifierSource = new();
 
@@ -94,6 +97,12 @@ public partial class RealityController : Node2D, IPickupHandler
         RealityLaunch.Reset();
         Theme = RealityTheme.Get(Layout.ThemeId);
         (_quantity, _rarityBonus) = RealityLaunch.Bonuses(Modifiers);
+        if (!IsTutorial)
+        {
+            Jewels = JewelTree.Bonuses(Profile.Get(this)?.Jewels);
+            _quantity += Jewels[JewelStat.Quantity];
+            _rarityBonus += Jewels[JewelStat.Rarity];
+        }
         PortalsLeft = IsTutorial ? TutorialPortals : RealityTiers.Portals(Tier);
 
         RenderingServer.SetDefaultClearColor(Theme.Void);
@@ -230,8 +239,8 @@ public partial class RealityController : Node2D, IPickupHandler
 
             float chance = spot.Kind switch
             {
-                'm' => RealityTiers.MagicPackChance(Tier) + (elite ? 0.25f : 0f),
-                'r' => RealityTiers.RarePackChance(Tier) + (elite ? 0.25f : 0f),
+                'm' => RealityTiers.MagicPackChance(Tier) + (elite ? 0.25f : 0f) + Jewels[JewelStat.PackRarity],
+                'r' => RealityTiers.RarePackChance(Tier) + (elite ? 0.25f : 0f) + Jewels[JewelStat.PackRarity],
                 'u' => RealityTiers.UniqueChance(Tier),
                 _ => RealityTiers.NormalPackChance(Tier) + (hordes ? 0.2f : 0f),
             };
@@ -247,6 +256,11 @@ public partial class RealityController : Node2D, IPickupHandler
             }
 
             SpawnPack(spot, spot.Kind, hordes);
+            // Higher tiers double up on grey packs (density).
+            if (spot.Kind == 'p' && _rng.Randf() < RealityTiers.ExtraPackChance(Tier) + Jewels[JewelStat.Density])
+            {
+                SpawnPack(spot, 'p', hordes);
+            }
         }
     }
 
@@ -255,11 +269,15 @@ public partial class RealityController : Node2D, IPickupHandler
         var pack = new List<Enemy>();
         Vector2 centre = RasterLayout.World(spot.Cell);
         string main = Theme.Roster[_rng.RandiRange(0, Theme.Roster.Count - 1)];
-        int normals = kind switch { 'm' => 0, 'r' => _rng.RandiRange(3, 5), 'u' => 0, _ => IsTutorial ? 3 : _rng.RandiRange(4, 7) };
+        (int nMin, int nMax) = RealityTiers.NormalPackSize(Tier);
+        (int eMin, int eMax) = RealityTiers.RareEscort(Tier);
+        int normals = kind switch { 'm' => 0, 'r' => _rng.RandiRange(eMin, eMax), 'u' => 0, _ => IsTutorial ? 3 : _rng.RandiRange(nMin, nMax) };
         if (hordes)
         {
             normals += 2;
         }
+
+        normals = Mathf.RoundToInt(normals * (1f + Jewels[JewelStat.Density]));
 
         for (int i = 0; i < normals; i++)
         {
@@ -270,14 +288,19 @@ public partial class RealityController : Node2D, IPickupHandler
         switch (kind)
         {
             case 'm':
-                for (int i = 0; i < (IsTutorial ? 2 : _rng.RandiRange(3, 4)); i++)
+                (int mMin, int mMax) = RealityTiers.MagicPackSize(Tier);
+                for (int i = 0; i < (IsTutorial ? 2 : _rng.RandiRange(mMin, mMax)); i++)
                 {
                     pack.Add(SpawnMonster(main, centre, MonsterRarity.Magic));
                 }
 
                 break;
             case 'r':
-                pack.Add(SpawnMonster(main, centre, MonsterRarity.Rare));
+                for (int i = 0; i < (IsTutorial ? 1 : RealityTiers.RaresPerPack(Tier)); i++)
+                {
+                    pack.Add(SpawnMonster(main, centre, MonsterRarity.Rare));
+                }
+
                 break;
             case 'u':
                 pack.Add(SpawnMonster(Theme.Roster.FirstOrDefault(r => r is "Brute" or "Thrall" or "Skeleton") ?? main, centre, MonsterRarity.Unique));
@@ -461,7 +484,7 @@ public partial class RealityController : Node2D, IPickupHandler
         Sfx.Play(this, "death", -6f);
         if (byPlayer)
         {
-            CharacterBuild.Of(Player)?.GrantExperience(RunState.CharacterExperienceFor(enemy));
+            CharacterBuild.Of(Player)?.GrantExperience(RunState.CharacterExperienceFor(enemy) * (1f + Jewels[JewelStat.Experience]));
             if (Profile.Get(this) is { } profile)
             {
                 profile.Active.TotalKills++;
@@ -515,12 +538,12 @@ public partial class RealityController : Node2D, IPickupHandler
 
         if (_rng.Randf() < gold * q)
         {
-            Pickup.Spawn(this, PickupKind.Gold, (2 + Tier) * (enemy.Rarity >= MonsterRarity.Rare ? 6 : 1), at + Jitter(12f));
+            Pickup.Spawn(this, PickupKind.Gold, Mathf.Round((2 + Tier) * (enemy.Rarity >= MonsterRarity.Rare ? 6 : 1) * (1f + Jewels[JewelStat.Gold])), at + Jitter(12f));
         }
 
         // Crafting orbs (docs/design/crafting.md -> "Where orbs come from").
         float craft = enemy.Rarity switch { MonsterRarity.Magic => 0.1f, MonsterRarity.Rare => 0.45f, MonsterRarity.Unique => 1.2f, _ => 0.035f };
-        for (float roll = craft * q; roll > 0f; roll -= 1f)
+        for (float roll = craft * q * (1f + Jewels[JewelStat.Orbs]); roll > 0f; roll -= 1f)
         {
             if (_rng.Randf() < roll)
             {
@@ -574,6 +597,8 @@ public partial class RealityController : Node2D, IPickupHandler
         orb.QueueRedraw();
     }
 
+    private int JewelsOnFloor() => GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>().Count(p => p.Kind == PickupKind.Jewel);
+
     public void DropShard(Vector2 at, int tier) => Pickup.Spawn(this, PickupKind.Shard, Mathf.Clamp(tier, 1, RealityTiers.MaxTier), at);
 
     public void OnPickup(Pickup pickup, Player player)
@@ -594,6 +619,12 @@ public partial class RealityController : Node2D, IPickupHandler
                 c.AddShards(tier);
                 Sfx.Play(this, "levelup", -4f);
                 EmitSignal(SignalName.Toast, $"Mirror Shard (tier {tier})", RealityTiers.ShardColor(tier));
+                break;
+            case PickupKind.Jewel when Profile.Get(this) is { } account:
+                account.Jewels.Found++;
+                account.Save();
+                Sfx.Play(this, "levelup", -2f);
+                EmitSignal(SignalName.Toast, $"Mirror Jewel ({account.Jewels.Found}/{JewelTree.Sockets}) — socket it at the Mirror", new Color(0.85f, 0.6f, 1f));
                 break;
             case PickupKind.Currency when Crafting.Find(pickup.CurrencyKey) is { } currency:
                 Sfx.Play(this, "pickup", -2f);
@@ -621,15 +652,31 @@ public partial class RealityController : Node2D, IPickupHandler
         BossFightActive = false;
         SetGate(false);
         Vector2 at = boss.GlobalPosition;
-        for (int i = 0; i < 3 + (_quantity > 0.3f ? 1 : 0); i++)
+        int items = 3 + (_quantity > 0.3f ? 1 : 0) + Mathf.RoundToInt(Jewels[JewelStat.BossItems]);
+        for (int i = 0; i < items; i++)
         {
-            DropItem(at + Jitter(60f), 0.6f);
+            DropItem(at + Jitter(60f), 0.6f + Jewels[JewelStat.BossRarity]);
         }
 
+        // A boss always drops a shard (endgame.md -> "Mirror Shards"); jewels can
+        // lift its tier and add a second one.
         int shard = RealityTiers.RollBossShard(Tier, _rng);
-        if (shard > 0)
+        if (_rng.Randf() < Jewels[JewelStat.ShardUpgrade])
         {
-            DropShard(at + Jitter(30f), shard);
+            shard = Mathf.Min(RealityTiers.MaxTier, shard + 1);
+        }
+
+        DropShard(at + Jitter(30f), shard);
+        if (_rng.Randf() < RealityTiers.BonusShardChance * (1f + _quantity) + Jewels[JewelStat.ShardChance])
+        {
+            DropShard(at + Jitter(30f), Tier);
+        }
+
+        // Mirror jewels (endgame.md -> "Mirror jewels").
+        if (!IsTutorial && Profile.Get(this) is { } jewelProfile
+            && _rng.Randf() < JewelTree.DropChance(jewelProfile.Jewels.Found + JewelsOnFloor(), Tier))
+        {
+            Pickup.Spawn(this, PickupKind.Jewel, 1f, at + Jitter(30f));
         }
 
         if (_rng.Randf() < 0.7f)
@@ -637,7 +684,7 @@ public partial class RealityController : Node2D, IPickupHandler
             DropGem(at + Jitter(40f));
         }
 
-        Pickup.Spawn(this, PickupKind.Gold, (10 + Tier * 4) * 5, at + Jitter(30f));
+        Pickup.Spawn(this, PickupKind.Gold, Mathf.Round((10 + Tier * 4) * 5 * (1f + Jewels[JewelStat.Gold] + Jewels[JewelStat.BossGold])), at + Jitter(30f));
         for (int i = 0; i < 2 + Tier / 4; i++)
         {
             DropCurrency(at + Jitter(50f));

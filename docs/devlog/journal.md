@@ -304,3 +304,17 @@ Esc → Send feedback: a bug / idea / feature-request form that opens the projec
 ## 2026-10-13 — The HUD makes room for the inventory
 
 The owner sent a screenshot of the new hideout HUD drawn over the open inventory. The inventory now sits above every HUD layer, and HUD panels in its way either slide aside (menu bar, target frame) or fade (town directory, reality info) until it closes. The first version slid back with a lerp that never quite reached zero: a test that waits for the panels to return caught it, so the slide now moves at a constant speed and lands exactly. Screenshot: `items-inventory.png`.
+
+## 2026-10-14 — The Rift fights back, Arehucaz, Mirror jewels and real water
+
+A long list of owner feedback after playing, worked through in one go.
+
+**Survival Rift.** Skills no longer fire every frame their use time allows: each has an auto-cast interval (`1.5 × use time + cooldown`, at least 0.5 s), shortened by cast/attack speed and a new card, *Quickening* (+12 % auto-cast speed). The skill bar's sweep shows the timer. Difficulty now hangs off a **danger level** that rises every minute: enemy life and damage compound (×5.5 life at 7:00, ×16 at 15:00), spawn rate and the alive cap climb, elites come more often and start mixing into ordinary spawns, and the Bone Herald returns at 5:30. Killing the Colossus no longer ends the run: a portal home opens and the **endless phase** starts — bosses every two minutes, and the reward keeps growing (gold, orbs, item cards, items kept) until you step through. Two rare power-ups: the **Cataclysm** (everything on screen dies) and the **Lodestone** (every gem on the map flies to you). Crafting orbs drop in the Rift now. The life-only HUD got a right-hand **danger gauge** instead of an empty half, and the controls hint moved off the life bar. The autoplay bot (3 runs): 5:03, a 7:52 win with three bosses, 4:16 — harder than before, still winnable. A bug the captures caught: the portal opened under the player, who left without choosing; it now arms only once you step away. Screenshots: `rift-hud.png`, `rift-powerups.png`, `rift-results.png`.
+
+**Realities.** Grey packs grow ×2.4 from tier 1 to 20, plus a growing chance of a second pack at each spot (≈ ×4 grey monsters); magic and rares grow gently. Bosses always drop a shard now (the 25 % "nothing" is gone). Liquids got a real surface: an instanced quad per tile with a world-space fbm wave shader, caustic ridges and foam along the shore — water in the Drowned Mirror and the hideout canal, glowing lava in the Ashen Halls, green ooze in the crypt. Screenshots: `town-canal.png`, `reality-liquid-water.png`.
+
+**Arehucaz.** A hooded dealer with violet eyes and a lantern of cold fire, in the alley by the north gate. He sells shards of tiers you have cleared, five at a time; the cloth refills after ten cleared realities or for 10,000 gold. Screenshots: `town-arehucaz.png`, `arehucaz-panel.png`.
+
+**Mirror jewels.** The Mirror has a Jewels tab: a 70-socket tree (the Heart, six branches — quantity, rarity, shards, density, gold, crafting/experience — and three bridges). Bosses drop jewels; the first 40 from anyone, then only tier 12+ and 17+ bosses. Jewels can be moved freely as long as the tree stays connected. Screenshot: `mirror-jewels.png`.
+
+**Not done on purpose:** the cascade drop (one item exploding into several) is written up in a GitHub issue for the owner to decide first.

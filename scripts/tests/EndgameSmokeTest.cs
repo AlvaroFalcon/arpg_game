@@ -99,6 +99,159 @@ public partial class EndgameSmokeTest : Node2D
         await TutorialChecks();
         await CraftingChecks();
         await IssueFeedbackChecks();
+        await ShardVendorChecks();
+        await JewelChecks();
+    }
+
+    /// <summary>endgame.md -> "Mirror jewels": 70 connected sockets, socket next to
+    /// the filled ones, take out only leaves of the filled set, bonuses add up, drops
+    /// gated by tier past 40, saved with the account, and the Mirror's tab works.</summary>
+    private async Task JewelChecks()
+    {
+        int notables = JewelTree.Nodes.Values.Count(n => n.Kind == JewelNodeKind.Notable);
+        var seen = new HashSet<string> { JewelTree.HeartId };
+        var queue = new Queue<string>(seen);
+        while (queue.Count > 0)
+        {
+            foreach (string l in JewelTree.Nodes[queue.Dequeue()].Links)
+            {
+                if (seen.Add(l))
+                {
+                    queue.Enqueue(l);
+                }
+            }
+        }
+
+        Check("JEWEL-TREE-SHAPE", JewelTree.Nodes.Count == 70 && notables == 12 && seen.Count == 70 && JewelTree.Nodes.Values.All(n => n.Links.All(l => JewelTree.Nodes[l].Links.Contains(n.Id))),
+            $"{JewelTree.Nodes.Count} nodes, {notables} notables, {seen.Count} reachable from the heart");
+
+        var data = new JewelData { Found = 3 };
+        bool farFirst = JewelTree.Socket(data, "b0s2");
+        bool near = JewelTree.Socket(data, "b0s1") && JewelTree.Socket(data, "b0s2") && JewelTree.Socket(data, "b3s1");
+        bool noneLeft = !JewelTree.Socket(data, "b0s3");
+        Check("JEWEL-SOCKET-RULES", !farFirst && near && noneLeft && data.Free == 0, $"far first={farFirst}, adjacent={near}, with none left={!noneLeft}");
+        bool cutOff = JewelTree.Unsocket(data, "b0s1");
+        bool leaf = JewelTree.Unsocket(data, "b0s2");
+        Check("JEWEL-UNSOCKET-KEEPS-CONNECTED", !cutOff && leaf && data.Free == 1, $"middle removed={cutOff}, leaf removed={leaf}");
+
+        data.Found = 10;
+        foreach (string id in new[] { "b0s2", "b0s3", "b0s4", "b0s5", "b0s6", "b0n" })
+        {
+            JewelTree.Socket(data, id);
+        }
+
+        JewelBonuses b = JewelTree.Bonuses(data);
+        Check("JEWEL-BONUSES-ADD-UP", Mathf.IsEqualApprox(b[JewelStat.Quantity], 0.03f * 6 + 0.10f) && Mathf.IsEqualApprox(b[JewelStat.Density], 0.03f),
+            $"quantity +{b[JewelStat.Quantity] * 100f:0}%, density +{b[JewelStat.Density] * 100f:0}%");
+        Check("JEWEL-DROPS-GATED", JewelTree.DropChance(10, 1) > 0f && JewelTree.DropChance(40, 11) == 0f && JewelTree.DropChance(40, 12) > 0f
+            && JewelTree.DropChance(60, 16) == 0f && JewelTree.DropChance(60, 17) > 0f && JewelTree.DropChance(JewelTree.Sockets, 20) == 0f,
+            $"tier needed: {JewelTree.RequiredTier(0)} → {JewelTree.RequiredTier(40)} → {JewelTree.RequiredTier(60)} → none at {JewelTree.Sockets}");
+
+        var account = new Profile { Persist = false };
+        account.Jewels.Found = data.Found;
+        account.Jewels.Socketed = new HashSet<string>(data.Socketed);
+        var reread = new Profile { Persist = false };
+        reread.LoadJson(account.ToJson());
+        Check("JEWEL-SAVES", reread.Jewels.Found == 10 && reread.Jewels.Socketed.SetEquals(data.Socketed), $"found {reread.Jewels.Found}, socketed {reread.Jewels.Socketed.Count}");
+        account.Free();
+        reread.Free();
+
+        var player = GD.Load<PackedScene>("res://scenes/Player.tscn").Instantiate<Player>();
+        AddChild(player);
+        player.GlobalPosition = new Vector2(-7000f, 0f);
+        // Never touch the real account's jewels or write it to disk.
+        Profile? real = Profile.Get(this);
+        bool persisted = real?.Persist ?? false;
+        JewelData? realJewels = real?.Jewels;
+        if (real is not null)
+        {
+            real.Persist = false;
+            real.Jewels = new JewelData();
+        }
+
+        var mirror = new UI.MirrorPanel { Player = player, Name = "JewelMirror" };
+        AddChild(mirror);
+        await Frames(1);
+        mirror.Open();
+        mirror.ShowTab(true);
+        mirror.JewelView.Data.Found += 1;
+        bool clicked = mirror.ClickJewel(JewelTree.Get("b5s1")!, false);
+        mirror.Close();
+        Check("JEWEL-MIRROR-TAB", mirror.ShowingJewels && clicked && mirror.JewelView.Data.Socketed.Contains("b5s1"), $"tab shown={mirror.ShowingJewels}, socketed through the panel={clicked}");
+        mirror.QueueFree();
+        player.QueueFree();
+        if (real is not null)
+        {
+            real.Jewels = realJewels!;
+            real.Persist = persisted;
+        }
+    }
+
+    /// <summary>endgame.md -> "Arehucaz": only cleared tiers, five at a time, restock
+    /// after ten clears or for 10,000 gold, and the stock survives a save.</summary>
+    private async Task ShardVendorChecks()
+    {
+        CharacterData c = CharacterData.Create("Dealer", "rogue");
+        c.HighestTierCleared = 6;
+        var wallet = new Wallet();
+        AddChild(wallet);
+        wallet.Add(Profile.GoldId, 50_000);
+        bool gated = ShardVendor.CannotBuy(c, wallet, 7) is not null && ShardVendor.CannotBuy(c, wallet, 1) is not null
+            && ShardVendor.CannotBuy(c, wallet, 6) is null;
+        int bought = Enumerable.Range(0, 7).Count(i => ShardVendor.TryBuy(c, wallet, 6, out string _));
+        long spent = 50_000 - wallet.GetBalance(Profile.GoldId);
+        Check("VENDOR-CLEARED-TIERS-ONLY", gated, "tier 7 (not cleared) and tier 1 (free) refused, tier 6 sold");
+        Check("VENDOR-STOCK-OF-5", bought == 5 && c.ShardCount(6) == 5 && c.ShardVendorStock == 0 && spent == 5 * ShardVendor.Price(6),
+            $"bought {bought} of 7 tries, own {c.ShardCount(6)}, paid {spent} ({ShardVendor.Price(6)} each)");
+
+        c.RealitiesCleared += 9;
+        bool early = ShardVendor.Update(c);
+        c.RealitiesCleared += 1;
+        bool restocked = ShardVendor.Update(c);
+        Check("VENDOR-RESTOCK-AFTER-10", !early && restocked && c.ShardVendorStock == 5 && ShardVendor.ClearsUntilRestock(c) == 10,
+            $"after 9 clears restocked={early}, after 10 restocked={restocked}, stock {c.ShardVendorStock}");
+
+        ShardVendor.TryBuy(c, wallet, 3, out _);
+        long before = wallet.GetBalance(Profile.GoldId);
+        bool paid = ShardVendor.TryRestock(c, wallet, out _);
+        Check("VENDOR-RESTOCK-FOR-GOLD", paid && c.ShardVendorStock == 5 && before - wallet.GetBalance(Profile.GoldId) == ShardVendor.RestockGold,
+            $"restock paid={paid}, cost {before - wallet.GetBalance(Profile.GoldId)}");
+
+        ShardVendor.TryBuy(c, wallet, 4, out _);
+        CharacterData? back = Profile.DeserializeCharacter(Profile.SerializeCharacter(c));
+        Check("VENDOR-SAVES", back is { ShardVendorStock: 4 } && back.ShardVendorSince == c.ShardVendorSince && back.ShardCount(4) == 1,
+            $"stock {back?.ShardVendorStock}, since {back?.ShardVendorSince}");
+        Check("BOSS-ALWAYS-DROPS-SHARD", Enumerable.Range(0, 500).All(_ => RealityTiers.RollBossShard(4, new RandomNumberGenerator { Seed = (ulong)GD.Randi() }) >= 4),
+            "500 boss rolls, every one a shard");
+
+        // The panel, live.
+        var player = GD.Load<PackedScene>("res://scenes/Player.tscn").Instantiate<Player>();
+        AddChild(player);
+        player.GlobalPosition = new Vector2(-6000f, 0f);
+        await Frames(1);
+        player.Wallet.Add(Profile.GoldId, 5_000);
+        Profile? real = Profile.Get(this);
+        bool persisted = real?.Persist ?? false;
+        if (real is not null)
+        {
+            real.Persist = false;
+        }
+
+        var panel = new UI.ShardVendorPanel { Player = player, Character = c, Name = "VendorPanel" };
+        AddChild(panel);
+        await Frames(1);
+        panel.Open();
+        int owned = c.ShardCount(5);
+        bool ok = panel.Buy(5);
+        panel.Close();
+        Check("VENDOR-PANEL-BUY", ok && c.ShardCount(5) == owned + 1, $"bought through the panel={ok}");
+        panel.QueueFree();
+        player.QueueFree();
+        wallet.QueueFree();
+        if (real is not null)
+        {
+            real.Persist = persisted;
+        }
     }
 
     // --- layouts ---------------------------------------------------------------------
@@ -172,7 +325,7 @@ public partial class EndgameSmokeTest : Node2D
         }
 
         bool near(int count, float p) => Mathf.Abs(count / (float)n - p) < 0.02f;
-        Check("SHARD-TABLE", near(none, 0.25f) && near(same, 0.45f) && near(plus1, 0.25f) && near(plus2, 0.05f) && none + same + plus1 + plus2 == n,
+        Check("SHARD-TABLE", none == 0 && near(same, 0.65f) && near(plus1, 0.28f) && near(plus2, 0.07f) && none + same + plus1 + plus2 == n,
             $"none {none * 100f / n:0.0}% same {same * 100f / n:0.0}% +1 {plus1 * 100f / n:0.0}% +2 {plus2 * 100f / n:0.0}%");
 
         int over = 0;
@@ -182,6 +335,14 @@ public partial class EndgameSmokeTest : Node2D
         }
 
         Check("SHARD-CAP-20", over == 0, $"{over} shards above tier 20");
+
+        (int n1, int x1) = RealityTiers.NormalPackSize(1);
+        (int n20, int x20) = RealityTiers.NormalPackSize(20);
+        (int m1, int _) = RealityTiers.MagicPackSize(1);
+        (int m20, int _) = RealityTiers.MagicPackSize(20);
+        Check("DENSITY-BY-TIER", n20 >= n1 * 2 && x20 >= x1 * 2 && m20 > m1 && m20 - m1 < n20 - n1
+            && RealityTiers.ExtraPackChance(20) > RealityTiers.ExtraPackChance(1) && RealityTiers.RaresPerPack(20) > RealityTiers.RaresPerPack(1),
+            $"grey packs {n1}-{x1} → {n20}-{x20}, magic {m1} → {m20}, extra pack {RealityTiers.ExtraPackChance(1):P0} → {RealityTiers.ExtraPackChance(20):P0}");
 
         var mods = RealityLaunch.RollModifiers(18, rng);
         (float q, float r) = RealityLaunch.Bonuses(mods);

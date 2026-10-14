@@ -77,6 +77,8 @@ public partial class RunSmokeTest : Node2D
         await ContactChecks();
         await BossPhaseChecks();
         ProfileChecks();
+        RiftCurveChecks();
+        await RiftPowerUpChecks();
 
         GD.Print($"[RUNTEST] === RESULT: {(_failed ? "FAIL" : "PASS")} ===");
         GetTree().Quit(_failed ? 1 : 0);
@@ -329,5 +331,80 @@ public partial class RunSmokeTest : Node2D
         Check("ITEM-BASES-DISCOVERED", ItemFactory.Bases.Count >= 9, $"{ItemFactory.Bases.Count} bases");
         item.Free();
         restored.Free();
+    }
+
+    /// <summary>run.md -> "The timeline" and "Rewards": the danger curve compounds,
+    /// everything that spawns scales up with it, and rewards grow with time.</summary>
+    private void RiftCurveChecks()
+    {
+        Check("DANGER-LEVEL", RunDirector.Danger(0f) == 1 && RunDirector.Danger(61f) == 2 && RunDirector.Danger(600f) == 11,
+            $"0s={RunDirector.Danger(0f)}, 61s={RunDirector.Danger(61f)}, 600s={RunDirector.Danger(600f)}");
+        (float life7, float dmg7) = RunDirector.Scaling(420f);
+        (float life15, float dmg15) = RunDirector.Scaling(900f);
+        Check("SCALING-COMPOUNDS", life7 > 4.5f && life15 > life7 * 2.5f && dmg15 > dmg7,
+            $"life ×{life7:0.0} at 7:00, ×{life15:0.0} at 15:00; damage ×{dmg7:0.0} → ×{dmg15:0.0}");
+        Check("PRESSURE-RISES", RunDirector.SpawnRate(600f) > RunDirector.SpawnRate(60f) * 3f && RunDirector.EnemyCap(600f) > RunDirector.EnemyCap(0f)
+            && RunDirector.EliteIntervalAt(600f) < RunDirector.EliteIntervalAt(0f) && RunDirector.EliteChance(0f) == 0f && RunDirector.EliteChance(600f) > 0f,
+            $"rate {RunDirector.SpawnRate(60f):0.0}→{RunDirector.SpawnRate(600f):0.0}/s, cap {RunDirector.EnemyCap(0f)}→{RunDirector.EnemyCap(600f)}, elites every {RunDirector.EliteIntervalAt(0f):0}→{RunDirector.EliteIntervalAt(600f):0}s");
+        var rng = new RandomNumberGenerator { Seed = 3 };
+        RunRewards early = RunRewards.For(240f, 1, 300, false, rng);
+        RunRewards won = RunRewards.For(450f, 3, 1500, true, rng);
+        RunRewards endless = RunRewards.For(960f, 7, 4000, true, rng);
+        Check("REWARDS-GROW-WITH-TIME", early.Gold < won.Gold && won.Gold < endless.Gold && early.Orbs.Count < won.Orbs.Count && won.Orbs.Count < endless.Orbs.Count
+            && early.Choices == 3 && endless.Choices == 5 && early.Keep == 1 && endless.Keep == 3 && endless.Quality > won.Quality,
+            $"gold {early.Gold}/{won.Gold}/{endless.Gold}, orbs {early.Orbs.Count}/{won.Orbs.Count}/{endless.Orbs.Count}, choices {early.Choices}/{won.Choices}/{endless.Choices}, keep {early.Keep}/{won.Keep}/{endless.Keep}");
+    }
+
+    private async Task RiftPowerUpChecks()
+    {
+        Player player = SpawnPlayer(new Vector2(4000, 600));
+        var state = new RunState { Player = player };
+        AddChild(state);
+        await Frames(2);
+
+        // Auto-cast timers: a skill has an interval, and Quickening shortens it.
+        PlayerSkillInput input = player.GetNode<PlayerSkillInput>("PlayerSkillInput");
+        var spark = new SkillInstance(UpgradeCatalog.Skills.First(s => s.Id == "spark").Definition);
+        float before = input.AutoCastInterval(spark);
+        var quick = new StatModifier(ModifierType.Increased, 50f, this);
+        player.Stats.Get(StatId.AutoCastSpeed).AddModifier(quick);
+        float after = input.AutoCastInterval(spark);
+        player.Stats.Get(StatId.AutoCastSpeed).RemoveModifier(quick);
+        Check("AUTOCAST-INTERVAL", before >= 0.5f && after < before * 0.75f, $"spark every {before:0.00}s, {after:0.00}s with +50% cast frequency");
+
+        // Cataclysm: on-screen enemies die, off-screen ones don't, bosses only lose life.
+        Enemy near = SpawnEnemy("Slime", player.GlobalPosition + new Vector2(120f, 40f));
+        Enemy far = SpawnEnemy("Slime", player.GlobalPosition + new Vector2(5000f, 0f));
+        state.RegisterEnemy(near);
+        state.RegisterEnemy(far);
+        await Frames(2);
+        int killed = state.Nuke(player);
+        Check("NUKE-KILLS-ON-SCREEN", near.Health.IsDead && !far.Health.IsDead && killed >= 1, $"near dead={near.Health.IsDead}, far dead={far.Health.IsDead}, killed={killed}");
+        Check("NUKE-GIVES-EXPERIENCE", GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>().Any(p => p.Kind == PickupKind.Experience), "the slain drop their gems");
+
+        // Lodestone: a gem far across the map flies in and is collected.
+        foreach (Pickup p in GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>())
+        {
+            p.QueueFree();
+        }
+
+        await Frames(1);
+        Pickup gem = Pickup.Spawn(this, PickupKind.Experience, 3f, player.GlobalPosition + new Vector2(-3000f, 0f));
+        float xp = state.Experience;
+        state.Magnetize();
+        await Frames(150);
+        Check("MAGNET-PULLS-ALL-XP", !IsInstanceValid(gem) && state.Experience > xp, $"gem collected={!IsInstanceValid(gem)}, xp {xp:0.0} → {state.Experience:0.0}");
+
+        // Orbs collected in the Rift go to the wallet (and so to the account).
+        Pickup orb = Pickup.Spawn(this, PickupKind.Currency, 1f, player.GlobalPosition);
+        orb.CurrencyKey = "kindling_shard";
+        long orbs = player.Wallet.GetBalance("kindling_shard");
+        await Frames(10);
+        Check("RIFT-ORB-PICKUP", player.Wallet.GetBalance("kindling_shard") == orbs + 1 && state.OrbsCollected == 1, $"kindling {orbs} → {player.Wallet.GetBalance("kindling_shard")}");
+
+        far.QueueFree();
+        state.QueueFree();
+        player.QueueFree();
+        await Frames(1);
     }
 }

@@ -40,15 +40,37 @@ is always free**, so nobody can lock themselves out of the endgame.
 
   | Outcome | Chance |
   |---|---|
-  | No shard | 25 % |
-  | Same tier | 45 % |
-  | Tier +1 | 25 % |
-  | Tier +2 | 5 % |
+  | Same tier | 65 % |
+  | Tier +1 | 28 % |
+  | Tier +2 | 7 % |
 
-  ≈ 1.1 shards per clear. Rares (3 %) and unique-rares (15 %) can also drop a
+  **A boss always drops at least one shard** (owner's rule, 2026-10-14 — the old
+  table had a 25 % "nothing", which could strand a player at their tier), plus a
+  15 % chance (scaled by item quantity) of a second same-tier shard: ≈ 1.15 shards
+  per clear. Rares (3 %) and unique-rares (15 %) can also drop a
   current-tier shard as a safety net. Tier 20 caps the result.
 - Shards drop as floor pickups with a light beam coloured by band (white 1–5,
   yellow 6–10, orange 11–15, red 16–20, PoE's map colours).
+
+### Arehucaz, the shard dealer (2026-10-14)
+
+A tall hooded figure in a ragged black robe stands in the dark alley by the hideout's
+north gate, violet eyes in the hood and Mirror Shards glinting on a cloth at his
+feet. He sells shards for gold (`ShardVendor`, scripts/World/ShardVendor.cs;
+`ShardVendorPanel`):
+
+- **Only tiers the character has cleared** (2 to `HighestTierCleared`; tier 1 is
+  free at the Mirror anyway). Buying never takes you past your own best tier — he
+  is insurance against a dry spell of boss shards, not a shortcut.
+- **Five at a time**, per character. The stock comes back after **ten more cleared
+  realities**, or at once for **10,000 gold**.
+- **Price** `50 + 25·tier + 4·tier²`: 79 gold at tier 2, 700 at tier 10, 2,150 at
+  tier 20 — about one or two boss kills' worth of gold at the same tier.
+
+Alternatives considered: an account-wide stock (rejected — shards and the tier record
+are per character, and a shared stock would let a main feed an alt past tiers the alt
+never cleared); a timer-based restock (rejected — the owner asked for "after 10
+maps", which also ties it to playing rather than waiting).
 
 ### Shard modifiers ("Empower")
 
@@ -81,6 +103,9 @@ One number drives everything (`RealityTiers`, scripts/World/RealityTheme.cs):
 | Monster damage multiplier | ×1 | ×2.1 | ×5 |
 | Magic / rare pack chance | 45 % / 30 % | 62 % / 49 % | 80 % / 70 % |
 | Unique-rare chance per spot | 12 % | 25 % | 40 % |
+| Grey (normal) pack size | 5–8 | 8–13 | 12–19 |
+| Second grey pack at a spot | 15 % | 39 % | 65 % |
+| Magic per magic pack · rares per rare pack | 3–4 · 1 | 4–5 · 1 | 5–7 · 2 (from tier 12) |
 | Portals (lives) | 3 | 3 | 1 (from tier 15) |
 
 Life and damage multipliers are exponential (25^((t−1)/19), 5^((t−1)/19)): each
@@ -93,6 +118,45 @@ onto tiers 1–20 without new data.
 in progress resets: the gate opens and the boss goes back to sleep). The last
 portal lost collapses the reality and the shard is gone. Three portals at low
 tiers, one from tier 15: the stakes rise with the tier.
+
+## Mirror jewels (2026-10-14)
+
+The Mirror's second tab is a **jewel tree** (`JewelTree`, scripts/World/MirrorJewels.cs;
+`JewelTreeView`). Seventy sockets: **the Mirror's Heart** in the middle, six
+branches of eleven and three bridges between neighbouring branches. Each branch is
+a spine of six small sockets ending in a notable, a side path of two small sockets
+ending in a second notable, and one dead-end small socket:
+
+| Branch | Small socket | Spine notable | Side notable |
+|---|---|---|---|
+| Abundance | +3 % item quantity | Overflowing Glass: +10 % quantity | Hoarder's Reflection: bosses drop 1 extra item |
+| Gilded Glass | +5 % item rarity | Prismatic: +15 % rarity | Crowned Spoils: boss items roll 30 % rarer |
+| Shardbound | +4 % extra boss shard | Shard-Sworn: +20 % extra boss shard | Ascending Echo: +15 % boss shard one tier higher |
+| Teeming | +3 % more monsters | Swarming Reflections: +10 % monsters | Dangerous Company: +12 % magic and rare packs |
+| Avarice | +6 % gold | Midas' Mirror: +25 % gold | Tithe of Kings: bosses drop double gold |
+| Artifice | +5 % crafting orbs | Crucible: +20 % orbs | Insight: +10 % character experience |
+
+Bridges give 60 % of both neighbours' small stat. A full tree is roughly +45 % item
+quantity, +65 % rarity, +80 % extra-shard chance, +40 % monsters and +80 % gold.
+
+- **Socketing**: a jewel goes into a socket next to the Heart or to a filled
+  socket. Any jewel can come back out, free, as long as everything else stays
+  connected — jewels are the scarce thing, so re-planning shouldn't cost.
+- **Drops**: a reality boss drops a jewel with `30 % + 1 %·tier`. The first **40**
+  jewels come from any boss; jewels 41–55 only from **tier 12+** bosses, 56–69 only
+  from **tier 17+**. 69 jewels fill the tree, then no more drop.
+- **Account-wide** (`Profile.Jewels`), like the Mirror itself and orbs: the tree
+  is the account's long-term progression across characters.
+- **Applies in Altered Realities only** (not the tutorial, not the Survival Rift):
+  quantity/rarity add to the shard modifiers' bonuses, density scales grey pack
+  size and the chance of a second pack, and the rest hooks the boss and loot drops.
+
+Alternatives considered: jewels as items with random stats socketed into fixed
+slots (PoE's atlas jewels) — more loot to sort for a system the owner described as
+a tree that "keeps giving benefits"; jewels as plain points on a passive tree
+without the socket look — the same rules, but the jewels then disappear from view.
+Open question: should jewels ever have qualities (a "perfect" jewel doubling its
+socket)?
 
 ## Altered Realities (the dungeons)
 
@@ -141,6 +205,14 @@ toolchain notes warn about. The boss gate simply marks its cells unwalkable.
 Packs are placed and **dormant** until the player comes within aggro range (or a
 pack-mate is hit), then wake together. A failed magic/rare roll still leaves a
 normal pack, so rooms are never empty.
+
+**Density (2026-10-14).** Owner feedback: maps were too easy and too empty. From
+tier 1 to 20 grey monsters grow the most — packs ×2.4 and a growing chance of a
+second pack at each spot, roughly ×4 grey monsters overall — while magic and rare
+monsters grow gently (the stronger ones climb, but stay a minority). Grey monsters
+are what make clearing feel like clearing; more rares would mostly make it slower.
+See the tier table above (`RealityTiers.NormalPackSize`, `ExtraPackChance`,
+`MagicPackSize`, `RaresPerPack`).
 
 ### Monster rarity
 

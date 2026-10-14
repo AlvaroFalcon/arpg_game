@@ -30,6 +30,19 @@ public partial class RunState : Node, IPickupHandler
     [Signal]
     public delegate void RunEndedEventHandler(bool victory);
 
+    /// <summary>A short line for the HUD (orb picked up, power-up used).</summary>
+    [Signal]
+    public delegate void ToastEventHandler(string text, Color color);
+
+    /// <summary>Drop chances of the Rift power-ups per ordinary kill (elites: ×40).
+    /// About one Cataclysm every two minutes of steady killing, a Lodestone a little
+    /// more often; never more than one of each on the floor.</summary>
+    public const float NukeChance = 0.0009f;
+    public const float MagnetChance = 0.0013f;
+
+    /// <summary>Crafting-orb chance per ordinary kill; elites 25%, bosses drop 3.</summary>
+    public const float OrbChance = 0.004f;
+
     public int Level { get; private set; } = 1;
     public float Experience { get; private set; }
     public float Elapsed { get; private set; }
@@ -39,6 +52,8 @@ public partial class RunState : Node, IPickupHandler
     public long GoldCollected { get; private set; }
     public bool Ended { get; private set; }
     public bool Victory { get; private set; }
+    public int OrbsCollected { get; private set; }
+    public int NukesUsed { get; private set; }
 
     /// <summary>Level-ups earned but not yet chosen.</summary>
     public int PendingLevelUps { get; private set; }
@@ -154,6 +169,27 @@ public partial class RunState : Node, IPickupHandler
             Pickup.Spawn(GetTree().CurrentScene, PickupKind.Gold, enemy.IsElite ? 25 : 3, at + RandomOffset(10f));
         }
 
+        // Power-ups and orbs (docs/design/run.md -> "Pickups"). A Cataclysm's own
+        // victims never drop another one.
+        if (!_nuking)
+        {
+            float boost = enemy.IsBoss ? 0f : enemy.IsElite ? 40f : 1f;
+            if (_rng.Randf() < NukeChance * boost && !OnFloor(PickupKind.Nuke))
+            {
+                Pickup.Spawn(GetTree().CurrentScene, PickupKind.Nuke, 1f, at + RandomOffset(14f));
+            }
+            else if (_rng.Randf() < MagnetChance * boost && !OnFloor(PickupKind.Magnet))
+            {
+                Pickup.Spawn(GetTree().CurrentScene, PickupKind.Magnet, 1f, at + RandomOffset(14f));
+            }
+        }
+
+        int orbs = enemy.IsBoss ? 3 : _rng.Randf() < (enemy.IsElite ? 0.25f : OrbChance) ? 1 : 0;
+        for (int i = 0; i < orbs; i++)
+        {
+            DropOrb(at + RandomOffset(24f));
+        }
+
         // Gear drops (docs/design/run.md -> "Rewards"): elites sometimes, bosses always.
         int drops = enemy.IsBoss ? 2 : enemy.IsElite && _rng.Randf() < 0.3f ? 1 : 0;
         for (int i = 0; i < drops; i++)
@@ -205,6 +241,77 @@ public partial class RunState : Node, IPickupHandler
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, itemLevel, Items.ItemFactory.Affixes.Entries, _rng);
     }
 
+    public void DropOrb(Vector2 at)
+    {
+        Pickup orb = Pickup.Spawn(GetTree().CurrentScene, PickupKind.Currency, 1f, at);
+        orb.CurrencyKey = Items.Crafting.RollOrb(_rng).Id;
+        orb.QueueRedraw();
+    }
+
+    private bool OnFloor(PickupKind kind)
+    {
+        foreach (Node n in GetTree().GetNodesInGroup(PickupGroup))
+        {
+            if (n is Pickup p && p.Kind == kind && !p.IsQueuedForDeletion())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool _nuking;
+
+    /// <summary>
+    /// The Cataclysm: every non-boss enemy inside the camera's view dies at once
+    /// (experience and drops as normal, credited to the player); bosses on
+    /// screen lose a tenth of their life. Returns how many died.
+    /// </summary>
+    public int Nuke(Player player)
+    {
+        Rect2 view = player.GetViewport().CanvasTransform.AffineInverse() * player.GetViewport().GetVisibleRect();
+        int killed = 0;
+        _nuking = true;
+        foreach (Node node in GetTree().GetNodesInGroup(CombatQuery.EnemyGroup))
+        {
+            if (node is not Enemy enemy || enemy.Health.IsDead || !view.HasPoint(enemy.GlobalPosition))
+            {
+                continue;
+            }
+
+            if (enemy.IsBoss)
+            {
+                enemy.Health.ApplyResolvedDamage((enemy.Stats.Life?.Max ?? 0f) * 0.1f, player);
+                continue;
+            }
+
+            enemy.Health.ApplyResolvedDamage(float.MaxValue / 4f, player);
+            killed++;
+        }
+
+        _nuking = false;
+        NukesUsed++;
+        return killed;
+    }
+
+    /// <summary>The Lodestone: every experience gem and gold coin on the map flies
+    /// to the player. Returns how many were pulled.</summary>
+    public int Magnetize()
+    {
+        int pulled = 0;
+        foreach (Node node in GetTree().GetNodesInGroup(PickupGroup))
+        {
+            if (node is Pickup { Kind: PickupKind.Experience or PickupKind.Gold } p)
+            {
+                p.Attract();
+                pulled++;
+            }
+        }
+
+        return pulled;
+    }
+
     /// <summary>Persistent-character experience for a kill (docs/design/endgame.md ->
     /// "Persistent character"): grows with monster level and rarity.</summary>
     public static float CharacterExperienceFor(Enemy enemy) =>
@@ -246,6 +353,24 @@ public partial class RunState : Node, IPickupHandler
                 Core.Sfx.Play(this, "pickup");
                 GoldCollected += (long)pickup.Value;
                 player.Wallet.Add(Core.Profile.GoldId, (long)pickup.Value);
+                break;
+            case PickupKind.Currency when Items.Crafting.Find(pickup.CurrencyKey) is { } currency:
+                Core.Sfx.Play(this, "pickup", -2f);
+                OrbsCollected++;
+                player.Wallet.Add(currency.Id, 1);
+                EmitSignal(SignalName.Toast, currency.Name, currency.Color);
+                break;
+            case PickupKind.Nuke:
+                Core.Sfx.Play(this, "boss_warn");
+                int killed = Nuke(player);
+                ScreenFlash.Spawn(this, new Color(1f, 0.55f, 0.3f));
+                EmitSignal(SignalName.Toast, $"Cataclysm — {killed} slain", new Color(1f, 0.45f, 0.3f));
+                break;
+            case PickupKind.Magnet:
+                Core.Sfx.Play(this, "levelup", -6f);
+                Magnetize();
+                ScreenFlash.Spawn(this, new Color(0.45f, 0.75f, 1f), 0.25f);
+                EmitSignal(SignalName.Toast, "Lodestone — everything comes to you", new Color(0.55f, 0.8f, 1f));
                 break;
         }
     }

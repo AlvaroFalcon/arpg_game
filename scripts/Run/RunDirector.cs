@@ -16,10 +16,19 @@ namespace ArpgGame.Run;
 /// <item>3:00: <b>the Bone Herald</b> (mid boss). Normal spawns drop to a trickle
 /// while it lives.</item>
 /// <item>After the Herald: the pressure resumes, harder, until 7:00.</item>
+/// <item>5:30: the Herald returns.</item>
 /// <item>7:00: <b>the Ember Colossus</b>. The arena is cleared of normal enemies
 /// (they burn away, no experience) and the fight is one on one, plus whatever
 /// the boss summons. Killing it wins the run.</item>
+/// <item>After the Colossus: <b>the endless phase</b> — a portal home opens where
+/// it fell, spawning resumes and keeps getting harder, a boss comes every two
+/// minutes, and the reward keeps growing until the player steps through (or
+/// falls — the run still counts as a victory).</item>
 /// </list>
+///
+/// Everything is driven by the <see cref="Danger"/> level, which rises every
+/// minute: enemy life and damage (compounding), spawn rate, the enemy cap, how
+/// often elites appear and the monster level.
 ///
 /// Spawns appear just outside the camera so enemies walk <i>in</i> rather than
 /// popping into existence on top of the player.
@@ -42,8 +51,11 @@ public partial class RunDirector : Node
     [Export] public PackedScene? Colossus;
 
     [Export] public float HeraldTime = 180f;
+    [Export] public float HeraldReturnTime = 330f;
     [Export] public float ColossusTime = 420f;
-    [Export] public float EliteInterval = 45f;
+
+    /// <summary>Endless phase: seconds between bosses.</summary>
+    [Export] public float EndlessBossInterval = 120f;
     [Export] public float SwarmInterval = 60f;
 
     public RunState State { get; set; } = null!;
@@ -57,9 +69,21 @@ public partial class RunDirector : Node
     private float _nextElite;
     private float _nextSwarm;
     private bool _heraldSpawned;
+    private bool _heraldReturned;
     private bool _colossusSpawned;
     private Enemy? _herald;
     private Enemy? _colossus;
+    private float _nextEndlessBoss;
+    private int _endlessBosses;
+
+    /// <summary>The Colossus has fallen: the run is won and the endless phase is on.</summary>
+    public bool ColossusDefeated { get; private set; }
+
+    /// <summary>The portal home that opens where the Colossus fell.</summary>
+    public Node2D? ExitPortal { get; private set; }
+
+    /// <summary>When the endless phase began (0 before).</summary>
+    public float EndlessSince { get; private set; }
 
     public Enemy? ActiveBoss => _colossus is not null && IsInstanceValid(_colossus) ? _colossus
         : _herald is not null && IsInstanceValid(_herald) ? _herald : null;
@@ -78,9 +102,10 @@ public partial class RunDirector : Node
     public void SyncTimers()
     {
         float t = State.Elapsed;
-        _nextElite = Mathf.Max(FirstEliteTime, Mathf.Ceil((t + 1f) / EliteInterval) * EliteInterval);
+        _nextElite = Mathf.Max(FirstEliteTime, t + EliteIntervalAt(t));
         _nextSwarm = Mathf.Ceil((t + 1f) / SwarmInterval) * SwarmInterval;
         _heraldSpawned = t > HeraldTime + 1f;
+        _heraldReturned = t > HeraldReturnTime + 1f;
     }
 
     private bool HeraldAlive => _herald is not null && IsInstanceValid(_herald) && !_herald.Health.IsDead;
@@ -101,20 +126,46 @@ public partial class RunDirector : Node
             return;
         }
 
-        if (_colossusSpawned)
+        if (_colossusSpawned && !ColossusDefeated)
         {
             return;
         }
 
-        if (!_heraldSpawned && t >= HeraldTime)
+        if (ColossusDefeated)
+        {
+            CheckExitPortal();
+            if (State.Ended)
+            {
+                return;
+            }
+
+            if (t >= _nextEndlessBoss && ActiveBoss is null)
+            {
+                _nextEndlessBoss = t + EndlessBossInterval;
+                _endlessBosses++;
+                Enemy? boss = _endlessBosses % 2 == 1
+                    ? SpawnBoss(Herald, "The Bone Herald", "It will not stay dead")
+                    : SpawnBoss(Colossus, "An Ember Colossus", "Another heart kindles");
+                if (_endlessBosses % 2 == 1)
+                {
+                    _herald = boss;
+                }
+            }
+        }
+        else if (!_heraldSpawned && t >= HeraldTime)
         {
             _heraldSpawned = true;
             _herald = SpawnBoss(Herald, "The Bone Herald", "A herald of the dead answers the slaughter");
         }
+        else if (!_heraldReturned && t >= HeraldReturnTime && !HeraldAlive)
+        {
+            _heraldReturned = true;
+            _herald = SpawnBoss(Herald, "The Bone Herald returns", "Stronger for its rest");
+        }
 
         float rate = SpawnRate(t) * (HeraldAlive ? 0.15f : 1f);
         _budget += rate * dt;
-        int cap = Mathf.RoundToInt(110 + t / 60f * 18f);
+        int cap = EnemyCap(t);
         Godot.Collections.Array<Node> enemies = GetTree().GetNodesInGroup(CombatQuery.EnemyGroup);
         int alive = enemies.Count;
         _rangedAlive = 0;
@@ -141,13 +192,14 @@ public partial class RunDirector : Node
                 _rangedAlive++;
             }
 
-            SpawnAtEdge(next);
+            // Past the first minutes any spawn may come as an elite.
+            SpawnAtEdge(next, elite: _rng.Randf() < EliteChance(t));
             alive++;
         }
 
         if (t >= _nextElite && !HeraldAlive)
         {
-            _nextElite += EliteInterval;
+            _nextElite = t + EliteIntervalAt(t);
             SpawnAtEdge(PickEnemy(t), elite: true);
             EmitSignal(SignalName.Announced, "An elite approaches", "", new Color(1f, 0.85f, 0.4f));
         }
@@ -159,12 +211,35 @@ public partial class RunDirector : Node
         }
     }
 
-    /// <summary>Spawns per second: gentle ramp, roughly 1.4/s at the start and
-    /// ~8/s by the six-minute mark.</summary>
-    public static float SpawnRate(float t) => 1.1f + t / 60f * 1.15f;
+    /// <summary>The danger level: 1 for the first minute, +1 every minute after.
+    /// Shown on the HUD; everything below scales with the same clock.</summary>
+    public static int Danger(float t) => 1 + Mathf.FloorToInt(t / 60f);
 
-    /// <summary>Life and damage multipliers for an enemy spawned at time t.</summary>
-    public static (float Life, float Damage) Scaling(float t) => (1f + t / 60f * 0.38f, 1f + t / 60f * 0.13f);
+    /// <summary>Spawns per second: about 1.1/s at the start, ~9/s at six
+    /// minutes, and still climbing in the endless phase.</summary>
+    public static float SpawnRate(float t) => 1.1f + t / 60f * 1.35f;
+
+    /// <summary>How many enemies may be alive at once.</summary>
+    public static int EnemyCap(float t) => Mathf.RoundToInt(115f + t / 60f * 24f);
+
+    /// <summary>Life and damage multipliers for an enemy spawned at time t: a
+    /// linear ramp times a compounding one, so an endless run keeps outpacing
+    /// a finished build instead of flattening out (×5.5 life at 7:00, ×16 at 15:00).</summary>
+    public static (float Life, float Damage) Scaling(float t)
+    {
+        float m = t / 60f;
+        return ((1f + m * 0.38f) * Mathf.Pow(1.06f, m), (1f + m * 0.13f) * Mathf.Pow(1.03f, m));
+    }
+
+    /// <summary>Seconds between announced elites: 45 s early, down to 14 s.</summary>
+    public static float EliteIntervalAt(float t) => Mathf.Max(14f, 45f - t / 60f * 4f);
+
+    /// <summary>Chance that an ordinary spawn comes as an elite: none for two
+    /// minutes, then rising to 4%.</summary>
+    public static float EliteChance(float t) => Mathf.Clamp((t / 60f - 2f) * 0.005f, 0f, 0.04f);
+
+    /// <summary>The monster level of a spawn (character experience).</summary>
+    public static int MonsterLevelAt(float t) => 1 + Mathf.FloorToInt(t / 60f * 2f);
 
     /// <summary>Ranged enemies alive right now (refreshed once per spawning frame).</summary>
     private int _rangedAlive;
@@ -234,6 +309,7 @@ public partial class RunDirector : Node
         enemy.GlobalPosition = position;
         (float life, float damage) = Scaling(State.Elapsed);
         enemy.ApplyScaling(life, damage);
+        enemy.MonsterLevel = MonsterLevelAt(State.Elapsed);
         if (elite)
         {
             enemy.MakeElite();
@@ -287,6 +363,7 @@ public partial class RunDirector : Node
     public void StartFinalBoss()
     {
         _colossusSpawned = true;
+        _herald = null;
         foreach (Node node in GetTree().GetNodesInGroup(CombatQuery.EnemyGroup))
         {
             if (node is Enemy enemy && !enemy.IsBoss)
@@ -315,16 +392,66 @@ public partial class RunDirector : Node
         }
     }
 
-    private async void OnColossusKilled()
+    /// <summary>
+    /// The run is won. Instead of ending it, a portal home opens where the
+    /// Colossus fell and the endless phase starts: the waves come back
+    /// stronger, and every extra minute adds to the reward (ResultsScreen).
+    /// </summary>
+    private void OnColossusKilled()
     {
-        EmitSignal(SignalName.Announced, "Victory", "The Ember Colossus falls", new Color(1f, 0.85f, 0.4f));
+        if (ColossusDefeated)
+        {
+            return;
+        }
+
+        ColossusDefeated = true;
+        EndlessSince = State.Elapsed;
+        _nextEndlessBoss = State.Elapsed + EndlessBossInterval;
+        _nextElite = State.Elapsed + EliteIntervalAt(State.Elapsed);
+        _nextSwarm = State.Elapsed + SwarmInterval / 2f;
+        Vector2 at = _colossus is not null && IsInstanceValid(_colossus) ? _colossus.GlobalPosition : Arena.Center;
+        EmitSignal(SignalName.Announced, "Victory", "A portal home opens — or stay for greater rewards", new Color(1f, 0.85f, 0.4f));
         Core.Sfx.Play(this, "victory");
+        Core.Sfx.Music(this, "music_run");
         foreach (Node node in GetTree().GetNodesInGroup(RunState.PickupGroup))
         {
             (node as Pickup)?.Attract();
         }
 
-        await ToSignal(GetTree().CreateTimer(2.5, processAlways: false), SceneTreeTimer.SignalName.Timeout);
-        State.EndRun(true);
+        ExitPortal = new Portal { Name = "ExitPortal", ZIndex = -1 };
+        GetTree().CurrentScene.AddChild(ExitPortal);
+        ExitPortal.GlobalPosition = Arena.Clamp(at, 80f);
+    }
+
+    /// <summary>Leaves through the portal: the run ends as a victory.</summary>
+    public void TakeExitPortal()
+    {
+        if (ColossusDefeated && !State.Ended)
+        {
+            State.EndRun(true);
+        }
+    }
+
+    /// <summary>The portal opens where the Colossus fell — often right on top of the
+    /// player — so it only works once they have stepped away from it: nobody should
+    /// leave by accident before choosing whether to stay.</summary>
+    private bool _portalArmed;
+
+    private void CheckExitPortal()
+    {
+        if (ExitPortal is null || State.Player is null)
+        {
+            return;
+        }
+
+        float distance = State.Player.GlobalPosition.DistanceTo(ExitPortal.GlobalPosition);
+        if (distance > 110f)
+        {
+            _portalArmed = true;
+        }
+        else if (_portalArmed && distance < 34f)
+        {
+            TakeExitPortal();
+        }
     }
 }
