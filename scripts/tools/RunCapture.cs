@@ -546,8 +546,8 @@ public partial class RunCapture : Node
 
     /// <summary>
     /// Each cavern style in game (docs/design/endgame.md -> "Caverns"): a zoomed-out
-    /// view, the entrance, and a spot beside its liquid — opened from a shard seed
-    /// like the Mirror does, at tier 10.
+    /// view, the entrance, and a spot beside its liquid, at tier 10 (seeds pinned so
+    /// each style shows up); plus the hideout canal and the loading screen.
     /// </summary>
     private async Task CavesScript()
     {
@@ -557,18 +557,22 @@ public partial class RunCapture : Node
             demo.Hideout.GuideSeen = true;
         }
 
-        // The Mirror previews the cavern the selected shard opens.
+        // The hideout canal with the rounded shoreline.
         GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
         await Wait(1.0f);
         if (GetTree().CurrentScene is Hideout hideout)
         {
-            var mirror = hideout.GetNode<MirrorPanel>("MirrorPanel");
-            mirror.Open();
-            mirror.Select(5);
-            await Wait(0.4f);
-            await Snap("mirror-map-preview.png");
-            mirror.Close();
+            hideout.Player.GlobalPosition = World.HideoutTown.World(new Vector2I(10, 23));
+            await Wait(1.2f);
+            await Snap("town-canal.png");
         }
+
+        // The loading screen as the Mirror opens a reality.
+        RealityLaunch.Tier = 10;
+        UI.LoadingScreen.Go(GetTree(), ArpgGame.Core.Scenes.Reality, "The Mirror opens", "A new reality takes shape…");
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await Snap("loading-screen.png");
+        await Wait(1.5f);
 
         foreach (LayoutDef def in LayoutCatalog.Layouts)
         {

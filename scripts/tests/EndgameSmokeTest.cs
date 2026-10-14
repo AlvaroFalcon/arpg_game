@@ -321,7 +321,7 @@ public partial class EndgameSmokeTest : Node2D
 
     /// <summary>endgame.md -> "Caverns": every style over many seeds is connected, has
     /// its boss behind a small gate, enough well-spaced reachable packs, no one-cell
-    /// passages; the same seed gives the same map; a shard's seed moves on once opened.</summary>
+    /// passages; the same seed gives the same map.</summary>
     private void CaveChecks()
     {
         foreach (LayoutDef def in LayoutCatalog.Layouts)
@@ -380,16 +380,6 @@ public partial class EndgameSmokeTest : Node2D
         string b = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 99 }).Dump();
         string other = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 100 }).Dump();
         Check("CAVE-SEED-DETERMINISTIC", a == b && a != other, "seed 99 twice gives the same map, seed 100 another");
-
-        CharacterData c = CharacterData.Create("Seeker", "rogue");
-        ulong first = RealityLaunch.ShardSeed(c, 4);
-        bool stable = RealityLaunch.ShardSeed(c, 4) == first && RealityLaunch.ShardSeed(c, 5) != first;
-        c.ShardsOpened[4] = 1;
-        ulong next = RealityLaunch.ShardSeed(c, 4);
-        CharacterData? back = Profile.DeserializeCharacter(Profile.SerializeCharacter(c));
-        Check("SHARD-SEED", stable && next != first && back is not null && RealityLaunch.ShardSeed(back, 4) == next
-            && LayoutCatalog.Layouts.Contains(RealityLaunch.LayoutFor(next)),
-            $"same shard → same seed, opening one moves on, survives a save; next tier-4 map: {RealityLaunch.LayoutFor(next).Name}");
     }
 
     // --- tiers and shards ---------------------------------------------------------
@@ -680,8 +670,28 @@ public partial class EndgameSmokeTest : Node2D
         Vector2I playerCell = reality.Field.CellOf(reality.Player.GlobalPosition);
         Check("REALITY-PLAYER-AT-ENTRANCE", playerCell == reality.Raster.Entrance, $"player cell {playerCell}, entrance {reality.Raster.Entrance}");
 
-        // A cavern opened from a shard seed (endgame.md -> "Caverns"): the seed picks
-        // the style, the map matches the Mirror's preview, and it is fully populated.
+        // Caverns (endgame.md -> "Caverns"): a pinned seed (tools) rebuilds the same
+        // map; without one — as the Mirror opens them — every entry is a new map.
+        var unseen = new HashSet<string>();
+        for (int i = 0; i < 2; i++)
+        {
+            RealityLaunch.Tier = 6;
+            var fresh = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+            AddChild(fresh);
+            await Frames(2);
+            unseen.Add(fresh.Raster.Dump());
+            bool ok = fresh.Seed is null && fresh.Layout.Cave is not null;
+            fresh.QueueFree();
+            await Frames(2);
+            if (!ok)
+            {
+                unseen.Clear();
+                break;
+            }
+        }
+
+        Check("CAVE-NEW-EVERY-ENTRY", unseen.Count == 2, "two entries without a seed built two different caverns");
+
         foreach (ulong seed in new ulong[] { 11, 12, 13 })
         {
             RealityLaunch.Tier = 6;
@@ -694,7 +704,7 @@ public partial class EndgameSmokeTest : Node2D
             Vector2I at = cave.Field.CellOf(cave.Player.GlobalPosition);
             Check($"CAVE-REALITY-{seed}", cave.Layout == expected && cave.Layout.Cave is not null && cave.Raster.Dump() == preview
                 && cave.MonstersTotal >= 30 && cave.Boss is not null && (at - cave.Raster.Entrance).LengthSquared() <= 2 && cave.Seed == seed,
-                $"{cave.Layout.Name}: {cave.MonstersTotal} monsters, matches preview={cave.Raster.Dump() == preview}, boss {cave.Boss?.DisplayName}, player cell {at} vs entrance {cave.Raster.Entrance}, seed {cave.Seed}");
+                $"{cave.Layout.Name}: {cave.MonstersTotal} monsters, same map as its seed={cave.Raster.Dump() == preview}, boss {cave.Boss?.DisplayName}, player cell {at} vs entrance {cave.Raster.Entrance}, seed {cave.Seed}");
             cave.QueueFree();
             await Frames(2);
         }

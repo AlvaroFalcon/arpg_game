@@ -2,9 +2,9 @@
 // "Liquids". One quad per liquid tile (instanced), animated in world space so the
 // pattern flows across tiles without seams: rolling fbm waves displace the
 // vertices and bend the normal, bright caustic ridges drift over it, and foam
-// laps at the shore. INSTANCE_CUSTOM marks which sides of the tile touch land
-// (r = west, g = east, b = north, a = south). The same shader is water, lava
-// and ooze through its uniforms; `style` switches lava to drifting crust plates
+// laps at the shore. The shoreline comes from a blurred mask of the liquid
+// tiles, so it is smooth and rounded rather than following the square tiles.
+// The same shader is water, lava and ooze through its uniforms; `style` switches lava to drifting crust plates
 // over glowing cracks with popping bubbles, and ooze to slow fat bubbles.
 shader_type spatial;
 render_mode cull_back, specular_schlick_ggx;
@@ -20,9 +20,13 @@ uniform float caustics = 0.4;
 // 0 water, 1 lava (drifting crust plates over glowing cracks), 2 ooze (bubbling).
 uniform int style = 0;
 uniform vec4 crack_color : source_color = vec4(1.0, 0.8, 0.3, 1.0);
+// The blurred liquid mask (one texel per tile) and how it maps onto world x/z.
+uniform sampler2D shore_mask : filter_linear, repeat_disable;
+uniform vec2 mask_origin = vec2(0.0);
+uniform vec2 mask_step = vec2(1.0);
+uniform vec2 mask_size = vec2(1.0);
 
 varying vec3 world_pos;
-varying vec4 shore;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -82,7 +86,6 @@ float bubbles(vec2 p, float t, float density) {
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	shore = INSTANCE_CUSTOM;
 	VERTEX.y += (waves(world_pos.xz, TIME) - 0.5) * wave_height;
 }
 
@@ -94,12 +97,19 @@ void fragment() {
 	vec3 n = normalize(vec3((h - waves(p + vec2(e, 0.0), t)) * 5.0, 1.0, (h - waves(p + vec2(0.0, e), t)) * 5.0));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 
-	// Distance to the nearest shore side, in tile units (1 = open water).
-	float d = 1.0;
-	if (shore.r > 0.5) d = min(d, UV.x);
-	if (shore.g > 0.5) d = min(d, 1.0 - UV.x);
-	if (shore.b > 0.5) d = min(d, UV.y);
-	if (shore.a > 0.5) d = min(d, 1.0 - UV.y);
+	// The shoreline: the blurred liquid mask (one texel per tile, see
+	// VoxelStage.AddLiquidSurface) crosses one half along a smooth, rounded curve
+	// instead of the tiles' square steps; world-space noise wobbles it a little.
+	// The land side is cut away (the floor is drawn beneath).
+	vec2 texel = (p - mask_origin) / mask_step;
+	float field = texture(shore_mask, (texel + 0.5) / mask_size).r;
+	float shoreLine = 0.5 + 0.14 * (noise(p * 2.3 + vec2(3.7, 1.1)) - 0.5);
+	if (field < shoreLine) {
+		discard;
+	}
+
+	// How far into the liquid (0 at the shore, 1 well inside), for depth, foam and the lava rim.
+	float d = clamp((field - shoreLine) * 3.0, 0.0, 1.0);
 
 	vec3 col = mix(shallow_color.rgb, deep_color.rgb, smoothstep(0.0, 0.5, d) * (0.75 + 0.25 * h));
 	float glow = 0.0;

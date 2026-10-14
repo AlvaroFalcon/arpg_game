@@ -206,11 +206,12 @@ the gate, the map overlay, the voxel view and the tests needed no changes.
 Size: the same as the room layouts (≈ 1,000–1,900 walkable cells against ≈ 1,500),
 by the owner's call; 17–19 pack spots, so pack density per tier is unchanged.
 
-**One shard, one map.** A map's seed comes from the character, the tier and how
-many shards of that tier they have opened (`RealityLaunch.ShardSeed`, FNV-1a, stable
-across runs). The seed picks the cavern style and shapes it, so the Mirror shows a
-**preview** of the cavern the selected shard opens, and the next shard of that tier
-opens a different one. Re-empowering a shard doesn't change its map.
+**A new map on every entry.** The cavern style and its whole shape are rolled when
+you step through the Mirror; nothing about the map is known before. (A first version
+seeded the map from the shard and previewed it in the Mirror; the owner didn't want
+the layout seen before entering, so it was removed.) Generation and building the
+voxel world happen behind a **loading screen** (menus.md -> "Loading screen").
+Tests and tools can still pin `RealityLaunch.Seed` to rebuild a given cavern.
 
 **Look** (art-pipeline.md -> "Liquids", "Caverns"): uneven rock heights, glowing
 clusters along the cave walls (embers, ghost-lights, crystals) with flickering
@@ -228,8 +229,8 @@ waited forever on a life orb it couldn't pick up with full flasks.)
 
 Tests: 60 seeds per style must have a reachable boss behind a 1–6 cell gate, 12+
 reachable packs at least five cells apart and no one-cell passages; the same seed
-must give the same map; a shard's seed must survive a save and move on once opened;
-three seeded realities must build, match the Mirror's preview and be populated.
+must give the same map; two entries without a seed must build two different maps;
+three seeded realities must build, match their seed's map and be populated.
 `RunCapture --only=layouts` draws four seeds of every style; `--only=caves` shows
 them in game.
 

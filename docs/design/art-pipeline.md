@@ -184,6 +184,19 @@ apart, at most thirty per map — line the cave walls: embers (Ashen Depths),
 ghost-lights (Bone Warrens), crystals (Drowned Grotto). The ambient light is a
 little darker in caverns so the glows carry the scene.
 
+**Rounded shorelines (2026-10-14).** Owner: "the lava and the water are squares".
+The shoreline no longer follows the tiles. `AddLiquidSurface` writes the liquid
+tiles into a mask (one texel per tile), blurs it with a 5-tap Gaussian, and the
+shader cuts the surface where the blurred mask crosses one half, wobbled by
+world-space noise: square steps become smooth, rounded banks. Liquid quads also
+cover the floor tiles bordering the liquid so inside corners can fill out, and the
+bed under liquid is ordinary floor, seen where the bank curves in. Two earlier
+attempts were dropped: rounding each tile from its eight neighbours left the map's
+two-tile steps as straight runs; a per-tile marching-squares field did the same
+at the larger scale. The tile sheet was not the way: in the voxel view the 2D
+tiles are hidden, and gameplay collision stays per cell (the visual bank can sit up
+to about a third of a tile off it).
+
 Opaque on purpose: transparent liquid would need sorting against the voxel
 terrain and showed the slab through it; the shore foam and colour depth carry the
 "it's deep" read instead. Rejected: a screen-space refraction shader (no depth

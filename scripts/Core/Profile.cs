@@ -307,7 +307,6 @@ public partial class Profile : Node
         public List<GemData> Gems { get; set; } = new();
         public List<LoadoutSlot> Loadout { get; set; } = new();
         public Dictionary<string, int> Shards { get; set; } = new();
-        public Dictionary<string, int>? ShardsOpened { get; set; }
         public long Gold { get; set; }
         public Dictionary<string, long> Currency { get; set; } = new();
         public int HighestTierCleared { get; set; }
@@ -396,7 +395,6 @@ public partial class Profile : Node
             Gems = c.Gems,
             Loadout = c.Loadout.ToList(),
             Shards = c.Shards.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
-            ShardsOpened = c.ShardsOpened.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
             Gold = c.Gold,
             HighestTierCleared = c.HighestTierCleared,
             RealitiesCleared = c.RealitiesCleared,
@@ -456,14 +454,6 @@ public partial class Profile : Node
         for (int i = 0; i < CharacterData.LoadoutSlots && i < s.Loadout.Count; i++)
         {
             c.Loadout[i] = s.Loadout[i] ?? new LoadoutSlot();
-        }
-
-        foreach ((string tier, int n) in s.ShardsOpened ?? new Dictionary<string, int>())
-        {
-            if (int.TryParse(tier, out int t))
-            {
-                c.ShardsOpened[t] = n;
-            }
         }
 
         foreach ((string tier, int n) in s.Shards)

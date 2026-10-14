@@ -290,12 +290,22 @@ public partial class VoxelStage : Node3D
             {
                 hazards.Add(at);
                 liquidCells[cell] = new Transform3D(basis, at);
+                // The liquid surface rounds its shore and cuts the land side away,
+                // so the bed under it is ordinary floor (seen at the rounded edges).
+                list.RemoveAt(list.Count - 1);
+                string bed = $"floor{Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2}";
+                if (!byPiece.TryGetValue(bed, out List<Transform3D>? beds))
+                {
+                    byPiece[bed] = beds = new List<Transform3D>();
+                }
+
+                beds.Add(new Transform3D(basis, at));
             }
         }
 
         foreach ((string piece, List<Transform3D> transforms) in byPiece)
         {
-            if (!pieces.TryGetValue(piece, out Mesh? mesh))
+            if (transforms.Count == 0 || !pieces.TryGetValue(piece, out Mesh? mesh))
             {
                 continue;
             }
@@ -334,18 +344,23 @@ public partial class VoxelStage : Node3D
 
         if (liquidCells.Count > 0)
         {
-            created.Add(AddLiquidSurface(liquidCells));
+            Vector3 GlobalOf(Vector2I c) => World.ToGlobal(Ground(map.ToGlobal(map.MapToLocal(c))));
+            created.Add(AddLiquidSurface(liquidCells, floorCells, GlobalOf));
         }
 
         map.Visible = false;
     }
 
     /// <summary>
-    /// The animated liquid surface (resources/shaders/voxel_liquid.gdshader): one
-    /// subdivided quad per liquid tile, just above the voxel slab, carrying in its
-    /// instance data which sides touch land so the shader can draw foam there.
+    /// The animated liquid surface (resources/shaders/voxel_liquid.gdshader). The
+    /// shoreline does not follow the tiles: the liquid tiles are written into a mask
+    /// (one texel per tile), blurred, and the shader cuts the surface where the
+    /// blurred mask crosses one half — so the map's square steps become a smooth,
+    /// rounded bank. One subdivided quad per liquid tile and per floor tile around
+    /// it (inside corners fill out over the floor a little); land is cut away and the
+    /// floor drawn beneath shows through.
     /// </summary>
-    private MultiMeshInstance3D AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells)
+    private MultiMeshInstance3D AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells, Dictionary<Vector2I, Vector3> floors, System.Func<Vector2I, Vector3> globalOf)
     {
         var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://resources/shaders/voxel_liquid.gdshader") };
         foreach ((string name, Variant value) in LiquidLook(Liquid))
@@ -353,22 +368,85 @@ public partial class VoxelStage : Node3D
             material.SetShaderParameter(name, value);
         }
 
-        // The slab is one voxel (1/16 of a tile) high; the surface floats just over it.
-        var quad = new PlaneMesh { Size = Vector2.One, SubdivideWidth = 3, SubdivideDepth = 3, CenterOffset = new Vector3(0f, 1.25f / 16f, 0f), Material = material };
-        var multimesh = new MultiMesh
+        // The mask: liquid tiles = 1, a margin of three tiles, then a 5-tap Gaussian
+        // blur in each direction (about one tile of rounding).
+        const int margin = 3;
+        int minX = cells.Keys.Min(c => c.X) - margin;
+        int minY = cells.Keys.Min(c => c.Y) - margin;
+        int w = cells.Keys.Max(c => c.X) - minX + 1 + margin;
+        int h = cells.Keys.Max(c => c.Y) - minY + 1 + margin;
+        var mask = new float[w, h];
+        foreach (Vector2I c in cells.Keys)
         {
-            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-            UseCustomData = true,
-            Mesh = quad,
-            InstanceCount = cells.Count,
-        };
-        int i = 0;
-        foreach ((Vector2I cell, Transform3D transform) in cells)
+            mask[c.X - minX, c.Y - minY] = 1f;
+        }
+
+        float[] k = { 1f / 16f, 4f / 16f, 6f / 16f, 4f / 16f, 1f / 16f };
+        var tmp = new float[w, h];
+        for (int x = 0; x < w; x++)
         {
-            bool Land(Vector2I d) => !cells.ContainsKey(cell + d);
-            multimesh.SetInstanceTransform(i, transform);
-            multimesh.SetInstanceCustomData(i, new Color(Land(Vector2I.Left) ? 1f : 0f, Land(Vector2I.Right) ? 1f : 0f, Land(Vector2I.Up) ? 1f : 0f, Land(Vector2I.Down) ? 1f : 0f));
-            i++;
+            for (int y = 0; y < h; y++)
+            {
+                float sum = 0f;
+                for (int i = -2; i <= 2; i++)
+                {
+                    sum += k[i + 2] * mask[Mathf.Clamp(x + i, 0, w - 1), y];
+                }
+
+                tmp[x, y] = sum;
+            }
+        }
+
+        Image image = Image.Create(w, h, false, Image.Format.Rf);
+        for (int x = 0; x < w; x++)
+        {
+            for (int y = 0; y < h; y++)
+            {
+                float sum = 0f;
+                for (int i = -2; i <= 2; i++)
+                {
+                    sum += k[i + 2] * tmp[x, Mathf.Clamp(y + i, 0, h - 1)];
+                }
+
+                image.SetPixel(x, y, new Color(sum, 0f, 0f));
+            }
+        }
+
+        // Where texel (0,0)'s centre is in the shader's world space, and one tile's step.
+        Vector3 g0 = globalOf(new Vector2I(minX, minY));
+        Vector3 gx = globalOf(new Vector2I(minX + 1, minY));
+        Vector3 gz = globalOf(new Vector2I(minX, minY + 1));
+        material.SetShaderParameter("shore_mask", ImageTexture.CreateFromImage(image));
+        material.SetShaderParameter("mask_origin", new Vector2(g0.X, g0.Z));
+        material.SetShaderParameter("mask_step", new Vector2(gx.X - g0.X, gz.Z - g0.Z));
+        material.SetShaderParameter("mask_size", new Vector2(w, h));
+
+        // The surface floats just over the floor (two voxels, 2/16 of a tile), high
+        // enough that wave troughs never dip under it.
+        var quad = new PlaneMesh { Size = Vector2.One, SubdivideWidth = 3, SubdivideDepth = 3, CenterOffset = new Vector3(0f, 2.7f / 16f, 0f), Material = material };
+        Basis basis = cells.Values.First().Basis;
+        var placed = new List<Transform3D>(cells.Values);
+        foreach ((Vector2I c, Vector3 at) in floors)
+        {
+            bool beside = false;
+            for (int dx = -1; dx <= 1 && !beside; dx++)
+            {
+                for (int dy = -1; dy <= 1 && !beside; dy++)
+                {
+                    beside = cells.ContainsKey(c + new Vector2I(dx, dy));
+                }
+            }
+
+            if (beside)
+            {
+                placed.Add(new Transform3D(basis, at));
+            }
+        }
+
+        var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = quad, InstanceCount = placed.Count };
+        for (int i = 0; i < placed.Count; i++)
+        {
+            multimesh.SetInstanceTransform(i, placed[i]);
         }
 
         var instance = new MultiMeshInstance3D { Multimesh = multimesh, Name = "LiquidSurface", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };

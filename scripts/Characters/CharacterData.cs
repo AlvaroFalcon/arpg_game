@@ -86,10 +86,6 @@ public sealed class CharacterData
     /// <summary>Mirror Shards owned, by tier (1-20).</summary>
     public Dictionary<int, int> Shards { get; set; } = new();
 
-    /// <summary>Shards opened per tier: with the character it seeds the next map of
-    /// that tier, so each shard is one particular cavern (RealityLaunch.ShardSeed).</summary>
-    public Dictionary<int, int> ShardsOpened { get; set; } = new();
-
     public long Gold { get; set; }
 
     /// <summary>Orbs and dust from saves older than account-wide currency; Profile.LoadJson

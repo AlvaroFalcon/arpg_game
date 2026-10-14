@@ -93,8 +93,8 @@ public partial class RealityController : Node2D, IPickupHandler
 
         IsTutorial = RealityLaunch.Tutorial;
         Tier = IsTutorial ? 1 : Mathf.Clamp(RealityLaunch.Tier, 1, RealityTiers.MaxTier);
-        // The shard's seed (docs/design/endgame.md -> "Caverns") picks the cavern and
-        // shapes it; without one (tests, tools) the map is random.
+        // A new cavern on every entry (docs/design/endgame.md -> "Caverns"); tests and
+        // tools can pin a seed to rebuild the same one.
         Seed = IsTutorial ? null : RealityLaunch.Seed;
         var layoutRng = new RandomNumberGenerator();
         if (Seed is { } seed)
