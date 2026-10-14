@@ -318,3 +318,11 @@ A long list of owner feedback after playing, worked through in one go.
 **Mirror jewels.** The Mirror has a Jewels tab: a 70-socket tree (the Heart, six branches — quantity, rarity, shards, density, gold, crafting/experience — and three bridges). Bosses drop jewels; the first 40 from anyone, then only tier 12+ and 17+ bosses. Jewels can be moved freely as long as the tree stays connected. Screenshot: `mirror-jewels.png`.
 
 **Not done on purpose:** the cascade drop (one item exploding into several) is written up in a GitHub issue for the owner to decide first.
+
+## 2026-10-14 — Caverns: cellular-automata maps (experiment)
+
+The owner wanted maps that feel joined-up and alive rather than rooms linked by corridors, and liked cellular automata. Every Mirror reality is now a generated cavern; the room layouts are kept (the tutorial still uses one) for later. Pure CA gives either scattered caves or a blob, so it's steered: a winding path from the entrance to the boss is drawn first, cells are seeded open by their distance to it (with a noise-wobbled radius, and only *mostly* open inside so rock outcrops and loops survive), five smoothing passes do the rest. Then the path is re-carved, a round boss arena is cut behind a wall ring with one opening (the gate), unreachable bits are filled and one-cell pinches widened. Three styles: the Ashen Depths (lava rivers), the Bone Warrens (narrow, climbing, pillars, ooze pools) and the Drowned Grotto (lagoons and causeways).
+
+Each shard is one map: the seed comes from the character, the tier and how many shards of that tier they've opened, and the Mirror draws a preview of it. The test sweep (60 seeds per style) caught three real problems on the way: an arena cut off by its own wall ring when the last stretch of path was shorter than the ring, one-cell "hairlines" from a gap-widening pass that chained through cells it had just opened, and lagoon maps with too little floor for twelve spaced packs.
+
+Lava got the water treatment: dark crust plates drifting over molten cracks, popping bubbles, flickering light. Caverns get uneven rock heights and glowing clusters along the walls. Screenshots: `cave-*.png`, `layout-*.png`, `mirror-map-preview.png`.

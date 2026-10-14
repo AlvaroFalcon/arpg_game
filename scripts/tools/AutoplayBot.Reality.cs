@@ -27,6 +27,10 @@ public partial class AutoplayBot
     private string _mode = "";
     private string _classId = "warrior";
     private int _startTier = 1;
+
+    /// <summary>`--layouts=a,b` plays these layout ids in turn (e.g. a room layout
+    /// against a cavern); default: the Mirror's caverns.</summary>
+    private string[]? _layouts;
     private int _startLevel = 1;
     private readonly List<Vector2I> _path = new();
     private float _repath;
@@ -51,7 +55,7 @@ public partial class AutoplayBot
         for (_runIndex = 0; _runIndex < _runs; _runIndex++)
         {
             SpendPassives(_character);
-            string layout = LayoutCatalog.Layouts[_runIndex % LayoutCatalog.Layouts.Count].Id;
+            string layout = _layouts is { Length: > 0 } ids ? ids[_runIndex % ids.Length] : LayoutCatalog.Layouts[_runIndex % LayoutCatalog.Layouts.Count].Id;
             RealityLaunch.Tier = tier;
             RealityLaunch.LayoutId = layout;
             RealityLaunch.Modifiers = new List<string>();
@@ -74,10 +78,20 @@ public partial class AutoplayBot
             Log($"[BOT] reality {_runIndex + 1}/{_runs}: {layout} tier {tier} (char lv {_character.Level})");
 
             const float timeLimit = 480f;
+            // Cost of a simulated frame (the bot runs unthrottled, so wall time per
+            // physics frame is what the game would spend): watch for dense caverns.
+            var frameMs = new List<float>();
+            ulong last = Time.GetTicksUsec();
             while (IsInstanceValid(reality) && !reality.Completed && !reality.Collapsed && reality.Elapsed < timeLimit)
             {
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                ulong now = Time.GetTicksUsec();
+                frameMs.Add((now - last) / 1000f);
+                last = now;
             }
+
+            frameMs.Sort();
+            string perf = frameMs.Count == 0 ? "" : $" frameMs avg={frameMs.Average():0.00} p95={frameMs[(int)(frameMs.Count * 0.95f)]:0.00} max={frameMs[^1]:0.0}";
 
             if (!IsInstanceValid(reality))
             {
@@ -87,7 +101,7 @@ public partial class AutoplayBot
 
             string outcome = reality.Completed ? "CLEARED" : reality.Collapsed ? "COLLAPSED" : "TIMEOUT";
             string boss = reality.Boss is { } b && IsInstanceValid(b) ? $" boss@{b.LifeFraction:P0}" : "";
-            Log($"[BOT] RESULT reality={_runIndex + 1} tier={tier} layout={layout} outcome={outcome} time={UI.UiTheme.FormatTime(reality.Elapsed)} kills={reality.Kills}/{reality.MonstersTotal} portalsLeft={reality.PortalsLeft} level={levelBefore}->{_character.Level} dodges={_dodges} dmgTaken={_damageTaken:0}{boss}");
+            Log($"[BOT] RESULT reality={_runIndex + 1} tier={tier} layout={layout} outcome={outcome} time={UI.UiTheme.FormatTime(reality.Elapsed)} kills={reality.Kills}/{reality.MonstersTotal} portalsLeft={reality.PortalsLeft} level={levelBefore}->{_character.Level} dodges={_dodges} dmgTaken={_damageTaken:0}{boss}{perf}");
             string sources = string.Join(", ", _damageBySource.OrderByDescending(kv => kv.Value).Take(6).Select(kv => $"{kv.Key} {kv.Value:0}"));
             Log($"[BOT] damage by source: {sources}");
 
@@ -232,7 +246,10 @@ public partial class AutoplayBot
         var targets = new Dictionary<Vector2I, (Vector2 At, bool Enemy)>();
         foreach (Node n in GetTree().GetNodesInGroup(RunState.PickupGroup))
         {
-            if (n is Node2D p && p.GlobalPosition.DistanceTo(pos) < 520f)
+            // A life orb stays on the floor while the flasks are full; standing on
+            // one waiting for it to be collected stalls the bot forever.
+            bool uncollectable = n is Pickup { Kind: PickupKind.Life } && Items.Flasks.Of(reality.Player) is { AllFull: true };
+            if (n is Node2D p && !uncollectable && p.GlobalPosition.DistanceTo(pos) < 520f)
             {
                 targets[field.CellOf(p.GlobalPosition)] = (p.GlobalPosition, false);
             }

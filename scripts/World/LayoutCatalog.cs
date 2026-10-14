@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace ArpgGame.World;
@@ -66,11 +67,42 @@ public sealed class LayoutDef
     public string BossRoom { get; init; } = "";
     public IReadOnlyList<RoomDef> Rooms { get; init; } = new List<RoomDef>();
     public IReadOnlyList<CorridorDef> Corridors { get; init; } = new List<CorridorDef>();
+
+    /// <summary>Set for a generated cavern (CaveGenerator); rooms and corridors are then unused.</summary>
+    public CaveStyle? Cave { get; init; }
 }
 
 public static class LayoutCatalog
 {
+    /// <summary>
+    /// What the Mirror rolls: generated caverns, one style per theme —
+    /// docs/design/endgame.md -> "Caverns". The hand-built room layouts
+    /// (<see cref="RoomLayouts"/>) are kept for later and stay reachable by id.
+    /// </summary>
     public static readonly IReadOnlyList<LayoutDef> Layouts = new[]
+    {
+        new LayoutDef
+        {
+            Id = "ashen_depths", Name = "The Ashen Depths", ThemeId = "ashen",
+            // Wide caves with rivers of lava the path bridges over.
+            Cave = new CaveStyle { Width = 98, Height = 62, Radius = 6.4f, Branches = 3, Bends = 6, Openness = 0.58f, Liquid = CaveLiquid.Rivers, LiquidAmount = 0.6f, PillarRate = 0.012f, PackSpots = 18, ArenaRadius = 8 },
+        },
+        new LayoutDef
+        {
+            Id = "bone_warrens", Name = "The Bone Warrens", ThemeId = "crypt",
+            // Narrow, winding and branching, many pillars, small pools of ooze; climbs north.
+            Cave = new CaveStyle { Width = 70, Height = 96, Vertical = true, Radius = 4.2f, Branches = 6, Bends = 8, Openness = 0.62f, Liquid = CaveLiquid.Pools, LiquidAmount = 0.4f, PillarRate = 0.04f, PackSpots = 19, ArenaRadius = 7 },
+        },
+        new LayoutDef
+        {
+            Id = "drowned_grotto", Name = "The Drowned Grotto", ThemeId = "drowned",
+            // Broad lagoons with islands; the path runs along causeways.
+            Cave = new CaveStyle { Width = 100, Height = 64, Radius = 7f, Branches = 2, Bends = 5, Openness = 0.62f, Liquid = CaveLiquid.Lagoons, LiquidAmount = 0.7f, PillarRate = 0.006f, PackSpots = 17, ArenaRadius = 8 },
+        },
+    };
+
+    /// <summary>The hand-designed room-and-corridor layouts (the first generator), kept for reuse.</summary>
+    public static readonly IReadOnlyList<LayoutDef> RoomLayouts = new[]
     {
         new LayoutDef
         {
@@ -197,7 +229,7 @@ public static class LayoutCatalog
             return Tutorial;
         }
 
-        foreach (LayoutDef l in Layouts)
+        foreach (LayoutDef l in Layouts.Concat(RoomLayouts))
         {
             if (l.Id == id)
             {

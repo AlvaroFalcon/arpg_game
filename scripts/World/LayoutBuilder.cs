@@ -90,6 +90,11 @@ public static class LayoutBuilder
 
     public static RasterLayout Rasterize(LayoutDef def, RandomNumberGenerator rng)
     {
+        if (def.Cave is { } cave)
+        {
+            return CaveGenerator.Generate(cave, rng);
+        }
+
         int maxX = def.Rooms.Max(r => r.X + r.W) + Margin * 2;
         int maxY = def.Rooms.Max(r => r.Y + r.H) + Margin * 2;
         var layout = new RasterLayout { Width = maxX, Height = maxY, Cells = new CellKind[maxX, maxY] };

@@ -169,6 +169,21 @@ subdivided quad over every liquid tile with `resources/shaders/voxel_liquid.gdsh
   Drowned Mirror, the hideout canal), slow glowing lava (Ashen Halls) and a sickly
   green ooze (Bone Crypt). The level picks it through `SetMood`.
 
+**Living lava (2026-10-14).** Owner: "make the lava as alive as the water". The
+shader has a `style` switch: lava is now **dark crust plates** (cellular noise,
+drifting apart slowly) warmed red near their edges over **molten cracks** that burn
+bright and breathe, with **bubbles** swelling and popping, and a cooled rim at the
+shore; its emission follows the cracks, so in Forward+ the glow comes off the
+cracks, not the crust. Ooze gained slow fat bubbles. Liquid lights flicker by type:
+lava hard and fast, ooze pulsing slowly, water barely shimmering.
+
+**Caverns** (endgame.md -> "Caverns"): wall blocks rise to uneven heights (smooth
+noise plus a little per-block jitter), and glowing clusters — small emissive
+shards leaning on the rock, each with a soft flickering light, at least seven metres
+apart, at most thirty per map — line the cave walls: embers (Ashen Depths),
+ghost-lights (Bone Warrens), crystals (Drowned Grotto). The ambient light is a
+little darker in caverns so the glows carry the scene.
+
 Opaque on purpose: transparent liquid would need sorting against the voxel
 terrain and showed the slab through it; the shore foam and colour depth carry the
 "it's deep" read instead. Rejected: a screen-space refraction shader (no depth

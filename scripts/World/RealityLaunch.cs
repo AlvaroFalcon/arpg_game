@@ -40,6 +40,31 @@ public static class RealityLaunch
     public static string? LayoutId;
     public static List<string> Modifiers = new();
 
+    /// <summary>The map seed (docs/design/endgame.md -> "Caverns"): picks the cavern
+    /// style and everything about its shape. Null = random.</summary>
+    public static ulong? Seed;
+
+    /// <summary>
+    /// The seed of the next shard of <paramref name="tier"/> for this character: the
+    /// same shard always opens the same cavern (the Mirror can preview it), and each
+    /// shard opened moves on to a new one. FNV-1a over the character, the tier and how
+    /// many of that tier were opened — stable across runs, unlike string hashes.
+    /// </summary>
+    public static ulong ShardSeed(Characters.CharacterData c, int tier)
+    {
+        int opened = c.ShardsOpened.TryGetValue(tier, out int n) ? n : 0;
+        ulong hash = 14695981039346656037UL;
+        foreach (char ch in $"{c.Name}|{c.ClassId}|{tier}|{opened}")
+        {
+            hash = (hash ^ ch) * 1099511628211UL;
+        }
+
+        return hash;
+    }
+
+    /// <summary>The cavern a seed opens.</summary>
+    public static LayoutDef LayoutFor(ulong seed) => LayoutCatalog.Layouts[(int)(seed % (ulong)LayoutCatalog.Layouts.Count)];
+
     /// <summary>The next reality is the introduction (docs/design/tutorial.md).</summary>
     public static bool Tutorial;
 
@@ -71,6 +96,7 @@ public static class RealityLaunch
     public static void Reset()
     {
         Tier = 1;
+        Seed = null;
         LayoutId = null;
         Modifiers = new List<string>();
         Tutorial = false;

@@ -45,6 +45,9 @@ public partial class MirrorPanel : ModalPanel
     private Label _tierTitle = null!;
     private Label _tierInfo = null!;
     private Label _modsLabel = null!;
+    private TextureRect _preview = null!;
+    private Label _mapName = null!;
+    private ulong? _previewSeed;
     private Button _empower = null!;
     private Button _open = null!;
     private Label _gold = null!;
@@ -86,6 +89,15 @@ public partial class MirrorPanel : ModalPanel
         _tierInfo = UiTheme.Label("", 17, UiTheme.Text);
         _tierInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         right.AddChild(_tierInfo);
+        // The cavern this shard opens (each shard is one particular map).
+        HBoxContainer mapRow = UiTheme.HBox(right, 12);
+        _preview = new TextureRect { CustomMinimumSize = new Vector2(190f, 124f), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, TextureFilter = CanvasItem.TextureFilterEnum.Nearest };
+        mapRow.AddChild(_preview);
+        _mapName = UiTheme.Label("", 16, UiTheme.Text);
+        _mapName.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _mapName.CustomMinimumSize = new Vector2(220f, 0f);
+        _mapName.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        mapRow.AddChild(_mapName);
         _modsLabel = UiTheme.Label("", 16, UiTheme.Ember);
         _modsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         right.AddChild(_modsLabel);
@@ -235,9 +247,10 @@ public partial class MirrorPanel : ModalPanel
         _tierTitle.AddThemeColorOverride("font_color", RealityTiers.ShardColor(t2));
         _tierInfo.Text =
             $"Monster level {RealityTiers.MonsterLevel(t2)}  ·  monster life ×{RealityTiers.LifeMultiplier(t2):0.0}  ·  damage ×{RealityTiers.DamageMultiplier(t2):0.0}\n"
-            + $"{portals} portal{(portals == 1 ? "" : "s")} (deaths allowed)  ·  layout: random of {LayoutCatalog.Layouts.Count}\n"
+            + $"{portals} portal{(portals == 1 ? "" : "s")} (deaths allowed)\n"
             + $"Magic packs {RealityTiers.MagicPackChance(t2) * 100f:0}%  ·  rare packs {RealityTiers.RarePackChance(t2) * 100f:0}%  ·  unique-rare chance {RealityTiers.UniqueChance(t2) * 100f:0}%\n"
             + (c is null ? "" : $"Highest tier cleared: {c.HighestTierCleared}  ·  owned: {(t2 == 1 ? "always free" : c.ShardCount(t2).ToString())}");
+        RefreshPreview(c, t2);
         (float q, float r) = RealityLaunch.Bonuses(_mods);
         _modsLabel.Text = _mods.Count == 0
             ? "Not empowered."
@@ -272,11 +285,42 @@ public partial class MirrorPanel : ModalPanel
         Refresh();
     }
 
+    /// <summary>The map the selected tier's next shard opens, drawn small.</summary>
+    private void RefreshPreview(CharacterData? c, int tier)
+    {
+        if (c is null)
+        {
+            _preview.Texture = null;
+            _mapName.Text = "";
+            return;
+        }
+
+        ulong seed = RealityLaunch.ShardSeed(c, tier);
+        LayoutDef def = RealityLaunch.LayoutFor(seed);
+        _mapName.Text = $"This shard opens\n{def.Name}";
+        if (_previewSeed == seed)
+        {
+            return;
+        }
+
+        _previewSeed = seed;
+        RasterLayout map = LayoutBuilder.Rasterize(def, new RandomNumberGenerator { Seed = seed });
+        _preview.Texture = ImageTexture.CreateFromImage(LayoutPreview.Draw(map, def.ThemeId, 2, packs: false));
+    }
+
     private void OpenReality()
     {
         if (Character is { } c && !c.TrySpendShard(_selected))
         {
             return;
+        }
+
+        if (Character is { } opener)
+        {
+            // This shard's cavern; the next one of the tier will be another.
+            RealityLaunch.Seed = RealityLaunch.ShardSeed(opener, _selected);
+            opener.ShardsOpened[_selected] = opener.ShardsOpened.GetValueOrDefault(_selected) + 1;
+            _previewSeed = null;
         }
 
         RealityLaunch.Tier = _selected;

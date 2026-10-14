@@ -160,7 +160,84 @@ socket)?
 
 ## Altered Realities (the dungeons)
 
-### Layouts: room graphs, rasterised
+### Caverns: cellular-automata maps (2026-10-14, experiment)
+
+Owner's request: maps that feel "more joined-up and alive" than rooms linked by
+corridors, using cellular automata. Since 2026-10-14 **every Mirror reality is a
+generated cavern**; the room-graph layouts below are kept untouched
+(`LayoutCatalog.RoomLayouts`, still reachable by id) to be reused later, and the
+tutorial (The Threshold) stays a fixed room layout.
+
+**Generator** (`CaveGenerator`, scripts/World/CaveGenerator.cs). Pure cellular
+automata gives either scattered pockets or one shapeless blob, so it is steered:
+
+1. **A path first**: a winding line of 6–8 bends from the entrance to the far side
+   (where the boss will be), plus a few side branches that end in pockets.
+2. **Seeding**: each cell starts open with a probability that falls off with its
+   distance to the path; the falloff radius wobbles with simplex noise, so the cave
+   swells into chambers and pinches into passages. Inside the radius the seed is
+   only mostly open (`Openness` 0.58–0.62), which is what leaves rock outcrops,
+   islands and loops instead of one clean blob.
+3. **Smoothing**: five passes of the classic rule — a cell becomes rock with five
+   or more rock neighbours, open with three or fewer.
+4. **Guarantees**: the path is re-carved three cells wide; one-cell gaps are
+   widened and one-cell dead-end spurs filled; a round **boss arena** is cut at the
+   end of the path behind a three-cell wall ring with a single opening (that
+   opening is the gate); everything the entrance can't reach is filled in; any
+   pinch left after the arena cut is widened (or filled, if widening would breach
+   the ring).
+5. **Dressing by theme**: liquid from a second noise field (never on the path, near
+   the entrance or at the arena), pillars in open ground.
+6. **Packs**: reachable open floor at least twelve steps from the entrance, outside
+   the arena, seven cells apart (relaxed to six, then five, when lagoons leave
+   little floor). The further in (walking distance), the likelier magic and rare
+   packs; at most one unique-rare, in the back half. Pack "rooms" become five
+   distance zones.
+
+The output is the same `RasterLayout` the room layouts produce, so the flow field,
+the gate, the map overlay, the voxel view and the tests needed no changes.
+
+| Cavern | Theme | Character |
+|---|---|---|
+| The Ashen Depths | ashen (lava) | wide caves; meandering lava rivers the path bridges over, plus pools |
+| The Bone Warrens | crypt (ooze) | climbs north; narrower, more branches, many rock pillars, small ooze pools |
+| The Drowned Grotto | drowned (water) | broad lagoons with islands; the path runs along causeways |
+
+Size: the same as the room layouts (≈ 1,000–1,900 walkable cells against ≈ 1,500),
+by the owner's call; 17–19 pack spots, so pack density per tier is unchanged.
+
+**One shard, one map.** A map's seed comes from the character, the tier and how
+many shards of that tier they have opened (`RealityLaunch.ShardSeed`, FNV-1a, stable
+across runs). The seed picks the cavern style and shapes it, so the Mirror shows a
+**preview** of the cavern the selected shard opens, and the next shard of that tier
+opens a different one. Re-empowering a shard doesn't change its map.
+
+**Look** (art-pipeline.md -> "Liquids", "Caverns"): uneven rock heights, glowing
+clusters along the cave walls (embers, ghost-lights, crystals) with flickering
+light, a darker ambient so those glows carry the scene, and lava that is now
+crusted plates over molten cracks.
+
+**Performance** (owner asked to watch it: open caves let more of a pack chase at
+once). The reality bot (warrior level 70, tiers 18–20, `--layouts=` alternating a
+cavern and its room counterpart) measured the simulated frame cost — average / 95th
+percentile ms per physics frame: Ashen Depths 6.9 / 18.5 vs Ashen Halls 6.1 / 18.6;
+Bone Warrens 11.1 / 24.0 vs Bone Crypt 11.9 / 24.4; Drowned Grotto 16.5 / 28.9 vs
+Drowned Mirror 16.6 / 28.2. No measurable difference: monster count, not the map's
+shape, is what costs. (The run also exposed a bot bug unrelated to caverns: it
+waited forever on a life orb it couldn't pick up with full flasks.)
+
+Tests: 60 seeds per style must have a reachable boss behind a 1–6 cell gate, 12+
+reachable packs at least five cells apart and no one-cell passages; the same seed
+must give the same map; a shard's seed must survive a save and move on once opened;
+three seeded realities must build, match the Mirror's preview and be populated.
+`RunCapture --only=layouts` draws four seeds of every style; `--only=caves` shows
+them in game.
+
+Open questions: the walls still use each theme's dungeon brick (a rock wall tile
+would sell "cave" better); whether to bring back hand-made set pieces (a shrine, a
+bridge) inside caverns; whether the room layouts return as a second map family.
+
+### Layouts: room graphs, rasterised (kept for reuse; the tutorial)
 
 A reality is a **hand-designed layout** with randomised details. The first draft
 proposed drawing layouts as ASCII grids; the first one drawn that way turned out
