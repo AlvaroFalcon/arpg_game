@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using ArpgGame.Combat;
 using ArpgGame.Enemies;
@@ -64,8 +65,21 @@ public partial class VoxelStage : Node3D
 
     public Color HazardLightColor = new(1f, 0.45f, 0.15f);
 
-    /// <summary>What the liquid tiles hold (the surface shader's look).</summary>
+    /// <summary>What fills the liquid tiles (the surface shader's look).</summary>
     public LiquidStyle Liquid = LiquidStyle.Lava;
+
+    /// <summary>
+    /// Generated caverns (docs/design/endgame.md -> "Caverns"): rock walls rise to
+    /// uneven heights and glowing clusters (embers, ghost-lights, crystals in
+    /// <see cref="GlowColor"/>) dot the cave walls with flickering light.
+    /// </summary>
+    public bool Caverns;
+
+    public Color GlowColor = new(1f, 0.5f, 0.2f);
+
+    /// <summary>Lights that flicker: liquid glows and cave glows.</summary>
+    private readonly List<(OmniLight3D Light, float Energy, float Phase, float Speed, float Depth)> _flicker = new();
+    private float _time;
 
     /// <summary>Maps a 2D world position (and a height in metres) into <see cref="World"/>.</summary>
     public static Vector3 Ground(Vector2 world2D, float height = 0f) =>
@@ -165,6 +179,16 @@ public partial class VoxelStage : Node3D
     public override void _Process(double delta)
     {
         SyncCamera();
+        _time += (float)delta;
+        foreach ((OmniLight3D light, float energy, float phase, float speed, float depth) in _flicker)
+        {
+            if (IsInstanceValid(light))
+            {
+                float wobble = Mathf.Sin(_time * speed + phase) * 0.6f + Mathf.Sin(_time * speed * 2.7f + phase * 1.9f) * 0.4f;
+                light.LightEnergy = energy * (1f + depth * wobble);
+            }
+        }
+
         if (_player is null || !IsInstanceValid(_player))
         {
             _player = GetTree().GetFirstNodeInGroup(CombatQuery.PlayerGroup) as Node2D;
@@ -218,6 +242,9 @@ public partial class VoxelStage : Node3D
         var byPiece = new Dictionary<string, List<Transform3D>>();
         var hazards = new List<Vector3>();
         var liquidCells = new Dictionary<Vector2I, Transform3D>();
+        var floorCells = new Dictionary<Vector2I, Vector3>();
+        var wallCells = new HashSet<Vector2I>();
+        var heights = Caverns ? new FastNoiseLite { Seed = 7, Frequency = 0.12f } : null;
         foreach (Vector2I cell in map.GetUsedCells(0))
         {
             Vector2I atlas = map.GetCellAtlasCoords(0, cell);
@@ -238,9 +265,24 @@ public partial class VoxelStage : Node3D
                 byPiece[piece] = list = new List<Transform3D>();
             }
 
-            list.Add(new Transform3D(basis, at));
+            Transform3D placed = new(basis, at);
+            if (piece == "wall" && heights is not null)
+            {
+                // Cave rock: uneven heights (smooth swells plus a little jitter per block).
+                float jitter = ((cell.X * 73856093) ^ (cell.Y * 19349663)) % 100 / 100f;
+                float rise = 0.72f + 0.6f * (heights.GetNoise2D(cell.X, cell.Y) * 0.5f + 0.5f) + 0.12f * Mathf.Abs(jitter);
+                placed = new Transform3D(basis.Scaled(new Vector3(1f, rise, 1f)), at);
+            }
+
+            list.Add(placed);
+            if (piece.StartsWith("floor"))
+            {
+                floorCells[cell] = at;
+            }
+
             if (piece == "wall")
             {
+                wallCells.Add(cell);
                 _walls[new Vector2I(Mathf.FloorToInt(at.X), Mathf.FloorToInt(at.Z))] = at;
             }
 
@@ -248,12 +290,22 @@ public partial class VoxelStage : Node3D
             {
                 hazards.Add(at);
                 liquidCells[cell] = new Transform3D(basis, at);
+                // The liquid surface rounds its shore and cuts the land side away,
+                // so the bed under it is ordinary floor (seen at the rounded edges).
+                list.RemoveAt(list.Count - 1);
+                string bed = $"floor{Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2}";
+                if (!byPiece.TryGetValue(bed, out List<Transform3D>? beds))
+                {
+                    byPiece[bed] = beds = new List<Transform3D>();
+                }
+
+                beds.Add(new Transform3D(basis, at));
             }
         }
 
         foreach ((string piece, List<Transform3D> transforms) in byPiece)
         {
-            if (!pieces.TryGetValue(piece, out Mesh? mesh))
+            if (transforms.Count == 0 || !pieces.TryGetValue(piece, out Mesh? mesh))
             {
                 continue;
             }
@@ -285,20 +337,30 @@ public partial class VoxelStage : Node3D
         }
 
         created.AddRange(AddHazardLights(hazards));
+        if (Caverns)
+        {
+            created.AddRange(AddCaveGlows(floorCells, wallCells, map.TileSet.TileSize.X * map.GlobalScale.X / PixelsPerMeter));
+        }
+
         if (liquidCells.Count > 0)
         {
-            created.Add(AddLiquidSurface(liquidCells));
+            Vector3 GlobalOf(Vector2I c) => World.ToGlobal(Ground(map.ToGlobal(map.MapToLocal(c))));
+            created.Add(AddLiquidSurface(liquidCells, floorCells, GlobalOf));
         }
 
         map.Visible = false;
     }
 
     /// <summary>
-    /// The animated liquid surface (resources/shaders/voxel_liquid.gdshader): one
-    /// subdivided quad per liquid tile, just above the voxel slab, carrying in its
-    /// instance data which sides touch land so the shader can draw foam there.
+    /// The animated liquid surface (resources/shaders/voxel_liquid.gdshader). The
+    /// shoreline does not follow the tiles: the liquid tiles are written into a mask
+    /// (one texel per tile), blurred, and the shader cuts the surface where the
+    /// blurred mask crosses one half — so the map's square steps become a smooth,
+    /// rounded bank. One subdivided quad per liquid tile and per floor tile around
+    /// it (inside corners fill out over the floor a little); land is cut away and the
+    /// floor drawn beneath shows through.
     /// </summary>
-    private MultiMeshInstance3D AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells)
+    private MultiMeshInstance3D AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells, Dictionary<Vector2I, Vector3> floors, System.Func<Vector2I, Vector3> globalOf)
     {
         var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://resources/shaders/voxel_liquid.gdshader") };
         foreach ((string name, Variant value) in LiquidLook(Liquid))
@@ -306,22 +368,85 @@ public partial class VoxelStage : Node3D
             material.SetShaderParameter(name, value);
         }
 
-        // The slab is one voxel (1/16 of a tile) high; the surface floats just over it.
-        var quad = new PlaneMesh { Size = Vector2.One, SubdivideWidth = 3, SubdivideDepth = 3, CenterOffset = new Vector3(0f, 1.25f / 16f, 0f), Material = material };
-        var multimesh = new MultiMesh
+        // The mask: liquid tiles = 1, a margin of three tiles, then a 5-tap Gaussian
+        // blur in each direction (about one tile of rounding).
+        const int margin = 3;
+        int minX = cells.Keys.Min(c => c.X) - margin;
+        int minY = cells.Keys.Min(c => c.Y) - margin;
+        int w = cells.Keys.Max(c => c.X) - minX + 1 + margin;
+        int h = cells.Keys.Max(c => c.Y) - minY + 1 + margin;
+        var mask = new float[w, h];
+        foreach (Vector2I c in cells.Keys)
         {
-            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-            UseCustomData = true,
-            Mesh = quad,
-            InstanceCount = cells.Count,
-        };
-        int i = 0;
-        foreach ((Vector2I cell, Transform3D transform) in cells)
+            mask[c.X - minX, c.Y - minY] = 1f;
+        }
+
+        float[] k = { 1f / 16f, 4f / 16f, 6f / 16f, 4f / 16f, 1f / 16f };
+        var tmp = new float[w, h];
+        for (int x = 0; x < w; x++)
         {
-            bool Land(Vector2I d) => !cells.ContainsKey(cell + d);
-            multimesh.SetInstanceTransform(i, transform);
-            multimesh.SetInstanceCustomData(i, new Color(Land(Vector2I.Left) ? 1f : 0f, Land(Vector2I.Right) ? 1f : 0f, Land(Vector2I.Up) ? 1f : 0f, Land(Vector2I.Down) ? 1f : 0f));
-            i++;
+            for (int y = 0; y < h; y++)
+            {
+                float sum = 0f;
+                for (int i = -2; i <= 2; i++)
+                {
+                    sum += k[i + 2] * mask[Mathf.Clamp(x + i, 0, w - 1), y];
+                }
+
+                tmp[x, y] = sum;
+            }
+        }
+
+        Image image = Image.Create(w, h, false, Image.Format.Rf);
+        for (int x = 0; x < w; x++)
+        {
+            for (int y = 0; y < h; y++)
+            {
+                float sum = 0f;
+                for (int i = -2; i <= 2; i++)
+                {
+                    sum += k[i + 2] * tmp[x, Mathf.Clamp(y + i, 0, h - 1)];
+                }
+
+                image.SetPixel(x, y, new Color(sum, 0f, 0f));
+            }
+        }
+
+        // Where texel (0,0)'s centre is in the shader's world space, and one tile's step.
+        Vector3 g0 = globalOf(new Vector2I(minX, minY));
+        Vector3 gx = globalOf(new Vector2I(minX + 1, minY));
+        Vector3 gz = globalOf(new Vector2I(minX, minY + 1));
+        material.SetShaderParameter("shore_mask", ImageTexture.CreateFromImage(image));
+        material.SetShaderParameter("mask_origin", new Vector2(g0.X, g0.Z));
+        material.SetShaderParameter("mask_step", new Vector2(gx.X - g0.X, gz.Z - g0.Z));
+        material.SetShaderParameter("mask_size", new Vector2(w, h));
+
+        // The surface floats just over the floor (two voxels, 2/16 of a tile), high
+        // enough that wave troughs never dip under it.
+        var quad = new PlaneMesh { Size = Vector2.One, SubdivideWidth = 3, SubdivideDepth = 3, CenterOffset = new Vector3(0f, 2.7f / 16f, 0f), Material = material };
+        Basis basis = cells.Values.First().Basis;
+        var placed = new List<Transform3D>(cells.Values);
+        foreach ((Vector2I c, Vector3 at) in floors)
+        {
+            bool beside = false;
+            for (int dx = -1; dx <= 1 && !beside; dx++)
+            {
+                for (int dy = -1; dy <= 1 && !beside; dy++)
+                {
+                    beside = cells.ContainsKey(c + new Vector2I(dx, dy));
+                }
+            }
+
+            if (beside)
+            {
+                placed.Add(new Transform3D(basis, at));
+            }
+        }
+
+        var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = quad, InstanceCount = placed.Count };
+        for (int i = 0; i < placed.Count; i++)
+        {
+            multimesh.SetInstanceTransform(i, placed[i]);
         }
 
         var instance = new MultiMeshInstance3D { Multimesh = multimesh, Name = "LiquidSurface", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
@@ -335,17 +460,18 @@ public partial class VoxelStage : Node3D
         LiquidStyle.Water => new (string, Variant)[]
         {
             ("deep_color", new Color(0.03f, 0.14f, 0.28f)), ("shallow_color", new Color(0.1f, 0.45f, 0.6f)), ("foam_color", new Color(0.85f, 0.95f, 1f)),
-            ("emission_strength", 0.08f), ("flow_speed", 1f), ("wave_height", 0.035f), ("roughness_value", 0.05f), ("caustics", 0.45f),
+            ("emission_strength", 0.08f), ("flow_speed", 1f), ("wave_height", 0.035f), ("roughness_value", 0.05f), ("caustics", 0.45f), ("style", 0),
         },
         LiquidStyle.Ooze => new (string, Variant)[]
         {
             ("deep_color", new Color(0.06f, 0.2f, 0.05f)), ("shallow_color", new Color(0.3f, 0.8f, 0.2f)), ("foam_color", new Color(0.75f, 1f, 0.5f)),
-            ("emission_strength", 0.45f), ("flow_speed", 0.45f), ("wave_height", 0.05f), ("roughness_value", 0.25f), ("caustics", 0.3f),
+            ("emission_strength", 0.45f), ("flow_speed", 0.45f), ("wave_height", 0.05f), ("roughness_value", 0.25f), ("caustics", 0.3f), ("style", 2),
         },
         _ => new (string, Variant)[]
         {
-            ("deep_color", new Color(0.45f, 0.06f, 0.02f)), ("shallow_color", new Color(1f, 0.45f, 0.1f)), ("foam_color", new Color(1f, 0.85f, 0.45f)),
-            ("emission_strength", 1.1f), ("flow_speed", 0.3f), ("wave_height", 0.05f), ("roughness_value", 0.7f), ("caustics", 0.6f),
+            ("deep_color", new Color(0.16f, 0.04f, 0.03f)), ("shallow_color", new Color(1f, 0.36f, 0.06f)), ("foam_color", new Color(1f, 0.85f, 0.45f)),
+            ("crack_color", new Color(1f, 0.85f, 0.38f)),
+            ("emission_strength", 1.5f), ("flow_speed", 1f), ("wave_height", 0.03f), ("roughness_value", 0.8f), ("caustics", 0.6f), ("style", 1),
         },
     };
 
@@ -399,6 +525,74 @@ public partial class VoxelStage : Node3D
         return copy;
     }
 
+    /// <summary>
+    /// Glowing clusters along cave walls: a few small emissive shards leaning on
+    /// the rock with a soft flickering light, at least seven metres apart, at
+    /// most thirty — embers in the Ashen Depths, ghost-lights in the Bone Warrens,
+    /// crystals in the Drowned Grotto (the colour comes from <see cref="GlowColor"/>).
+    /// </summary>
+    private List<Node> AddCaveGlows(Dictionary<Vector2I, Vector3> floors, HashSet<Vector2I> walls, float tileMeters)
+    {
+        var created = new List<Node>();
+        var rng = new RandomNumberGenerator { Seed = (ulong)(floors.Count * 7919 + walls.Count) };
+        var material = new StandardMaterial3D
+        {
+            AlbedoColor = GlowColor.Darkened(0.2f),
+            EmissionEnabled = true,
+            Emission = GlowColor,
+            EmissionEnergyMultiplier = 2.6f,
+            Roughness = 0.35f,
+        };
+        var shard = new PrismMesh { Size = new Vector3(0.16f, 0.55f, 0.16f), Material = material };
+        var placed = new List<Vector3>();
+        foreach ((Vector2I cell, Vector3 at) in floors.OrderBy(_ => rng.Randi()))
+        {
+            if (placed.Count >= 30)
+            {
+                break;
+            }
+
+            Vector2I? toWall = null;
+            foreach (Vector2I d in new[] { Vector2I.Up, Vector2I.Left, Vector2I.Right, Vector2I.Down })
+            {
+                if (walls.Contains(cell + d))
+                {
+                    toWall = d;
+                    break;
+                }
+            }
+
+            if (toWall is not { } dir || placed.Any(p => p.DistanceSquaredTo(at) < 49f))
+            {
+                continue;
+            }
+
+            placed.Add(at);
+            var cluster = new Node3D { Name = "CaveGlow", Position = at + new Vector3(dir.X, 0f, dir.Y) * 0.3f * tileMeters + new Vector3(0f, 0.12f * tileMeters, 0f) };
+            int count = rng.RandiRange(2, 4);
+            for (int i = 0; i < count; i++)
+            {
+                float scale = rng.RandfRange(0.55f, 1.15f);
+                cluster.AddChild(new MeshInstance3D
+                {
+                    Mesh = shard,
+                    Position = new Vector3(rng.RandfRange(-0.18f, 0.18f), 0.25f * scale, rng.RandfRange(-0.18f, 0.18f)),
+                    Scale = Vector3.One * scale,
+                    RotationDegrees = new Vector3(rng.RandfRange(-25f, 25f), rng.RandfRange(0f, 360f), rng.RandfRange(-25f, 25f)),
+                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                });
+            }
+
+            var light = new OmniLight3D { Position = new Vector3(0f, 0.5f, 0f), OmniRange = 3.2f, LightEnergy = 1f, LightColor = GlowColor };
+            cluster.AddChild(light);
+            _flicker.Add((light, light.LightEnergy, rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(1.2f, 2.4f), 0.25f));
+            World.AddChild(cluster);
+            created.Add(cluster);
+        }
+
+        return created;
+    }
+
     /// <summary>A light over every few liquid tiles (spaced out, capped) so lava and water glow on their surroundings.</summary>
     private List<Node> AddHazardLights(List<Vector3> hazards)
     {
@@ -430,12 +624,15 @@ public partial class VoxelStage : Node3D
             var light = new OmniLight3D
             {
                 Position = h + new Vector3(0f, 0.6f, 0f),
-                OmniRange = 3.5f,
-                LightEnergy = 1.3f,
+                OmniRange = Liquid == LiquidStyle.Lava ? 4.2f : 3.5f,
+                LightEnergy = Liquid == LiquidStyle.Lava ? 1.6f : 1.3f,
                 LightColor = HazardLightColor,
             };
             World.AddChild(light);
             lights.Add(light);
+            // Lava flickers hard and fast, ooze pulses slowly, water barely shimmers.
+            (float speed, float depth) = Liquid switch { LiquidStyle.Lava => (2.6f, 0.35f), LiquidStyle.Ooze => (0.9f, 0.25f), _ => (1.2f, 0.1f) };
+            _flicker.Add((light, light.LightEnergy, placed.Count * 1.7f, speed, depth));
         }
 
         return lights;

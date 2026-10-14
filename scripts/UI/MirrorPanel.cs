@@ -235,7 +235,7 @@ public partial class MirrorPanel : ModalPanel
         _tierTitle.AddThemeColorOverride("font_color", RealityTiers.ShardColor(t2));
         _tierInfo.Text =
             $"Monster level {RealityTiers.MonsterLevel(t2)}  ·  monster life ×{RealityTiers.LifeMultiplier(t2):0.0}  ·  damage ×{RealityTiers.DamageMultiplier(t2):0.0}\n"
-            + $"{portals} portal{(portals == 1 ? "" : "s")} (deaths allowed)  ·  layout: random of {LayoutCatalog.Layouts.Count}\n"
+            + $"{portals} portal{(portals == 1 ? "" : "s")} (deaths allowed)  ·  a new cavern every time\n"
             + $"Magic packs {RealityTiers.MagicPackChance(t2) * 100f:0}%  ·  rare packs {RealityTiers.RarePackChance(t2) * 100f:0}%  ·  unique-rare chance {RealityTiers.UniqueChance(t2) * 100f:0}%\n"
             + (c is null ? "" : $"Highest tier cleared: {c.HighestTierCleared}  ·  owned: {(t2 == 1 ? "always free" : c.ShardCount(t2).ToString())}");
         (float q, float r) = RealityLaunch.Bonuses(_mods);

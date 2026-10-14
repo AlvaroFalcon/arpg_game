@@ -279,7 +279,8 @@ public partial class EndgameSmokeTest : Node2D
 
     private void LayoutChecks()
     {
-        foreach (LayoutDef def in LayoutCatalog.Layouts)
+        CaveChecks();
+        foreach (LayoutDef def in LayoutCatalog.RoomLayouts)
         {
             int bad = 0;
             string detail = "";
@@ -300,6 +301,85 @@ public partial class EndgameSmokeTest : Node2D
 
             Check($"LAYOUT-CONNECTED-{def.Id}", bad == 0, bad == 0 ? $"40 seeds connected, {corridorSets.Count} corridor variants seen" : detail);
         }
+    }
+
+    private static string Around(string dump, Vector2I c)
+    {
+        string[] rows = dump.Split('\n');
+        var lines = new List<string>();
+        for (int y = Mathf.Max(0, c.Y - 4); y <= Mathf.Min(rows.Length - 1, c.Y + 4); y++)
+        {
+            int from = Mathf.Max(0, c.X - 8);
+            if (from < rows[y].Length)
+            {
+                lines.Add(rows[y].Substring(from, Mathf.Min(17, rows[y].Length - from)));
+            }
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>endgame.md -> "Caverns": every style over many seeds is connected, has
+    /// its boss behind a small gate, enough well-spaced reachable packs, no one-cell
+    /// passages; the same seed gives the same map.</summary>
+    private void CaveChecks()
+    {
+        foreach (LayoutDef def in LayoutCatalog.Layouts)
+        {
+            int bad = 0;
+            string detail = "";
+            int minFloor = int.MaxValue;
+            int maxFloor = 0;
+            for (int seed = 0; seed < 60; seed++)
+            {
+                RasterLayout r = LayoutBuilder.Rasterize(def, new RandomNumberGenerator { Seed = (ulong)(seed * 104729 + 17) });
+                HashSet<Vector2I> reach = Reachable(r, r.Entrance);
+                var gate = new HashSet<Vector2I>(r.Gate);
+                int floor = 0;
+                int pinches = 0;
+                Vector2I pinchAt = default;
+                for (int x = 1; x < r.Width - 1; x++)
+                {
+                    for (int y = 1; y < r.Height - 1; y++)
+                    {
+                        if (!r.Walkable(new Vector2I(x, y)))
+                        {
+                            continue;
+                        }
+
+                        floor++;
+                        bool solidL = r.Cells[x - 1, y] is CellKind.Void or CellKind.Pillar;
+                        bool solidR = r.Cells[x + 1, y] is CellKind.Void or CellKind.Pillar;
+                        bool solidU = r.Cells[x, y - 1] is CellKind.Void or CellKind.Pillar;
+                        bool solidD = r.Cells[x, y + 1] is CellKind.Void or CellKind.Pillar;
+                        if ((solidL && solidR && r.Cells[x - 1, y] == CellKind.Void && r.Cells[x + 1, y] == CellKind.Void)
+                            || (solidU && solidD && r.Cells[x, y - 1] == CellKind.Void && r.Cells[x, y + 1] == CellKind.Void))
+                        {
+                            pinches++;
+                            pinchAt = new Vector2I(x, y);
+                        }
+                    }
+                }
+
+                minFloor = Mathf.Min(minFloor, floor);
+                maxFloor = Mathf.Max(maxFloor, floor);
+                bool packsOk = r.Packs.Count >= 12 && r.Packs.All(p => reach.Contains(p.Cell) && !r.BossRegion.Contains(p.Cell) && !gate.Contains(p.Cell))
+                    && r.Packs.All(p => r.Packs.All(q => q == p || (q.Cell - p.Cell).LengthSquared() >= 25));
+                bool ok = r.Walkable(r.Entrance) && reach.Contains(r.BossCell) && r.BossRegion.Contains(r.BossCell) && !r.BossRegion.Contains(r.Entrance)
+                    && r.Gate.Count is > 0 and <= 6 && packsOk && pinches == 0;
+                if (!ok && bad++ == 0)
+                {
+                    detail = $"seed {seed}: boss reachable={reach.Contains(r.BossCell)}, gate={r.Gate.Count}, packs={r.Packs.Count} ok={packsOk}, one-cell gaps={pinches} (last at {pinchAt}, entrance {r.Entrance}, boss {r.BossCell})\n{Around(r.Dump(), pinchAt)}";
+                }
+            }
+
+            Check($"CAVE-CONNECTED-{def.Id}", bad == 0, bad == 0 ? $"60 seeds: reachable boss behind a 1–6 cell gate, 12+ packs at least 5 cells apart, no one-cell gaps; floor {minFloor}–{maxFloor} cells" : detail);
+        }
+
+        string a = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 99 }).Dump();
+        string b = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 99 }).Dump();
+        string other = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 100 }).Dump();
+        Check("CAVE-SEED-DETERMINISTIC", a == b && a != other, "seed 99 twice gives the same map, seed 100 another");
     }
 
     // --- tiers and shards ---------------------------------------------------------
@@ -589,6 +669,45 @@ public partial class EndgameSmokeTest : Node2D
 
         Vector2I playerCell = reality.Field.CellOf(reality.Player.GlobalPosition);
         Check("REALITY-PLAYER-AT-ENTRANCE", playerCell == reality.Raster.Entrance, $"player cell {playerCell}, entrance {reality.Raster.Entrance}");
+
+        // Caverns (endgame.md -> "Caverns"): a pinned seed (tools) rebuilds the same
+        // map; without one — as the Mirror opens them — every entry is a new map.
+        var unseen = new HashSet<string>();
+        for (int i = 0; i < 2; i++)
+        {
+            RealityLaunch.Tier = 6;
+            var fresh = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+            AddChild(fresh);
+            await Frames(2);
+            unseen.Add(fresh.Raster.Dump());
+            bool ok = fresh.Seed is null && fresh.Layout.Cave is not null;
+            fresh.QueueFree();
+            await Frames(2);
+            if (!ok)
+            {
+                unseen.Clear();
+                break;
+            }
+        }
+
+        Check("CAVE-NEW-EVERY-ENTRY", unseen.Count == 2, "two entries without a seed built two different caverns");
+
+        foreach (ulong seed in new ulong[] { 11, 12, 13 })
+        {
+            RealityLaunch.Tier = 6;
+            RealityLaunch.Seed = seed;
+            var cave = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+            AddChild(cave);
+            await Frames(3);
+            LayoutDef expected = RealityLaunch.LayoutFor(seed);
+            string preview = LayoutBuilder.Rasterize(expected, new RandomNumberGenerator { Seed = seed }).Dump();
+            Vector2I at = cave.Field.CellOf(cave.Player.GlobalPosition);
+            Check($"CAVE-REALITY-{seed}", cave.Layout == expected && cave.Layout.Cave is not null && cave.Raster.Dump() == preview
+                && cave.MonstersTotal >= 30 && cave.Boss is not null && (at - cave.Raster.Entrance).LengthSquared() <= 2 && cave.Seed == seed,
+                $"{cave.Layout.Name}: {cave.MonstersTotal} monsters, same map as its seed={cave.Raster.Dump() == preview}, boss {cave.Boss?.DisplayName}, player cell {at} vs entrance {cave.Raster.Entrance}, seed {cave.Seed}");
+            cave.QueueFree();
+            await Frames(2);
+        }
 
         // HUD layout editor (docs/design/menus.md -> "HUD layout editor"): panels
         // register, a move is saved and comes back in the next reality.

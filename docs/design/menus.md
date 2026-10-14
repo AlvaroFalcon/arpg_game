@@ -300,3 +300,14 @@ menu bar and the mana end of the life/mana cluster all drew on top of it). Two f
   reality info and minimap **fade** out; the life/mana cluster **stays** and the
   panel covers its right end, as in Path of Exile. Everything slides back when the
   inventory closes; the shift is temporary and never saved into the HUD layout.
+
+## Loading screen (2026-10-14)
+
+Entering a reality, the Survival Rift or the hideout goes through a loading screen
+(`LoadingScreen`, scripts/UI/LoadingScreen.cs, from `Scenes.Go`): a dark screen with
+a title ("The Mirror opens" / "A new reality takes shape…"), a walking ring of dots,
+shown *before* the scene change starts so the frozen frame of a heavy load — a
+reality generating its cavern and building the voxel world — is never seen. It
+lives on the tree root, waits for the new scene to run a few frames, holds at least
+0.45 s so it never flickers, and fades out in 0.35 s. The main menu and the sandbox
+load directly.

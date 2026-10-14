@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "update" ? UpdateScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : Script();
     }
 
     private async Task Script()
@@ -542,6 +542,150 @@ public partial class RunCapture : Node
 
         GD.Print("[CAPTURE] done");
         GetTree().Quit();
+    }
+
+    /// <summary>
+    /// Each cavern style in game (docs/design/endgame.md -> "Caverns"): a zoomed-out
+    /// view, the entrance, and a spot beside its liquid, at tier 10 (seeds pinned so
+    /// each style shows up); plus the hideout canal and the loading screen.
+    /// </summary>
+    private async Task CavesScript()
+    {
+        SetupDemoProfile();
+        if (ArpgGame.Core.Profile.Get(this) is { } demo)
+        {
+            demo.Hideout.GuideSeen = true;
+        }
+
+        // The hideout canal with the rounded shoreline.
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
+        await Wait(1.0f);
+        if (GetTree().CurrentScene is Hideout hideout)
+        {
+            hideout.Player.GlobalPosition = World.HideoutTown.World(new Vector2I(10, 23));
+            await Wait(1.2f);
+            await Snap("town-canal.png");
+        }
+
+        // The loading screen as the Mirror opens a reality.
+        RealityLaunch.Tier = 10;
+        UI.LoadingScreen.Go(GetTree(), ArpgGame.Core.Scenes.Reality, "The Mirror opens", "A new reality takes shape…");
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await Snap("loading-screen.png");
+        await Wait(1.5f);
+
+        foreach (LayoutDef def in LayoutCatalog.Layouts)
+        {
+            ulong seed = 1;
+            while (RealityLaunch.LayoutFor(seed) != def)
+            {
+                seed++;
+            }
+
+            string name = def.Id;
+            RealityLaunch.Tier = 10;
+            RealityLaunch.Seed = seed;
+            GetTree().Paused = false;
+            GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Reality);
+            await Wait(1.0f);
+            if (GetTree().CurrentScene is not RealityController reality)
+            {
+                continue;
+            }
+
+            reality.Player.Health!.IgnoreDamage = true;
+            reality.Player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
+            await Wait(1.2f);
+            await Snap($"cave-{name}-entrance.png");
+
+            // Beside the liquid pool nearest to the middle of the map.
+            Vector2I middle = new(reality.Raster.Width / 2, reality.Raster.Height / 2);
+            Vector2I? spot = null;
+            int best = int.MaxValue;
+            for (int x = 0; x < reality.Raster.Width; x++)
+            {
+                for (int y = 0; y < reality.Raster.Height; y++)
+                {
+                    var c = new Vector2I(x, y);
+                    if (reality.Raster.Cells[x, y] == CellKind.Hazard && reality.Raster.Walkable(c + new Vector2I(0, 2)) && (c - middle).LengthSquared() < best)
+                    {
+                        best = (c - middle).LengthSquared();
+                        spot = c + new Vector2I(0, 2);
+                    }
+                }
+            }
+
+            if (spot is { } at)
+            {
+                reality.Player.GlobalPosition = RasterLayout.World(at);
+                await Wait(2.5f);
+                await Snap($"cave-{name}-liquid.png");
+            }
+
+            var camera = reality.Player.GetNode<Camera2D>("Camera2D");
+            reality.Player.GlobalPosition = RasterLayout.World(middle);
+            Vector2 zoom = camera.Zoom;
+            camera.Zoom = Vector2.One * 0.32f;
+            await Wait(1.5f);
+            await Snap($"cave-{name}-overview.png");
+            camera.Zoom = zoom;
+        }
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>
+    /// Top-down images of generated layouts (docs/design/endgame.md -> "Caverns"):
+    /// four seeds of every cavern style side by side, four pixels per cell. Runs
+    /// headless too — nothing is rendered by the engine. Optional `--seeds=N`.
+    /// </summary>
+    private Task LayoutsScript()
+    {
+        int seeds = 4;
+        foreach (string arg in OS.GetCmdlineUserArgs())
+        {
+            if (arg.StartsWith("--seeds="))
+            {
+                seeds = int.Parse(arg[8..]);
+            }
+        }
+
+        foreach (LayoutDef def in LayoutCatalog.Layouts)
+        {
+            var maps = new List<RasterLayout>();
+            for (int i = 0; i < seeds; i++)
+            {
+                maps.Add(LayoutBuilder.Rasterize(def, new RandomNumberGenerator { Seed = (ulong)(1000 + i * 7919) }));
+                RasterLayout m = maps[^1];
+                int floor = 0;
+                foreach (CellKind k in m.Cells)
+                {
+                    floor += k == CellKind.Floor ? 1 : 0;
+                }
+
+                GD.Print($"[CAPTURE] {def.Id} seed {i}: {m.Width}x{m.Height}, floor {floor}, packs {m.Packs.Count} ({string.Concat(m.Packs.Select(p => p.Kind))}), gate {m.Gate.Count}, boss path {CaveGenerator.Distances(m, m.Entrance).GetValueOrDefault(m.BossCell, -1)}");
+            }
+
+            const int px = 4;
+            int w = maps.Max(m => m.Width) * px;
+            int h = maps.Max(m => m.Height) * px;
+            Image image = Image.Create((w + 8) * seeds, h, false, Image.Format.Rgba8);
+            image.Fill(new Color(0.05f, 0.04f, 0.06f));
+            for (int i = 0; i < maps.Count; i++)
+            {
+                Image one = LayoutPreview.Draw(maps[i], def.ThemeId, px, packs: true);
+                image.BlitRect(one, new Rect2I(Vector2I.Zero, one.GetSize()), new Vector2I(i * (w + 8), 0));
+            }
+
+            string path = _outDir.StartsWith("res://") || _outDir.StartsWith("user://") ? ProjectSettings.GlobalizePath($"{_outDir}/layout-{def.Id}.png") : $"{_outDir}/layout-{def.Id}.png";
+            image.SavePng(path);
+            GD.Print($"[CAPTURE] saved {path}");
+        }
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+        return Task.CompletedTask;
     }
 
     /// <summary>

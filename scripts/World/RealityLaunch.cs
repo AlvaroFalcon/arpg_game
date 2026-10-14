@@ -40,6 +40,16 @@ public static class RealityLaunch
     public static string? LayoutId;
     public static List<string> Modifiers = new();
 
+    /// <summary>
+    /// A fixed map seed (docs/design/endgame.md -> "Caverns"): picks the cavern style
+    /// and its whole shape. Only tests and tools set it; the Mirror leaves it null, so
+    /// every entry generates a new, unseen cavern.
+    /// </summary>
+    public static ulong? Seed;
+
+    /// <summary>The cavern a seed opens.</summary>
+    public static LayoutDef LayoutFor(ulong seed) => LayoutCatalog.Layouts[(int)(seed % (ulong)LayoutCatalog.Layouts.Count)];
+
     /// <summary>The next reality is the introduction (docs/design/tutorial.md).</summary>
     public static bool Tutorial;
 
@@ -71,6 +81,7 @@ public static class RealityLaunch
     public static void Reset()
     {
         Tier = 1;
+        Seed = null;
         LayoutId = null;
         Modifiers = new List<string>();
         Tutorial = false;

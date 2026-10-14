@@ -79,6 +79,19 @@ public partial class HdView : Node
         if (scene is World.RealityController reality)
         {
             Color ambient = reality.Theme.Ambient;
+            if (reality.Layout.Cave is not null)
+            {
+                // Caverns: a darker ambient so the cave's own glows carry the light.
+                _stage.Caverns = true;
+                _stage.GlowColor = reality.Theme.Id switch
+                {
+                    "crypt" => new Color(0.5f, 1f, 0.75f),
+                    "drowned" => new Color(0.45f, 0.8f, 1f),
+                    _ => new Color(1f, 0.5f, 0.18f),
+                };
+                ambient = ambient.Darkened(0.2f);
+            }
+
             _stage.SetMood(
                 new Color(ambient.R * 0.75f, ambient.G * 0.75f, ambient.B * 0.8f),
                 ambient.Lerp(Colors.White, 0.3f),

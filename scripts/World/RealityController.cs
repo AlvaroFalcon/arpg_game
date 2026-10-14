@@ -44,6 +44,9 @@ public partial class RealityController : Node2D, IPickupHandler
     public LayoutDef Layout { get; private set; } = null!;
     public RealityTheme Theme { get; private set; } = null!;
     public RasterLayout Raster { get; private set; } = null!;
+
+    /// <summary>The map seed this reality was built from (null: random).</summary>
+    public ulong? Seed { get; private set; }
     public Player Player { get; private set; } = null!;
     public FlowField Field { get; private set; } = null!;
     public List<string> Modifiers { get; private set; } = new();
@@ -90,9 +93,23 @@ public partial class RealityController : Node2D, IPickupHandler
 
         IsTutorial = RealityLaunch.Tutorial;
         Tier = IsTutorial ? 1 : Mathf.Clamp(RealityLaunch.Tier, 1, RealityTiers.MaxTier);
+        // A new cavern on every entry (docs/design/endgame.md -> "Caverns"); tests and
+        // tools can pin a seed to rebuild the same one.
+        Seed = IsTutorial ? null : RealityLaunch.Seed;
+        var layoutRng = new RandomNumberGenerator();
+        if (Seed is { } seed)
+        {
+            layoutRng.Seed = seed;
+        }
+        else
+        {
+            layoutRng.Randomize();
+        }
+
         Layout = IsTutorial
             ? LayoutCatalog.Tutorial
-            : (RealityLaunch.LayoutId is { } id ? LayoutCatalog.Find(id) : null) ?? LayoutCatalog.Layouts[_rng.RandiRange(0, LayoutCatalog.Layouts.Count - 1)];
+            : (RealityLaunch.LayoutId is { } id ? LayoutCatalog.Find(id) : null)
+                ?? (Seed is { } s ? RealityLaunch.LayoutFor(s) : LayoutCatalog.Layouts[_rng.RandiRange(0, LayoutCatalog.Layouts.Count - 1)]);
         Modifiers = IsTutorial ? new List<string>() : new List<string>(RealityLaunch.Modifiers);
         RealityLaunch.Reset();
         Theme = RealityTheme.Get(Layout.ThemeId);
@@ -111,8 +128,8 @@ public partial class RealityController : Node2D, IPickupHandler
         var layoutRoot = new Node2D { Name = "Layout" };
         AddChild(layoutRoot);
         MoveChild(layoutRoot, 0);
-        Raster = LayoutBuilder.Rasterize(Layout, _rng);
-        _gate = LayoutBuilder.BuildScene(layoutRoot, Raster, Theme, _rng);
+        Raster = LayoutBuilder.Rasterize(Layout, layoutRng);
+        _gate = LayoutBuilder.BuildScene(layoutRoot, Raster, Theme, layoutRng);
         _gateBars = new GateBars { Cells = Raster.Gate, ZIndex = 2 };
         AddChild(_gateBars);
         Field = new FlowField(Raster.WalkableGrid(), RasterLayout.CellPx, Vector2.Zero);
