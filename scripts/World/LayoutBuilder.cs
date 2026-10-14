@@ -16,7 +16,15 @@ public enum CellKind : byte
 }
 
 /// <summary>A pack spot produced by rasterising a layout.</summary>
-public readonly record struct PackSpot(char Kind, Vector2I Cell, string Room);
+/// <remarks>
+/// Caverns also fill in where the spot sits in the spawn fields
+/// (docs/design/endgame.md -> "Spawning"): <paramref name="Heat"/> is the density
+/// noise there (0–1, hotter = bigger pack), <paramref name="Territory"/> picks the
+/// pack's main species (-1 = random) and <paramref name="Zone"/> is how far in it is
+/// by walking distance (0 near the entrance … 4 at the back). Room layouts leave the
+/// neutral defaults.
+/// </remarks>
+public readonly record struct PackSpot(char Kind, Vector2I Cell, string Room, float Heat = 0.5f, int Territory = -1, int Zone = 2);
 
 /// <summary>The rasterised result of a <see cref="LayoutDef"/>.</summary>
 public sealed class RasterLayout

@@ -103,9 +103,9 @@ One number drives everything (`RealityTiers`, scripts/World/RealityTheme.cs):
 | Monster damage multiplier | ×1 | ×2.1 | ×5 |
 | Magic / rare pack chance | 45 % / 30 % | 62 % / 49 % | 80 % / 70 % |
 | Unique-rare chance per spot | 12 % | 25 % | 40 % |
-| Grey (normal) pack size | 5–8 | 8–13 | 12–19 |
+| Pack budget (grey monsters in a normal pack, before heat/zone) | 6.5 | 10.8 | 15.5 |
 | Second grey pack at a spot | 15 % | 39 % | 65 % |
-| Magic per magic pack · rares per rare pack | 3–4 · 1 | 4–5 · 1 | 5–7 · 2 (from tier 12) |
+| Magic per magic pack · rares per rare pack | ≈3 · 1 | ≈5 · 1 | ≈8 · 2 (from tier 12) |
 | Portals (lives) | 3 | 3 | 1 (from tier 15) |
 
 Life and damage multipliers are exponential (25^((t−1)/19), 5^((t−1)/19)): each
@@ -289,8 +289,43 @@ tier 1 to 20 grey monsters grow the most — packs ×2.4 and a growing chance of
 second pack at each spot, roughly ×4 grey monsters overall — while magic and rare
 monsters grow gently (the stronger ones climb, but stay a minority). Grey monsters
 are what make clearing feel like clearing; more rares would mostly make it slower.
-See the tier table above (`RealityTiers.NormalPackSize`, `ExtraPackChance`,
-`MagicPackSize`, `RaresPerPack`).
+See the tier table above (`RealityTiers.PackBudget`, `ExtraPackChance`,
+`RaresPerPack`) and "Spawning" below.
+
+### Spawning (2026-10-14)
+
+After a look at how games place enemies (Poisson-disk sampling, density maps,
+distance maps, encounter budgets, the Left 4 Dead director, survivors-style edge
+spawns), the owner chose four techniques for realities, stacked:
+
+1. **Poisson-disk sampling** (Bridson; `CaveGenerator.PoissonDisk`): pack spots are
+   spread evenly — at least six cells apart (five on cramped maps), candidates grown
+   in the ring between r and 2r — so there are no clumps and no empty stretches.
+2. **A density field** (noise): simplex noise blended with how open the ground is
+   (chambers run hotter than passages). A candidate spot is kept with a chance that
+   grows with its heat, so packs gather in "nests" and thin out elsewhere; the heat
+   also sizes the pack. Measured: packs sit at heat 0.67 against a field average of
+   0.5.
+3. **Zones by walking distance** (a Dijkstra map from the entrance): five bands;
+   each gets packs in proportion to its floor, the hottest spots first, so no part of
+   the cave is empty and none crowded. Deeper = likelier magic and rare packs and a
+   bigger budget.
+4. **A budget per pack**: `PackBudget(tier)` points (6.5 at tier 1 → 15.5 at tier 20)
+   × heat (×0.75–1.25) × zone (×0.85–1.15) × modifiers (Hordes ×1.3, the
+   "Teeming" jewels ×(1 + density)), ±15 % jitter. A normal pack spends it on grey
+   monsters (1 point each); a magic pack on magic monsters (2 each, 2–9); a rare
+   pack on its rare(s) plus grey escorts (75 % of the budget); a unique-rare keeps
+   three magic guards.
+
+Plus **territories** (noise again): six noise fields over the map, a spot belongs to the
+strongest, and that picks the pack's main species from the theme's roster — so
+regions of the cave have a resident kind (70 % of a pack is the main species, as
+before). Inside a pack, members stand on a **golden-angle spiral** with a little
+jitter around the leader: evenly spread, never stacked, never in a grid.
+
+Room layouts (the tutorial) keep their authored pack spots; the tutorial keeps its
+small fixed packs. Tests: `SPAWN-FIELDS` (heat, zone coverage, territories over 30
+maps), `POISSON-DISK` (spacing), `DENSITY-BY-TIER` (budget).
 
 ### Monster rarity
 

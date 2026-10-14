@@ -491,45 +491,88 @@ public static class CaveGenerator
 
     // --- packs ---------------------------------------------------------------------
 
+    /// <summary>Territories: one noise field per slot; a spot belongs to the strongest.</summary>
+    public const int Territories = 6;
+
     /// <summary>
-    /// Pack spots: reachable floor at least twelve steps from the entrance, outside
-    /// the arena, in open ground, at least seven cells apart. The further in, the
-    /// likelier a magic or rare pack; one unique-rare at most, in the back half.
-    /// "Rooms" become zones by walking distance (for pack bookkeeping).
+    /// Pack spots — docs/design/endgame.md -> "Spawning". Four ideas stacked:
+    /// <list type="number">
+    /// <item><b>Poisson-disk sampling</b> (Bridson): candidates grow in a ring between r
+    /// and 2r around accepted spots, so packs are spread evenly with no clumps or
+    /// holes; r is six cells (five if the cave has too little floor).</item>
+    /// <item><b>A density field</b>: simplex noise blended with how open the ground is
+    /// (chambers run hotter than passages). A candidate is accepted with a chance that
+    /// grows with that heat, so packs gather in "nests" and thin out elsewhere; the
+    /// heat also sizes the pack (RealityController budget).</item>
+    /// <item><b>Zones by walking distance</b> (a Dijkstra map from the entrance): five
+    /// bands, each gets packs in proportion to its floor, the hottest spots first —
+    /// so no part of the cave is empty and none is crowded. Further in = likelier
+    /// magic and rare packs, and bigger budgets.</item>
+    /// <item><b>Territories</b>: one noise field per slot; a spot belongs to the strongest,
+    /// which picks the pack's main species, so regions of the cave have a resident kind.</item>
+    /// </list>
     /// </summary>
     private static void PlacePacks(RasterLayout layout, CaveStyle style, RandomNumberGenerator rng)
     {
         Dictionary<Vector2I, int> steps = Distances(layout, layout.Entrance);
         int max = Mathf.Max(1, steps.Values.Max());
         var gate = new HashSet<Vector2I>(layout.Gate);
-        List<Vector2I> candidates = steps.Keys
-            .Where(c => steps[c] > 12 && !layout.BossRegion.Contains(c) && !gate.Contains(c) && OpenAround(layout, c))
-            .OrderBy(_ => rng.Randi())
-            .ToList();
-        bool unique = false;
-        // Seven cells apart if the cave has room; a lagoon-heavy map relaxes to five.
-        var chosen = new List<Vector2I>();
-        foreach (int spacing in new[] { 7, 6, 5 })
+        var density = new FastNoiseLite { Seed = (int)(rng.Randi() & 0x7fffffff), Frequency = 0.06f, NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex };
+        var territory = new FastNoiseLite[Territories];
+        for (int i = 0; i < Territories; i++)
         {
-            foreach (Vector2I c in candidates)
-            {
-                if (chosen.Count >= style.PackSpots)
-                {
-                    break;
-                }
+            territory[i] = new FastNoiseLite { Seed = (int)(rng.Randi() & 0x7fffffff), Frequency = 0.035f, NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex };
+        }
 
-                if (!chosen.Any(u => (u - c).LengthSquared() < spacing * spacing))
+        float Heat(Vector2I c)
+        {
+            int open = 0;
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -2; dy <= 2; dy++)
                 {
-                    chosen.Add(c);
+                    open += layout.Walkable(new Vector2I(c.X + dx, c.Y + dy)) ? 1 : 0;
                 }
             }
 
-            if (chosen.Count >= style.PackSpots)
+            return Mathf.Clamp(0.65f * (density.GetNoise2D(c.X, c.Y) * 0.5f + 0.5f) + 0.35f * open / 25f, 0f, 1f);
+        }
+
+        var candidates = new HashSet<Vector2I>(steps.Keys.Where(c => steps[c] > 12 && !layout.BossRegion.Contains(c) && !gate.Contains(c) && OpenAround(layout, c)));
+        List<Vector2I> points = new();
+        foreach (float radius in new[] { 6f, 5f })
+        {
+            points = PoissonDisk(candidates, radius, c => 0.25f + 0.75f * Heat(c), rng);
+            if (points.Count >= style.PackSpots)
             {
                 break;
             }
         }
 
+        // Quotas per walking-distance zone, in proportion to each zone's floor.
+        int Zone(Vector2I c) => Mathf.Min(4, (int)(steps[c] / (float)max * 5f));
+        var area = new int[5];
+        foreach (Vector2I c in steps.Keys)
+        {
+            area[Zone(c)]++;
+        }
+
+        int total = area.Sum();
+        var chosen = new List<Vector2I>();
+        var byZone = points.GroupBy(Zone).ToDictionary(g => g.Key, g => g.OrderByDescending(c => Heat(c) + rng.Randf() * 0.3f).ToList());
+        for (int z = 0; z < 5; z++)
+        {
+            int quota = Mathf.RoundToInt(style.PackSpots * area[z] / (float)Mathf.Max(1, total));
+            if (byZone.TryGetValue(z, out List<Vector2I>? list))
+            {
+                chosen.AddRange(list.Take(quota));
+            }
+        }
+
+        // Quotas a zone couldn't fill go to the hottest spots left anywhere.
+        chosen.AddRange(points.Except(chosen).OrderByDescending(Heat).Take(Mathf.Max(0, style.PackSpots - chosen.Count)));
+
+        bool unique = false;
         foreach (Vector2I c in chosen)
         {
             float progress = steps[c] / (float)max;
@@ -553,8 +596,96 @@ public static class CaveGenerator
                 kind = 'p';
             }
 
-            layout.Packs.Add(new PackSpot(kind, c, $"zone{Mathf.Min(4, (int)(progress * 5f))}"));
+            int owner = 0;
+            for (int i = 1; i < Territories; i++)
+            {
+                if (territory[i].GetNoise2D(c.X, c.Y) > territory[owner].GetNoise2D(c.X, c.Y))
+                {
+                    owner = i;
+                }
+            }
+
+            layout.Packs.Add(new PackSpot(kind, c, $"zone{Zone(c)}", Heat(c), owner, Zone(c)));
         }
+    }
+
+    /// <summary>
+    /// Bridson's Poisson-disk sampling over a set of allowed cells: every accepted
+    /// point is at least <paramref name="radius"/> from the others, new candidates
+    /// are tried in the ring between r and 2r around an active point (30 tries), and
+    /// a candidate is kept with probability <paramref name="accept"/> (the density
+    /// field). Disconnected parts of the set get their own seed point.
+    /// </summary>
+    public static List<Vector2I> PoissonDisk(HashSet<Vector2I> allowed, float radius, System.Func<Vector2I, float> accept, RandomNumberGenerator rng)
+    {
+        var points = new List<Vector2I>();
+        if (allowed.Count == 0)
+        {
+            return points;
+        }
+
+        float cellSize = radius / Mathf.Sqrt2;
+        var grid = new Dictionary<Vector2I, Vector2I>();
+        Vector2I Key(Vector2I c) => new(Mathf.FloorToInt(c.X / cellSize), Mathf.FloorToInt(c.Y / cellSize));
+        bool Far(Vector2I c)
+        {
+            Vector2I k = Key(c);
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    if (grid.TryGetValue(new Vector2I(k.X + dx, k.Y + dy), out Vector2I p) && (p - c).LengthSquared() < radius * radius)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        void Add(Vector2I c, List<Vector2I> active)
+        {
+            points.Add(c);
+            grid[Key(c)] = c;
+            active.Add(c);
+        }
+
+        List<Vector2I> seeds = allowed.OrderBy(_ => rng.Randi()).ToList();
+        foreach (Vector2I seed in seeds)
+        {
+            if (!Far(seed) || rng.Randf() > accept(seed))
+            {
+                continue;
+            }
+
+            var active = new List<Vector2I>();
+            Add(seed, active);
+            while (active.Count > 0)
+            {
+                int index = rng.RandiRange(0, active.Count - 1);
+                Vector2I from = active[index];
+                bool found = false;
+                for (int attempt = 0; attempt < 30 && !found; attempt++)
+                {
+                    float angle = rng.Randf() * Mathf.Tau;
+                    float distance = radius * (1f + rng.Randf());
+                    var c = new Vector2I(Mathf.RoundToInt(from.X + Mathf.Cos(angle) * distance), Mathf.RoundToInt(from.Y + Mathf.Sin(angle) * distance));
+                    if (allowed.Contains(c) && Far(c) && rng.Randf() < accept(c))
+                    {
+                        Add(c, active);
+                        found = true;
+                    }
+                }
+
+                if (!found)
+                {
+                    active.RemoveAt(index);
+                }
+            }
+        }
+
+        return points;
     }
 
     // --- helpers -------------------------------------------------------------------

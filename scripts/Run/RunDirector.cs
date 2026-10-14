@@ -94,6 +94,7 @@ public partial class RunDirector : Node
     public override void _Ready()
     {
         _rng.Randomize();
+        _waves = WaveNoise((int)(_rng.Randi() & 0x7fffffff));
         _nextElite = FirstEliteTime;
         _nextSwarm = SwarmInterval;
     }
@@ -163,9 +164,20 @@ public partial class RunDirector : Node
             _herald = SpawnBoss(Herald, "The Bone Herald returns", "Stronger for its rest");
         }
 
-        float rate = SpawnRate(t) * (HeraldAlive ? 0.15f : 1f);
+        // The director (docs/design/run.md -> "The director"): the budget fills at the
+        // danger curve's rate times the current intensity — waves from 1D noise, eased
+        // off while the player is in trouble — and is spent on enemies by cost.
+        UpdateIntensity(t);
+        float rate = SpawnRate(t) * AverageCost * CurrentIntensity * (HeraldAlive ? 0.15f : 1f);
         _budget += rate * dt;
         int cap = EnemyCap(t);
+        _leashIn -= dt;
+        if (_leashIn <= 0f)
+        {
+            _leashIn = 0.5f;
+            Leash();
+        }
+
         Godot.Collections.Array<Node> enemies = GetTree().GetNodesInGroup(CombatQuery.EnemyGroup);
         int alive = enemies.Count;
         _rangedAlive = 0;
@@ -177,16 +189,25 @@ public partial class RunDirector : Node
             }
         }
 
-        while (_budget >= 1f)
+        while (true)
         {
-            _budget -= 1f;
-            if (alive >= cap)
+            PackedScene? next = _pending ?? PickEnemy(t);
+            float cost = Cost(next);
+            if (_budget < cost)
             {
-                _budget = 0f;
+                // Save up for it: the next spawn is the same pick.
+                _pending = next;
                 break;
             }
 
-            PackedScene? next = PickEnemy(t);
+            _pending = null;
+            _budget -= cost;
+            if (alive >= cap)
+            {
+                _budget = Mathf.Min(_budget, cost);
+                break;
+            }
+
             if (next == Caster)
             {
                 _rangedAlive++;
@@ -208,6 +229,118 @@ public partial class RunDirector : Node
         {
             _nextSwarm += SwarmInterval;
             SpawnSwarm(t);
+        }
+    }
+
+    // --- the director --------------------------------------------------------------
+
+    /// <summary>Budget points per enemy: the heavier the enemy, the more it costs.
+    /// Elites roll on top of an ordinary spawn and cost nothing extra.</summary>
+    public float Cost(PackedScene? scene) =>
+        scene == Brute ? 3f : scene == Caster ? 2f : scene == Imp ? 1.5f : 1f;
+
+    /// <summary>Roughly what an average spawn costs: <see cref="SpawnRate"/> stays in
+    /// enemies per second, the budget fills in points.</summary>
+    public const float AverageCost = 1.3f;
+
+    /// <summary>The intensity right now (0.55–1.5 from the waves, eased when the player is hurt).</summary>
+    public float CurrentIntensity { get; private set; } = 1f;
+
+    /// <summary>A surge is on (the waves are high): the HUD says so.</summary>
+    public bool Surging { get; private set; }
+
+    private FastNoiseLite _waves = WaveNoise(1);
+    private PackedScene? _pending;
+    private float _leashIn;
+
+    /// <summary>The wave field: smooth 1D simplex noise (one octave), a surge or a lull
+    /// roughly every half minute to a minute.</summary>
+    public static FastNoiseLite WaveNoise(int seed) =>
+        new() { Seed = seed, NoiseType = FastNoiseLite.NoiseTypeEnum.Simplex, Frequency = 1f / 55f, FractalType = FastNoiseLite.FractalTypeEnum.None };
+
+    /// <summary>
+    /// The waves: 1D noise over time, smoothstepped so it lingers at the highs and
+    /// lows, mapped to 0.55–1.5. Instead of a flat ramp the pressure surges and
+    /// eases on its own, never on a visible timer.
+    /// </summary>
+    public static float WaveIntensity(FastNoiseLite noise, float t)
+    {
+        float n = Mathf.Clamp(noise.GetNoise1D(t) * 0.5f + 0.5f, 0f, 1f);
+        return 0.55f + 0.95f * Mathf.SmoothStep(0f, 1f, n);
+    }
+
+    /// <summary>Stress: a player low on life gets a breather (×0.65 under 35 %, ×0.85 under 60 %).</summary>
+    public static float StressEase(float lifeFraction) => lifeFraction < 0.35f ? 0.65f : lifeFraction < 0.6f ? 0.85f : 1f;
+
+    private void UpdateIntensity(float t)
+    {
+        float wave = WaveIntensity(_waves, t);
+        float life = State.Player?.Stats.Life is { Max: > 0f } pool ? pool.Current / pool.Max : 1f;
+        CurrentIntensity = wave * StressEase(life);
+        if (!Surging && wave > 1.3f && t > 45f)
+        {
+            Surging = true;
+            EmitSignal(SignalName.Announced, "A surge rises", "", new Color(1f, 0.45f, 0.35f));
+        }
+        else if (Surging && wave < 1f)
+        {
+            Surging = false;
+        }
+    }
+
+    /// <summary>What the camera shows, in world space.</summary>
+    private Rect2 View()
+    {
+        Viewport viewport = State.Player!.GetViewport();
+        return viewport.CanvasTransform.AffineInverse() * viewport.GetVisibleRect();
+    }
+
+    /// <summary>
+    /// A spawn point just outside the view: a random point on the view's rectangle
+    /// grown by <paramref name="margin"/> (sides weighted by length), clamped into the
+    /// arena and kept only if it is still out of sight (near an arena wall the clamp
+    /// can pull it on screen; then another side is tried).
+    /// </summary>
+    public static Vector2 EdgePointFor(Rect2 view, float margin, System.Func<Vector2, Vector2> clamp, RandomNumberGenerator rng)
+    {
+        Rect2 ring = view.Grow(margin);
+        Rect2 seen = view.Grow(-8f);
+        Vector2 last = ring.Position;
+        for (int attempt = 0; attempt < 12; attempt++)
+        {
+            float w = ring.Size.X;
+            float h = ring.Size.Y;
+            float s = rng.Randf() * 2f * (w + h);
+            Vector2 p = s < w ? ring.Position + new Vector2(s, 0f)
+                : s < w + h ? ring.Position + new Vector2(w, s - w)
+                : s < 2f * w + h ? ring.Position + new Vector2(2f * w + h - s, h)
+                : ring.Position + new Vector2(0f, 2f * (w + h) - s);
+            last = clamp(p);
+            if (!seen.HasPoint(last))
+            {
+                return last;
+            }
+        }
+
+        return last;
+    }
+
+    /// <summary>
+    /// The leash: an ordinary enemy left more than a full view diagonal behind is
+    /// moved back to the view's edge, so the pressure follows the player instead of
+    /// a crowd trailing far behind (bosses never move).
+    /// </summary>
+    private void Leash()
+    {
+        Rect2 view = View();
+        float limit = view.Size.Length();
+        Vector2 player = State.Player!.GlobalPosition;
+        foreach (Node node in GetTree().GetNodesInGroup(CombatQuery.EnemyGroup))
+        {
+            if (node is Enemy { IsBoss: false } enemy && !enemy.Health.IsDead && enemy.GlobalPosition.DistanceTo(player) > limit)
+            {
+                enemy.GlobalPosition = EdgePoint();
+            }
         }
     }
 
@@ -282,23 +415,7 @@ public partial class RunDirector : Node
         return Slime;
     }
 
-    private Vector2 EdgePoint(float extra = 60f)
-    {
-        Vector2 playerPos = State.Player!.GlobalPosition;
-        Vector2 half = State.Player.GetViewportRect().Size / 2f;
-        float radius = half.Length() + extra;
-        for (int attempt = 0; attempt < 8; attempt++)
-        {
-            Vector2 p = playerPos + Vector2.Right.Rotated(_rng.Randf() * Mathf.Tau) * radius;
-            Vector2 clamped = Arena.Clamp(p, 40f);
-            if (clamped.DistanceTo(playerPos) > half.Y * 0.9f)
-            {
-                return clamped;
-            }
-        }
-
-        return Arena.Clamp(playerPos + Vector2.Right.Rotated(_rng.Randf() * Mathf.Tau) * radius, 40f);
-    }
+    private Vector2 EdgePoint(float extra = 60f) => EdgePointFor(View(), extra, p => Arena.Clamp(p, 40f), _rng);
 
     public Enemy? SpawnAtEdge(PackedScene? scene, bool elite = false) => scene is null ? null : SpawnAt(scene, EdgePoint(), elite);
 
