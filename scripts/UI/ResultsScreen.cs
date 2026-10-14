@@ -122,7 +122,7 @@ public partial class ResultsScreen : CanvasLayer
             int guard = 0;
             do
             {
-                item = ItemFactory.RollRandom(rewards.ItemLevel, rewards.Quality, rng);
+                item = ItemFactory.RollRandom(rewards.ItemLevel, DropSource.RiftReward, rewards.RarityMultiplier, rng);
             }
             while (!usedBases.Add(item.Base!.Id) && ++guard < 10);
 

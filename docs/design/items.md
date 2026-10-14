@@ -558,6 +558,77 @@ Name generation varies per family — Magic is `Temper + base + Sigil`, Rare dra
 word pools, Majestic and Set are authored fixed names, currency is `"{amount} Gold"` —
 so it lives behind `Descriptor.DisplayName`. The label never switches on type.
 
+## Drop tables (cascade) **[IMPLEMENTED 2026-10-14]**
+
+Owner's decision (GitHub issue #13): an item's rarity is rolled as a **cascade**, from the
+rarest tier down. Each tier rolls its own chance; a hit stops the cascade, a miss
+falls through to the next tier, and **Common** is the fallback. Whether an item drops at
+all is a separate roll (item quantity) and is unchanged.
+
+**Where to tune:** `scripts/Items/DropTables.cs` holds every number below. Change the
+code and this table together (the smoke test checks the code matches the cascade
+maths, not this page).
+
+### Items — chance per tier, before bonuses
+
+| Source (`DropSource`) | Majestic | Rare | Magic | Common |
+|---|---|---|---|---|
+| Normal monster | — | 1.5 % | 50 % | rest |
+| Magic monster | — | 3 % | 55 % | rest |
+| Rare monster | — | 15 % | 60 % | rest |
+| Unique-rare monster | — | 30 % | 60 % | rest |
+| Reality boss | 0 % | 35 % | 55 % | rest |
+| Rift elite | — | 10 % | 55 % | rest |
+| Rift boss | 0 % | 35 % | 55 % | rest |
+| Rift end-of-run reward | 0 % | 15 % | 60 % | rest |
+
+"Magic 50 %" is the chance *of what falls through*: with Rare at 1.5 %, a normal
+monster's item is Rare 1.5 %, Magic 49.25 %, Common 49.25 %.
+
+**Majestic is held at 0 %** until Majestic items are authored (see "Majestic
+effects"); raising it is a one-number change. Set items get a tier the same way when
+they exist.
+
+### Bonuses — one multiplier on every tier
+
+Every rarity bonus multiplies **each tier's chance** on the way down, capped at
+**95 %** per tier (`MaxChance`), so the rarest tiers gain the most:
+
+| Where | Multiplier |
+|---|---|
+| Realities | `(1 + increased rarity) × (1 + 4 % per tier above 1)` — increased rarity = shard modifiers + Mirror jewels; the boss also adds the "Crowned Spoils" jewel |
+| Survival Rift drops | `1 + 5 % per minute survived` |
+| Rift end-of-run reward | `1 + 0.12·minutes + 0.15·bosses (+0.3 victory)` (run.md -> "Rewards") |
+
+Watch the Magic tier when tuning: a ×2 multiplier turns 50 % Magic into 95 % (the
+cap), so Commons nearly vanish (49 % → 5 % on normal monsters, measured). That is the
+PoE behaviour; if Commons should survive high bonuses, give Magic its own smaller
+share of the bonus.
+
+### Crafting orbs — same cascade
+
+| Orb | Chance (rarest first) |
+|---|---|
+| Ascendant Orb | 1 % |
+| Sundering Orb | 3 % |
+| Tuning Orb | 4 % |
+| Tempest Orb | 5 % |
+| Crown Orb | 7 % |
+| Ash Orb | 12 % |
+| Graft Shard | 24 % |
+| Flux Shard | 46 % |
+| Kindling Shard | fallback (≈ 29 %) |
+
+These reproduce the old drop weights (30/26/18/10/6/5/4/3/1) at ×1. The reality's
+rarity multiplier (and the Rift's per-minute one) applies here too, so rarity finds
+better orbs. Orbs whose step is under 10 % get a light beam on the floor.
+
+Why a cascade rather than one weighted roll (they are mathematically equivalent):
+one readable number per tier per source, a tier can be tuned without moving the
+others' boundaries, and every bonus means the same thing. The old pipeline was a
+single roll (`random + (quality + bonus) × 0.6` against fixed thresholds) copied in
+three places, where a bonus shifted a threshold and was hard to reason about.
+
 ## Item filter **[DECIDED]**
 
 The governing rule:

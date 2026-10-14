@@ -165,7 +165,7 @@ public partial class Pickup : Node2D
             Color c = Items.Crafting.Find(CurrencyKey)?.Color ?? Colors.White;
             if (Items.ItemArt.ForCurrency(CurrencyKey) is { } art)
             {
-                if (Items.Crafting.Find(CurrencyKey) is { DropWeight: < 10f })
+                if (Items.DropTables.OrbChance(CurrencyKey) < 0.1f)
                 {
                     DrawRect(new Rect2(-2f, -70f, 4f, 70f), c with { A = 0.2f });
                 }
@@ -176,7 +176,7 @@ public partial class Pickup : Node2D
             }
 
             // Rarer orbs get a beam like shards and gems do.
-            if (Items.Crafting.Find(CurrencyKey) is { DropWeight: < 10f })
+            if (Items.DropTables.OrbChance(CurrencyKey) < 0.1f)
             {
                 DrawRect(new Rect2(-2f, -70f, 4f, 70f), c with { A = 0.2f });
             }

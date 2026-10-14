@@ -73,6 +73,33 @@ first minute, +1 every minute), shown on the HUD as the right-hand bar:
 Enemies spawn just outside the camera so they walk in instead of popping in on top
 of the player.
 
+### The director (2026-10-14)
+
+From the same review of spawning techniques (endgame.md -> "Spawning"), the Rift got a
+small **director** in the spirit of Left 4 Dead's, on top of the danger curve:
+
+- **Intensity waves**: smooth 1D simplex noise over time (one octave, period ≈ a
+  minute), smoothstepped and mapped to ×0.55–1.5. The pressure surges and eases on its
+  own — about every half minute to a minute — instead of a flat ramp or a visible
+  timer. Crossing ×1.3 announces **"A surge rises"** and the danger gauge reads
+  "Surge!".
+- **Stress**: a player under 60 % life gets ×0.85, under 35 % ×0.65 — a breather,
+  never a stop.
+- **A budget**: the spawn rate (still the danger curve's enemies per second, ×1.3 to
+  turn it into points) fills a budget that is spent by **cost** — slime and bat 1,
+  imp 1.5, caster 2, brute 3. A heavy pick is saved up for rather than skipped.
+- **Edge spawns**: a random point on the edges of the actual view rectangle plus a
+  margin (sides weighted by length), clamped into the arena and re-rolled if the
+  clamp pulled it on screen — enemies never pop in where the player can see.
+- **The leash**: every half second, an ordinary enemy more than a full view diagonal
+  behind is moved back to the view's edge, so the horde follows the player instead
+  of trailing off. Bosses never move.
+
+Swarms, elites and bosses keep their own timers. Autoplay bot after the change (3
+random-skill runs): died at 4:47, won at 8:07 and 7:50 — within the spread of the
+previous pass (5:03, a 7:52 win, 4:16), with more kills: the lulls let the build catch
+up, the surges push back.
+
 ### The endless phase
 
 Killing the Colossus used to end the run. Now it opens a **portal home** (step on it
@@ -121,8 +148,11 @@ survived (`RunRewards`):
 | Item cards | 3, +1 at 7:00, +1 at 12:00 | 3 | 4 | 5 |
 | Items kept | 1, +1 at 10:00, +1 at 15:00 | 1 | 1 | 3 |
 
-Item level is `3 + 5·minutes + 8·bosses killed`; rarity skews up with time
-survived, bosses killed and victory. Gold and orbs go straight into the wallet
+Item level is `3 + 5·minutes + 8·bosses killed`. Rarity rolls the `RiftReward`
+cascade (items.md -> "Drop tables (cascade)") with a multiplier of
+`1 + 0.12·minutes + 0.15·bosses (+0.3 victory)`: ×2.65 for a 7:30 win with three
+bosses (≈ 40 % Rare per card), ×4.2 after sixteen endless minutes (≈ 63 %). Elites and
+bosses dropping gear mid-run use the `RiftElite` / `RiftBoss` tables, +5 % per minute. Gold and orbs go straight into the wallet
 before the character is saved. Everything picked up from the ground
 during the run is kept too. Dying is not a punishment beyond ending the run: in a
 game whose persistent progression is gear, taking the gear away on death would make

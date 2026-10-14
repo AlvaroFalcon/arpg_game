@@ -101,6 +101,52 @@ public partial class EndgameSmokeTest : Node2D
         await IssueFeedbackChecks();
         await ShardVendorChecks();
         await JewelChecks();
+        DropTableChecks();
+    }
+
+    /// <summary>items.md -> "Drop tables (cascade)": the rolls match the tables, a
+    /// rarity multiplier scales every tier, chances cap, Majestic stays at 0 % until
+    /// authored, and orbs cascade from the rarest down.</summary>
+    private void DropTableChecks()
+    {
+        var rng = new RandomNumberGenerator { Seed = 4242 };
+        const int n = 40000;
+        Dictionary<Rarity, float> Rates(DropSource source, float multiplier)
+        {
+            var counts = new Dictionary<Rarity, float>();
+            for (int i = 0; i < n; i++)
+            {
+                Rarity r = DropTables.RollRarity(source, multiplier, rng);
+                counts[r] = counts.GetValueOrDefault(r) + 1f / n;
+            }
+
+            return counts;
+        }
+
+        bool Near(float got, float want, float tolerance) => Mathf.Abs(got - want) <= tolerance;
+        Dictionary<Rarity, float> normal = Rates(DropSource.NormalMonster, 1f);
+        Check("DROP-CASCADE-TABLE", Near(normal.GetValueOrDefault(Rarity.Rare), 0.015f, 0.003f) && Near(normal.GetValueOrDefault(Rarity.Magic), 0.985f * 0.5f, 0.01f),
+            $"normal monster: rare {normal.GetValueOrDefault(Rarity.Rare):P1} (table 1.5 %), magic {normal.GetValueOrDefault(Rarity.Magic):P1} (50 % of what falls through)");
+        Dictionary<Rarity, float> doubled = Rates(DropSource.NormalMonster, 2f);
+        Check("DROP-RARITY-MULTIPLIES", Near(doubled.GetValueOrDefault(Rarity.Rare), 0.03f, 0.004f) && doubled.GetValueOrDefault(Rarity.Common) < normal.GetValueOrDefault(Rarity.Common),
+            $"×2 rarity: rare {doubled.GetValueOrDefault(Rarity.Rare):P1}, common {normal.GetValueOrDefault(Rarity.Common):P0} → {doubled.GetValueOrDefault(Rarity.Common):P0}");
+        Dictionary<Rarity, float> boss = Rates(DropSource.Boss, 50f);
+        Check("DROP-CAP-AND-MAJESTIC", boss.GetValueOrDefault(Rarity.Majestic) == 0f && Near(boss.GetValueOrDefault(Rarity.Rare), DropTables.MaxChance, 0.01f),
+            $"boss ×50: majestic {boss.GetValueOrDefault(Rarity.Majestic):P1} (held at 0 %), rare capped at {boss.GetValueOrDefault(Rarity.Rare):P1}");
+
+        var orbs = new Dictionary<string, float>();
+        for (int i = 0; i < n; i++)
+        {
+            string id = DropTables.RollOrb(rng).Id;
+            orbs[id] = orbs.GetValueOrDefault(id) + 1f / n;
+        }
+
+        float miss = DropTables.Orbs.Aggregate(1f, (left, o) => left * (1f - o.Chance));
+        Check("DROP-ORB-CASCADE", Near(orbs.GetValueOrDefault("ascendant_orb"), 0.01f, 0.002f) && Near(orbs.GetValueOrDefault(DropTables.FallbackOrb), miss, 0.01f)
+            && orbs.Count == Crafting.Orbs.Count,
+            $"ascendant {orbs.GetValueOrDefault("ascendant_orb"):P1} (table 1 %), kindling (fallback) {orbs.GetValueOrDefault(DropTables.FallbackOrb):P0} (expected {miss:P0}), {orbs.Count} kinds seen");
+        Check("DROP-MULTIPLIERS", Mathf.IsEqualApprox(DropTables.RealityMultiplier(0.5f, 20), 1.5f * 1.76f) && Mathf.IsEqualApprox(DropTables.RiftMultiplier(600f), 1.5f),
+            $"reality +50 % rarity at tier 20 ×{DropTables.RealityMultiplier(0.5f, 20):0.00}, Rift at 10:00 ×{DropTables.RiftMultiplier(600f):0.00}");
     }
 
     /// <summary>endgame.md -> "Mirror jewels": 70 connected sockets, socket next to
@@ -376,6 +422,48 @@ public partial class EndgameSmokeTest : Node2D
             Check($"CAVE-CONNECTED-{def.Id}", bad == 0, bad == 0 ? $"60 seeds: reachable boss behind a 1–6 cell gate, 12+ packs at least 5 cells apart, no one-cell gaps; floor {minFloor}–{maxFloor} cells" : detail);
         }
 
+        // Spawning (endgame.md -> "Spawning"): packs sit in the hot parts of the density
+        // field, every walking-distance zone gets some, and territories vary.
+        float hotter = 0f;
+        int zonesCovered = 0;
+        int territorySets = 0;
+        const int spawnSeeds = 30;
+        for (int seed = 0; seed < spawnSeeds; seed++)
+        {
+            RasterLayout r = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[seed % LayoutCatalog.Layouts.Count], new RandomNumberGenerator { Seed = (ulong)(seed * 7 + 3) });
+            hotter += r.Packs.Average(p => p.Heat);
+            zonesCovered += r.Packs.Select(p => p.Zone).Distinct().Count() >= 4 ? 1 : 0;
+            territorySets += r.Packs.Select(p => p.Territory).Distinct().Count() >= 3 ? 1 : 0;
+        }
+
+        hotter /= spawnSeeds;
+        Check("SPAWN-FIELDS", hotter > 0.5f && zonesCovered >= spawnSeeds - 2 && territorySets >= spawnSeeds - 2,
+            $"mean pack heat {hotter:0.00} (field average ≈ 0.5), {zonesCovered}/{spawnSeeds} maps with packs in 4+ distance zones, {territorySets}/{spawnSeeds} with 3+ territories");
+
+        var cells = new HashSet<Vector2I>();
+        for (int x = 0; x < 40; x++)
+        {
+            for (int y = 0; y < 40; y++)
+            {
+                cells.Add(new Vector2I(x, y));
+            }
+        }
+
+        List<Vector2I> disk = CaveGenerator.PoissonDisk(cells, 5f, _ => 1f, new RandomNumberGenerator { Seed = 5 });
+        int minGap = int.MaxValue;
+        foreach (Vector2I p in disk)
+        {
+            foreach (Vector2I q in disk)
+            {
+                if (p != q)
+                {
+                    minGap = Mathf.Min(minGap, (p - q).LengthSquared());
+                }
+            }
+        }
+
+        Check("POISSON-DISK", minGap >= 25 && disk.Count >= 35, $"{disk.Count} points in a 40×40 field, closest pair {Mathf.Sqrt(minGap):0.0} cells apart (min 5)");
+
         string a = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 99 }).Dump();
         string b = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 99 }).Dump();
         string other = LayoutBuilder.Rasterize(LayoutCatalog.Layouts[0], new RandomNumberGenerator { Seed = 100 }).Dump();
@@ -416,13 +504,11 @@ public partial class EndgameSmokeTest : Node2D
 
         Check("SHARD-CAP-20", over == 0, $"{over} shards above tier 20");
 
-        (int n1, int x1) = RealityTiers.NormalPackSize(1);
-        (int n20, int x20) = RealityTiers.NormalPackSize(20);
-        (int m1, int _) = RealityTiers.MagicPackSize(1);
-        (int m20, int _) = RealityTiers.MagicPackSize(20);
-        Check("DENSITY-BY-TIER", n20 >= n1 * 2 && x20 >= x1 * 2 && m20 > m1 && m20 - m1 < n20 - n1
+        float b1 = RealityTiers.PackBudget(1);
+        float b20 = RealityTiers.PackBudget(20);
+        Check("DENSITY-BY-TIER", b20 >= b1 * 2.3f && RealityTiers.BudgetScale(1f, 4) > RealityTiers.BudgetScale(0f, 0) * 1.5f
             && RealityTiers.ExtraPackChance(20) > RealityTiers.ExtraPackChance(1) && RealityTiers.RaresPerPack(20) > RealityTiers.RaresPerPack(1),
-            $"grey packs {n1}-{x1} → {n20}-{x20}, magic {m1} → {m20}, extra pack {RealityTiers.ExtraPackChance(1):P0} → {RealityTiers.ExtraPackChance(20):P0}");
+            $"pack budget {b1:0.0} → {b20:0.0} points, hot deep spot ×{RealityTiers.BudgetScale(1f, 4):0.00} vs cold near ×{RealityTiers.BudgetScale(0f, 0):0.00}, extra pack {RealityTiers.ExtraPackChance(1):P0} → {RealityTiers.ExtraPackChance(20):P0}");
 
         var mods = RealityLaunch.RollModifiers(18, rng);
         (float q, float r) = RealityLaunch.Bonuses(mods);

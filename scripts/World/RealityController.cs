@@ -281,52 +281,67 @@ public partial class RealityController : Node2D, IPickupHandler
         }
     }
 
+    /// <summary>
+    /// One pack — docs/design/endgame.md -> "Spawning". The spot's budget (tier ×
+    /// heat × zone × modifiers) buys its monsters by cost; the kind decides the
+    /// leader. The spot's territory picks the main species (most of the pack).
+    /// The tutorial keeps its small fixed packs.
+    /// </summary>
     private void SpawnPack(PackSpot spot, char kind, bool hordes)
     {
         var pack = new List<Enemy>();
         Vector2 centre = RasterLayout.World(spot.Cell);
-        string main = Theme.Roster[_rng.RandiRange(0, Theme.Roster.Count - 1)];
-        (int nMin, int nMax) = RealityTiers.NormalPackSize(Tier);
-        (int eMin, int eMax) = RealityTiers.RareEscort(Tier);
-        int normals = kind switch { 'm' => 0, 'r' => _rng.RandiRange(eMin, eMax), 'u' => 0, _ => IsTutorial ? 3 : _rng.RandiRange(nMin, nMax) };
-        if (hordes)
+        string main = spot.Territory >= 0
+            ? Theme.Roster[spot.Territory % Theme.Roster.Count]
+            : Theme.Roster[_rng.RandiRange(0, Theme.Roster.Count - 1)];
+        float budget = RealityTiers.PackBudget(Tier) * RealityTiers.BudgetScale(spot.Heat, spot.Zone)
+            * (hordes ? 1.3f : 1f) * (1f + Jewels[JewelStat.Density]) * _rng.RandfRange(0.85f, 1.15f);
+        int normals = kind switch
         {
-            normals += 2;
-        }
+            'm' or 'u' => 0,
+            'r' => IsTutorial ? 2 : Mathf.RoundToInt(budget * RealityTiers.RareEscortShare / RealityTiers.NormalCost),
+            _ => IsTutorial ? 3 : Mathf.Max(1, Mathf.RoundToInt(budget / RealityTiers.NormalCost)),
+        };
 
-        normals = Mathf.RoundToInt(normals * (1f + Jewels[JewelStat.Density]));
-
-        for (int i = 0; i < normals; i++)
+        int index = 0;
+        float turn = _rng.Randf() * Mathf.Tau;
+        Enemy Add(string type, MonsterRarity rarity)
         {
-            string type = _rng.Randf() < 0.7f ? main : Theme.Roster[_rng.RandiRange(0, Theme.Roster.Count - 1)];
-            pack.Add(SpawnMonster(type, centre, MonsterRarity.Normal));
+            Enemy e = SpawnMonster(type, centre, rarity, index++, turn);
+            pack.Add(e);
+            return e;
         }
 
         switch (kind)
         {
             case 'm':
-                (int mMin, int mMax) = RealityTiers.MagicPackSize(Tier);
-                for (int i = 0; i < (IsTutorial ? 2 : _rng.RandiRange(mMin, mMax)); i++)
+                int magics = IsTutorial ? 2 : Mathf.Clamp(Mathf.RoundToInt(budget / RealityTiers.MagicCost), 2, 9);
+                for (int i = 0; i < magics; i++)
                 {
-                    pack.Add(SpawnMonster(main, centre, MonsterRarity.Magic));
+                    Add(main, MonsterRarity.Magic);
                 }
 
                 break;
             case 'r':
                 for (int i = 0; i < (IsTutorial ? 1 : RealityTiers.RaresPerPack(Tier)); i++)
                 {
-                    pack.Add(SpawnMonster(main, centre, MonsterRarity.Rare));
+                    Add(main, MonsterRarity.Rare);
                 }
 
                 break;
             case 'u':
-                pack.Add(SpawnMonster(Theme.Roster.FirstOrDefault(r => r is "Brute" or "Thrall" or "Skeleton") ?? main, centre, MonsterRarity.Unique));
+                Add(Theme.Roster.FirstOrDefault(r => r is "Brute" or "Thrall" or "Skeleton") ?? main, MonsterRarity.Unique);
                 for (int i = 0; i < 3; i++)
                 {
-                    pack.Add(SpawnMonster(main, centre, MonsterRarity.Magic));
+                    Add(main, MonsterRarity.Magic);
                 }
 
                 break;
+        }
+
+        for (int i = 0; i < normals; i++)
+        {
+            Add(_rng.Randf() < 0.7f ? main : Theme.Roster[_rng.RandiRange(0, Theme.Roster.Count - 1)], MonsterRarity.Normal);
         }
 
         foreach (Enemy e in pack)
@@ -336,13 +351,17 @@ public partial class RealityController : Node2D, IPickupHandler
         }
     }
 
-    private Enemy SpawnMonster(string type, Vector2 centre, MonsterRarity rarity)
+    /// <summary>A pack member. Members sit on a golden-angle spiral around the
+    /// centre with a little jitter: evenly spread (blue noise), leader in the middle,
+    /// never stacked and never in a grid.</summary>
+    private Enemy SpawnMonster(string type, Vector2 centre, MonsterRarity rarity, int index, float turn)
     {
         var enemy = LoadEnemy(type).Instantiate<Enemy>();
         enemy.MonsterLevel = MonsterLevel;
         enemy.Dormant = true;
         AddChild(enemy);
-        Vector2 offset = new(_rng.RandfRange(-70f, 70f), _rng.RandfRange(-70f, 70f));
+        Vector2 offset = Vector2.Right.Rotated(turn + index * 2.39996f) * 24f * Mathf.Sqrt(index + 0.35f)
+            + new Vector2(_rng.RandfRange(-8f, 8f), _rng.RandfRange(-8f, 8f));
         Vector2 at = centre + offset;
         enemy.GlobalPosition = Raster.Walkable(Field.CellOf(at)) ? at : centre;
         float life = RealityTiers.LifeMultiplier(Tier) * TutorialLife * (Modifiers.Contains("hardened") ? 1.4f : 1f);
@@ -539,7 +558,13 @@ public partial class RealityController : Node2D, IPickupHandler
         {
             if (_rng.Randf() < roll)
             {
-                DropItem(at + Jitter(30f), enemy.Rarity >= MonsterRarity.Rare ? 0.35f : 0.1f);
+                DropItem(at + Jitter(30f), enemy.Rarity switch
+                {
+                    MonsterRarity.Magic => DropSource.MagicMonster,
+                    MonsterRarity.Rare => DropSource.RareMonster,
+                    MonsterRarity.Unique => DropSource.UniqueMonster,
+                    _ => DropSource.NormalMonster,
+                });
             }
         }
 
@@ -578,7 +603,11 @@ public partial class RealityController : Node2D, IPickupHandler
 
     private Vector2 Jitter(float r) => new(_rng.RandfRange(-r, r), _rng.RandfRange(-r, r));
 
-    public EquipmentItem? DropItem(Vector2 at, float quality)
+    /// <summary>Drops an item whose rarity comes from the source's cascade
+    /// (docs/design/items.md -> "Drop tables (cascade)"), every chance scaled by the
+    /// reality's increased rarity (shard modifiers, jewels, <paramref name="extraRarity"/>)
+    /// and its tier.</summary>
+    public EquipmentItem? DropItem(Vector2 at, DropSource source, float extraRarity = 0f)
     {
         IReadOnlyList<BaseItemDefinition> bases = ItemFactory.Bases;
         if (bases.Count == 0)
@@ -589,8 +618,7 @@ public partial class RealityController : Node2D, IPickupHandler
         EquipmentItem item = ItemFactory.NewBlank();
         AddChild(item);
         item.GlobalPosition = at;
-        float roll = _rng.Randf() + (quality + _rarityBonus) * 0.6f;
-        Rarity rarity = roll > 1.05f ? Rarity.Rare : roll > 0.5f ? Rarity.Magic : Rarity.Common;
+        Rarity rarity = DropTables.RollRarity(source, DropTables.RealityMultiplier(_rarityBonus + extraRarity, Tier), _rng);
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, Mathf.Clamp(MonsterLevel, 1, 100), ItemFactory.Affixes.Entries, _rng);
         return item;
     }
@@ -610,7 +638,7 @@ public partial class RealityController : Node2D, IPickupHandler
     public void DropCurrency(Vector2 at)
     {
         Pickup orb = Pickup.Spawn(this, PickupKind.Currency, 1f, at);
-        orb.CurrencyKey = Crafting.RollOrb(_rng).Id;
+        orb.CurrencyKey = DropTables.RollOrb(_rng, DropTables.RealityMultiplier(_rarityBonus, Tier)).Id;
         orb.QueueRedraw();
     }
 
@@ -672,7 +700,7 @@ public partial class RealityController : Node2D, IPickupHandler
         int items = 3 + (_quantity > 0.3f ? 1 : 0) + Mathf.RoundToInt(Jewels[JewelStat.BossItems]);
         for (int i = 0; i < items; i++)
         {
-            DropItem(at + Jitter(60f), 0.6f + Jewels[JewelStat.BossRarity]);
+            DropItem(at + Jitter(60f), DropSource.Boss, Jewels[JewelStat.BossRarity]);
         }
 
         // A boss always drops a shard (endgame.md -> "Mirror Shards"); jewels can

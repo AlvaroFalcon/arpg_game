@@ -33,17 +33,20 @@ a perfect item with orbs on top of a forged guaranteed base.
 All names are original. Each maps loosely to a PoE orb so the genre's players read
 them instantly.
 
-| Orb | Does | PoE analogue | Drop weight | Merchant |
-|---|---|---|---|---|
-| Kindling Shard | common → magic with 1–2 modifiers | Transmutation | 30 | 20 g |
-| Flux Shard | rerolls a magic item | Alteration | 26 | 30 g |
-| Graft Shard | adds a modifier to a magic item with room | Augmentation | 18 | 35 g |
-| Ash Orb | strips all modifiers → common | Scouring | 10 | 60 g |
-| Crown Orb | magic → rare, adds one modifier | Regal | 6 | — |
-| Tempest Orb | rerolls a rare (new name, 3–4 modifiers) | Chaos | 5 | — |
-| Tuning Orb | rerolls every value within its tier, base stats too | Divine | 4 | — |
-| Sundering Orb | removes one random modifier | Annulment | 3 | — |
-| Ascendant Orb | adds a modifier to a rare with room | Exalted | 1 | — |
+| Orb | Does | PoE analogue | Merchant |
+|---|---|---|---|
+| Kindling Shard | common → magic with 1–2 modifiers | Transmutation | 20 g |
+| Flux Shard | rerolls a magic item | Alteration | 30 g |
+| Graft Shard | adds a modifier to a magic item with room | Augmentation | 35 g |
+| Ash Orb | strips all modifiers → common | Scouring | 60 g |
+| Crown Orb | magic → rare, adds one modifier | Regal | — |
+| Tempest Orb | rerolls a rare (new name, 3–4 modifiers) | Chaos | — |
+| Tuning Orb | rerolls every value within its tier, base stats too | Divine | — |
+| Sundering Orb | removes one random modifier | Annulment | — |
+| Ascendant Orb | adds a modifier to a rare with room | Exalted | — |
+
+Which orb drops is a cascade from the rarest down (2026-10-14; it replaced fixed
+drop weights): see items.md -> "Drop tables (cascade)" for the table.
 
 Rules every orb follows:
 
@@ -67,9 +70,11 @@ crafting, so orbs *are* now a crafting economy, just without the inventory Tetri
 
 In realities, each kill rolls an orb: 3.5% normal, 10% magic, 45% rare, 120%
 unique-rare (scaled by the reality's quantity bonus), and a boss drops
-`2 + tier/4`. Orbs are a pickup with a coloured orb and, for the rarer ones, a light
-beam, and are collected by walking over them with a toast naming them. No Survival
-Rift drops yet.
+`2 + tier/4`. Which orb it is rolls by cascade (items.md -> "Drop tables
+(cascade)"), with the reality's rarity multiplier making rare orbs likelier. Orbs
+are a pickup with a coloured orb and, for the rarer ones (under 10 % on their
+cascade step), a light beam, and are collected by walking over them with a toast
+naming them. The Survival Rift drops them too (run.md -> "Experience and pickups").
 
 ### Shared between characters **[DECIDED 2026-10-13]**
 

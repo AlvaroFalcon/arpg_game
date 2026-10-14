@@ -71,20 +71,23 @@ public static class RealityTiers
     public static float UniqueChance(int tier) => Lerp(tier, 0.12f, 0.4f);
 
     /// <summary>
-    /// Pack sizes — docs/design/endgame.md -> "Density". Owner feedback: maps were
-    /// too easy and too empty. Grey (normal) monsters grow the most, ×2.4 from tier 1
-    /// to 20; magic and rare monsters grow more gently so the stronger ones stay a
-    /// minority that still climbs.
+    /// The pack budget — docs/design/endgame.md -> "Spawning". Every pack spot gets
+    /// this many points at its tier, scaled by the spot's heat and zone and by the
+    /// reality's modifiers, and spends them on monsters by cost
+    /// (<see cref="NormalCost"/>, <see cref="MagicCost"/>; rares and unique-rares
+    /// are the pack's leader and free). 6.5 at tier 1, 15.5 at tier 20: grey monsters
+    /// grow ×2.4 (owner feedback: maps were too empty), magic ones more gently.
     /// </summary>
-    public static (int Min, int Max) NormalPackSize(int tier) =>
-        (Mathf.RoundToInt(Lerp(tier, 5f, 12f)), Mathf.RoundToInt(Lerp(tier, 8f, 19f)));
+    public static float PackBudget(int tier) => Lerp(tier, 6.5f, 15.5f);
 
-    /// <summary>Normal escorts around a rare.</summary>
-    public static (int Min, int Max) RareEscort(int tier) =>
-        (Mathf.RoundToInt(Lerp(tier, 3f, 8f)), Mathf.RoundToInt(Lerp(tier, 5f, 12f)));
+    public const float NormalCost = 1f;
+    public const float MagicCost = 2f;
 
-    public static (int Min, int Max) MagicPackSize(int tier) =>
-        (Mathf.RoundToInt(Lerp(tier, 3f, 5f)), Mathf.RoundToInt(Lerp(tier, 4f, 7f)));
+    /// <summary>A rare pack's escort spends this share of the budget on grey monsters.</summary>
+    public const float RareEscortShare = 0.75f;
+
+    /// <summary>How a spot's heat (0–1) and zone (0–4) scale its budget: ×0.75–1.25 and ×0.85–1.15.</summary>
+    public static float BudgetScale(float heat, int zone) => (0.75f + 0.5f * heat) * (0.85f + 0.075f * zone);
 
     /// <summary>Rares in a rare pack: one, two from tier 12.</summary>
     public static int RaresPerPack(int tier) => tier >= 12 ? 2 : 1;

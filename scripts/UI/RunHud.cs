@@ -157,7 +157,8 @@ public partial class RunHud : CanvasLayer
         float t = State.Elapsed;
         int danger = RunDirector.Danger(t);
         float frac = t / 60f - Mathf.Floor(t / 60f);
-        string next = Director.ColossusDefeated ? "Portal open · stay for more rewards"
+        string next = Director.Surging ? "Surge! The horde presses in"
+            : Director.ColossusDefeated ? "Portal open · stay for more rewards"
             : t < Director.HeraldTime ? $"Bone Herald in {UiTheme.FormatTime(Director.HeraldTime - t)}"
             : t < Director.ColossusTime ? $"Ember Colossus in {UiTheme.FormatTime(Director.ColossusTime - t)}"
             : "The Ember Colossus";

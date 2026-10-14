@@ -91,7 +91,7 @@ public partial class TutorialGuide : CanvasLayer
         {
             Title = "Loot",
             Body = $"Something dropped! Hover it to read it, then click it to pick it up.\n{Key("Z")} toggles item names on the ground.",
-            Enter = () => _gift = Reality.DropItem(Player.GlobalPosition + new Vector2(70f, 0f), 0.6f),
+            Enter = () => _gift = Reality.DropItem(Player.GlobalPosition + new Vector2(70f, 0f), Items.DropSource.Boss),
             Done = () => _gift is null || !IsInstanceValid(_gift) || Bag()?.Placements.ContainsKey(_gift) == true || IsWorn(_gift),
         });
         _steps.Add(new Step

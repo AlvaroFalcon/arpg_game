@@ -194,7 +194,7 @@ public partial class RunState : Node, IPickupHandler
         int drops = enemy.IsBoss ? 2 : enemy.IsElite && _rng.Randf() < 0.3f ? 1 : 0;
         for (int i = 0; i < drops; i++)
         {
-            DropItem(at + RandomOffset(30f), enemy.IsBoss ? 0.6f : 0.2f);
+            DropItem(at + RandomOffset(30f), enemy.IsBoss ? Items.DropSource.RiftBoss : Items.DropSource.RiftElite);
         }
 
         if (Player is not null && byPlayer)
@@ -224,7 +224,7 @@ public partial class RunState : Node, IPickupHandler
 
     /// <summary>Puts a rolled item on the ground through the normal drop path
     /// (label, filter, click-to-pick-up).</summary>
-    public void DropItem(Vector2 at, float quality)
+    public void DropItem(Vector2 at, Items.DropSource source)
     {
         int itemLevel = Mathf.Clamp(3 + Mathf.RoundToInt(Elapsed / 60f * 5f) + BossesKilled * 8, 1, 100);
         var bases = Items.ItemFactory.Bases;
@@ -236,15 +236,15 @@ public partial class RunState : Node, IPickupHandler
         Items.EquipmentItem item = Items.ItemFactory.NewBlank();
         GetTree().CurrentScene.AddChild(item);
         item.GlobalPosition = at;
-        float roll = _rng.Randf() + quality * 0.6f;
-        Items.Rarity rarity = roll > 1.05f ? Items.Rarity.Rare : roll > 0.5f ? Items.Rarity.Magic : Items.Rarity.Common;
+        // Cascade rarity (docs/design/items.md -> "Drop tables (cascade)"), better the longer the run.
+        Items.Rarity rarity = Items.DropTables.RollRarity(source, Items.DropTables.RiftMultiplier(Elapsed), _rng);
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, itemLevel, Items.ItemFactory.Affixes.Entries, _rng);
     }
 
     public void DropOrb(Vector2 at)
     {
         Pickup orb = Pickup.Spawn(GetTree().CurrentScene, PickupKind.Currency, 1f, at);
-        orb.CurrencyKey = Items.Crafting.RollOrb(_rng).Id;
+        orb.CurrencyKey = Items.DropTables.RollOrb(_rng, Items.DropTables.RiftMultiplier(Elapsed)).Id;
         orb.QueueRedraw();
     }
 

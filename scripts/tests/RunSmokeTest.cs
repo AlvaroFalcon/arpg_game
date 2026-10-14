@@ -78,6 +78,7 @@ public partial class RunSmokeTest : Node2D
         await BossPhaseChecks();
         ProfileChecks();
         RiftCurveChecks();
+        DirectorChecks();
         await RiftPowerUpChecks();
 
         GD.Print($"[RUNTEST] === RESULT: {(_failed ? "FAIL" : "PASS")} ===");
@@ -320,7 +321,7 @@ public partial class RunSmokeTest : Node2D
     private void ProfileChecks()
     {
         var rng = new RandomNumberGenerator { Seed = 7 };
-        EquipmentItem item = ItemFactory.RollRandom(40, 1f, rng);
+        EquipmentItem item = ItemFactory.RollRandom(40, DropSource.RareMonster, 2f, rng);
         var restored = ItemFactory.NewBlank();
         restored.Restore(item.Base!, item.Rarity, item.Descriptor.ItemLevel, item.Descriptor.DisplayName, item.RolledBaseStats, item.RolledAffixes);
         Check("ITEM-RESTORE-ROUNDTRIP",
@@ -351,8 +352,49 @@ public partial class RunSmokeTest : Node2D
         RunRewards won = RunRewards.For(450f, 3, 1500, true, rng);
         RunRewards endless = RunRewards.For(960f, 7, 4000, true, rng);
         Check("REWARDS-GROW-WITH-TIME", early.Gold < won.Gold && won.Gold < endless.Gold && early.Orbs.Count < won.Orbs.Count && won.Orbs.Count < endless.Orbs.Count
-            && early.Choices == 3 && endless.Choices == 5 && early.Keep == 1 && endless.Keep == 3 && endless.Quality > won.Quality,
+            && early.Choices == 3 && endless.Choices == 5 && early.Keep == 1 && endless.Keep == 3 && endless.RarityMultiplier > won.RarityMultiplier,
             $"gold {early.Gold}/{won.Gold}/{endless.Gold}, orbs {early.Orbs.Count}/{won.Orbs.Count}/{endless.Orbs.Count}, choices {early.Choices}/{won.Choices}/{endless.Choices}, keep {early.Keep}/{won.Keep}/{endless.Keep}");
+    }
+
+    /// <summary>run.md -> "The director": intensity waves stay in range and actually
+    /// rise and fall, a hurt player gets a breather, edge spawns are never on screen.</summary>
+    private void DirectorChecks()
+    {
+        FastNoiseLite noise = RunDirector.WaveNoise(7);
+        float min = float.MaxValue;
+        float max = float.MinValue;
+        int crossings = 0;
+        bool above = RunDirector.WaveIntensity(noise, 0f) > 1f;
+        for (int t = 0; t <= 900; t++)
+        {
+            float w = RunDirector.WaveIntensity(noise, t);
+            min = Mathf.Min(min, w);
+            max = Mathf.Max(max, w);
+            if (w > 1f != above)
+            {
+                above = !above;
+                crossings++;
+            }
+        }
+
+        Check("DIRECTOR-WAVES", min >= 0.55f && max <= 1.5f && min < 0.8f && max > 1.25f && crossings is >= 8 and <= 40,
+            $"15 minutes: intensity {min:0.00}–{max:0.00}, crossed 1.0 {crossings} times");
+        Check("DIRECTOR-STRESS", RunDirector.StressEase(0.2f) < RunDirector.StressEase(0.5f) && RunDirector.StressEase(0.5f) < RunDirector.StressEase(0.9f),
+            $"ease at 20 % / 50 % / 90 % life: {RunDirector.StressEase(0.2f)} / {RunDirector.StressEase(0.5f)} / {RunDirector.StressEase(0.9f)}");
+
+        var rng = new RandomNumberGenerator { Seed = 11 };
+        var view = new Rect2(1000f, 1000f, 1280f, 720f);
+        var open = new Rect2(-5000f, -5000f, 20000f, 20000f);
+        var walled = new Rect2(900f, 900f, 1600f, 1200f); // the arena ends just past the view's left and top
+        int seen = 0;
+        for (int i = 0; i < 400; i++)
+        {
+            Rect2 arena = i % 2 == 0 ? open : walled;
+            Vector2 p = RunDirector.EdgePointFor(view, 60f, q => new Vector2(Mathf.Clamp(q.X, arena.Position.X, arena.End.X), Mathf.Clamp(q.Y, arena.Position.Y, arena.End.Y)), rng);
+            seen += view.Grow(-8f).HasPoint(p) ? 1 : 0;
+        }
+
+        Check("DIRECTOR-EDGE-SPAWNS", seen == 0, $"400 spawn points around a 1280×720 view (half with an arena wall just off screen): {seen} on screen");
     }
 
     private async Task RiftPowerUpChecks()
