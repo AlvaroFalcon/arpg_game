@@ -272,6 +272,7 @@ public static class UpgradeCatalog
         StatPassive("armour", "Iron Skin", StatId.Armour, ModifierType.Flat, 40f, m => $"+{Mathf.RoundToInt(40 * m)} Armour"),
         StatPassive("move_speed", "Fleet Foot", StatId.MovementSpeed, ModifierType.Increased, 7f, m => $"{Pct(7 * m)} increased Movement Speed"),
         StatPassive("cast_speed", "Quick Hands", StatId.CastSpeed, ModifierType.Increased, 8f, m => $"{Pct(8 * m)} increased Cast Speed"),
+        StatPassive("autocast", "Quickening", StatId.AutoCastSpeed, ModifierType.Increased, 12f, m => $"Skills fire {Pct(12 * m)} more often", 1.4f),
         StatPassive("cooldown", "Momentum", StatId.CooldownRecovery, ModifierType.Increased, 8f, m => $"{Pct(8 * m)} increased Cooldown Recovery"),
         StatPassive("crit_chance", "Precision", StatId.CritChance, ModifierType.Increased, 40f, m => $"{Pct(40 * m)} increased Critical Strike Chance"),
         StatPassive("crit_multi", "Ruthlessness", StatId.CritMultiplier, ModifierType.Flat, 0.25f, m => $"+{Pct(25 * m)} Critical Strike Multiplier"),

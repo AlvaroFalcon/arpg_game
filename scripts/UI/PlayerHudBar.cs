@@ -20,6 +20,10 @@ namespace ArpgGame.UI;
 /// </summary>
 public partial class PlayerHudBar : Control
 {
+    /// <summary>What fills the right-hand bar when there is no mana to show (the
+    /// Survival Rift: the danger level and what comes next).</summary>
+    public readonly record struct SideGauge(string Label, string Detail, float Fraction, Color Top, Color Bottom);
+
     public const float Width = 920f;
     public const float Height = 142f;
 
@@ -30,6 +34,9 @@ public partial class PlayerHudBar : Control
 
     /// <summary>The class resource (Rage, Combo...), if any.</summary>
     public Func<ClassResource?> Resource = () => null;
+
+    /// <summary>Right-hand bar when mana is hidden; null leaves that side empty.</summary>
+    public Func<SideGauge?> RightGauge = () => null;
 
     private const float CenterX = Width / 2f;
     private static readonly Vector2 Badge = new(CenterX, 60f);
@@ -117,6 +124,14 @@ public partial class PlayerHudBar : Control
             DrawBar(1, Fraction(Player.Stats.Mana), _manaTrail, ManaTop, ManaBottom);
             Stats.ResourcePool mana = Player.Stats.Mana!;
             Text(font, $"{Mathf.FloorToInt(mana.Current):N0} / {Mathf.RoundToInt(mana.Max):N0}", new Vector2(CenterX + BarInner + 10f, BarTop + 16f), 15, Colors.White, HorizontalAlignment.Left);
+        }
+        else if (RightGauge() is { } gauge)
+        {
+            // Life-only HUD: the right bar carries the run's pressure instead, so
+            // the cluster stays balanced around the badge.
+            DrawBar(1, Mathf.Clamp(gauge.Fraction, 0f, 1f), gauge.Fraction, gauge.Top, gauge.Bottom);
+            Text(font, gauge.Label, new Vector2(CenterX + BarInner + 10f, BarTop + 16f), 15, Colors.White, HorizontalAlignment.Left);
+            Text(font, gauge.Detail, new Vector2(CenterX + BarInner + 4f, BarTop + BarH + 22f), 13, gauge.Top.Lightened(0.35f), HorizontalAlignment.Left);
         }
 
         // Stamina under the life bar, the class resource under the mana bar.

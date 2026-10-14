@@ -152,6 +152,28 @@ world is a presentation layer underneath the 2D canvas:
 - **Off switch.** Settings → *Voxel graphics (HD-2D)*; headless runs (tests, the
   autoplay bot) never create the stage.
 
+### Liquids **[IMPLEMENTED 2026-10-14]**
+
+Owner feedback: the water looked like a flat painted floor. Liquid tiles keep their
+one-voxel slab (the bed), and `VoxelStage.AddLiquidSurface` lays an instanced,
+subdivided quad over every liquid tile with `resources/shaders/voxel_liquid.gdshader`:
+
+- **Waves in world space**: two layers of fbm noise scrolling in different
+  directions displace the vertices and bend the normal, so the surface rolls and
+  catches the sun without seams between tiles.
+- **Caustics**: thin bright ridges where a drifting fbm crosses its bands.
+- **Shore foam**: each instance's custom data says which of its four sides touch
+  land; the shader draws a lapping, noisy foam line along those edges and darkens
+  the middle of wide pools (depth without a depth texture).
+- **One shader, three liquids** (`VoxelStage.LiquidLook`): clear blue water (the
+  Drowned Mirror, the hideout canal), slow glowing lava (Ashen Halls) and a sickly
+  green ooze (Bone Crypt). The level picks it through `SetMood`.
+
+Opaque on purpose: transparent liquid would need sorting against the voxel
+terrain and showed the slab through it; the shore foam and colour depth carry the
+"it's deep" read instead. Rejected: a screen-space refraction shader (no depth
+texture in Compatibility, and heavy on the software renderer the captures use).
+
 Captures: Forward+ renders in the cloud session through Mesa's software Vulkan
 (`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json ... --rendering-driver
 vulkan`); the Compatibility renderer works but drops shadows, glow and DOF.

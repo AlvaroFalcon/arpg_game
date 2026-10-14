@@ -70,19 +70,45 @@ public static class RealityTiers
     public static float RarePackChance(int tier) => Lerp(tier, 0.3f, 0.7f);
     public static float UniqueChance(int tier) => Lerp(tier, 0.12f, 0.4f);
 
+    /// <summary>
+    /// Pack sizes — docs/design/endgame.md -> "Density". Owner feedback: maps were
+    /// too easy and too empty. Grey (normal) monsters grow the most, ×2.4 from tier 1
+    /// to 20; magic and rare monsters grow more gently so the stronger ones stay a
+    /// minority that still climbs.
+    /// </summary>
+    public static (int Min, int Max) NormalPackSize(int tier) =>
+        (Mathf.RoundToInt(Lerp(tier, 5f, 12f)), Mathf.RoundToInt(Lerp(tier, 8f, 19f)));
+
+    /// <summary>Normal escorts around a rare.</summary>
+    public static (int Min, int Max) RareEscort(int tier) =>
+        (Mathf.RoundToInt(Lerp(tier, 3f, 8f)), Mathf.RoundToInt(Lerp(tier, 5f, 12f)));
+
+    public static (int Min, int Max) MagicPackSize(int tier) =>
+        (Mathf.RoundToInt(Lerp(tier, 3f, 5f)), Mathf.RoundToInt(Lerp(tier, 4f, 7f)));
+
+    /// <summary>Rares in a rare pack: one, two from tier 12.</summary>
+    public static int RaresPerPack(int tier) => tier >= 12 ? 2 : 1;
+
+    /// <summary>Chance that a normal-pack spot gets a second pack beside it.</summary>
+    public static float ExtraPackChance(int tier) => Lerp(tier, 0.15f, 0.65f);
+
     /// <summary>Portals (lives) per reality: 3, or 1 from tier 15 (stakes rise with tier).</summary>
     public static int Portals(int tier) => tier >= 15 ? 1 : 3;
 
     /// <summary>
-    /// Boss shard drop — docs/design/endgame.md: none 25 %, same tier 45 %,
-    /// +1 25 %, +2 5 %. Returns 0 for no shard. Capped at tier 20.
+    /// Boss shard drop — docs/design/endgame.md: a boss always drops at least one
+    /// shard (owner's rule, 2026-10-14): same tier 65 %, +1 28 %, +2 7 %. Capped at
+    /// tier 20. A second same-tier shard can come from <see cref="BonusShardChance"/>.
     /// </summary>
     public static int RollBossShard(int tier, RandomNumberGenerator rng)
     {
         float r = rng.Randf();
-        int result = r < 0.25f ? 0 : r < 0.70f ? tier : r < 0.95f ? tier + 1 : tier + 2;
-        return result == 0 ? 0 : Mathf.Min(MaxTier, result);
+        int result = r < 0.65f ? tier : r < 0.93f ? tier + 1 : tier + 2;
+        return Mathf.Min(MaxTier, result);
     }
+
+    /// <summary>Chance of a second, same-tier shard from a boss.</summary>
+    public const float BonusShardChance = 0.15f;
 
     /// <summary>Shard colour band (PoE map tiers): white/yellow/orange/red.</summary>
     public static string ShardSprite(int tier) => tier <= 5 ? "shard_low" : tier <= 10 ? "shard_mid" : tier <= 15 ? "shard_high" : "shard_top";

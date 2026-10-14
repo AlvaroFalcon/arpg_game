@@ -79,4 +79,8 @@ public enum StatId
     // Sprint (docs/design/movement.md -> "Sprint").
     MaxStamina = 37,
     StaminaRegen = 38,
+
+    // Survival Rift auto-casting (docs/design/run.md -> "Auto-cast timing"): how
+    // often skills fire on their own. 1 = each skill's base interval.
+    AutoCastSpeed = 39,
 }

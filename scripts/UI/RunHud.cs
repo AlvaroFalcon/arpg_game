@@ -11,7 +11,8 @@ namespace ArpgGame.UI;
 
 /// <summary>
 /// The in-run HUD — docs/design/menus.md -> "HUD". Top: experience bar, level,
-/// timer, kills. Bottom-left: life and mana bars plus dodge charges.
+/// timer, kills. Bottom-centre: the life cluster — life on the left, the
+/// danger gauge on the right (no mana in the Rift) — plus dodge charges.
 /// Bottom-centre: the skill bar (icon, cooldown sweep, level, support pips).
 /// Top-centre when a boss is up: its bar with phase markers and the name of
 /// the attack it is performing. Centre: announcement banners and boss
@@ -33,6 +34,8 @@ public partial class RunHud : CanvasLayer
     private Label _bannerSub = null!;
     private Label _callout = null!;
     private Label _controlsHint = null!;
+    private Label _toast = null!;
+    private float _toastTime;
     private float _bannerTime;
     private float _calloutTime;
     private BossEnemy? _boss;
@@ -75,7 +78,7 @@ public partial class RunHud : CanvasLayer
         _target.Dock(56f);
 
         // --- bottom centre: life, level badge, flask, skills (no mana here) ---
-        var bar = new PlayerHudBar { Player = Player, Progress = () => (State.Level, State.ExperienceFraction) };
+        var bar = new PlayerHudBar { Player = Player, Progress = () => (State.Level, State.ExperienceFraction), RightGauge = DangerGauge };
         root.AddChild(bar);
         bar.Dock();
         _skillRow = PlayerHudBar.CreateSkillRow(root);
@@ -110,12 +113,22 @@ public partial class RunHud : CanvasLayer
         _callout.OffsetTop = 90f;
 
         // First-seconds controls reminder, above the skill bar.
-        _controlsHint = UiTheme.Label("WASD move  ·  Space dodge (charges refill)  ·  skills cast themselves  ·  Esc pause", 17, UiTheme.TextDim, HorizontalAlignment.Center);
+        _controlsHint = UiTheme.Label("WASD move  ·  Space dodge (charges refill)  ·  skills fire on their own timers  ·  Esc pause", 17, UiTheme.TextDim, HorizontalAlignment.Center);
         root.AddChild(_controlsHint);
         _controlsHint.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
         _controlsHint.OffsetLeft = -480f;
         _controlsHint.OffsetRight = 480f;
-        _controlsHint.OffsetTop = -130f;
+        // Above the life cluster (it used to sit across the bars).
+        _controlsHint.OffsetTop = -252f;
+
+        // Pickup toasts (orbs, power-ups), just above the hint's spot.
+        _toast = UiTheme.Label("", 20, UiTheme.Gold, HorizontalAlignment.Center);
+        root.AddChild(_toast);
+        _toast.SetAnchorsPreset(Control.LayoutPreset.CenterBottom, true);
+        _toast.OffsetLeft = -400f;
+        _toast.OffsetRight = 400f;
+        _toast.OffsetTop = -284f;
+        State.Toast += ShowToast;
 
         Director.Announced += ShowBanner;
         Director.BossSpawned += OnBossSpawned;
@@ -128,6 +141,30 @@ public partial class RunHud : CanvasLayer
         _banner.AddThemeColorOverride("font_color", color);
         _bannerSub.Text = subtitle;
         _bannerTime = 3f;
+    }
+
+    public void ShowToast(string text, Color color)
+    {
+        _toast.Text = text;
+        _toast.AddThemeColorOverride("font_color", color);
+        _toastTime = 2.2f;
+    }
+
+    /// <summary>The right-hand bar of the life-only cluster: the danger level,
+    /// filling towards the next one, and what is coming.</summary>
+    public PlayerHudBar.SideGauge? DangerGauge()
+    {
+        float t = State.Elapsed;
+        int danger = RunDirector.Danger(t);
+        float frac = t / 60f - Mathf.Floor(t / 60f);
+        string next = Director.ColossusDefeated ? "Portal open · stay for more rewards"
+            : t < Director.HeraldTime ? $"Bone Herald in {UiTheme.FormatTime(Director.HeraldTime - t)}"
+            : t < Director.ColossusTime ? $"Ember Colossus in {UiTheme.FormatTime(Director.ColossusTime - t)}"
+            : "The Ember Colossus";
+        // Amber early, blood red as it climbs.
+        float heat = Mathf.Clamp((danger - 1) / 10f, 0f, 1f);
+        Color top = new Color(1f, 0.75f, 0.25f).Lerp(new Color(0.85f, 0.15f, 0.35f), heat);
+        return new PlayerHudBar.SideGauge($"Danger {danger}", next, frac, top, top.Darkened(0.55f));
     }
 
     private void OnBossSpawned(Node2D boss)
@@ -162,6 +199,16 @@ public partial class RunHud : CanvasLayer
         _controlsHint.Modulate = new Color(1f, 1f, 1f, hintAlpha);
 
         UpdateSkills();
+
+        if (_toastTime > 0f)
+        {
+            _toastTime -= dt;
+            _toast.Modulate = new Color(1f, 1f, 1f, Mathf.Clamp(_toastTime / 0.5f, 0f, 1f));
+        }
+        else
+        {
+            _toast.Text = "";
+        }
 
         if (_bannerTime > 0f)
         {
@@ -213,7 +260,20 @@ public partial class RunHud : CanvasLayer
 
         foreach (SkillSlotView view in _slots)
         {
-            view.Cooldown = Player.SkillUser.CooldownFraction(view.Skill);
+            // The auto-cast timer is what the player waits on in the Rift.
+            float auto = 0f;
+            if (Player.GetNodeOrNull<PlayerSkillInput>("PlayerSkillInput") is { } input)
+            {
+                foreach (SkillSlotId slot in new[] { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 })
+                {
+                    if (Player.SkillUser.GetSkill(slot) == view.Skill)
+                    {
+                        auto = input.AutoCastFraction(slot);
+                    }
+                }
+            }
+
+            view.Cooldown = Mathf.Max(Player.SkillUser.CooldownFraction(view.Skill), auto);
         }
     }
 

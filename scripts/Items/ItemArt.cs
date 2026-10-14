@@ -27,6 +27,9 @@ public static class ItemArt
             ? GD.Load<SpriteFrames>($"res://assets/sprites/{spritePath}.tres")?.GetFrameTexture("idle", 0)
             : null;
 
+    /// <summary>A Mirror Shard of a tier (its colour band's pickup sprite).</summary>
+    public static Texture2D? ForShard(int tier) => ForProp($"pickups/{World.RealityTiers.ShardSprite(tier)}");
+
     private static Texture2D? Load(string path)
     {
         if (!Textures.TryGetValue(path, out Texture2D? texture))

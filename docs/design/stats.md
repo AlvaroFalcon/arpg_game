@@ -317,6 +317,7 @@ switches seam 4 on for the first time.
 | `Damage` | — | modifier carrier; base comes from the skill |
 | `AttackSpeed` | 1.0 | multiplier, tag-derived per skill |
 | `CastSpeed` | 1.0 | multiplier, tag-derived per skill |
+| `AutoCastSpeed` | 1.0 | Survival Rift: divides every skill's auto-cast interval (run.md) |
 | `CooldownRecovery` | 1.0 | divisor |
 | `MaxLife` | 50 | backs the Life pool |
 | `LifeRegen` | 0 | per second |

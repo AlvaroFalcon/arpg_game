@@ -358,8 +358,43 @@ function flowerRows(): string[] {
 
 export const flowerBed = prop('flower_bed', { ...wood, d: '#4a3020', g: '#3f7a2a', r: '#e04a5a', y: '#f0d050', b: '#7a8af0' }, [flowerRows()], 500);
 
+/**
+ * Arehucaz, the shard dealer: a tall hooded figure in a ragged black robe, two
+ * violet eyes in the dark of the hood, a crooked staff with a lantern of cold
+ * violet fire, and a cloth on the ground with Mirror Shards for sale.
+ */
+function arehucazFrame(phase: number): string[] {
+  const p = new Pix(34, 44);
+  // Robe: a long tapering cone, ragged hem.
+  p.poly([[13, 9], [21, 9], [26, 40], [8, 40]], 'a');
+  for (let x = 8; x <= 26; x += 3) p.rect(x, 40, 2, 1 + ((x + phase) % 2), 'a');
+  p.poly([[17, 12], [20, 12], [24, 39], [19, 39]], 'A');
+  p.line(17, 14, 15, 38, 'b');
+  // Hood: a peaked cowl with a black face and two violet eyes.
+  p.disc(17, 9, 6, 6, 'a').poly([[14, 3], [17, -1], [20, 3]], 'a');
+  p.disc(17, 10, 3.6, 3.8, 'k');
+  const eye = phase === 1 ? 'E' : 'e';
+  p.set(15, 10, eye).set(19, 10, eye);
+  // Shoulders and a bony hand on the staff.
+  p.rect(10, 14, 4, 4, 'a').rect(11, 18, 3, 2, 'h');
+  // Crooked staff with a hanging lantern.
+  p.line(9, 4, 10, 41, 'w', 1).line(9, 4, 5, 2, 'w').line(5, 2, 4, 5, 'w');
+  p.rect(2, 6, 5, 6, 'i').rect(3, 7, 3, 4, phase === 2 ? 'L' : 'l').set(4, 8, 'Y');
+  p.rect(3, 5, 3, 1, 'I');
+  // The cloth of wares: shards glowing on dark felt.
+  p.rect(20, 38, 14, 5, 'c').rect(20, 38, 14, 1, 'C');
+  for (const [x, c] of [[22, 'e'], [26, 'E'], [30, 'e']] as const) p.poly([[x, 37], [x + 1, 34 - (x % 3)], [x + 2, 37]], c);
+  return p.outline('k').rows();
+}
+
+export const arehucaz = prop('arehucaz', {
+  k: '#07050a', a: '#1c1424', A: '#2c2038', b: '#0e0a14', h: '#b8b0a0', w: '#3a2a1e',
+  i: '#2a2a34', I: '#5a5a6a', l: '#9a5aff', L: '#c89aff', Y: '#f2e6ff', e: '#a46aff', E: '#e0c4ff',
+  c: '#2a0e1e', C: '#4a1a30',
+}, [arehucazFrame(0), arehucazFrame(1), arehucazFrame(2)], 260);
+
 export const town = [
-  townTiles, townFloorTiles, forge, stashChest, marketStall, brazier, lampPost, bannerRed, bannerBlue,
+  townTiles, townFloorTiles, forge, stashChest, marketStall, arehucaz, brazier, lampPost, bannerRed, bannerBlue,
   pottedPlant, crate, barrel, statue, bench, tree, well, weaponRack, flowerBed,
 ];
 

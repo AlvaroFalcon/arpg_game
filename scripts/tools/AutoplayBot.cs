@@ -105,8 +105,15 @@ public partial class AutoplayBot : Node
             _damageBySource.Clear();
             _hooked = null;
             Log($"[BOT] run {_runIndex + 1}/{_runs} start: {skill}");
-            while (Run() is { State.Ended: false })
+            while (Run() is { State.Ended: false } current)
             {
+                // The Colossus is down: the bot takes the portal home rather than
+                // playing the endless phase (balance targets the 7:00 victory).
+                if (current.Director.ColossusDefeated)
+                {
+                    current.Director.TakeExitPortal();
+                }
+
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
             }
 

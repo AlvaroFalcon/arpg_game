@@ -23,8 +23,10 @@ A walled 50×36-cell town (32 px cells), drawn as text in `HideoutTown.Map`:
   (hearth and anvil, with the Artificer beside it), a weapon rack and barrels. Its
   door faces the plaza.
 - **Training yard** (east): grass with three training dummies.
-- **North gate**: the **Survival Rift** portal, with lamp posts along the road.
-- **Canal** across the south, crossed by three bridges, leading to the **temple**
+- **North gate**: the **Survival Rift** portal, with lamp posts along the road. In
+  the dark alley east of it stands **Arehucaz**, the shard dealer
+  ([endgame.md](endgame.md) -> "Arehucaz").
+- **Canal** across the south (animated water, see art-pipeline.md -> "Liquids"), crossed by three bridges, leading to the **temple**
   (marble, the **Altar of Ascension** and a hero statue), the **garden** (trees and a
   well) and the **vault** (royal carpet, the **stash**).
 - Houses: solid sandstone blocks around the north side, so the town has a skyline
@@ -48,13 +50,16 @@ and a town guide that opens on the first visit.
 
 ## Props and stations
 
-Everything standing in town is a **prop** with an id, a kind and a position: seven
-**stations** (Mirror, Odran, Ysolde, the forge, stash, altar, Survival Rift) and the
+Everything standing in town is a **prop** with an id, a kind and a position: eight
+**stations** (Mirror, Odran, Ysolde, Arehucaz, the forge, stash, altar, Survival
+Rift) and the
 **decorations**. Stations open their panel with E when you stand near them. Sprites
 stand on their prop's origin (2D draws them upwards with a sprite offset; the voxel
 view stands the model on the same point), so moving a prop moves the whole thing.
 
-New pixel-art props (all voxelised by the art pipeline): forge, stash chest, market
+New pixel-art props (all voxelised by the art pipeline): Arehucaz (a hooded figure
+in a ragged black robe, violet eyes, a lantern of cold violet fire on a crooked
+staff, shards glinting on a cloth at his feet), forge, stash chest, market
 stall, brazier, lamp post, two banners, potted plant, crate, barrel, bench, flower
 bed, weapon rack, oak tree, well, hero statue. NPCs reuse class sprites: Odran is
 the Paladin, the Artificer the Sage and Ysolde the Ascendant.

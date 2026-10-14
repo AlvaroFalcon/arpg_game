@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "update" ? UpdateScript() : Script();
     }
 
     private async Task Script()
@@ -538,6 +538,162 @@ public partial class RunCapture : Node
             await Snap("feedback-panel.png");
             feedback.Close();
             pause.Close();
+        }
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    /// <summary>
+    /// The 2026-10-14 update: the Rift's life-only HUD and danger gauge, the two
+    /// power-ups, the endless phase and its reward, Arehucaz and his panel, the
+    /// Mirror's jewel tree, and the liquid shader in the town canal and a reality.
+    /// </summary>
+    private async Task UpdateScript()
+    {
+        SetupDemoProfile();
+        if (ArpgGame.Core.Profile.Get(this) is { } profile)
+        {
+            profile.Active.Gold = 4200;
+            profile.Hideout.GuideSeen = true;
+            profile.Jewels = new World.JewelData { Found = 26 };
+            foreach (string id in new[] { "b0s1", "b0s2", "b0s3", "b0a1", "b0a2", "b0m", "bridge0", "b1s2", "b1s1", "b1s3", "b1s4",
+                         "b2s1", "b2s2", "b2s3", "b2s4", "b2s5", "b2s6", "b2n", "b4s1", "b4s2", "b4s3", "b5s1", "b5s2", "b3s1" })
+            {
+                World.JewelTree.Socket(profile.Jewels, id);
+            }
+        }
+
+        // The Rift: mid-run with a few skills, so the timers and the danger gauge read.
+        RunLaunchOptions.Reset();
+        RunLaunchOptions.StartTime = 200f;
+        RunLaunchOptions.StartSkill = "spark";
+        RunLaunchOptions.AutoLevels = 14;
+        await Launch();
+        Run()!.Player.Health!.IgnoreDamage = true;
+        await Wait(8f);
+        await Snap("rift-hud.png");
+
+        RunController run = Run()!;
+        Vector2 at = run.Player.GlobalPosition;
+        // Out of the (levelled-up) pickup radius so they stay on the floor for the shot.
+        float radius = run.Player.Stats.Get(Stats.StatId.PickupRadius).Value + 40f;
+        Pickup.Spawn(run, PickupKind.Nuke, 1f, at + new Vector2(-radius, -20f));
+        Pickup.Spawn(run, PickupKind.Magnet, 1f, at + new Vector2(radius, -20f));
+        Pickup orb = Pickup.Spawn(run, PickupKind.Currency, 1f, at + new Vector2(0f, -radius));
+        orb.CurrencyKey = "tempest_orb";
+        await Wait(0.3f);
+        await Snap("rift-powerups.png");
+        run.Player.GlobalPosition = at + new Vector2(-radius, -20f);
+        await Wait(0.12f);
+        await Snap("rift-cataclysm.png");
+
+        // The Colossus falls: the portal opens and the waves come back.
+        RunLaunchOptions.Reset();
+        RunLaunchOptions.StartTime = 418f;
+        RunLaunchOptions.StartSkill = "meteor";
+        RunLaunchOptions.AutoLevels = 20;
+        await Launch();
+        run = Run()!;
+        run.Player.Health!.IgnoreDamage = true;
+        await Wait(4f);
+        if (run.Director.ActiveBoss is { } colossus)
+        {
+            colossus.Health.ApplyResolvedDamage(float.MaxValue / 4f, run.Player);
+        }
+
+        // Stand still: the capture's steering would walk into the portal.
+        bool steer = _steer;
+        _steer = false;
+        await Wait(9f);
+        if (run.Director.ExitPortal is { } portal)
+        {
+            run.Player.GlobalPosition = portal.GlobalPosition + new Vector2(0f, 120f);
+        }
+
+        await Wait(2f);
+        await Snap("rift-endless.png");
+        _steer = steer;
+        run.State.SkipTo(16f * 60f + 12f);
+        run.Director.TakeExitPortal();
+        await Wait(1.5f);
+        await Snap("rift-results.png");
+        GetTree().Paused = false;
+
+        // Arehucaz in the north alley, and his cloth of wares.
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
+        await Wait(1.2f);
+        var hideout = (Hideout)GetTree().CurrentScene;
+        Player player = hideout.Player;
+        player.Health!.IgnoreDamage = true;
+        player.GlobalPosition = hideout.Data.Find("arehucaz")!.Position + new Vector2(-40f, 70f);
+        await Wait(0.8f);
+        await Snap("town-arehucaz.png");
+        var dealer = hideout.GetNode<ShardVendorPanel>("ShardVendorPanel");
+        dealer.Open();
+        dealer.Buy(4);
+        dealer.Buy(3);
+        await Wait(0.3f);
+        await Snap("arehucaz-panel.png");
+        dealer.Close();
+
+        var mirror = hideout.GetNode<MirrorPanel>("MirrorPanel");
+        mirror.Open();
+        mirror.ShowTab(true);
+        await Wait(0.3f);
+        GetViewport().WarpMouse(mirror.JewelView.GetGlobalTransformWithCanvas() * mirror.JewelView.ScreenOf("b2n"));
+        await Wait(0.4f);
+        await Snap("mirror-jewels.png");
+        mirror.Close();
+
+        // The canal, now real water.
+        player.GlobalPosition = World.HideoutTown.World(new Vector2I(10, 23));
+        await Wait(1.2f);
+        await Snap("town-canal.png");
+
+        // Liquid in the realities: lava, ooze and water.
+        foreach ((string layout, string name) in new[] { ("ashen_halls", "lava"), ("bone_crypt", "ooze"), ("drowned_mirror", "water") })
+        {
+            RealityLaunch.Tier = 14;
+            RealityLaunch.LayoutId = layout;
+            GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Reality);
+            await Wait(0.8f);
+            if (GetTree().CurrentScene is not RealityController reality)
+            {
+                continue;
+            }
+
+            reality.Player.Health!.IgnoreDamage = true;
+            // Stand on the floor beside the first pool of liquid.
+            Vector2I? liquid = null;
+            for (int y = 0; y < reality.Raster.Height && liquid is null; y++)
+            {
+                for (int x = 0; x < reality.Raster.Width && liquid is null; x++)
+                {
+                    if (reality.Raster.Cells[x, y] != CellKind.Hazard)
+                    {
+                        continue;
+                    }
+
+                    foreach (Vector2I d in new[] { new Vector2I(0, 3), new Vector2I(0, -3), new Vector2I(3, 0), new Vector2I(-3, 0), new Vector2I(0, 2), new Vector2I(2, 0) })
+                    {
+                        if (reality.Raster.Walkable(new Vector2I(x, y) + d))
+                        {
+                            liquid = new Vector2I(x, y) + d;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            GD.Print($"[CAPTURE] {name}: liquid near {liquid}");
+            if (liquid is { } cell)
+            {
+                reality.Player.GlobalPosition = RasterLayout.World(cell);
+            }
+
+            await Wait(1.5f);
+            await Snap($"reality-liquid-{name}.png");
         }
 
         GD.Print("[CAPTURE] done");

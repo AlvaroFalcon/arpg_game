@@ -1,7 +1,9 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
+using ArpgGame.Combat;
 using ArpgGame.Skills;
+using ArpgGame.Stats;
 
 namespace ArpgGame;
 
@@ -171,6 +173,33 @@ public partial class PlayerSkillInput : Node
         return nearest;
     }
 
+    private readonly Dictionary<SkillSlotId, float> _autoTimers = new();
+    private readonly Dictionary<SkillSlotId, float> _autoIntervals = new();
+
+    /// <summary>
+    /// Seconds between two automatic casts of a skill in the Survival Rift
+    /// (docs/design/run.md -> "Cast timers"): slower, heavier skills wait
+    /// longer; cast/attack speed and the Quickening card (<see cref="StatId.AutoCastSpeed"/>)
+    /// shorten it. Before this every skill fired as fast as its use time allowed,
+    /// so a build was "everything, all the time".
+    /// </summary>
+    public float AutoCastInterval(SkillInstance skill)
+    {
+        SkillDefinition d = skill.Definition;
+        float baseInterval = Mathf.Max(0.5f, d.BaseUseTime * 1.5f + d.Cooldown);
+        var stats = _caster.GetNodeOrNull<ActorStats>("Stats");
+        float speed = stats is null ? 1f
+            : stats.Get(StatId.AutoCastSpeed).Value
+              * (d.Tags.HasFlag(SkillTags.Spell) ? stats.CastSpeed.Value : stats.Get(StatId.AttackSpeed).Value);
+        return baseInterval / Mathf.Max(0.2f, speed);
+    }
+
+    /// <summary>How far a slot is from its next automatic cast (1 = just fired, 0 = ready).</summary>
+    public float AutoCastFraction(SkillSlotId slot) =>
+        _autoTimers.TryGetValue(slot, out float left) && _autoIntervals.TryGetValue(slot, out float total) && total > 0f
+            ? Mathf.Clamp(left / total, 0f, 1f)
+            : 0f;
+
     private void SurvivalCast()
     {
         Vector2 target = AutoAimTarget()?.GlobalPosition ?? _caster.GetGlobalMousePosition();
@@ -180,12 +209,31 @@ public partial class PlayerSkillInput : Node
             aim = Vector2.Right;
         }
 
+        float dt = (float)GetPhysicsProcessDeltaTime();
+        int index = 0;
         foreach (SkillSlotId slot in AllSlots)
         {
-            if (_skillUser.GetSkill(slot) is not null)
+            if (_skillUser.GetSkill(slot) is not { } skill)
             {
-                _skillUser.TryCast(slot, aim, target);
+                continue;
             }
+
+            float interval = AutoCastInterval(skill);
+            _autoIntervals[slot] = interval;
+            if (!_autoTimers.TryGetValue(slot, out float left))
+            {
+                // Staggered start: skills take turns instead of firing together.
+                left = interval * (0.25f + 0.2f * index);
+            }
+
+            index++;
+            left -= dt;
+            if (left <= 0f && _skillUser.TryCast(slot, aim, target) is null)
+            {
+                left = interval;
+            }
+
+            _autoTimers[slot] = Mathf.Max(left, 0f);
         }
     }
 }

@@ -6,6 +6,14 @@ using ArpgGame.Enemies;
 
 namespace ArpgGame.View3D;
 
+/// <summary>What fills a level's liquid tiles (VoxelStage.LiquidLook).</summary>
+public enum LiquidStyle
+{
+    Lava,
+    Water,
+    Ooze,
+}
+
 /// <summary>
 /// The HD-2D voxel view of one scene — docs/design/art-pipeline.md -> "Voxels".
 ///
@@ -55,6 +63,9 @@ public partial class VoxelStage : Node3D
     public Color SunColor = new(1f, 0.9f, 0.8f);
 
     public Color HazardLightColor = new(1f, 0.45f, 0.15f);
+
+    /// <summary>What the liquid tiles hold (the surface shader's look).</summary>
+    public LiquidStyle Liquid = LiquidStyle.Lava;
 
     /// <summary>Maps a 2D world position (and a height in metres) into <see cref="World"/>.</summary>
     public static Vector3 Ground(Vector2 world2D, float height = 0f) =>
@@ -134,8 +145,9 @@ public partial class VoxelStage : Node3D
     }
 
     /// <summary>Applies a theme's colours (realities).</summary>
-    public void SetMood(Color ambient, Color sun, Color hazard)
+    public void SetMood(Color ambient, Color sun, Color hazard, LiquidStyle liquid = LiquidStyle.Lava)
     {
+        Liquid = liquid;
         AmbientColor = ambient;
         SunColor = sun;
         HazardLightColor = hazard;
@@ -205,6 +217,7 @@ public partial class VoxelStage : Node3D
 
         var byPiece = new Dictionary<string, List<Transform3D>>();
         var hazards = new List<Vector3>();
+        var liquidCells = new Dictionary<Vector2I, Transform3D>();
         foreach (Vector2I cell in map.GetUsedCells(0))
         {
             Vector2I atlas = map.GetCellAtlasCoords(0, cell);
@@ -234,6 +247,7 @@ public partial class VoxelStage : Node3D
             if (piece.StartsWith("hazard"))
             {
                 hazards.Add(at);
+                liquidCells[cell] = new Transform3D(basis, at);
             }
         }
 
@@ -271,8 +285,69 @@ public partial class VoxelStage : Node3D
         }
 
         created.AddRange(AddHazardLights(hazards));
+        if (liquidCells.Count > 0)
+        {
+            created.Add(AddLiquidSurface(liquidCells));
+        }
+
         map.Visible = false;
     }
+
+    /// <summary>
+    /// The animated liquid surface (resources/shaders/voxel_liquid.gdshader): one
+    /// subdivided quad per liquid tile, just above the voxel slab, carrying in its
+    /// instance data which sides touch land so the shader can draw foam there.
+    /// </summary>
+    private MultiMeshInstance3D AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells)
+    {
+        var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://resources/shaders/voxel_liquid.gdshader") };
+        foreach ((string name, Variant value) in LiquidLook(Liquid))
+        {
+            material.SetShaderParameter(name, value);
+        }
+
+        // The slab is one voxel (1/16 of a tile) high; the surface floats just over it.
+        var quad = new PlaneMesh { Size = Vector2.One, SubdivideWidth = 3, SubdivideDepth = 3, CenterOffset = new Vector3(0f, 1.25f / 16f, 0f), Material = material };
+        var multimesh = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            UseCustomData = true,
+            Mesh = quad,
+            InstanceCount = cells.Count,
+        };
+        int i = 0;
+        foreach ((Vector2I cell, Transform3D transform) in cells)
+        {
+            bool Land(Vector2I d) => !cells.ContainsKey(cell + d);
+            multimesh.SetInstanceTransform(i, transform);
+            multimesh.SetInstanceCustomData(i, new Color(Land(Vector2I.Left) ? 1f : 0f, Land(Vector2I.Right) ? 1f : 0f, Land(Vector2I.Up) ? 1f : 0f, Land(Vector2I.Down) ? 1f : 0f));
+            i++;
+        }
+
+        var instance = new MultiMeshInstance3D { Multimesh = multimesh, Name = "LiquidSurface", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+        World.AddChild(instance);
+        return instance;
+    }
+
+    /// <summary>Shader uniforms per liquid: clear moving water, slow glowing lava, sickly ooze.</summary>
+    public static (string, Variant)[] LiquidLook(LiquidStyle style) => style switch
+    {
+        LiquidStyle.Water => new (string, Variant)[]
+        {
+            ("deep_color", new Color(0.03f, 0.14f, 0.28f)), ("shallow_color", new Color(0.1f, 0.45f, 0.6f)), ("foam_color", new Color(0.85f, 0.95f, 1f)),
+            ("emission_strength", 0.08f), ("flow_speed", 1f), ("wave_height", 0.035f), ("roughness_value", 0.05f), ("caustics", 0.45f),
+        },
+        LiquidStyle.Ooze => new (string, Variant)[]
+        {
+            ("deep_color", new Color(0.06f, 0.2f, 0.05f)), ("shallow_color", new Color(0.3f, 0.8f, 0.2f)), ("foam_color", new Color(0.75f, 1f, 0.5f)),
+            ("emission_strength", 0.45f), ("flow_speed", 0.45f), ("wave_height", 0.05f), ("roughness_value", 0.25f), ("caustics", 0.3f),
+        },
+        _ => new (string, Variant)[]
+        {
+            ("deep_color", new Color(0.45f, 0.06f, 0.02f)), ("shallow_color", new Color(1f, 0.45f, 0.1f)), ("foam_color", new Color(1f, 0.85f, 0.45f)),
+            ("emission_strength", 1.1f), ("flow_speed", 0.3f), ("wave_height", 0.05f), ("roughness_value", 0.7f), ("caustics", 0.6f),
+        },
+    };
 
     private readonly Dictionary<ulong, List<Node>> _terrain = new();
 

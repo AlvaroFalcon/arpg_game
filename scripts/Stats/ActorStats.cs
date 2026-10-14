@@ -169,6 +169,7 @@ public partial class ActorStats : Node
         StatId.ExtraPierce => 0f,
         StatId.MaxStamina => 100f,
         StatId.StaminaRegen => 22f,
+        StatId.AutoCastSpeed => 1f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 

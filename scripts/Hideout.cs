@@ -40,6 +40,7 @@ public partial class Hideout : Node2D
     private MerchantPanel _merchant = null!;
     private ArtificerPanel _artificer = null!;
     private DecorShopPanel _shop = null!;
+    private ShardVendorPanel _dealer = null!;
     private TownGuidePanel _guide = null!;
     private HideoutHud _hud = null!;
     private string? _highlighted;
@@ -91,7 +92,8 @@ public partial class Hideout : Node2D
         _artificer = new ArtificerPanel { Player = _player, Name = "ArtificerPanel" };
         _shop = new DecorShopPanel { Player = _player, Data = Data, Name = "DecorShopPanel" };
         _guide = new TownGuidePanel { Data = Data, ShowMe = WalkTo, Name = "TownGuide" };
-        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide })
+        _dealer = new ShardVendorPanel { Player = _player, Name = "ShardVendorPanel" };
+        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer })
         {
             AddChild(panel);
         }
@@ -144,6 +146,7 @@ public partial class Hideout : Node2D
         "mirror" => _mirror.Open,
         "merchant" => _merchant.Open,
         "decorator" => _shop.Open,
+        "arehucaz" => _dealer.Open,
         "forge" => _artificer.Open,
         "stash" => _stash.Open,
         "altar" => _altar.Open,
@@ -164,6 +167,7 @@ public partial class Hideout : Node2D
             "decorator" => Decorator(),
             "mirror" => Station("Mirror", def),
             "stash" => Station("Stash", def),
+            "arehucaz" => Station("Arehucaz", def),
             _ => Station($"Prop_{prop.Uid}", def),
         };
         if (node.GetParent() is null)

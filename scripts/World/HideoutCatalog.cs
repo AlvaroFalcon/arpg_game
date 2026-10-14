@@ -97,6 +97,8 @@ public static class HideoutCatalog
             Verb = "Open realities", Blurb = "Spend Mirror Shards to step into an Altered Reality.", Accent = new Color(0.55f, 0.75f, 1f) },
         new() { Id = "merchant", Name = "Odran the Trader", Sprite = "props/market_stall", Station = true, PickRadius = 44f,
             Verb = "Trade", Blurb = "Sell gear for gold, buy it back, buy crafting shards.", Accent = new Color(0.95f, 0.75f, 0.35f) },
+        new() { Id = "arehucaz", Name = "Arehucaz", Sprite = "props/arehucaz", Station = true, Radius = 10f, PickRadius = 34f,
+            Verb = "Deal", Blurb = "Sells Mirror Shards of tiers you have cleared. Five at a time.", Accent = new Color(0.68f, 0.45f, 1f) },
         new() { Id = "decorator", Name = "Ysolde's Furnishings", Sprite = "props/crate", Station = true, PickRadius = 36f,
             Verb = "Browse", Blurb = "Floor tiles and decorations for your town.", Accent = new Color(0.55f, 0.85f, 0.75f) },
         new() { Id = "forge", Name = "Artificer's Forge", Sprite = "props/forge", Station = true, Radius = 22f, PickRadius = 40f,
@@ -132,7 +134,7 @@ public static class HideoutCatalog
     private static readonly (string Kind, int X, int Y)[] DefaultLayout =
     {
         ("mirror", 25, 15), ("merchant", 30, 18), ("decorator", 20, 18), ("forge", 8, 12), ("stash", 40, 31),
-        ("altar", 10, 31), ("portal", 25, 3),
+        ("altar", 10, 31), ("portal", 25, 3), ("arehucaz", 34, 7),
         ("training_dummy", 39, 12), ("training_dummy", 43, 14), ("training_dummy", 39, 17),
         ("brazier", 18, 9), ("brazier", 32, 9), ("brazier", 18, 21), ("brazier", 32, 21),
         ("lamp_post", 22, 6), ("lamp_post", 28, 6), ("lamp_post", 22, 26), ("lamp_post", 28, 26),
