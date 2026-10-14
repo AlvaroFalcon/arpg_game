@@ -101,6 +101,52 @@ public partial class EndgameSmokeTest : Node2D
         await IssueFeedbackChecks();
         await ShardVendorChecks();
         await JewelChecks();
+        DropTableChecks();
+    }
+
+    /// <summary>items.md -> "Drop tables (cascade)": the rolls match the tables, a
+    /// rarity multiplier scales every tier, chances cap, Majestic stays at 0 % until
+    /// authored, and orbs cascade from the rarest down.</summary>
+    private void DropTableChecks()
+    {
+        var rng = new RandomNumberGenerator { Seed = 4242 };
+        const int n = 40000;
+        Dictionary<Rarity, float> Rates(DropSource source, float multiplier)
+        {
+            var counts = new Dictionary<Rarity, float>();
+            for (int i = 0; i < n; i++)
+            {
+                Rarity r = DropTables.RollRarity(source, multiplier, rng);
+                counts[r] = counts.GetValueOrDefault(r) + 1f / n;
+            }
+
+            return counts;
+        }
+
+        bool Near(float got, float want, float tolerance) => Mathf.Abs(got - want) <= tolerance;
+        Dictionary<Rarity, float> normal = Rates(DropSource.NormalMonster, 1f);
+        Check("DROP-CASCADE-TABLE", Near(normal.GetValueOrDefault(Rarity.Rare), 0.015f, 0.003f) && Near(normal.GetValueOrDefault(Rarity.Magic), 0.985f * 0.5f, 0.01f),
+            $"normal monster: rare {normal.GetValueOrDefault(Rarity.Rare):P1} (table 1.5 %), magic {normal.GetValueOrDefault(Rarity.Magic):P1} (50 % of what falls through)");
+        Dictionary<Rarity, float> doubled = Rates(DropSource.NormalMonster, 2f);
+        Check("DROP-RARITY-MULTIPLIES", Near(doubled.GetValueOrDefault(Rarity.Rare), 0.03f, 0.004f) && doubled.GetValueOrDefault(Rarity.Common) < normal.GetValueOrDefault(Rarity.Common),
+            $"×2 rarity: rare {doubled.GetValueOrDefault(Rarity.Rare):P1}, common {normal.GetValueOrDefault(Rarity.Common):P0} → {doubled.GetValueOrDefault(Rarity.Common):P0}");
+        Dictionary<Rarity, float> boss = Rates(DropSource.Boss, 50f);
+        Check("DROP-CAP-AND-MAJESTIC", boss.GetValueOrDefault(Rarity.Majestic) == 0f && Near(boss.GetValueOrDefault(Rarity.Rare), DropTables.MaxChance, 0.01f),
+            $"boss ×50: majestic {boss.GetValueOrDefault(Rarity.Majestic):P1} (held at 0 %), rare capped at {boss.GetValueOrDefault(Rarity.Rare):P1}");
+
+        var orbs = new Dictionary<string, float>();
+        for (int i = 0; i < n; i++)
+        {
+            string id = DropTables.RollOrb(rng).Id;
+            orbs[id] = orbs.GetValueOrDefault(id) + 1f / n;
+        }
+
+        float miss = DropTables.Orbs.Aggregate(1f, (left, o) => left * (1f - o.Chance));
+        Check("DROP-ORB-CASCADE", Near(orbs.GetValueOrDefault("ascendant_orb"), 0.01f, 0.002f) && Near(orbs.GetValueOrDefault(DropTables.FallbackOrb), miss, 0.01f)
+            && orbs.Count == Crafting.Orbs.Count,
+            $"ascendant {orbs.GetValueOrDefault("ascendant_orb"):P1} (table 1 %), kindling (fallback) {orbs.GetValueOrDefault(DropTables.FallbackOrb):P0} (expected {miss:P0}), {orbs.Count} kinds seen");
+        Check("DROP-MULTIPLIERS", Mathf.IsEqualApprox(DropTables.RealityMultiplier(0.5f, 20), 1.5f * 1.76f) && Mathf.IsEqualApprox(DropTables.RiftMultiplier(600f), 1.5f),
+            $"reality +50 % rarity at tier 20 ×{DropTables.RealityMultiplier(0.5f, 20):0.00}, Rift at 10:00 ×{DropTables.RiftMultiplier(600f):0.00}");
     }
 
     /// <summary>endgame.md -> "Mirror jewels": 70 connected sockets, socket next to

@@ -539,7 +539,13 @@ public partial class RealityController : Node2D, IPickupHandler
         {
             if (_rng.Randf() < roll)
             {
-                DropItem(at + Jitter(30f), enemy.Rarity >= MonsterRarity.Rare ? 0.35f : 0.1f);
+                DropItem(at + Jitter(30f), enemy.Rarity switch
+                {
+                    MonsterRarity.Magic => DropSource.MagicMonster,
+                    MonsterRarity.Rare => DropSource.RareMonster,
+                    MonsterRarity.Unique => DropSource.UniqueMonster,
+                    _ => DropSource.NormalMonster,
+                });
             }
         }
 
@@ -578,7 +584,11 @@ public partial class RealityController : Node2D, IPickupHandler
 
     private Vector2 Jitter(float r) => new(_rng.RandfRange(-r, r), _rng.RandfRange(-r, r));
 
-    public EquipmentItem? DropItem(Vector2 at, float quality)
+    /// <summary>Drops an item whose rarity comes from the source's cascade
+    /// (docs/design/items.md -> "Drop tables (cascade)"), every chance scaled by the
+    /// reality's increased rarity (shard modifiers, jewels, <paramref name="extraRarity"/>)
+    /// and its tier.</summary>
+    public EquipmentItem? DropItem(Vector2 at, DropSource source, float extraRarity = 0f)
     {
         IReadOnlyList<BaseItemDefinition> bases = ItemFactory.Bases;
         if (bases.Count == 0)
@@ -589,8 +599,7 @@ public partial class RealityController : Node2D, IPickupHandler
         EquipmentItem item = ItemFactory.NewBlank();
         AddChild(item);
         item.GlobalPosition = at;
-        float roll = _rng.Randf() + (quality + _rarityBonus) * 0.6f;
-        Rarity rarity = roll > 1.05f ? Rarity.Rare : roll > 0.5f ? Rarity.Magic : Rarity.Common;
+        Rarity rarity = DropTables.RollRarity(source, DropTables.RealityMultiplier(_rarityBonus + extraRarity, Tier), _rng);
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, Mathf.Clamp(MonsterLevel, 1, 100), ItemFactory.Affixes.Entries, _rng);
         return item;
     }
@@ -610,7 +619,7 @@ public partial class RealityController : Node2D, IPickupHandler
     public void DropCurrency(Vector2 at)
     {
         Pickup orb = Pickup.Spawn(this, PickupKind.Currency, 1f, at);
-        orb.CurrencyKey = Crafting.RollOrb(_rng).Id;
+        orb.CurrencyKey = DropTables.RollOrb(_rng, DropTables.RealityMultiplier(_rarityBonus, Tier)).Id;
         orb.QueueRedraw();
     }
 
@@ -672,7 +681,7 @@ public partial class RealityController : Node2D, IPickupHandler
         int items = 3 + (_quantity > 0.3f ? 1 : 0) + Mathf.RoundToInt(Jewels[JewelStat.BossItems]);
         for (int i = 0; i < items; i++)
         {
-            DropItem(at + Jitter(60f), 0.6f + Jewels[JewelStat.BossRarity]);
+            DropItem(at + Jitter(60f), DropSource.Boss, Jewels[JewelStat.BossRarity]);
         }
 
         // A boss always drops a shard (endgame.md -> "Mirror Shards"); jewels can

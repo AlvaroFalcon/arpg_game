@@ -238,12 +238,12 @@ public partial class RunCapture : Node
 
         for (int i = 0; i < 5; i++)
         {
-            k.Inventory.Add((Items.ItemFactory.RollRandom(22, 0.5f, rng), new Vector2I(i * 2, 0)));
+            k.Inventory.Add((Items.ItemFactory.RollRandom(22, Items.DropSource.RareMonster, 1f, rng), new Vector2I(i * 2, 0)));
         }
 
         for (int i = 0; i < 6; i++)
         {
-            profile.StashTabs[0].Add((Items.ItemFactory.RollRandom(18, 0.4f, rng), new Vector2I((i % 4) * 3, (i / 4) * 3)));
+            profile.StashTabs[0].Add((Items.ItemFactory.RollRandom(18, Items.DropSource.MagicMonster, 1f, rng), new Vector2I((i % 4) * 3, (i / 4) * 3)));
         }
 
         k.Ascendancy = "samurai";
@@ -356,7 +356,7 @@ public partial class RunCapture : Node
             k.Gold = 2400;
             foreach (Items.CraftingCurrency c in Items.Crafting.All)
             {
-                profile.Currency[c.Id] = c.IsDust ? 12 : 3 + (int)(c.DropWeight / 4f);
+                profile.Currency[c.Id] = c.IsDust ? 12 : 3 + (int)(Items.DropTables.OrbChance(c.Id) * 20f);
             }
 
             var rng = new RandomNumberGenerator { Seed = 99 };

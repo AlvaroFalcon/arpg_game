@@ -24,7 +24,8 @@ public sealed class RunRewards
     /// <summary>How many of them may be kept.</summary>
     public int Keep { get; init; }
 
-    public float Quality { get; init; }
+    /// <summary>Scales every chance of the reward's rarity cascade (DropTables, RiftReward).</summary>
+    public float RarityMultiplier { get; init; } = 1f;
     public int ItemLevel { get; init; }
 
     public static RunRewards For(float elapsed, int bosses, int kills, bool victory, RandomNumberGenerator rng)
@@ -34,7 +35,7 @@ public sealed class RunRewards
         var orbs = new List<string>();
         for (int i = 0; i < orbCount; i++)
         {
-            orbs.Add(Crafting.RollOrb(rng).Id);
+            orbs.Add(DropTables.RollOrb(rng, 1f + m * DropTables.PerRiftMinute).Id);
         }
 
         return new RunRewards
@@ -43,7 +44,9 @@ public sealed class RunRewards
             Orbs = orbs,
             Choices = 3 + (m >= 7f ? 1 : 0) + (m >= 12f ? 1 : 0),
             Keep = 1 + (m >= 10f ? 1 : 0) + (m >= 15f ? 1 : 0),
-            Quality = Mathf.Clamp(m / 7.5f * 0.5f + bosses * 0.2f + (victory ? 0.3f : 0f), 0f, 1.6f),
+            // +12 % per minute, +15 % per boss, +30 % for the win: a 7:30 win with three
+            // bosses ×2.65 (Rare 40 %), sixteen endless minutes ×4.2 (Rare 63 %).
+            RarityMultiplier = 1f + 0.12f * m + 0.15f * bosses + (victory ? 0.3f : 0f),
             ItemLevel = Mathf.Clamp(3 + Mathf.RoundToInt(m * 5f) + bosses * 8, 1, 100),
         };
     }

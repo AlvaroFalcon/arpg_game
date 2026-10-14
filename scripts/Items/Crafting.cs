@@ -32,9 +32,6 @@ public sealed class CraftingCurrency
     public Color Color { get; init; } = Colors.White;
     public CraftAction Action { get; init; }
 
-    /// <summary>Relative chance among orb drops (0 = never drops).</summary>
-    public float DropWeight { get; init; }
-
     /// <summary>What the merchant charges for one (0 = not for sale).</summary>
     public long BuyPrice { get; init; }
 
@@ -55,23 +52,23 @@ public static class Crafting
 {
     public static readonly IReadOnlyList<CraftingCurrency> Orbs = new CraftingCurrency[]
     {
-        new() { Id = "kindling_shard", Name = "Kindling Shard", Action = CraftAction.Kindle, DropWeight = 30f, BuyPrice = 20, Color = new Color(1f, 0.62f, 0.3f),
+        new() { Id = "kindling_shard", Name = "Kindling Shard", Action = CraftAction.Kindle, BuyPrice = 20, Color = new Color(1f, 0.62f, 0.3f),
             Effect = "Upgrades a common item to magic with 1–2 random modifiers." },
-        new() { Id = "flux_shard", Name = "Flux Shard", Action = CraftAction.Flux, DropWeight = 26f, BuyPrice = 30, Color = new Color(0.45f, 0.7f, 1f),
+        new() { Id = "flux_shard", Name = "Flux Shard", Action = CraftAction.Flux, BuyPrice = 30, Color = new Color(0.45f, 0.7f, 1f),
             Effect = "Rerolls every modifier on a magic item." },
-        new() { Id = "graft_shard", Name = "Graft Shard", Action = CraftAction.Graft, DropWeight = 18f, BuyPrice = 35, Color = new Color(0.55f, 0.95f, 0.75f),
+        new() { Id = "graft_shard", Name = "Graft Shard", Action = CraftAction.Graft, BuyPrice = 35, Color = new Color(0.55f, 0.95f, 0.75f),
             Effect = "Adds a random modifier to a magic item with room for one." },
-        new() { Id = "ash_orb", Name = "Ash Orb", Action = CraftAction.Ash, DropWeight = 10f, BuyPrice = 60, Color = new Color(0.7f, 0.68f, 0.66f),
+        new() { Id = "ash_orb", Name = "Ash Orb", Action = CraftAction.Ash, BuyPrice = 60, Color = new Color(0.7f, 0.68f, 0.66f),
             Effect = "Burns every modifier away, leaving a common item." },
-        new() { Id = "crown_orb", Name = "Crown Orb", Action = CraftAction.Crown, DropWeight = 6f, Color = new Color(1f, 0.85f, 0.35f),
+        new() { Id = "crown_orb", Name = "Crown Orb", Action = CraftAction.Crown, Color = new Color(1f, 0.85f, 0.35f),
             Effect = "Upgrades a magic item to rare, adding one random modifier." },
-        new() { Id = "tempest_orb", Name = "Tempest Orb", Action = CraftAction.Tempest, DropWeight = 5f, Color = new Color(0.75f, 0.45f, 1f),
+        new() { Id = "tempest_orb", Name = "Tempest Orb", Action = CraftAction.Tempest, Color = new Color(0.75f, 0.45f, 1f),
             Effect = "Rerolls a rare item with a new name and 3–4 new modifiers." },
-        new() { Id = "tuning_orb", Name = "Tuning Orb", Action = CraftAction.Tune, DropWeight = 4f, Color = new Color(0.95f, 0.95f, 0.75f),
+        new() { Id = "tuning_orb", Name = "Tuning Orb", Action = CraftAction.Tune, Color = new Color(0.95f, 0.95f, 0.75f),
             Effect = "Rerolls the numbers of every modifier and base stat within their tiers." },
-        new() { Id = "sundering_orb", Name = "Sundering Orb", Action = CraftAction.Sunder, DropWeight = 3f, Color = new Color(1f, 0.4f, 0.35f),
+        new() { Id = "sundering_orb", Name = "Sundering Orb", Action = CraftAction.Sunder, Color = new Color(1f, 0.4f, 0.35f),
             Effect = "Removes one random modifier from a magic or rare item." },
-        new() { Id = "ascendant_orb", Name = "Ascendant Orb", Action = CraftAction.Ascend, DropWeight = 1f, Color = new Color(1f, 1f, 1f),
+        new() { Id = "ascendant_orb", Name = "Ascendant Orb", Action = CraftAction.Ascend, Color = new Color(1f, 1f, 1f),
             Effect = "Adds a random modifier to a rare item with room for one." },
     };
 
@@ -96,22 +93,8 @@ public static class Crafting
     public static CraftingCurrency DustFor(Rarity rarity) =>
         Dusts.First(d => d.DustOf == (rarity >= Rarity.Majestic ? Rarity.Majestic : rarity));
 
-    /// <summary>A random orb, by drop weight.</summary>
-    public static CraftingCurrency RollOrb(RandomNumberGenerator rng)
-    {
-        float total = Orbs.Sum(o => o.DropWeight);
-        float roll = rng.RandfRange(0f, total);
-        foreach (CraftingCurrency orb in Orbs)
-        {
-            roll -= orb.DropWeight;
-            if (roll <= 0f)
-            {
-                return orb;
-            }
-        }
-
-        return Orbs[0];
-    }
+    /// <summary>A random orb by cascade (docs/design/items.md -> "Drop tables (cascade)").</summary>
+    public static CraftingCurrency RollOrb(RandomNumberGenerator rng, float multiplier = 1f) => DropTables.RollOrb(rng, multiplier);
 
     private static IReadOnlyList<AffixDefinition> Pool => ItemFactory.Affixes.Entries;
 

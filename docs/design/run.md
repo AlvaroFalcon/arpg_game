@@ -121,8 +121,11 @@ survived (`RunRewards`):
 | Item cards | 3, +1 at 7:00, +1 at 12:00 | 3 | 4 | 5 |
 | Items kept | 1, +1 at 10:00, +1 at 15:00 | 1 | 1 | 3 |
 
-Item level is `3 + 5·minutes + 8·bosses killed`; rarity skews up with time
-survived, bosses killed and victory. Gold and orbs go straight into the wallet
+Item level is `3 + 5·minutes + 8·bosses killed`. Rarity rolls the `RiftReward`
+cascade (items.md -> "Drop tables (cascade)") with a multiplier of
+`1 + 0.12·minutes + 0.15·bosses (+0.3 victory)`: ×2.65 for a 7:30 win with three
+bosses (≈ 40 % Rare per card), ×4.2 after sixteen endless minutes (≈ 63 %). Elites and
+bosses dropping gear mid-run use the `RiftElite` / `RiftBoss` tables, +5 % per minute. Gold and orbs go straight into the wallet
 before the character is saved. Everything picked up from the ground
 during the run is kept too. Dying is not a punishment beyond ending the run: in a
 game whose persistent progression is gear, taking the gear away on death would make

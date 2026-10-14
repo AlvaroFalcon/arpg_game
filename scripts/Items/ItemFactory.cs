@@ -87,13 +87,11 @@ public static class ItemFactory
         return item;
     }
 
-    /// <summary>A random base at a rarity weighted toward better results as
-    /// <paramref name="quality"/> (0..1) rises.</summary>
-    public static EquipmentItem RollRandom(int itemLevel, float quality, RandomNumberGenerator rng)
+    /// <summary>A random base, its rarity rolled by the source's cascade
+    /// (<see cref="DropTables"/>) with every chance scaled by <paramref name="rarityMultiplier"/>.</summary>
+    public static EquipmentItem RollRandom(int itemLevel, DropSource source, float rarityMultiplier, RandomNumberGenerator rng)
     {
         BaseItemDefinition baseItem = Bases[rng.RandiRange(0, Bases.Count - 1)];
-        float roll = rng.Randf() + quality * 0.6f;
-        Rarity rarity = roll > 1.05f ? Rarity.Rare : roll > 0.5f ? Rarity.Magic : Rarity.Common;
-        return Roll(baseItem, rarity, itemLevel, rng);
+        return Roll(baseItem, DropTables.RollRarity(source, rarityMultiplier, rng), itemLevel, rng);
     }
 }

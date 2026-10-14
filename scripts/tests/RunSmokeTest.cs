@@ -320,7 +320,7 @@ public partial class RunSmokeTest : Node2D
     private void ProfileChecks()
     {
         var rng = new RandomNumberGenerator { Seed = 7 };
-        EquipmentItem item = ItemFactory.RollRandom(40, 1f, rng);
+        EquipmentItem item = ItemFactory.RollRandom(40, DropSource.RareMonster, 2f, rng);
         var restored = ItemFactory.NewBlank();
         restored.Restore(item.Base!, item.Rarity, item.Descriptor.ItemLevel, item.Descriptor.DisplayName, item.RolledBaseStats, item.RolledAffixes);
         Check("ITEM-RESTORE-ROUNDTRIP",
@@ -351,7 +351,7 @@ public partial class RunSmokeTest : Node2D
         RunRewards won = RunRewards.For(450f, 3, 1500, true, rng);
         RunRewards endless = RunRewards.For(960f, 7, 4000, true, rng);
         Check("REWARDS-GROW-WITH-TIME", early.Gold < won.Gold && won.Gold < endless.Gold && early.Orbs.Count < won.Orbs.Count && won.Orbs.Count < endless.Orbs.Count
-            && early.Choices == 3 && endless.Choices == 5 && early.Keep == 1 && endless.Keep == 3 && endless.Quality > won.Quality,
+            && early.Choices == 3 && endless.Choices == 5 && early.Keep == 1 && endless.Keep == 3 && endless.RarityMultiplier > won.RarityMultiplier,
             $"gold {early.Gold}/{won.Gold}/{endless.Gold}, orbs {early.Orbs.Count}/{won.Orbs.Count}/{endless.Orbs.Count}, choices {early.Choices}/{won.Choices}/{endless.Choices}, keep {early.Keep}/{won.Keep}/{endless.Keep}");
     }
 
