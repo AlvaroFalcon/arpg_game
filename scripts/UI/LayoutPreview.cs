@@ -8,8 +8,7 @@ namespace ArpgGame.UI;
 /// <summary>
 /// A top-down picture of a rasterised layout: rock, floor, the theme's liquid,
 /// pillars, the boss arena and its gate, the entrance (green) and the boss (red);
-/// optionally the pack spots by rarity. Used by the Mirror's map preview and the
-/// capture tool's layout sheets (docs/design/endgame.md -> "Caverns").
+/// optionally the pack spots by rarity. Used by the capture tool's layout sheets (docs/design/endgame.md -> "Caverns").
 /// </summary>
 public static class LayoutPreview
 {
