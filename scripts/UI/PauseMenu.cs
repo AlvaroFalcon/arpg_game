@@ -28,6 +28,10 @@ public partial class PauseMenu : CanvasLayer
 
     public bool IsOpen { get; private set; }
 
+    /// <summary>Co-op: the menu opens over a game that keeps running
+    /// (docs/design/multiplayer.md -> "Pausing").</summary>
+    public bool NoPause { get; set; }
+
     private Control _root = null!;
     private VBoxContainer _menu = null!;
     private Label _summary = null!;
@@ -92,7 +96,7 @@ public partial class PauseMenu : CanvasLayer
             return;
         }
 
-        if (!GetTree().Paused)
+        if (!GetTree().Paused && !(NoPause && GetTree().Root.GetNodeOrNull<LevelUpScreen>("Run/LevelUp") is { IsOpen: true }))
         {
             Open();
         }
@@ -101,7 +105,7 @@ public partial class PauseMenu : CanvasLayer
     public void Open()
     {
         IsOpen = true;
-        GetTree().Paused = true;
+        GetTree().Paused = !NoPause;
         _summary.Text = Summary?.Invoke() ?? "";
         _summary.Visible = _summary.Text.Length > 0;
         _editHud.Visible = GetTree().GetNodesInGroup(HudLayout.Group).Count > 0;
@@ -114,7 +118,10 @@ public partial class PauseMenu : CanvasLayer
     {
         IsOpen = false;
         _root.Visible = false;
-        GetTree().Paused = false;
+        if (!NoPause)
+        {
+            GetTree().Paused = false;
+        }
     }
 
     /// <summary>HUD edit mode (docs/design/menus.md -> "HUD layout editor"):

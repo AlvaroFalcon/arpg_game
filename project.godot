@@ -20,6 +20,7 @@ GameSettings="*res://scenes/core/GameSettings.tscn"
 Profile="*res://scenes/core/Profile.tscn"
 Sfx="*res://scenes/core/Sfx.tscn"
 HdView="*res://scenes/core/HdView.tscn"
+NetSession="*res://scenes/core/NetSession.tscn"
 
 [display]
 
