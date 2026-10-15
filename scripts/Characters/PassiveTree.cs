@@ -68,6 +68,8 @@ public static class PassiveText
         { StatId.ExtraChains, "Chain" }, { StatId.ManaCostMultiplier, "Mana Cost of Skills" }, { StatId.Strength, "Strength" },
         { StatId.Dexterity, "Dexterity" }, { StatId.Intelligence, "Intelligence" }, { StatId.FireResistance, "Fire Resistance" },
         { StatId.ColdResistance, "Cold Resistance" }, { StatId.LightningResistance, "Lightning Resistance" }, { StatId.DamageTaken, "Damage taken" },
+        { StatId.LifeLeech, "of Damage leeched as Life" }, { StatId.ManaOnKill, "Mana gained on kill" }, { StatId.FreezeChance, "chance to Freeze" },
+        { StatId.ElementalDamageTaken, "Elemental Damage taken" }, { StatId.PhysicalDamageTaken, "Physical Damage taken" }, { StatId.ExtraPierce, "Pierce" },
     };
 
     public static string StatName(StatId stat) => Names.TryGetValue(stat, out string? n) ? n : stat.ToString();
@@ -94,11 +96,13 @@ public static class PassiveText
     public static string Describe(PassiveMod m)
     {
         string name = StatName(m.Stat);
-        bool chance = m.Stat is StatId.IgniteChance or StatId.ShockChance;
+        bool chance = m.Stat is StatId.IgniteChance or StatId.ShockChance or StatId.FreezeChance;
         return m.Type switch
         {
             ModifierType.Flat when chance => $"+{Mathf.RoundToInt(m.Value * 100)}% {name}",
             ModifierType.Flat when m.Stat == StatId.CritMultiplier => $"+{Mathf.RoundToInt(m.Value * 100)}% {name}",
+            ModifierType.Flat when m.Stat == StatId.LifeLeech => $"{m.Value:0.#}% {name}",
+            ModifierType.Flat when m.Stat == StatId.ExtraPierce => $"Projectiles Pierce {m.Value:0} additional {(m.Value > 1 ? "enemies" : "enemy")}",
             ModifierType.Flat when m.Stat is StatId.DodgeCharges or StatId.ExtraProjectiles or StatId.ExtraChains => $"+{m.Value:0} {name}{(m.Value > 1 ? "s" : "")}",
             ModifierType.Flat => $"+{Items.ItemTooltipText.Number(m.Value)} {TagWords(m)}{name}",
             ModifierType.Increased when m.Value < 0 => $"{-m.Value:0}% reduced {TagWords(m)}{name}",
@@ -110,12 +114,25 @@ public static class PassiveText
 }
 
 /// <summary>
-/// The shared passive tree — docs/design/classes.md -> "Passive tree": one tree,
-/// three starting points (PoE's model: any class can travel anywhere, the start
-/// only decides what is cheap). Built from data in code: an inner ring around
-/// the centre, three themed branches per class sector ending in a notable and
-/// usually a keystone, and a hybrid branch between each pair of classes.
-/// Positions are generated, so adding a node is one line.
+/// The shared passive tree — docs/design/classes.md -> "Passive tree" (redesign
+/// 2026-10-15). One tree, three starting points (PoE's model: any class can travel
+/// anywhere, the start only decides what is cheap), about 340 nodes for 69 points,
+/// so a character takes roughly a fifth of it and has to choose a road.
+///
+/// Shape, all generated from the data below (positions included):
+/// - an inner ring of 24 small nodes around the starts (attributes, six utilities);
+/// - 24 <b>clusters</b> ("wheels"): a notable in the middle of four themed small
+///   nodes in a loop, entered from the side facing the centre, the notable on the
+///   far side — reaching it costs three or four points inside the wheel;
+/// - 12 clusters on a middle ring (each class's three plus a hybrid between each
+///   pair of classes) and 12 on an outer ring, each outer one leading on to a
+///   keystone;
+/// - <b>travel nodes</b> between them (+4 to the region's attribute, +2/+2 on the
+///   borders): four from the inner ring to a middle cluster, three between
+///   neighbouring clusters and from a middle cluster out to its outer one, two to
+///   a keystone.
+/// Related themes sit near each other but never in the same wheel (projectile
+/// damage in the middle, projectile speed and pierce outside it, Ricochet beyond).
 /// </summary>
 public static class PassiveTree
 {
@@ -129,8 +146,119 @@ public static class PassiveTree
 
     private static PassiveMod Inc(StatId s, float v, SkillTags c = SkillTags.None, SkillTags any = SkillTags.None) => new(s, ModifierType.Increased, v, c, any);
     private static PassiveMod Flat(StatId s, float v, SkillTags c = SkillTags.None) => new(s, ModifierType.Flat, v, c);
+    private static PassiveMod Less(StatId s, float v) => new(s, ModifierType.More, -v);
 
-    private sealed record Branch(string Id, float AngleDeg, string Theme, PassiveMod[] Small, string NotableName, PassiveMod[] Notable, string? KeystoneId);
+    // Radii of the layout (tree units; the panel scales them).
+    private const float StartRadius = 110f;
+    private const float RingRadius = 230f;
+    private const float MiddleRadius = 520f;
+    private const float OuterRadius = 860f;
+    private const float WheelRadius = 58f;
+    private const float KeystoneRadius = 1140f;
+
+    /// <summary>Attribute granted by a travel node in a class's region.</summary>
+    public const float TravelAttribute = 4f;
+
+    /// <summary>A wheel: theme, angle, ring, four small nodes, the notable, and the keystone beyond it (outer ring only).</summary>
+    private sealed record Cluster(string Id, float Angle, bool Outer, string Theme, PassiveMod[] Small, string NotableName, PassiveMod[] Notable, string? KeystoneId = null);
+
+    /// <summary>
+    /// The 24 clusters, in angle order per ring — THE place to change what the tree
+    /// offers (docs/design/classes.md -> "Passive tree" mirrors it). Arcanist (int)
+    /// at the top (−90°), Rogue (dex) bottom right (30°), Warrior (str) bottom left
+    /// (150°); hybrids on the borders (−30°, 90°, 210°).
+    /// </summary>
+    private static readonly Cluster[] Clusters =
+    {
+        // --- middle ring ---
+        new("spellcraft", -120f, false, "Spellcraft", new[] { Inc(StatId.Damage, 7f, SkillTags.Spell), Inc(StatId.CastSpeed, 3f), Inc(StatId.Damage, 7f, SkillTags.Spell), Inc(StatId.CastSpeed, 3f) },
+            "Arcane Focus", new[] { Inc(StatId.Damage, 25f, SkillTags.Spell), Inc(StatId.CastSpeed, 6f) }),
+        new("mana", -90f, false, "Mana", new[] { Flat(StatId.MaxMana, 12f), Flat(StatId.ManaRegen, 1.5f), Flat(StatId.MaxMana, 12f), Inc(StatId.ManaCostMultiplier, -4f) },
+            "Wellspring", new[] { Flat(StatId.ManaRegen, 5f), Inc(StatId.ManaCostMultiplier, -8f), Flat(StatId.ManaOnKill, 2f) }),
+        new("fire", -60f, false, "Fire", new[] { Inc(StatId.Damage, 7f, SkillTags.Fire), Flat(StatId.IgniteChance, 0.03f), Inc(StatId.Damage, 7f, SkillTags.Fire), Flat(StatId.IgniteChance, 0.03f) },
+            "Pyromancer", new[] { Inc(StatId.Damage, 25f, SkillTags.Fire), Flat(StatId.IgniteChance, 0.08f) }),
+        new("elemental", -30f, false, "Elemental", new[] { Inc(StatId.Damage, 6f, any: E), Inc(StatId.Damage, 6f, any: E), Inc(StatId.Damage, 6f, any: E), Inc(StatId.CastSpeed, 3f) },
+            "Elemental Mastery", new[] { Inc(StatId.Damage, 20f, any: E), Inc(StatId.CastSpeed, 5f) }),
+        new("projectiles", 0f, false, "Projectiles", new[] { Inc(StatId.Damage, 7f, SkillTags.Projectile), Inc(StatId.Damage, 7f, SkillTags.Projectile), Inc(StatId.AttackSpeed, 3f), Inc(StatId.Damage, 7f, SkillTags.Projectile) },
+            "Volley Master", new[] { Flat(StatId.ExtraProjectiles, 1f), Inc(StatId.Damage, 15f, SkillTags.Projectile) }),
+        new("precision", 30f, false, "Precision", new[] { Inc(StatId.CritChance, 15f), Flat(StatId.CritMultiplier, 0.08f), Inc(StatId.CritChance, 15f), Flat(StatId.CritMultiplier, 0.08f) },
+            "Deadly Precision", new[] { Inc(StatId.CritChance, 40f), Flat(StatId.CritMultiplier, 0.25f) }),
+        new("agility", 60f, false, "Agility", new[] { Inc(StatId.MovementSpeed, 3f), Inc(StatId.DodgeRecovery, 6f), Inc(StatId.MovementSpeed, 3f), Inc(StatId.DodgeRecovery, 6f) },
+            "Acrobatics", new[] { Flat(StatId.DodgeCharges, 1f), Inc(StatId.MovementSpeed, 5f) }),
+        new("duelist", 90f, false, "Duelist", new[] { Inc(StatId.AttackSpeed, 3f), Inc(StatId.Damage, 6f, SkillTags.Attack), Flat(StatId.LifeOnKill, 1f), Inc(StatId.Damage, 6f, SkillTags.Attack) },
+            "Blade Dancer", new[] { Inc(StatId.AttackSpeed, 8f), Inc(StatId.CritChance, 25f), Flat(StatId.LifeOnKill, 2f) }),
+        new("life", 120f, false, "Life", new[] { Flat(StatId.MaxLife, 10f), Inc(StatId.MaxLife, 3f), Flat(StatId.MaxLife, 10f), Inc(StatId.MaxLife, 3f) },
+            "Unbreakable Hide", new[] { Inc(StatId.MaxLife, 10f), Flat(StatId.MaxLife, 30f) }),
+        new("melee", 150f, false, "Melee", new[] { Inc(StatId.Damage, 7f, SkillTags.Melee), Inc(StatId.AttackSpeed, 3f), Inc(StatId.Damage, 7f, SkillTags.Melee), Inc(StatId.AttackSpeed, 3f) },
+            "Butcher", new[] { Inc(StatId.Damage, 25f, SkillTags.Melee), Inc(StatId.AttackSpeed, 6f) }),
+        new("armour", 180f, false, "Armour", new[] { Flat(StatId.Armour, 35f), Inc(StatId.Armour, 6f), Flat(StatId.Armour, 35f), Inc(StatId.Armour, 6f) },
+            "Iron Skin", new[] { Inc(StatId.Armour, 20f), Less(StatId.DamageTaken, 4f) }),
+        new("battlemage", 210f, false, "Battlemage", new[] { Inc(StatId.Damage, 5f), Flat(StatId.MaxLife, 8f), Flat(StatId.MaxMana, 8f), Inc(StatId.Damage, 5f) },
+            "Battle Hardened", new[] { Inc(StatId.Damage, 15f), Inc(StatId.MaxLife, 6f) }),
+
+        // --- outer ring (each leads on to a keystone) ---
+        new("cold", -120f, true, "Cold", new[] { Inc(StatId.Damage, 7f, SkillTags.Cold), Flat(StatId.FreezeChance, 0.02f), Inc(StatId.Damage, 7f, SkillTags.Cold), Flat(StatId.FreezeChance, 0.02f) },
+            "Frostbinder", new[] { Inc(StatId.Damage, 25f, SkillTags.Cold), Flat(StatId.FreezeChance, 0.06f) }, "avatar_of_frost"),
+        new("arcana", -90f, true, "Arcana", new[] { Inc(StatId.Damage, 6f, SkillTags.Spell), Inc(StatId.CooldownRecovery, 4f), Inc(StatId.Damage, 6f, SkillTags.Spell), Inc(StatId.CooldownRecovery, 4f) },
+            "Arcane Torrent", new[] { Inc(StatId.Damage, 20f, SkillTags.Spell), Inc(StatId.CooldownRecovery, 10f) }, "echoing_mind"),
+        new("lightning", -60f, true, "Lightning", new[] { Inc(StatId.Damage, 7f, SkillTags.Lightning), Flat(StatId.ShockChance, 0.03f), Inc(StatId.Damage, 7f, SkillTags.Lightning), Flat(StatId.ShockChance, 0.03f) },
+            "Stormcaller", new[] { Inc(StatId.Damage, 25f, SkillTags.Lightning), Flat(StatId.ExtraChains, 1f) }, "avatar_of_fire"),
+        new("ailments", -30f, true, "Ailments", new[] { Flat(StatId.IgniteChance, 0.03f), Flat(StatId.ShockChance, 0.03f), Flat(StatId.FreezeChance, 0.02f), Inc(StatId.SkillDuration, 6f) },
+            "Static Chains", new[] { Flat(StatId.ExtraChains, 1f), Flat(StatId.ShockChance, 0.06f) }, "chain_reaction"),
+        new("velocity", 0f, true, "Velocity", new[] { Inc(StatId.ProjectileSpeed, 8f), Inc(StatId.Damage, 5f, SkillTags.Projectile), Inc(StatId.ProjectileSpeed, 8f), Inc(StatId.Damage, 5f, SkillTags.Projectile) },
+            "Piercing Shots", new[] { Flat(StatId.ExtraPierce, 1f), Inc(StatId.ProjectileSpeed, 15f) }, "ricochet"),
+        new("flurry", 30f, true, "Flurry", new[] { Inc(StatId.AttackSpeed, 4f), Inc(StatId.Damage, 6f, SkillTags.Attack), Inc(StatId.AttackSpeed, 4f), Inc(StatId.Damage, 6f, SkillTags.Attack) },
+            "Flurry", new[] { Inc(StatId.AttackSpeed, 10f), Inc(StatId.Damage, 15f, SkillTags.Attack) }, "glass_cannon"),
+        new("shadow", 60f, true, "Shadow", new[] { Inc(StatId.DodgeRecovery, 8f), Inc(StatId.MovementSpeed, 3f), Inc(StatId.DodgeRecovery, 8f), Inc(StatId.MovementSpeed, 3f) },
+            "Ghost Step", new[] { Inc(StatId.DodgeRecovery, 20f), Less(StatId.DamageTaken, 5f) }, "phase_dancer"),
+        new("bloodthirst", 90f, true, "Bloodthirst", new[] { Flat(StatId.LifeLeech, 0.3f), Inc(StatId.Damage, 6f, SkillTags.Attack), Flat(StatId.LifeLeech, 0.3f), Inc(StatId.Damage, 6f, SkillTags.Attack) },
+            "Bloodthirst", new[] { Flat(StatId.LifeLeech, 1f), Inc(StatId.Damage, 10f, SkillTags.Attack) }, "vampiric_pact"),
+        new("regeneration", 120f, true, "Regeneration", new[] { Flat(StatId.LifeRegen, 1f), Flat(StatId.LifeOnKill, 1f), Flat(StatId.LifeRegen, 1f), Flat(StatId.LifeOnKill, 1f) },
+            "Troll Blood", new[] { Flat(StatId.LifeRegen, 4f), Inc(StatId.MaxLife, 5f) }, "blood_magic"),
+        new("earthshaker", 150f, true, "Earthshaker", new[] { Inc(StatId.AreaOfEffect, 5f), Inc(StatId.Damage, 6f, SkillTags.Melee), Inc(StatId.AreaOfEffect, 5f), Inc(StatId.Damage, 6f, SkillTags.Melee) },
+            "Earthshaker", new[] { Inc(StatId.AreaOfEffect, 12f), Inc(StatId.Damage, 15f, SkillTags.Melee) }, "juggernaut"),
+        new("resistance", 180f, true, "Resistance", new[] { Flat(StatId.FireResistance, 6f), Flat(StatId.ColdResistance, 6f), Flat(StatId.LightningResistance, 6f), Inc(StatId.MaxLife, 3f) },
+            "Bulwark", new[] { Flat(StatId.FireResistance, 12f), Flat(StatId.ColdResistance, 12f), Flat(StatId.LightningResistance, 12f), Less(StatId.ElementalDamageTaken, 5f) }, "iron_will"),
+        new("warding", 210f, true, "Warding", new[] { Flat(StatId.FireResistance, 5f), Flat(StatId.ColdResistance, 5f), Flat(StatId.LightningResistance, 5f), Less(StatId.ElementalDamageTaken, 2f) },
+            "Elemental Ward", new[] { Flat(StatId.FireResistance, 12f), Flat(StatId.ColdResistance, 12f), Flat(StatId.LightningResistance, 12f), Less(StatId.ElementalDamageTaken, 6f) }, "prismatic_bulwark"),
+    };
+
+    /// <summary>Utilities on the inner ring (every fourth ring node, from the top).</summary>
+    private static readonly (string Id, string Name, PassiveMod Mod)[] Utilities =
+    {
+        ("u_insight", "Insight", Inc(StatId.ExperienceGain, 6f)),
+        ("u_reach", "Reach", Inc(StatId.PickupRadius, 25f)),
+        ("u_persistence", "Persistence", Inc(StatId.SkillDuration, 10f)),
+        ("u_expanse", "Expanse", Inc(StatId.AreaOfEffect, 8f)),
+        ("u_feast", "Feast", Flat(StatId.LifeOnKill, 1f)),
+        ("u_momentum", "Momentum", Inc(StatId.CooldownRecovery, 6f)),
+    };
+
+    private static readonly (string Class, float Angle, StatId Attr)[] Starts =
+    {
+        ("arcanist", -90f, StatId.Intelligence),
+        ("rogue", 30f, StatId.Dexterity),
+        ("warrior", 150f, StatId.Strength),
+    };
+
+    /// <summary>A travel node's attributes at this angle: its class's, or half of each neighbour's on a border.</summary>
+    private static PassiveMod[] TravelMods(float angle, out string name)
+    {
+        var near = Starts
+            .Select(s => (s.Attr, Dist: Mathf.Abs(Mathf.Wrap(angle - s.Angle, -180f, 180f))))
+            .OrderBy(s => s.Dist)
+            .ToArray();
+        if (near[1].Dist - near[0].Dist < 20f)
+        {
+            name = $"{AttrName(near[0].Attr)} and {AttrName(near[1].Attr)}";
+            return new[] { Flat(near[0].Attr, TravelAttribute / 2f), Flat(near[1].Attr, TravelAttribute / 2f) };
+        }
+
+        name = AttrName(near[0].Attr);
+        return new[] { Flat(near[0].Attr, TravelAttribute) };
+    }
+
+    private static string AttrName(StatId s) => s switch { StatId.Strength => "Strength", StatId.Dexterity => "Dexterity", _ => "Intelligence" };
 
     private static Dictionary<string, PassiveNode> Build()
     {
@@ -143,42 +271,53 @@ public static class PassiveTree
         }
 
         Vector2 Polar(float deg, float r) => Vector2.Right.Rotated(Mathf.DegToRad(deg)) * r;
+        float AngleOf(Vector2 p) => Mathf.RadToDeg(p.Angle());
 
-        // Class sectors: Arcanist top, Rogue bottom-right, Warrior bottom-left.
-        var starts = new (string Class, float Angle, StatId Attr)[]
+        // A chain of travel nodes strictly between two points, linked end to end.
+        int travel = 0;
+        void Road(string from, string to, int count)
         {
-            ("arcanist", -90f, StatId.Intelligence),
-            ("rogue", 30f, StatId.Dexterity),
-            ("warrior", 150f, StatId.Strength),
-        };
-        foreach ((string cls, float angle, StatId _) in starts)
-        {
-            Add(new PassiveNode { Id = $"start_{cls}", Name = ClassCatalog.Get(cls).Name, Kind = PassiveKind.Start, ClassId = cls, Position = Polar(angle, 150f) });
+            Vector2 a = nodes[from].Position;
+            Vector2 b = nodes[to].Position;
+            string prev = from;
+            for (int i = 1; i <= count; i++)
+            {
+                Vector2 at = a.Lerp(b, i / (float)(count + 1));
+                // Gentle outward bow on long sideways roads so they follow the rings.
+                float bow = Mathf.Abs(a.Length() - b.Length()) < 40f ? Mathf.Sin(Mathf.Pi * i / (count + 1)) * 0.04f : 0f;
+                at *= 1f + bow;
+                string id = $"t{travel++}";
+                PassiveMod[] mods = TravelMods(AngleOf(at), out string name);
+                Add(new PassiveNode { Id = id, Name = name, Kind = PassiveKind.Small, Mods = mods, Position = at });
+                Link(prev, id);
+                prev = id;
+            }
+
+            Link(prev, to);
         }
 
-        // Inner ring: 18 small nodes. Attribute by nearest sector; the nodes
-        // halfway between sectors grant both neighbours' attributes.
-        const int ringCount = 18;
-        string Ring(int i) => $"ring_{(i + ringCount) % ringCount}";
+        // Starts.
+        foreach ((string cls, float angle, StatId _) in Starts)
+        {
+            Add(new PassiveNode { Id = $"start_{cls}", Name = ClassCatalog.Get(cls).Name, Kind = PassiveKind.Start, ClassId = cls, Position = Polar(angle, StartRadius) });
+        }
+
+        // Inner ring: 24 nodes every 15° from the top; every fourth is a utility.
+        const int ringCount = 24;
+        string Ring(int i) => $"ring_{((i % ringCount) + ringCount) % ringCount}";
+        int RingAt(float deg) => Mathf.RoundToInt(Mathf.Wrap(deg + 90f, 0f, 360f) / (360f / ringCount)) % ringCount;
         for (int i = 0; i < ringCount; i++)
         {
             float deg = -90f + i * 360f / ringCount;
-            var mods = new List<PassiveMod>();
-            foreach ((string _, float a, StatId attr) in starts)
+            if (i % 4 == 2)
             {
-                float d = Mathf.Abs(Mathf.Wrap(deg - a, -180f, 180f));
-                if (d <= 60f)
-                {
-                    mods.Add(Flat(attr, d < 30f ? 12f : 7f));
-                }
+                (string uid, string uname, PassiveMod umod) = Utilities[i / 4];
+                Add(new PassiveNode { Id = Ring(i), Name = uname, Kind = PassiveKind.Small, Mods = new[] { umod }, Position = Polar(deg, RingRadius) });
+                continue;
             }
 
-            if (i % 3 == 1)
-            {
-                mods.Add(Inc(StatId.MaxLife, 4f));
-            }
-
-            Add(new PassiveNode { Id = Ring(i), Name = "Attribute", Kind = PassiveKind.Small, Mods = mods, Position = Polar(deg, 250f) });
+            PassiveMod[] attrs = TravelMods(deg, out string name);
+            Add(new PassiveNode { Id = Ring(i), Name = name, Kind = PassiveKind.Small, Mods = attrs, Position = Polar(deg, RingRadius) });
         }
 
         for (int i = 0; i < ringCount; i++)
@@ -186,110 +325,66 @@ public static class PassiveTree
             Link(Ring(i), Ring(i + 1));
         }
 
-        foreach ((string cls, float angle, StatId _) in starts)
+        foreach ((string cls, float angle, StatId _) in Starts)
         {
-            int nearest = Mathf.RoundToInt((angle + 90f) / (360f / ringCount));
-            Link($"start_{cls}", Ring(nearest - 1));
-            Link($"start_{cls}", Ring(nearest));
-            Link($"start_{cls}", Ring(nearest + 1));
+            int at = RingAt(angle);
+            Link($"start_{cls}", Ring(at - 1));
+            Link($"start_{cls}", Ring(at));
+            Link($"start_{cls}", Ring(at + 1));
         }
 
-        var branches = new List<Branch>
+        // Wheels: s0 faces the centre, s1 and s3 the sides, s2 outward; the smalls
+        // loop and the notable hangs off s2 only, so it is always the far end (three
+        // points in from s0, two from a side road).
+        foreach (Cluster c in Clusters)
         {
-            // Arcanist (-90)
-            new("elemental", -118f, "Elemental", new[] { Inc(StatId.Damage, 8f, any: E), Inc(StatId.Damage, 8f, any: E), Flat(StatId.IgniteChance, 0.04f), Inc(StatId.Damage, 10f, any: E) },
-                "Elemental Mastery", new[] { Inc(StatId.Damage, 25f, any: E), Inc(StatId.CastSpeed, 8f) }, "avatar_of_fire"),
-            new("spellcraft", -90f, "Spellcraft", new[] { Inc(StatId.Damage, 10f, SkillTags.Spell), Inc(StatId.CastSpeed, 5f), Inc(StatId.Damage, 10f, SkillTags.Spell), Inc(StatId.AreaOfEffect, 8f) },
-                "Arcane Focus", new[] { Inc(StatId.Damage, 30f, SkillTags.Spell), Inc(StatId.CooldownRecovery, 10f) }, "echoing_mind"),
-            new("wellspring", -62f, "Mana", new[] { Flat(StatId.MaxMana, 15f), Flat(StatId.ManaRegen, 2f), Flat(StatId.MaxMana, 15f), Inc(StatId.ManaCostMultiplier, -5f) },
-                "Wellspring", new[] { Flat(StatId.ManaRegen, 6f), Inc(StatId.ManaCostMultiplier, -10f) }, "blood_magic"),
-            // Rogue (30)
-            new("precision", 2f, "Precision", new[] { Inc(StatId.CritChance, 20f), Flat(StatId.CritMultiplier, 0.1f), Inc(StatId.CritChance, 20f), Flat(StatId.CritMultiplier, 0.15f) },
-                "Deadly Precision", new[] { Inc(StatId.CritChance, 50f), Flat(StatId.CritMultiplier, 0.3f) }, null),
-            new("agility", 30f, "Agility", new[] { Inc(StatId.MovementSpeed, 4f), Inc(StatId.DodgeRecovery, 8f), Inc(StatId.MovementSpeed, 4f), Inc(StatId.AttackSpeed, 5f) },
-                "Acrobatics", new[] { Flat(StatId.DodgeCharges, 1f), Inc(StatId.DodgeRecovery, 15f) }, "phase_dancer"),
-            new("marksman", 58f, "Projectiles", new[] { Inc(StatId.Damage, 10f, SkillTags.Projectile), Inc(StatId.ProjectileSpeed, 8f), Inc(StatId.Damage, 10f, SkillTags.Projectile), Inc(StatId.AttackSpeed, 4f) },
-                "Volley Master", new[] { Flat(StatId.ExtraProjectiles, 1f), Inc(StatId.Damage, 15f, SkillTags.Projectile) }, "chain_reaction"),
-            // Warrior (150)
-            new("brawn", 122f, "Brawn", new[] { Flat(StatId.MaxLife, 12f), Inc(StatId.MaxLife, 4f), Flat(StatId.MaxLife, 12f), Flat(StatId.LifeRegen, 1f) },
-                "Unbreakable Hide", new[] { Inc(StatId.MaxLife, 10f), Flat(StatId.Armour, 60f) }, "vampiric_pact"),
-            new("weapon_master", 150f, "Melee", new[] { Inc(StatId.Damage, 10f, SkillTags.Melee), Inc(StatId.AttackSpeed, 4f), Inc(StatId.Damage, 10f, SkillTags.Melee), Inc(StatId.AreaOfEffect, 6f) },
-                "Butcher", new[] { Inc(StatId.Damage, 30f, SkillTags.Melee), Inc(StatId.AttackSpeed, 6f) }, "glass_cannon"),
-            new("fortitude", 178f, "Fortitude", new[] { Flat(StatId.Armour, 40f), Flat(StatId.FireResistance, 8f), Flat(StatId.Armour, 40f), Flat(StatId.ColdResistance, 8f) },
-                "Bulwark", new[] { Flat(StatId.FireResistance, 12f), Flat(StatId.ColdResistance, 12f), Flat(StatId.LightningResistance, 12f), Flat(StatId.Armour, 50f) }, "iron_will"),
-        };
-
-        // Hybrid branches between sectors (shorter, no start of their own).
-        var hybrids = new List<Branch>
-        {
-            new("arcweaver", -30f, "Ailments", new[] { Flat(StatId.ShockChance, 0.05f), Flat(StatId.IgniteChance, 0.05f), Inc(StatId.SkillDuration, 10f) },
-                "Static Chains", new[] { Flat(StatId.ExtraChains, 1f), Flat(StatId.ShockChance, 0.08f) }, null),
-            new("duelist", 90f, "Duelist", new[] { Inc(StatId.AttackSpeed, 5f), Inc(StatId.Damage, 8f, SkillTags.Attack), Flat(StatId.LifeOnKill, 1f) },
-                "Blade Dancer", new[] { Inc(StatId.AttackSpeed, 10f), Inc(StatId.CritChance, 30f), Flat(StatId.LifeOnKill, 2f) }, null),
-            new("battlemage", 210f, "Battlemage", new[] { Inc(StatId.Damage, 6f), Flat(StatId.MaxLife, 8f), Flat(StatId.MaxMana, 8f) },
-                "Elemental Ward", new[] { Flat(StatId.FireResistance, 15f), Flat(StatId.ColdResistance, 15f), Flat(StatId.LightningResistance, 15f) }, null),
-        };
-
-        // Utility side nodes hung off the ring between branches.
-        var utility = new (int Ring, string Id, string Name, PassiveMod Mod)[]
-        {
-            (2, "u_insight", "Insight", Inc(StatId.ExperienceGain, 6f)),
-            (5, "u_reach", "Reach", Inc(StatId.PickupRadius, 25f)),
-            (8, "u_persistence", "Persistence", Inc(StatId.SkillDuration, 12f)),
-            (11, "u_expanse", "Expanse", Inc(StatId.AreaOfEffect, 10f)),
-            (14, "u_feast", "Feast", Flat(StatId.LifeOnKill, 1f)),
-            (17, "u_momentum", "Momentum", Inc(StatId.CooldownRecovery, 8f)),
-        };
-        foreach ((int ring, string id, string name, PassiveMod mod) in utility)
-        {
-            float deg = -90f + ring * 360f / ringCount;
-            Add(new PassiveNode { Id = id, Name = name, Kind = PassiveKind.Small, Mods = new[] { mod }, Position = Polar(deg, 310f) });
-            Link(id, Ring(ring));
-        }
-
-        void BuildBranch(Branch b, float startRadius)
-        {
-            string prev = Ring(Mathf.RoundToInt((b.AngleDeg + 90f) / (360f / ringCount)));
-            float r = startRadius;
-            for (int i = 0; i < b.Small.Length; i++)
+            Vector2 centre = Polar(c.Angle, c.Outer ? OuterRadius : MiddleRadius);
+            Vector2 radial = centre.Normalized();
+            Vector2 tangent = new(-radial.Y, radial.X);
+            Vector2[] offsets = { -radial, tangent, radial, -tangent };
+            for (int i = 0; i < 4; i++)
             {
-                string id = $"{b.Id}_{i}";
-                Add(new PassiveNode { Id = id, Name = b.Theme, Kind = PassiveKind.Small, Mods = new[] { b.Small[i] }, Position = Polar(b.AngleDeg + (i % 2 == 0 ? -3f : 3f), r) });
-                Link(prev, id);
-                prev = id;
-                r += 62f;
+                Add(new PassiveNode { Id = $"{c.Id}_{i}", Name = c.Theme, Kind = PassiveKind.Small, Mods = new[] { c.Small[i] }, Position = centre + offsets[i] * WheelRadius });
             }
 
-            string notable = $"{b.Id}_notable";
-            Add(new PassiveNode { Id = notable, Name = b.NotableName, Kind = PassiveKind.Notable, Mods = b.Notable, Position = Polar(b.AngleDeg, r + 8f) });
-            Link(prev, notable);
-            if (b.KeystoneId is { } ks && UpgradeCatalog.Keystones.FirstOrDefault(k => k.Id == ks) is { } def)
+            for (int i = 0; i < 4; i++)
             {
-                string kid = $"ks_{ks}";
-                Add(new PassiveNode { Id = kid, Name = def.Name, Kind = PassiveKind.Keystone, Keystone = ks, Position = Polar(b.AngleDeg, r + 88f) });
-                Link(notable, kid);
+                Link($"{c.Id}_{i}", $"{c.Id}_{(i + 1) % 4}");
+            }
+
+            Add(new PassiveNode { Id = $"{c.Id}_notable", Name = c.NotableName, Kind = PassiveKind.Notable, Mods = c.Notable, Position = centre + radial * (WheelRadius * 0.15f) });
+            Link($"{c.Id}_notable", $"{c.Id}_2");
+
+            if (c.KeystoneId is { } ks)
+            {
+                string name = UpgradeCatalog.Keystones.FirstOrDefault(k => k.Id == ks)?.Name ?? ks;
+                Add(new PassiveNode { Id = $"ks_{ks}", Name = name, Kind = PassiveKind.Keystone, Keystone = ks, Position = Polar(c.Angle, KeystoneRadius) });
+                Road($"{c.Id}_2", $"ks_{ks}", 2);
             }
         }
 
-        foreach (Branch b in branches)
+        // Roads: inner ring → middle wheels (4), middle → outer (3), neighbours on each ring (3).
+        Cluster[] middle = Clusters.Where(c => !c.Outer).OrderBy(c => Mathf.Wrap(c.Angle, -180f, 180f)).ToArray();
+        Cluster[] outer = Clusters.Where(c => c.Outer).OrderBy(c => Mathf.Wrap(c.Angle, -180f, 180f)).ToArray();
+        foreach (Cluster c in middle)
         {
-            BuildBranch(b, 330f);
+            Road(Ring(RingAt(c.Angle)), $"{c.Id}_0", 4);
+            if (outer.FirstOrDefault(o => Mathf.IsEqualApprox(Mathf.Wrap(o.Angle - c.Angle, -180f, 180f), 0f)) is { } o)
+            {
+                Road($"{c.Id}_2", $"{o.Id}_0", 3);
+            }
         }
 
-        foreach (Branch b in hybrids)
+        foreach (Cluster[] ring in new[] { middle, outer })
         {
-            BuildBranch(b, 340f);
+            for (int i = 0; i < ring.Length; i++)
+            {
+                Cluster a = ring[i];
+                Cluster b = ring[(i + 1) % ring.Length];
+                Road($"{a.Id}_1", $"{b.Id}_3", 3);
+            }
         }
 
-        // Cross-links between neighbouring branch tips so the outer tree is a
-        // web, not only spokes (PoE-style travel without going back to the ring).
-        Link("elemental_2", "arcweaver_1");
-        Link("wellspring_2", "arcweaver_1");
-        Link("precision_2", "arcweaver_2");
-        Link("marksman_2", "duelist_1");
-        Link("brawn_2", "duelist_1");
-        Link("fortitude_2", "battlemage_1");
-        Link("elemental_3", "battlemage_2");
         return nodes;
     }
 
@@ -326,8 +421,74 @@ public static class PassiveTree
         return remaining.All(seen.Contains);
     }
 
-    /// <summary>Gold to refund one node: grows with level (docs/design/classes.md -> respec costs gold).</summary>
-    public static long RefundCost(CharacterData c) => 5 + c.Level * 3;
+    /// <summary>Gold to refund one node. Free while the tree is being play-tested
+    /// (owner, 2026-10-15); docs/design/classes.md -> "Passive tree" has the old
+    /// level-based price to restore later.</summary>
+    public static long RefundCost(CharacterData c) => 0;
+
+    /// <summary>
+    /// The cheapest chain of unallocated nodes that would connect <paramref name="id"/>
+    /// to the character's allocated set (breadth-first: every node costs one point),
+    /// ending with <paramref name="id"/> itself, in allocation order. Empty if the
+    /// node is taken, a start, or unreachable.
+    /// </summary>
+    public static List<string> PathTo(CharacterData c, string id)
+    {
+        var path = new List<string>();
+        if (c.Passives.Contains(id) || Get(id) is not { } target || target.Kind == PassiveKind.Start)
+        {
+            return path;
+        }
+
+        var prev = new Dictionary<string, string?> { [id] = null };
+        var queue = new Queue<string>();
+        queue.Enqueue(id);
+        while (queue.Count > 0)
+        {
+            string cur = queue.Dequeue();
+            foreach (string next in Nodes[cur].Links)
+            {
+                if (prev.ContainsKey(next))
+                {
+                    continue;
+                }
+
+                if (c.Passives.Contains(next))
+                {
+                    // Reached the allocated set: walk back from cur to the target.
+                    for (string? k = cur; k is not null; k = prev[k])
+                    {
+                        path.Add(k);
+                    }
+
+                    return path;
+                }
+
+                if (Nodes[next].Kind == PassiveKind.Start)
+                {
+                    continue; // another class's start is not a road
+                }
+
+                prev[next] = cur;
+                queue.Enqueue(next);
+            }
+        }
+
+        return path;
+    }
+
+    /// <summary>Refunds every allocated node (the class start stays). Free.</summary>
+    public static void ResetAll(CharacterData c)
+    {
+        c.Passives.RemoveWhere(id => !id.StartsWith("start_"));
+        c.Passives.Add(c.Class.TreeStart);
+    }
+
+    /// <summary>
+    /// Bumped whenever node ids change. A character saved with an older tree
+    /// gets every point back (owner: just reset them, no message).
+    /// </summary>
+    public const int Version = 2;
 
     /// <summary>Applies every allocated node to a build.</summary>
     public static void Apply(CharacterData c, IBuildContext build)

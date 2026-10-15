@@ -33,6 +33,9 @@ public partial class Ailments : Node
     public const float IgniteTick = 0.5f;
     public const float ShockDuration = 3f;
     public const float ShockPercent = 25f;
+    public const float FreezeDuration = 0.6f;
+    public const float BossFreezeDuration = 0.25f;
+    public const float BossFreezeLockout = 4f;
 
     private static readonly object ChillSource = new();
     private static readonly object CurseSource = new();
@@ -64,6 +67,11 @@ public partial class Ailments : Node
     public bool IsIgnited => IgniteRemaining > 0f;
     public bool IsShocked => ShockRemaining > 0f;
 
+    /// <summary>Seconds of freeze left: a frozen enemy neither moves nor acts.</summary>
+    public float FreezeRemaining { get; private set; }
+    public bool IsFrozen => FreezeRemaining > 0f;
+    private float _freezeLockout;
+
     public override void _Ready()
     {
         _rng.Randomize();
@@ -75,7 +83,8 @@ public partial class Ailments : Node
     /// <summary>The tint the owner's visual should take, or white for none.
     /// Ignite outranks shock outranks chill: the one doing damage reads first.</summary>
     public Color Tint =>
-        IsIgnited ? new Color(1f, 0.6f, 0.35f)
+        IsFrozen ? new Color(0.8f, 0.97f, 1.4f)
+        : IsIgnited ? new Color(1f, 0.6f, 0.35f)
         : PoisonStacks > 0 ? new Color(0.55f, 1f, 0.5f)
         : IsCursed ? new Color(0.8f, 0.5f, 1f)
         : IsShocked ? new Color(1f, 1f, 0.45f)
@@ -100,6 +109,11 @@ public partial class Ailments : Node
             {
                 case DamageType.Cold:
                     ApplyChill();
+                    if (payload.FreezeChance > 0f && _rng.Randf() < payload.FreezeChance)
+                    {
+                        ApplyFreeze();
+                    }
+
                     break;
                 case DamageType.Fire when _rng.Randf() < payload.IgniteChance:
                     ApplyIgnite(taken * IgniteDamageRatio * payload.IgniteDamageMultiplier, payload.SourceActor);
@@ -119,6 +133,23 @@ public partial class Ailments : Node
         }
 
         ChillRemaining = ChillDuration;
+    }
+
+    /// <summary>Freezes the owner: 0.6 s, or 0.25 s at most once per 4 s for bosses.</summary>
+    public void ApplyFreeze()
+    {
+        bool boss = GetParent() is Enemies.Enemy { IsBoss: true };
+        if (boss)
+        {
+            if (_freezeLockout > 0f)
+            {
+                return;
+            }
+
+            _freezeLockout = BossFreezeLockout;
+        }
+
+        FreezeRemaining = Mathf.Max(FreezeRemaining, boss ? BossFreezeDuration : FreezeDuration);
     }
 
     public void ApplyIgnite(float totalDamage, Node2D? source)
@@ -171,6 +202,16 @@ public partial class Ailments : Node
     public override void _PhysicsProcess(double delta)
     {
         float dt = (float)delta;
+
+        if (FreezeRemaining > 0f)
+        {
+            FreezeRemaining -= dt;
+        }
+
+        if (_freezeLockout > 0f)
+        {
+            _freezeLockout -= dt;
+        }
 
         if (ChillRemaining > 0f)
         {

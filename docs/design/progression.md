@@ -75,12 +75,16 @@ duration, life on kill, elemental resistances, dodge recovery, and three notable
 **Volley** (+1 projectile / blade), **Acrobatics** (+1 dodge charge), **Arc
 Weaving** (+1 chain).
 
-## Keystones (7)
+## Keystones (11)
 
 | Keystone | Upside | Downside |
 |---|---|---|
 | Glass Cannon | 60 % more damage | 40 % less max life |
 | Avatar of Fire | Everything deals Fire, 25 % more damage, +15 % ignite | Cold/Lightning bonuses stop applying |
+| Avatar of Frost | Everything deals Cold, 25 % more damage, +15 % freeze chance | Fire/Lightning bonuses stop applying |
+| Ricochet | Player projectiles bounce off walls up to 2 times (`ProjectileParams.Bounces`, set by a global cast modifier) | 15 % less projectile damage |
+| Juggernaut | 50 % more Armour | 10 % less attack speed (the player has no knockback, so no knockback line) |
+| Prismatic Bulwark | 25 % less Elemental damage taken | 15 % more Physical damage taken |
 | Chain Reaction | Kills explode for 20 % of the victim's max life as Fire | — (it is a gamble on clear speed) |
 
 Chain Reaction's explosions (and the Warrior's Decay) go off on the frame after

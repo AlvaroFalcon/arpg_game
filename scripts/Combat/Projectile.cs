@@ -41,6 +41,9 @@ public partial class Projectile : Area2D
     private DamageType _damageType;
     private SkillUser? _ownerSkillUser;
     private int _chainsRemaining;
+    private int _bouncesRemaining;
+    private bool _bouncePending;
+    private float _lastStep;
     private HitProfile? _hit;
 
     /// <summary>Max distance a chain may jump to its next target.</summary>
@@ -67,6 +70,7 @@ public partial class Projectile : Area2D
         _pierceRemaining = context.Projectile.Pierce;
         _forksRemaining = context.Projectile.Forks;
         _chainsRemaining = context.Projectile.Chains;
+        _bouncesRemaining = context.CasterFaction == Faction.Player ? context.Projectile.Bounces : 0;
         _sourceFaction = context.CasterFaction;
         _sourceActor = context.Caster;
         _tags = context.Tags;
@@ -105,6 +109,7 @@ public partial class Projectile : Area2D
         _pierceRemaining = parent._pierceRemaining;
         _forksRemaining = parent._forksRemaining - 1;
         _chainsRemaining = parent._chainsRemaining;
+        _bouncesRemaining = parent._bouncesRemaining;
         _hit = parent._hit;
         Scale = parent.Scale;
         if (parent.GetNodeOrNull<AnimatedSprite2D>("Sprite") is { SpriteFrames: { } frames })
@@ -171,7 +176,14 @@ public partial class Projectile : Area2D
 
     public override void _PhysicsProcess(double delta)
     {
+        if (_bouncePending)
+        {
+            _bouncePending = false;
+            Bounce();
+        }
+
         float step = _speed * (float)delta;
+        _lastStep = step;
         GlobalPosition += _direction * step;
         _traveled += step;
 
@@ -184,6 +196,35 @@ public partial class Projectile : Area2D
         }
     }
 
+    /// <summary>
+    /// Ricochet (keystone): reflects the heading on the wall's normal found by a short ray
+    /// along the flight path, steps back out of the wall, and forgets already-hit targets
+    /// so the rebound can strike them again. Falls back to a straight reversal if the
+    /// ray finds nothing (the projectile started inside geometry).
+    /// </summary>
+    private void Bounce()
+    {
+        _bouncesRemaining--;
+        Vector2 from = GlobalPosition - _direction * (_lastStep + 8f);
+        Vector2 to = GlobalPosition + _direction * 24f;
+        var query = PhysicsRayQueryParameters2D.Create(from, to, CollisionLayers.World);
+        Godot.Collections.Dictionary hit = GetWorld2D().DirectSpaceState.IntersectRay(query);
+        if (hit.Count > 0 && hit["normal"].AsVector2() != Vector2.Zero)
+        {
+            Vector2 normal = hit["normal"].AsVector2();
+            _direction = _direction.Bounce(normal).Normalized();
+            GlobalPosition = hit["position"].AsVector2() + normal * 3f;
+        }
+        else
+        {
+            _direction = -_direction;
+            GlobalPosition += _direction * (_lastStep + 3f);
+        }
+
+        Rotation = _direction.Angle();
+        _alreadyHit.Clear();
+    }
+
     private void OnAreaEntered(Area2D area) => ResolveHit(area);
 
     private void OnBodyEntered(Node2D body) => ResolveHit(body);
@@ -192,6 +233,14 @@ public partial class Projectile : Area2D
     {
         if (other is StaticBody2D or TileMap)
         {
+            if (_bouncesRemaining > 0)
+            {
+                // Resolved at the top of the next physics step: querying the space from
+                // inside an overlap callback is not safe.
+                _bouncePending = true;
+                return;
+            }
+
             QueueFree();
             return;
         }

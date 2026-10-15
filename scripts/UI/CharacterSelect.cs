@@ -157,6 +157,11 @@ public partial class CharacterSelect : PanelContainer
         buttons.Alignment = BoxContainer.AlignmentMode.Center;
         Button create = UiTheme.Button("Create & play", Create, 20, 260f);
         buttons.AddChild(create);
+        if (Core.GameSettings.Get(this) is { AdminMode: true })
+        {
+            buttons.AddChild(UiTheme.Button($"Test character (lv {CharacterData.MaxLevel})", CreateTest, 16, 240f));
+        }
+
         buttons.AddChild(UiTheme.Button("Back", ShowList, 18, 160f));
         _name.CallDeferred(Control.MethodName.GrabFocus);
     }
@@ -167,6 +172,13 @@ public partial class CharacterSelect : PanelContainer
         l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         l.CustomMinimumSize = new Vector2(250f, 0f);
         return l;
+    }
+
+    /// <summary>Admin mode: a max-level character with gold, shards and orbs, straight to the hideout.</summary>
+    private void CreateTest()
+    {
+        Profile?.CreateTestCharacter(_name?.Text ?? "", _newClass);
+        Enter();
     }
 
     private void Create()

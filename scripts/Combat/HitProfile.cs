@@ -18,6 +18,7 @@ public sealed class HitProfile
     public SkillTags Tags;
     public float IgniteChance;
     public float ShockChance;
+    public float FreezeChance;
     public bool CanInflictAilments = true;
     public float KnockbackForce;
     public float IgniteDamageMultiplier = 1f;
@@ -29,6 +30,7 @@ public sealed class HitProfile
         {
             IgniteChance = IgniteChance,
             ShockChance = ShockChance,
+            FreezeChance = FreezeChance,
             CanInflictAilments = CanInflictAilments,
             IgniteDamageMultiplier = IgniteDamageMultiplier,
             Knockback = knockbackDirection * KnockbackForce,

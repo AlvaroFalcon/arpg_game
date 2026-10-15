@@ -362,6 +362,10 @@ stats, values 23–36, following this enum's rule of never renumbering:
 | SkillDuration | 1.0 | orbit executor |
 | LifeOnKill | 0 | `RunState` on kill |
 | ExtraChains / ExtraPierce | 0 | projectile executor |
+| LifeLeech | 0 | `Health.TakeDamage` — flat percent of damage the target actually lost (post-mitigation, no overkill) returned as life to the hit's `SourceActor`; capped at 10 % of max life per second |
+| ManaOnKill | 0 | `RunState` / `RealityController` on kill, like LifeOnKill |
+| FreezeChance | 0 | hit profiles → `Ailments`: a Cold hit freezes for 0.6 s (bosses 0.25 s, at most once per 4 s); frozen enemies skip `Think`, movement and contact damage |
+| ElementalDamageTaken / PhysicalDamageTaken | 1.0 | `Health.TakeDamage`, per damage component after mitigation (More/Less; stacks with DamageTaken) |
 
 The multiplier-shaped ones are base 1.0 so "no bonuses" is a no-op, the same
 convention ManaCostMultiplier uses. None of them is rolled by an affix yet; adding

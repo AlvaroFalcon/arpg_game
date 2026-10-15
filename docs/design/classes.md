@@ -70,18 +70,64 @@ tuning table in docs/design/endgame.md).
 
 ## Passive tree (P)
 
-One tree, three starts (PoE: any class can go anywhere; less content to author):
+One tree, three starts (PoE: any class can go anywhere; less content to author).
 
-- **92 nodes** generated from data: the three class starts on an inner circle, an
-  18-node attribute ring, **nine themed branches** (Elemental, Spellcraft, Mana,
-  Precision, Agility, Projectiles, Brawn, Melee, Fortitude) and **three hybrid
-  branches** (Ailments, Duelist, Battlemage), each a run of small nodes, a notable
-  and (for the nine) a **keystone**, plus cross-links so the outer tree is a web.
-- Keystones are the old level-up keystones: Avatar of Fire, Echoing Mind, Blood
-  Magic, Phase Dancer, Chain Reaction, Vampiric Pact, Glass Cannon, and the new
-  Iron Will.
-- Allocation needs adjacency; **refunds cost gold** (5 + 3·level) and are refused
-  if they would orphan other nodes. The panel pans (drag) and zooms (wheel).
+### Redesign (2026-10-15)
+
+Owner feedback: "it's too small — at level 30 I reach several trees at once". The
+old tree had 92 nodes for 69 points (level 70), so a character took ~75 % of it
+and every branch was 5–6 points from the start. Now (`PassiveTree`,
+scripts/Characters/PassiveTree.cs — the `Clusters` table is THE place to change
+what the tree offers):
+
+- **339 nodes**: 69 points take about a fifth, so a build is a road you choose.
+- **Inner ring** of 24 small nodes around the starts (+4 to the region's
+  attribute, +2/+2 on the borders) with six utilities (experience, pickup radius,
+  duration, area, life on kill, cooldown recovery).
+- **24 wheels**: four themed small nodes in a loop with the **notable** hanging off
+  the far one, so a notable costs three points from the near side (two from a
+  side road). Twelve on a middle ring (each class's three plus a hybrid on each
+  border), twelve on an outer ring, each outer wheel leading on to a **keystone**.
+- **Travel nodes** between them (+4 attribute — +10 would have meant hundreds of
+  Strength, and every point of Strength is +2 life): four from the inner ring to a
+  middle wheel, three between neighbouring wheels and from a middle wheel out to
+  its outer one, two to a keystone. The nearest notable costs about 9 points; at
+  level 30 a character has 3–4 notables, at 70 about 10–11 or fewer plus keystones.
+- **Themes near, not together**: projectile damage (Volley Master) sits on the
+  middle ring, projectile speed and pierce (Piercing Shots) outside it, Ricochet
+  beyond; fire in the middle, cold and lightning outside; life in the middle,
+  regeneration and Blood Magic outside.
+
+| Region | Middle wheels | Outer wheels → keystone |
+|---|---|---|
+| Arcanist (int, top) | Spellcraft, Mana (+mana on kill), Fire | Cold (freeze) → Avatar of Frost, Arcana → Echoing Mind, Lightning → Avatar of Fire |
+| Int/Dex border | Elemental | Ailments → Chain Reaction |
+| Rogue (dex, right) | Projectiles, Precision, Agility | Velocity (pierce) → Ricochet, Flurry → Glass Cannon, Shadow → Phase Dancer |
+| Dex/Str border | Duelist | Bloodthirst (life leech) → Vampiric Pact |
+| Warrior (str, left) | Life, Melee, Armour | Regeneration → Blood Magic, Earthshaker → Juggernaut, Resistance → Iron Will |
+| Str/Int border | Battlemage | Warding (elemental damage taken) → Prismatic Bulwark |
+
+Values: small nodes about 6–7 % (or the equivalent), notables 20–25 % plus a
+secondary line, so a focused level-70 build ends near the old totals (≈ +140–170 %
+increased damage for its type) — the monster table (docs/design/endgame.md ->
+"Monster scaling") was calibrated against that. New mechanics for the tree:
+life leech, mana on kill, freeze chance, elemental (and physical) damage taken,
+pierce as a stat, and four keystones (Avatar of Frost, Ricochet, Juggernaut,
+Prismatic Bulwark — docs/design/progression.md).
+
+**While the tree is being play-tested, refunds are free** (`RefundCost` = 0; it
+was 5 + 3·level gold) and the panel has a free **Reset tree**. Characters saved
+with the old tree (`PassiveTree.Version` 1, or any unknown node id) get every
+point back on load, silently.
+
+**Panel UI.** Hovering an unallocated node previews the cheapest path
+(`PassiveTree.PathTo`) in cyan and the tooltip shows its cost; left-click allocates
+the whole path if you have the points, otherwise nothing is taken and it says
+"needs N points, you have M". Right-click refunds (free, refused if it would orphan
+nodes); **Reset tree** needs a second click within 3 s. The search box glows nodes
+whose name/effect matches (Esc clears it before closing). Header: "spent / total
+points". Pan by drag, zoom at the cursor, opens centred on your start; "Fit tree"
+shows everything.
 
 ## Ascendancies
 

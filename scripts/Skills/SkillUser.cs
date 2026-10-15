@@ -453,6 +453,7 @@ public partial class SkillUser : Node
             Tags = context.Tags,
             IgniteChance = _stats.Get(StatId.IgniteChance).Value + context.IgniteChanceBonus,
             ShockChance = _stats.Get(StatId.ShockChance).Value + context.ShockChanceBonus,
+            FreezeChance = _stats.Get(StatId.FreezeChance).Value,
             CanInflictAilments = context.CanInflictAilments,
             IgniteDamageMultiplier = context.IgniteDamageMultiplier,
             KnockbackForce = knockback,

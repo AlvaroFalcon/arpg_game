@@ -71,6 +71,8 @@ public partial class CharacterPanel : ModalPanel
         Row(defence, "Cold resistance", $"{N(V(StatId.ColdResistance))}%", "");
         Row(defence, "Lightning resistance", $"{N(V(StatId.LightningResistance))}%", "");
         Row(defence, "Damage taken", Pct(V(StatId.DamageTaken)), "");
+        Row(defence, "Elemental damage taken", Pct(V(StatId.ElementalDamageTaken)), "");
+        Row(defence, "Physical damage taken", Pct(V(StatId.PhysicalDamageTaken)), "");
         Row(defence, "Dodge charges", N(V(StatId.DodgeCharges)), $"recovery {Pct(V(StatId.DodgeRecovery))}");
 
         VBoxContainer offence = Column("Offence");
@@ -83,6 +85,8 @@ public partial class CharacterPanel : ModalPanel
         Row(offence, "Projectile speed", Pct(V(StatId.ProjectileSpeed)), "");
         Row(offence, "Extra projectiles", N(V(StatId.ExtraProjectiles)), $"+{N(V(StatId.ExtraChains))} chains, +{N(V(StatId.ExtraPierce))} pierce");
         Row(offence, "Ignite / shock chance", $"{V(StatId.IgniteChance) * 100f:0}% / {V(StatId.ShockChance) * 100f:0}%", "");
+        Row(offence, "Freeze chance", $"{V(StatId.FreezeChance) * 100f:0}%", "");
+        Row(offence, "Life leech", $"{V(StatId.LifeLeech):0.#}%", "");
         Row(offence, "Skill duration", Pct(V(StatId.SkillDuration)), "");
 
         VBoxContainer utility = Column("Utility");
@@ -90,6 +94,7 @@ public partial class CharacterPanel : ModalPanel
         Row(utility, "Pickup radius", N(V(StatId.PickupRadius)), "");
         Row(utility, "Experience gain", Pct(V(StatId.ExperienceGain)), "");
         Row(utility, "Life on kill", N(V(StatId.LifeOnKill)), "");
+        Row(utility, "Mana on kill", N(V(StatId.ManaOnKill)), "");
         Row(utility, "Mana cost of skills", Pct(V(StatId.ManaCostMultiplier)), "");
         Row(utility, "Thorns", N(V(StatId.ThornsDamage)), "");
         if (c is not null)

@@ -366,3 +366,13 @@ Headless, damage numbers were the next biggest cost, so they are pooled now. Ove
 The owner approved all four proposals from the first pass. Chain Reaction and Decay explosions now wait one frame per hop, so a cascade ripples through a pack instead of going off at once. Volatile blasts land 1.0 s ± 0.1 s after the death. Blasts close together draw one merged telegraph per cluster (about 5 outlines for a 60-pack instead of 60 discs, `perf-volatile-merged-telegraph.png`). The player takes at most one volatile hit every 0.25 s; before, 60 overlapping blasts were 60 hits in one frame, which meant instant death. Monster drops in realities and the Rift (experience gems included) are rolled on the kill frame but spawn from a queue, at most 2 items or 8 pickups a frame.
 
 Measured against the previous commit in the same session (headless, 60 Slimes, median of 3): the chain-reaction kill frame went from 28 to 7 ms and its worst frame from 25 to 16 ms. The Rift volatile kill frame went from 29 to 20 ms, and the kill call fell by 5–6 ms wherever loot drops. A new `RunSmokeTest` check pins the volatile rule: 8 blasts, 1 hit. Numbers and reasoning are in `docs/design/performance.md`.
+
+## 2026-10-15 — The passive tree grows up
+
+The owner, at level 30, was reaching several branches at once: the old tree had 92 nodes for 69 points. The new one has 339. An inner ring of attribute and utility nodes leads out to 24 "wheels", each with four themed small nodes looped around a notable that hangs off the far side. Travel nodes (+4 attribute) run between the wheels, and twelve keystones sit on the outer edge. The nearest notable costs about nine points, so at level 30 a character has three or four.
+
+Related themes sit near each other but never together: projectile damage in the middle ring, speed and pierce outside it, Ricochet beyond. Six new mechanics came with it: life leech, mana on kill, freeze chance, elemental and physical damage taken, and four keystones (Avatar of Frost, Ricochet, Juggernaut, Prismatic Bulwark).
+
+The panel now previews the cheapest path to whatever you hover, with its cost, and allocates the whole path on click. It also has search, fit/centre buttons, and a free Reset tree. Refunds are free while the tree is play-tested, and characters saved with the old tree silently get their points back.
+
+Also new: an admin mode setting that adds a max-level test character (gold, shards, orbs) to character creation. Screenshots: `panel-passives.png`, `panel-passives-search-path.png`.

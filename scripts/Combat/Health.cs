@@ -214,7 +214,8 @@ public partial class Health : Node
 
             if (type == DamageType.Physical)
             {
-                totalTaken += DamageMitigation.MitigatePhysical(afterCrit, _stats.Armour.Value);
+                totalTaken += DamageMitigation.MitigatePhysical(afterCrit, _stats.Armour.Value)
+                    * Mathf.Max(0f, _stats.Get(StatId.PhysicalDamageTaken).Value);
                 continue;
             }
 
@@ -223,7 +224,8 @@ public partial class Health : Node
             (StatId resistId, StatId penetrationId) = ElementalMitigationStats[type];
             float resistance = _stats.Get(resistId).Value;
             float penetration = sourceStats?.Get(penetrationId).Value ?? 0f;
-            totalTaken += DamageMitigation.MitigateElemental(afterCrit, resistance, penetration);
+            totalTaken += DamageMitigation.MitigateElemental(afterCrit, resistance, penetration)
+                * Mathf.Max(0f, _stats.Get(StatId.ElementalDamageTaken).Value);
         }
 
         // docs/design/progression.md -> "Run stats": a single base-1.0
@@ -237,10 +239,12 @@ public partial class Health : Node
         }
 
         ResourcePool life = _stats.Life!;
+        float lifeBefore = life.Current;
         life.Current = Mathf.Max(0f, life.Current - totalTaken);
         EmitSignal(SignalName.Damaged, totalTaken);
         HitResolved?.Invoke(payload, totalTaken);
         AnyHitResolved?.Invoke(this, payload, totalTaken);
+        ApplyLeech(payload, Mathf.Min(totalTaken, lifeBefore), sourceStats);
 
         if (life.Current <= 0f)
         {
@@ -249,6 +253,54 @@ public partial class Health : Node
         }
 
         ReflectThorns(payload);
+    }
+
+    /// <summary>Fraction of max life per second the leech may restore (exploit cap).</summary>
+    public const float LeechCapPerSecond = 0.1f;
+
+    private float _leechWindowStart;
+    private float _leechedInWindow;
+
+    /// <summary>
+    /// <see cref="StatId.LifeLeech"/> (percent): the attacker recovers that share of the damage
+    /// the target actually lost. Capped at 10% of max life per second so burst/AoE
+    /// stacking cannot make the player immortal. Not for thorns reflections.
+    /// </summary>
+    private void ApplyLeech(DamagePayload payload, float dealt, ActorStats? sourceStats)
+    {
+        if (dealt <= 0f || payload.IsThornsReflection || sourceStats is null || payload.SourceActor is null)
+        {
+            return;
+        }
+
+        float leechPercent = sourceStats.Get(StatId.LifeLeech).Value;
+        if (leechPercent <= 0f)
+        {
+            return;
+        }
+
+        Health? sourceHealth = payload.SourceActor.GetNodeOrNull<Health>("Health");
+        sourceHealth?.GrantLeech(dealt * leechPercent / 100f);
+    }
+
+    private void GrantLeech(float amount)
+    {
+        if (IsDead || _stats.Life is not { } life)
+        {
+            return;
+        }
+
+        float now = Time.GetTicksMsec() / 1000f;
+        if (now - _leechWindowStart >= 1f)
+        {
+            _leechWindowStart = now;
+            _leechedInWindow = 0f;
+        }
+
+        float room = Mathf.Max(0f, life.Max * LeechCapPerSecond - _leechedInWindow);
+        float granted = Mathf.Min(amount, room);
+        _leechedInWindow += granted;
+        Heal(granted);
     }
 
     /// <summary>

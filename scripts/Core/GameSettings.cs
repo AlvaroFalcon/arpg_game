@@ -48,6 +48,9 @@ public partial class GameSettings : Node
     /// <summary>Frame-rate readout in the corner (<see cref="UI.FpsOverlay"/>); F3 toggles it.</summary>
     public bool ShowFps { get; private set; }
 
+    /// <summary>Testing tools (docs/design/menus.md -> "Admin mode"): a "test character" button on character creation.</summary>
+    public bool AdminMode { get; private set; }
+
     private UI.FpsOverlay? _fps;
 
     public static GameSettings? Get(Node context) =>
@@ -90,6 +93,7 @@ public partial class GameSettings : Node
     public void SetAutoCast(bool v) { AutoCast = v; NotifyChanged(); }
     public void SetAutoAim(bool v) { AutoAim = v; NotifyChanged(); }
     public void SetShowFps(bool v) { ShowFps = v; ApplyFps(); NotifyChanged(); }
+    public void SetAdminMode(bool v) { AdminMode = v; NotifyChanged(); }
 
     private void ApplyFps()
     {
@@ -176,6 +180,7 @@ public partial class GameSettings : Node
         AutoCast = (bool)config.GetValue("gameplay", "auto_cast", AutoCast);
         AutoAim = (bool)config.GetValue("gameplay", "auto_aim", AutoAim);
         ShowFps = (bool)config.GetValue("display", "show_fps", ShowFps);
+        AdminMode = (bool)config.GetValue("gameplay", "admin_mode", AdminMode);
     }
 
     public void Save()
@@ -193,6 +198,7 @@ public partial class GameSettings : Node
         config.SetValue("gameplay", "auto_cast", AutoCast);
         config.SetValue("gameplay", "auto_aim", AutoAim);
         config.SetValue("display", "show_fps", ShowFps);
+        config.SetValue("gameplay", "admin_mode", AdminMode);
         config.Save(SavePath);
     }
 }

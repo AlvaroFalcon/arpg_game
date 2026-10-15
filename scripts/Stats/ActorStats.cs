@@ -170,6 +170,11 @@ public partial class ActorStats : Node
         StatId.MaxStamina => 100f,
         StatId.StaminaRegen => 22f,
         StatId.AutoCastSpeed => 1f,
+        StatId.LifeLeech => 0f,
+        StatId.ManaOnKill => 0f,
+        StatId.FreezeChance => 0f,
+        StatId.ElementalDamageTaken => 1f,
+        StatId.PhysicalDamageTaken => 1f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 

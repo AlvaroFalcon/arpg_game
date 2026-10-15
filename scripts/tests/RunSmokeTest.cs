@@ -81,6 +81,7 @@ public partial class RunSmokeTest : Node2D
         RiftCurveChecks();
         DirectorChecks();
         await RiftPowerUpChecks();
+        await PassiveStatChecks();
 
         GD.Print($"[RUNTEST] === RESULT: {(_failed ? "FAIL" : "PASS")} ===");
         GetTree().Quit(_failed ? 1 : 0);
@@ -498,5 +499,137 @@ public partial class RunSmokeTest : Node2D
         state.QueueFree();
         player.QueueFree();
         await Frames(1);
+    }
+
+    /// <summary>Passive-tree stats and keystones (docs/design/stats.md -> "Passive tree stats"):
+    /// leech, mana on kill, freeze, elemental/physical damage taken, Ricochet, Avatar of Frost.</summary>
+    private async Task PassiveStatChecks()
+    {
+        Player player = SpawnPlayer(new Vector2(9000, 9000));
+        var state = new RunState { Player = player };
+        AddChild(state);
+        await Frames(2);
+
+        // Life leech: 10% of the damage the enemy actually lost comes back as life.
+        Enemy dummy = SpawnEnemy("Brute", new Vector2(9000, 9900));
+        dummy.Dormant = true;
+        await Frames(2);
+        var leech = new StatModifier(ModifierType.Flat, 10f, this);
+        player.Stats.Get(StatId.LifeLeech).AddModifier(leech);
+        player.Stats.Life!.Current = player.Stats.Life.Max * 0.5f;
+        float lifeBefore = player.Stats.Life.Current;
+        dummy.Health.TakeDamage(new DamagePayload(20f, DamageType.Physical, player, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit));
+        float healed = player.Stats.Life.Current - lifeBefore;
+        Check("LEECH-HEALS-PLAYER", healed > 0.5f && healed <= 20f * 0.1f * 2.5f + 0.01f, $"a 20 damage hit healed {healed:0.00} life");
+        player.Stats.Get(StatId.LifeLeech).RemoveModifier(leech);
+        lifeBefore = player.Stats.Life.Current;
+        dummy.Health.TakeDamage(new DamagePayload(20f, DamageType.Physical, player, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit));
+        Check("NO-LEECH-WITHOUT-STAT", Mathf.IsEqualApprox(player.Stats.Life.Current, lifeBefore), "no leech stat, no healing");
+        dummy.QueueFree();
+
+        // Mana on kill.
+        Enemy prey = SpawnEnemy("Slime", new Vector2(9000, 8100));
+        prey.Dormant = true;
+        state.RegisterEnemy(prey);
+        await Frames(2);
+        var manaMod = new StatModifier(ModifierType.Flat, 7f, this);
+        player.Stats.Get(StatId.ManaOnKill).AddModifier(manaMod);
+        player.Stats.Mana!.Current = 10f;
+        prey.Health.TakeDamage(new DamagePayload(1e6f, DamageType.Physical, player, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit));
+        Check("MANA-ON-KILL", Mathf.IsEqualApprox(player.Stats.Mana.Current, 17f), $"mana 10 -> {player.Stats.Mana.Current:0.0} after a kill");
+        player.Stats.Get(StatId.ManaOnKill).RemoveModifier(manaMod);
+
+        // Elemental / physical damage taken.
+        player.Stats.Life!.Current = player.Stats.Life.Max;
+        var lessElemental = new StatModifier(ModifierType.More, -50f, this);
+        player.Stats.Get(StatId.ElementalDamageTaken).AddModifier(lessElemental);
+        float full = player.Stats.Life.Current;
+        player.Health!.TakeDamage(new DamagePayload(10f, DamageType.Fire, null, Faction.Enemy, SkillTags.Fire, DamageDeliveryKind.Hit));
+        float fireLost = full - player.Stats.Life.Current;
+        full = player.Stats.Life.Current;
+        player.Health.TakeDamage(new DamagePayload(10f, DamageType.Physical, null, Faction.Enemy, SkillTags.None, DamageDeliveryKind.Hit));
+        float physLost = full - player.Stats.Life.Current;
+        // Physical is untouched by the elemental stat (only armour applies to it).
+        float physExpected = DamageMitigation.MitigatePhysical(10f, player.Stats.Armour.Value);
+        Check("ELEMENTAL-DAMAGE-TAKEN", Mathf.IsEqualApprox(fireLost, 5f) && Mathf.Abs(physLost - physExpected) < 0.05f, $"10 fire took {fireLost:0.0}, 10 physical took {physLost:0.0} (armour alone: {physExpected:0.0})");
+        player.Stats.Get(StatId.ElementalDamageTaken).RemoveModifier(lessElemental);
+
+        // Freeze: a Cold hit with 100% chance stops an enemy for a moment.
+        Enemy slime = SpawnEnemy("Slime", new Vector2(9000, 9400));
+        await Frames(10);
+        Vector2 p0 = slime.GlobalPosition;
+        await Frames(10);
+        float walked = slime.GlobalPosition.DistanceTo(p0);
+        slime.Health.TakeDamage(new DamagePayload(1f, DamageType.Cold, null, Faction.Player, SkillTags.Cold, DamageDeliveryKind.Hit) { FreezeChance = 1f });
+        Vector2 p1 = slime.GlobalPosition;
+        await Frames(20);
+        float frozenMove = slime.GlobalPosition.DistanceTo(p1);
+        bool frozeFor = slime.Ailments!.IsFrozen;
+        Check("FREEZE-STOPS-ENEMY", walked > 3f && frozen(frozenMove) && frozeFor, $"walked {walked:0.0}px before, {frozenMove:0.0}px while frozen (frozen={frozeFor})");
+        await Frames(50);
+        Vector2 p2 = slime.GlobalPosition;
+        await Frames(10);
+        Check("FREEZE-WEARS-OFF", !slime.Ailments.IsFrozen && slime.GlobalPosition.DistanceTo(p2) > 1f, $"frozen={slime.Ailments.IsFrozen}, moved {slime.GlobalPosition.DistanceTo(p2):0.0}px afterwards");
+        slime.QueueFree();
+
+        // Avatar of Frost converts and Ricochet bounces (both through a RunBuild).
+        var build = new RunBuild();
+        player.AddChild(build);
+        await Frames(1);
+        foreach (SkillSlotId slot in new[] { SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4, SkillSlotId.Rmb })
+        {
+            player.SkillUser.ClearSlot(slot);
+        }
+
+        build.AddKeystone(UpgradeCatalog.Keystones.First(k => k.Id == "avatar_of_frost"));
+        var fireball = GD.Load<ProjectileSkillDefinition>("res://resources/skills/run/fireball.tres");
+        var context = new CastContext(this, player.Stats, Faction.Player, Vector2.Zero, Vector2.Right) { Tags = fireball.Tags, Projectile = ProjectileParams.FromDefinition(fireball) };
+        foreach (CastModifier m in player.SkillUser.GlobalModifiers.OrderBy(m => m.Priority))
+        {
+            m.Apply(context);
+        }
+
+        Check("AVATAR-OF-FROST-CONVERTS", DamageTypeResolution.Resolve(context.Tags) == DamageType.Cold && Mathf.IsEqualApprox(context.DamageMultiplier, 1.25f)
+            && build.ForcedElement == SkillTags.Cold && Mathf.IsEqualApprox(player.Stats.Get(StatId.FreezeChance).Value, 0.15f),
+            $"type={DamageTypeResolution.Resolve(context.Tags)}, x{context.DamageMultiplier}, freeze={player.Stats.Get(StatId.FreezeChance).Value}");
+        player.Stats.RemoveModifiersFromSource(build.Source);
+        player.SkillUser.GlobalModifiers.Clear();
+
+        build.AddKeystone(UpgradeCatalog.Keystones.First(k => k.Id == "ricochet"));
+        var wall = new StaticBody2D { CollisionLayer = CollisionLayers.World, CollisionMask = 0, GlobalPosition = new Vector2(9300, 9000) };
+        wall.AddChild(new CollisionShape2D { Shape = new RectangleShape2D { Size = new Vector2(20f, 600f) } });
+        AddChild(wall);
+        var def = new ProjectileSkillDefinition { DisplayName = "TestBounce", BaseDamage = 1f, BaseUseTime = 0.05f, Tags = SkillTags.Spell | SkillTags.Projectile, Speed = 600f, Range = 3000f, SpawnOffset = 10f };
+        player.SkillUser.EquipSkill(SkillSlotId.Slot1, new SkillInstance(def));
+        player.Stats.Mana!.Current = player.Stats.Mana.Max;
+        await Frames(2);
+        player.SkillUser.TryCast(SkillSlotId.Slot1, Vector2.Right);
+        float maxX = float.MinValue;
+        float lastX = 0f;
+        Projectile? shot = null;
+        for (int i = 0; i < 90; i++)
+        {
+            await Frames(1);
+            shot ??= GetChildren().OfType<Projectile>().FirstOrDefault();
+            if (shot is not null && IsInstanceValid(shot))
+            {
+                maxX = Mathf.Max(maxX, shot.GlobalPosition.X);
+                lastX = shot.GlobalPosition.X;
+            }
+        }
+
+        Check("RICOCHET-BOUNCES-OFF-WALL", shot is not null && IsInstanceValid(shot) && lastX < maxX - 100f && maxX < 9300f, $"alive={shot is not null && IsInstanceValid(shot)}, peak x={maxX:0}, now x={lastX:0}");
+        if (shot is not null && IsInstanceValid(shot))
+        {
+            shot.QueueFree();
+        }
+
+        wall.QueueFree();
+        build.QueueFree();
+        state.QueueFree();
+        player.QueueFree();
+        await Frames(1);
+
+        static bool frozen(float moved) => moved < 1f;
     }
 }

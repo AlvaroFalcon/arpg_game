@@ -346,6 +346,49 @@ public static class UpgradeCatalog
         },
         new KeystoneDefinition
         {
+            Id = "avatar_of_frost", Name = "Avatar of Frost",
+            Description = "All skills deal Cold damage.\n25% more damage, +15% chance to Freeze.\nFire and Lightning bonuses no longer apply.",
+            Apply = b =>
+            {
+                b.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(6, c => Convert(c, SkillTags.Cold)));
+                b.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(30, c => c.DamageMultiplier *= 1.25f));
+                b.Stats.Get(StatId.FreezeChance).AddModifier(new StatModifier(ModifierType.Flat, 0.15f, b.Source));
+                b.ForcedElement = SkillTags.Cold;
+            },
+        },
+        new KeystoneDefinition
+        {
+            Id = "ricochet", Name = "Ricochet",
+            Description = "Your projectiles bounce off walls up to 2 times.\n15% less projectile damage.",
+            Apply = b => b.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(30, c =>
+            {
+                if (c.Projectile is null) return;
+                c.Projectile.Bounces += 2;
+                c.DamageMultiplier *= 0.85f;
+            })),
+        },
+        new KeystoneDefinition
+        {
+            Id = "juggernaut", Name = "Juggernaut",
+            Description = "50% more Armour.\n10% less attack speed.",
+            Apply = b =>
+            {
+                b.Stats.Armour.AddModifier(new StatModifier(ModifierType.More, 50f, b.Source));
+                b.Stats.AttackSpeed.AddModifier(new StatModifier(ModifierType.More, -10f, b.Source));
+            },
+        },
+        new KeystoneDefinition
+        {
+            Id = "prismatic_bulwark", Name = "Prismatic Bulwark",
+            Description = "25% less Elemental damage taken.\n15% more Physical damage taken.",
+            Apply = b =>
+            {
+                b.Stats.Get(StatId.ElementalDamageTaken).AddModifier(new StatModifier(ModifierType.More, -25f, b.Source));
+                b.Stats.Get(StatId.PhysicalDamageTaken).AddModifier(new StatModifier(ModifierType.More, 15f, b.Source));
+            },
+        },
+        new KeystoneDefinition
+        {
             Id = "chain_reaction", Name = "Chain Reaction",
             Description = "Enemies you kill explode, dealing 20% of their\nmaximum Life as Fire damage around them.",
             Apply = b => b.ChainReaction = true,
