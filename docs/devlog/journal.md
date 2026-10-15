@@ -376,3 +376,17 @@ Related themes sit near each other but never together: projectile damage in the 
 The panel now previews the cheapest path to whatever you hover, with its cost, and allocates the whole path on click. It also has search, fit/centre buttons, and a free Reset tree. Refunds are free while the tree is play-tested, and characters saved with the old tree silently get their points back.
 
 Also new: an admin mode setting that adds a max-level test character (gold, shards, orbs) to character creation. Screenshots: `panel-passives.png`, `panel-passives-search-path.png`.
+
+## 2026-10-15 — Co-op Survival Rift (up to four players)
+
+Friends can now play the Survival Rift together. One player hosts from the main menu (Co-op → Host, port 7777) and up to three others join by IP. It works over Tailscale, Radmin VPN or ZeroTier, or with a forwarded UDP port. Everyone brings their own saved character and keeps their own loot.
+
+How it works: the host runs the game as offline. A watcher node sends each client 20 Hz quantised snapshots (players, plus the monsters near that player), and once per physics frame a batch of events. The events cover monsters appearing and dying, projectiles, telegraphs and swings to replay locally, that player's own drops, level-ups and gear. Clients predict their own movement and reconcile against the host. They draw everything else 100 ms in the past, between snapshots. Loot is instanced: every kill rolls drops for every player, and each client sees only its own. Nobody pauses. A player choosing cards is warded, a fallen player is downed until an ally stands next to them for 3 s, and the run is lost when everyone is down. Party scaling lives in one table (`Net/PartyRules.cs`), and everything is written up in `docs/design/multiplayer.md`.
+
+Two bugs only showed up in the real two-process test (`CoopSmokeTest`: a host and two client processes on localhost, 27 checks):
+- Godot 4.1.1 sends any RPC on a transfer channel above 0 *unreliably*, whatever its transfer mode says, so "reliable" messages were silently lost under load. Everything is on channel 0 now.
+- Client reconciliation applied the same error twice when two snapshots acknowledged the same input, and the player flew off to −48 billion.
+
+Measured with a party of four at a late wave (`CoopBench`): about 40 KB/s per client and under 1 ms of host CPU for replication. A Cataclysm killing 366 monsters costs nothing noticeable on the wire. The first party table doubled the monster count and the host's physics with it, so the enemy cap now grows slowly and the extra pressure comes from monster life instead.
+
+Try it on one PC with `scripts/coop_local.sh`. Screenshots: `coop-lobby.png`, `coop-rift.png`.
