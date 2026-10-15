@@ -1057,7 +1057,8 @@ public partial class RiftHost : Node, IRunLink
                     break;
                 case RiftProtocol.ClientPick:
                     string key = r.Str();
-                    if (link.Player.Build?.ApplyKey(key) == true || key.Length > 0)
+                    // Only while the host owes this player a level-up (a stray or repeated pick is ignored).
+                    if (link.Player.PendingLevelUps > 0 && (link.Player.Build?.ApplyKey(key) == true || key.Length > 0))
                     {
                         State.ConsumeLevelUp(link.Player);
                     }

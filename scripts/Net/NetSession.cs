@@ -308,6 +308,8 @@ public partial class NetSession : Node
         }
 
         member!.PeerId = sender;
+        member.ViewWidth = Mathf.Clamp(member.ViewWidth, 320f, 7680f);
+        member.ViewHeight = Mathf.Clamp(member.ViewHeight, 240f, 4320f);
         Members.RemoveAll(m => m.PeerId == sender);
         Members.Add(member);
         BroadcastLobby();
