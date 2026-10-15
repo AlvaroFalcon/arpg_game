@@ -52,15 +52,43 @@ public static class MonsterScaling
     public const float AffinityResistance = 25f;
     public const float AffinityArmourReduction = 0.05f;
 
+    /// <summary>
+    /// The reference character's maximum life by monster level (measured on the
+    /// bot's reference character, gear included; log-interpolated). Bosses aim
+    /// their hits at it: see <see cref="BossDamageMultiplier"/>.
+    /// </summary>
+    public static readonly (int Level, float Life)[] ReferenceLifeTable =
+    {
+        (1, 250f), (19, 300f), (41, 480f), (63, 700f), (85, 1260f), (100, 1500f),
+    };
+
+    /// <summary>Share of the reference character's life one typical boss hit takes
+    /// (a telegraphed slam; the biggest ring attacks take about twice this).</summary>
+    public const float BossHitShare = 0.3f;
+
+    /// <summary>The boss hit the authored numbers are written around (Herald and
+    /// Nereth slams, the Colossus's quake: 13–22).</summary>
+    public const float AuthoredBossHit = 16f;
+
+    /// <summary>Damage multiplier for a reality boss: its typical hit takes
+    /// <see cref="BossHitShare"/> of the reference character's life. (Owner
+    /// feedback: standing still in front of the Herald never killed you — on the
+    /// ordinary monster curve a slam took ~6 % of your life.)</summary>
+    public static float BossDamageMultiplier(int level) => BossHitShare * ReferenceLife(level) / AuthoredBossHit;
+
+    public static float ReferenceLife(int level) => Interpolate(ReferenceLifeTable, level);
+
     /// <summary>Monster damage: ×1 at level 1, ×5 at level 85 (player life grows far less than player damage).</summary>
     public static float DamageMultiplier(int level) => Mathf.Pow(5f, Progress(level));
 
-    public static float ExpectedDps(int level)
+    public static float ExpectedDps(int level) => Interpolate(ExpectedDpsTable, level);
+
+    /// <summary>Log-linear interpolation between (level, value) anchors, clamped at both ends.</summary>
+    private static float Interpolate((int Level, float Value)[] t, int level)
     {
-        (int Level, float Dps)[] t = ExpectedDpsTable;
         if (level <= t[0].Level)
         {
-            return t[0].Dps;
+            return t[0].Value;
         }
 
         for (int i = 1; i < t.Length; i++)
@@ -68,11 +96,11 @@ public static class MonsterScaling
             if (level <= t[i].Level)
             {
                 float f = (level - t[i - 1].Level) / (float)(t[i].Level - t[i - 1].Level);
-                return Mathf.Exp(Mathf.Lerp(Mathf.Log(t[i - 1].Dps), Mathf.Log(t[i].Dps), f));
+                return Mathf.Exp(Mathf.Lerp(Mathf.Log(t[i - 1].Value), Mathf.Log(t[i].Value), f));
             }
         }
 
-        return t[^1].Dps;
+        return t[^1].Value;
     }
 
     /// <summary>Life multiplier on a normal monster's authored base life: a

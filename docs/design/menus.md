@@ -96,6 +96,12 @@ change live and saves on close.
 - Audio: master, music, effects volume (Music/SFX buses are created at startup).
 - Display: fullscreen, V-Sync, screen shake, damage numbers.
 - Gameplay: auto-cast, auto-aim.
+- **Show FPS** (2026-10-15, also **F3** anywhere): a readout in the top-left corner
+  (`UI/FpsOverlay.cs`, a layer under the settings autoload so it survives scene
+  changes) with frames per second, the average frame time and the **worst frame of
+  the last second**, coloured yellow over 25 ms and red over 50 ms. The worst frame
+  is the number to watch for hitches: one 80 ms frame among sixty barely moves the
+  FPS figure. Off by default; saved like the rest.
 
 Screen shake can be turned off without losing information: every shake accompanies
 a visible telegraph or flash.

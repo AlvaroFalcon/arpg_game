@@ -73,8 +73,13 @@ public partial class RunState : Node, IPickupHandler
     /// <summary>Starts the clock somewhere other than zero (debug/capture runs).</summary>
     public void SkipTo(float seconds) => Elapsed = seconds;
 
+    /// <summary>Kill drops waiting to spawn (a few per frame, see <see cref="Items.LootQueue"/>).
+    /// Power-ups (Cataclysm, Lodestone) still spawn on the kill frame.</summary>
+    public Items.LootQueue Loot { get; } = new();
+
     public override void _PhysicsProcess(double delta)
     {
+        Loot.Pump();
         if (!Ended)
         {
             Elapsed += (float)delta;
@@ -154,19 +159,25 @@ public partial class RunState : Node, IPickupHandler
             Characters.CharacterBuild.Of(Player)?.GrantExperience(CharacterExperienceFor(enemy));
         }
         Vector2 at = enemy.GlobalPosition;
+        // Gems, life, gold, orbs and gear are rolled now and spawned a few per frame (Loot).
+        Node scene = GetTree().CurrentScene;
         if (enemy.ExperienceValue > 0)
         {
-            SpawnExperience(at, enemy.ExperienceValue);
+            float value = enemy.ExperienceValue;
+            Loot.Add(Items.LootQueue.PickupCost, () => SpawnExperience(at, value));
         }
 
         float roll = _rng.Randf();
         if (roll < (enemy.IsElite ? 0.5f : 0.012f))
         {
-            Pickup.Spawn(GetTree().CurrentScene, PickupKind.Life, 0.25f, at + RandomOffset(10f));
+            Vector2 p = at + RandomOffset(10f);
+            Loot.Add(Items.LootQueue.PickupCost, () => Pickup.Spawn(scene, PickupKind.Life, 0.25f, p));
         }
         else if (roll < (enemy.IsElite ? 1f : 0.05f))
         {
-            Pickup.Spawn(GetTree().CurrentScene, PickupKind.Gold, enemy.IsElite ? 25 : 3, at + RandomOffset(10f));
+            Vector2 p = at + RandomOffset(10f);
+            float gold = enemy.IsElite ? 25 : 3;
+            Loot.Add(Items.LootQueue.PickupCost, () => Pickup.Spawn(scene, PickupKind.Gold, gold, p));
         }
 
         // Power-ups and orbs (docs/design/run.md -> "Pickups"). A Cataclysm's own
@@ -187,14 +198,17 @@ public partial class RunState : Node, IPickupHandler
         int orbs = enemy.IsBoss ? 3 : _rng.Randf() < (enemy.IsElite ? 0.25f : OrbChance) ? 1 : 0;
         for (int i = 0; i < orbs; i++)
         {
-            DropOrb(at + RandomOffset(24f));
+            Vector2 p = at + RandomOffset(24f);
+            Loot.Add(Items.LootQueue.PickupCost, () => DropOrb(p));
         }
 
         // Gear drops (docs/design/run.md -> "Rewards"): elites sometimes, bosses always.
         int drops = enemy.IsBoss ? 2 : enemy.IsElite && _rng.Randf() < 0.3f ? 1 : 0;
         for (int i = 0; i < drops; i++)
         {
-            DropItem(at + RandomOffset(30f), enemy.IsBoss ? Items.DropSource.RiftBoss : Items.DropSource.RiftElite);
+            Vector2 p = at + RandomOffset(30f);
+            Items.DropSource source = enemy.IsBoss ? Items.DropSource.RiftBoss : Items.DropSource.RiftElite;
+            Loot.Add(Items.LootQueue.ItemCost, () => DropItem(p, source));
         }
 
         if (Player is not null && byPlayer)
@@ -217,7 +231,7 @@ public partial class RunState : Node, IPickupHandler
                     Tags = SkillTags.Fire | SkillTags.Area,
                     KnockbackForce = 80f,
                 };
-                AreaBurst.Spawn(GetTree().CurrentScene, at, 70f * enemy.Scale.X, 0f, new Color(1f, 0.5f, 0.15f), hit);
+                AreaBurst.SpawnOnKill(GetTree().CurrentScene, at, 70f * enemy.Scale.X, new Color(1f, 0.5f, 0.15f), hit);
             }
         }
     }

@@ -27,6 +27,11 @@ public partial class VoxelDebris : MultiMeshInstance3D
     }
 
     private Cube[] _cubes = System.Array.Empty<Cube>();
+
+    /// <summary>The MultiMesh buffer (12 floats of transform + 4 of colour per cube),
+    /// uploaded in one call a frame instead of one call per cube.</summary>
+    private float[] _buffer = System.Array.Empty<float>();
+    private const int Stride = 16;
     private float _t;
     private static readonly RandomNumberGenerator Rng = new();
     private static BoxMesh? _box;
@@ -47,12 +52,23 @@ public partial class VoxelDebris : MultiMeshInstance3D
     }
 
     /// <summary>
-    /// Breaks a voxel model (one frame of a monster) into cubes.
-    /// <paramref name="power"/> scales how far they fly and how long they last:
-    /// 1 is the full boss explosion, ordinary monsters crumble at well under half.
+    /// The cube centres and colours of a voxel model, extracted once per mesh
+    /// (docs/design/performance.md -> "Mass deaths"). Reading a mesh back with
+    /// <c>SurfaceGetArrays</c> copies its vertex buffer back from the GPU (the
+    /// RenderingDevice waits for it), so doing it on every death made a pack dying
+    /// at once stall the frame. The model frames never change, so the result is
+    /// cached for the session.
     /// </summary>
-    public static void Burst(Node3D parent, Mesh model, Vector3 at, float scale, int count, float power = 1f)
+    private static readonly Dictionary<ulong, ((Vector3 Point, Color Color)[] Points, Vector3 Centre)?> Shapes = new();
+
+    private static ((Vector3 Point, Color Color)[] Points, Vector3 Centre)? CubesOf(Mesh model)
     {
+        ulong key = model.GetInstanceId();
+        if (Shapes.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
         var points = new List<(Vector3 Point, Color Color)>();
         for (int s = 0; s < model.GetSurfaceCount(); s++)
         {
@@ -69,42 +85,109 @@ public partial class VoxelDebris : MultiMeshInstance3D
             }
         }
 
-        if (points.Count == 0)
+        ((Vector3 Point, Color Color)[] Points, Vector3 Centre)? shape = null;
+        if (points.Count > 0)
+        {
+            Vector3 centre = Vector3.Zero;
+            foreach ((Vector3 p, _) in points)
+            {
+                centre += p;
+            }
+
+            shape = (points.ToArray(), centre / points.Count);
+        }
+
+        Shapes[key] = shape;
+        return shape;
+    }
+
+    /// <summary>
+    /// Breaks a voxel model (one frame of a monster) into cubes.
+    /// <paramref name="power"/> scales how far they fly and how long they last:
+    /// 1 is the full boss explosion, ordinary monsters crumble at well under half.
+    /// </summary>
+    public static void Burst(Node3D parent, Mesh model, Vector3 at, float scale, int count, float power = 1f)
+    {
+        if (CubesOf(model) is not { } shape)
         {
             return;
         }
 
+        (Vector3 Point, Color Color)[] points = shape.Points;
+        Vector3 centre = shape.Centre;
         var debris = new VoxelDebris { Multimesh = NewMultiMesh(count), CastShadow = ShadowCastingSetting.On };
         debris._cubes = new Cube[count];
+        debris._buffer = new float[count * Stride];
         debris._life = Mathf.Lerp(0.7f, 1.6f, Mathf.Clamp(power, 0f, 1f));
-        Vector3 centre = Vector3.Zero;
-        foreach ((Vector3 p, _) in points)
-        {
-            centre += p;
-        }
-
-        centre /= points.Count;
         for (int i = 0; i < count; i++)
         {
-            (Vector3 p, Color c) = points[Rng.RandiRange(0, points.Count - 1)];
-            Vector3 local = p * scale;
-            Vector3 outward = (p - centre).Normalized();
-            if (outward == Vector3.Zero)
-            {
-                outward = Vector3.Up;
-            }
-
-            debris._cubes[i] = new Cube
-            {
-                Position = at + local,
-                Velocity = (outward * Rng.RandfRange(2f, 5.5f) + new Vector3(0f, Rng.RandfRange(2.5f, 6f), 0f)) * Mathf.Sqrt(scale) * power,
-                Spin = new Vector3(Rng.RandfRange(-9f, 9f), Rng.RandfRange(-9f, 9f), Rng.RandfRange(-9f, 9f)),
-                Size = Rng.RandfRange(0.12f, 0.2f) * scale,
-            };
-            debris.Multimesh.SetInstanceColor(i, c);
+            (Vector3 p, Color c) = points[Rng.RandiRange(0, points.Length - 1)];
+            debris._cubes[i] = NewCube(p, centre, at, scale, power);
+            debris.SetColor(i, c);
         }
 
         parent.AddChild(debris);
+    }
+
+    /// <summary>
+    /// Several crumbles in one MultiMesh: each model gets <paramref name="countEach"/>
+    /// cubes exactly as <see cref="Burst"/> would give it, but the frame's deaths
+    /// share one node and one draw call (docs/design/performance.md -> "Mass deaths").
+    /// </summary>
+    public static void BurstMany(Node3D parent, List<(Mesh Model, Vector3 At, float Scale)> bursts, int countEach, float power)
+    {
+        int total = 0;
+        foreach ((Mesh model, _, _) in bursts)
+        {
+            if (CubesOf(model) is not null)
+            {
+                total += countEach;
+            }
+        }
+
+        if (total == 0)
+        {
+            return;
+        }
+
+        var debris = new VoxelDebris { Multimesh = NewMultiMesh(total), CastShadow = ShadowCastingSetting.On };
+        debris._cubes = new Cube[total];
+        debris._buffer = new float[total * Stride];
+        debris._life = Mathf.Lerp(0.7f, 1.6f, Mathf.Clamp(power, 0f, 1f));
+        int i = 0;
+        foreach ((Mesh model, Vector3 at, float scale) in bursts)
+        {
+            if (CubesOf(model) is not { } shape)
+            {
+                continue;
+            }
+
+            for (int k = 0; k < countEach; k++, i++)
+            {
+                (Vector3 p, Color c) = shape.Points[Rng.RandiRange(0, shape.Points.Length - 1)];
+                debris._cubes[i] = NewCube(p, shape.Centre, at, scale, power);
+                debris.SetColor(i, c);
+            }
+        }
+
+        parent.AddChild(debris);
+    }
+
+    private static Cube NewCube(Vector3 p, Vector3 centre, Vector3 at, float scale, float power)
+    {
+        Vector3 outward = (p - centre).Normalized();
+        if (outward == Vector3.Zero)
+        {
+            outward = Vector3.Up;
+        }
+
+        return new Cube
+        {
+            Position = at + p * scale,
+            Velocity = (outward * Rng.RandfRange(2f, 5.5f) + new Vector3(0f, Rng.RandfRange(2.5f, 6f), 0f)) * Mathf.Sqrt(scale) * power,
+            Spin = new Vector3(Rng.RandfRange(-9f, 9f), Rng.RandfRange(-9f, 9f), Rng.RandfRange(-9f, 9f)),
+            Size = Rng.RandfRange(0.12f, 0.2f) * scale,
+        };
     }
 
     /// <summary>Floor cubes kicked up where a heavy hit lands.</summary>
@@ -112,6 +195,7 @@ public partial class VoxelDebris : MultiMeshInstance3D
     {
         var debris = new VoxelDebris { Multimesh = NewMultiMesh(count), CastShadow = ShadowCastingSetting.Off };
         debris._cubes = new Cube[count];
+        debris._buffer = new float[count * Stride];
         for (int i = 0; i < count; i++)
         {
             float a = Rng.Randf() * Mathf.Tau;
@@ -125,7 +209,7 @@ public partial class VoxelDebris : MultiMeshInstance3D
                 Size = Rng.RandfRange(0.1f, 0.18f),
             };
             Color c = tint.Lerp(new Color(0.25f, 0.22f, 0.24f), Rng.Randf() * 0.6f);
-            debris.Multimesh.SetInstanceColor(i, c);
+            debris.SetColor(i, c);
         }
 
         parent.AddChild(debris);
@@ -155,8 +239,31 @@ public partial class VoxelDebris : MultiMeshInstance3D
             }
 
             c.Angle += c.Spin * dt;
-            Basis basis = Basis.FromEuler(c.Angle).Scaled(Vector3.One * c.Size * shrink);
-            Multimesh.SetInstanceTransform(i, new Transform3D(basis, c.Position));
+            Basis b = Basis.FromEuler(c.Angle).Scaled(Vector3.One * c.Size * shrink);
+            int o = i * Stride;
+            _buffer[o] = b.X.X;
+            _buffer[o + 1] = b.Y.X;
+            _buffer[o + 2] = b.Z.X;
+            _buffer[o + 3] = c.Position.X;
+            _buffer[o + 4] = b.X.Y;
+            _buffer[o + 5] = b.Y.Y;
+            _buffer[o + 6] = b.Z.Y;
+            _buffer[o + 7] = c.Position.Y;
+            _buffer[o + 8] = b.X.Z;
+            _buffer[o + 9] = b.Y.Z;
+            _buffer[o + 10] = b.Z.Z;
+            _buffer[o + 11] = c.Position.Z;
         }
+
+        RenderingServer.MultimeshSetBuffer(Multimesh.GetRid(), _buffer);
+    }
+
+    private void SetColor(int i, Color c)
+    {
+        int o = i * Stride + 12;
+        _buffer[o] = c.R;
+        _buffer[o + 1] = c.G;
+        _buffer[o + 2] = c.B;
+        _buffer[o + 3] = c.A;
     }
 }

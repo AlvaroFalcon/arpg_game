@@ -40,6 +40,7 @@ public partial class SettingsPanel : PanelContainer
         AddToggle(box, "Life and mana bars over your character", settings?.OverheadBars ?? true, v => settings?.SetOverheadBars(v));
         AddToggle(box, "Screen shake", settings?.ScreenShake ?? true, v => settings?.SetScreenShake(v));
         AddToggle(box, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
+        AddToggle(box, "Show FPS (F3)", settings?.ShowFps ?? false, v => settings?.SetShowFps(v));
 
         box.AddChild(UiTheme.Label("Gameplay", 22, UiTheme.Ember));
 

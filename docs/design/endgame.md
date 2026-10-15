@@ -161,7 +161,18 @@ keep this section in sync):
    own element by +25 % more: **Ashen** fire, **Drowned** cold, **Crypt**
    physical (+5 % armour — less than +25 % resistance because small hits lose
    far more to armour). The type of damage now matters, and penetration has a job.
-5. **Damage** keeps its own gentler curve (×1 → ×5 at level 85).
+5. **Damage** keeps its own gentler curve (×1 → ×5 at level 85) — except bosses.
+6. **Boss damage** (2026-10-15, owner: "I could stand still in front of the
+   skeleton and not die"). On the ordinary curve a Herald slam took ~6 % of the
+   player's life at any tier. Bosses now aim at the reference character's life
+   (`ReferenceLifeTable`, measured on the bot: 250 at level 1, 300 at 19, 480 at
+   41, 700 at 63, 1 260 at 85): a typical authored hit (16 — the Herald's and
+   Nereth's slams, the Colossus's quake) takes **30 %** (`BossHitShare`), so the
+   big rings (31) take about 60 % and bolts (8–9) about 15 %. Standing in
+   everything kills in a few seconds; the attacks are all telegraphed, so moving
+   is what keeps you alive. Against the old boss damage that is ×4.7 at tier 1,
+   ×4.2 at tier 10 and ×4.7 at tier 20 (multiplier ×4.7 → ×9 → ×23.6). Boss adds keep the ordinary curve; the
+   introduction's guardian keeps its old numbers.
 
 The introduction (The Threshold) keeps its authored life ×0.6 and no
 defences: its hero is level 1 with no gear.
@@ -425,6 +436,14 @@ scripts/Enemies/MonsterRarity.cs):
 
 Mods: Hasted, Armoured, Fire-touched, Vampiric, Volatile (telegraphed death
 explosion), Frost Aura, Splitter, Regenerating, Empowered, Barrage (ranged only).
+
+Volatile blasts (the mod and the Volatile reality modifier) land 1.0 s ± 0.1 s
+after the death (90 px, 15 + 3 × monster level fire). Blasts close together
+share **one telegraph** drawn over the whole cluster, and a target takes **at most
+one volatile blast every 0.25 s** — the first to land; the rest of the pack's
+blasts still flash but don't hit it. Before this (2026-10-15) a pack dying
+together landed every blast on the same frame, one hit each: 60 overlapping
+blasts were 60 hits, instant death. Details: performance.md -> "Mass deaths".
 Unique-rares also cast a **signature** attack from the boss toolkit (slam, rain of
 circles, orb nova, triple lane) under the same telegraph rules as bosses.
 
