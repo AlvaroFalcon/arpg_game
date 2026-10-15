@@ -35,7 +35,16 @@ public partial class GameSettings : Node
     /// 1280×720 layout scales up to fill it).</summary>
     public Vector2I WindowSize { get; private set; } = new(1600, 900);
 
-    public static readonly Vector2I[] WindowSizes = { new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440) };
+    /// <summary>16:9 sizes, then ultrawide 21:9 (2560×1080, 3440×1440, 3840×1600) and 32:9 (5120×1440).</summary>
+    public static readonly Vector2I[] WindowSizes =
+    {
+        new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440),
+        new(2560, 1080), new(3440, 1440), new(3840, 1600), new(5120, 1440),
+    };
+
+    /// <summary>Wide screens (21:9, 32:9) show more of the world to the sides by
+    /// default; off keeps the classic 16:9 view with bars at the sides.</summary>
+    public bool FillWideScreens { get; private set; } = true;
 
     public bool Fullscreen => WindowMode != WindowModeKind.Windowed;
     public bool VSync { get; private set; } = true;
@@ -95,6 +104,7 @@ public partial class GameSettings : Node
     public void SetSfxVolume(float v) { SfxVolume = Mathf.Clamp(v, 0f, 1f); ApplyAudio(); NotifyChanged(); }
     public void SetWindowMode(WindowModeKind v) { WindowMode = v; ApplyDisplay(); NotifyChanged(); }
     public void SetWindowSize(Vector2I v) { WindowSize = v; ApplyDisplay(); NotifyChanged(); }
+    public void SetFillWideScreens(bool v) { FillWideScreens = v; ApplyDisplay(); NotifyChanged(); }
     public void SetVSync(bool v) { VSync = v; ApplyDisplay(); NotifyChanged(); }
     public void SetScreenShake(bool v) { ScreenShake = v; NotifyChanged(); }
     public void SetDamageNumbers(bool v) { DamageNumbers = v; NotifyChanged(); }
@@ -166,6 +176,13 @@ public partial class GameSettings : Node
             return;
         }
 
+        // The layout is 1280×720: "expand" widens the view on screens wider than
+        // 16:9 (anchored HUD pieces follow their corners); "keep" letterboxes.
+        if (GetTree()?.Root is { } root)
+        {
+            root.ContentScaleAspect = FillWideScreens ? Window.ContentScaleAspectEnum.Expand : Window.ContentScaleAspectEnum.Keep;
+        }
+
         switch (WindowMode)
         {
             case WindowModeKind.Fullscreen:
@@ -209,6 +226,7 @@ public partial class GameSettings : Node
                 ? ((bool)config.GetValue("display", "fullscreen", false) ? WindowModeKind.Fullscreen : WindowModeKind.Borderless)
                 : WindowMode;
         WindowSize = (Vector2I)config.GetValue("display", "window_size", WindowSize);
+        FillWideScreens = (bool)config.GetValue("display", "fill_wide_screens", FillWideScreens);
         VSync = (bool)config.GetValue("display", "vsync", VSync);
         ScreenShake = (bool)config.GetValue("gameplay", "screen_shake", ScreenShake);
         DamageNumbers = (bool)config.GetValue("gameplay", "damage_numbers", DamageNumbers);
@@ -228,6 +246,7 @@ public partial class GameSettings : Node
         config.SetValue("audio", "sfx", SfxVolume);
         config.SetValue("display", "window_mode", (int)WindowMode);
         config.SetValue("display", "window_size", WindowSize);
+        config.SetValue("display", "fill_wide_screens", FillWideScreens);
         config.SetValue("display", "vsync", VSync);
         config.SetValue("gameplay", "screen_shake", ScreenShake);
         config.SetValue("gameplay", "damage_numbers", DamageNumbers);

@@ -105,6 +105,15 @@ always visible.
   the window (`canvas_items` stretch, `expand` aspect), so 1920×1080 is exactly
   ×1.5. Old settings files: `fullscreen=true` becomes Fullscreen, `false` (the old
   default) becomes Borderless.
+- **Ultrawide** (2026-10-15, the owner plays on one): wider than 16:9, the view
+  simply widens (`expand`): 21:9 at 1080 lines is a 1707×720 layout, the world
+  shows more to the sides, the voxel camera follows, and HUD pieces stay on their
+  anchored corners. A toggle keeps 16:9 with side bars instead
+  (`FillWideScreens`, `ContentScaleAspect` Keep). Windowed sizes include
+  2560×1080, 3440×1440, 3840×1600 (21:9) and 5120×1440 (32:9). Checked at
+  2560×1080 across menus, town, panels, realities and the HUD editor; the one
+  panel placed at a fixed x (the inventory, at 848 = 1280 − 432) is now anchored
+  to the right edge. Screenshots: `ultrawide-inventory.png`, `ultrawide-reality.png`.
 - **Gameplay**: overhead bars, screen shake, damage numbers, admin mode, and the
   controls reminder. (Auto-aim and auto-cast stay internal: the Survival Rift
   always auto-aims, realities aim with the mouse.)

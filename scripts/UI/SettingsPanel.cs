@@ -50,9 +50,10 @@ public partial class SettingsPanel : PanelContainer
             }
         });
         Vector2I current = settings?.WindowSize ?? new Vector2I(1600, 900);
-        size = AddOptions(display, "Window size", Array.ConvertAll(GameSettings.WindowSizes, v => $"{v.X} × {v.Y}"),
+        size = AddOptions(display, "Window size", Array.ConvertAll(GameSettings.WindowSizes, v => $"{v.X} × {v.Y}{AspectLabel(v)}"),
             Math.Max(0, Array.IndexOf(GameSettings.WindowSizes, current)), i => settings?.SetWindowSize(GameSettings.WindowSizes[i]));
         size.Disabled = settings?.WindowMode != WindowModeKind.Windowed;
+        AddToggle(display, "Use the whole screen on ultrawide (21:9, 32:9) — off: 16:9 with side bars", settings?.FillWideScreens ?? true, v => settings?.SetFillWideScreens(v));
         AddToggle(display, "V-Sync", settings?.VSync ?? true, v => settings?.SetVSync(v));
         AddToggle(display, "Voxel graphics (HD-2D) — applies on the next scene", settings?.VoxelGraphics ?? true, v => settings?.SetVoxelGraphics(v));
         AddToggle(display, "Show FPS (F3)", settings?.ShowFps ?? false, v => settings?.SetShowFps(v));
@@ -73,6 +74,8 @@ public partial class SettingsPanel : PanelContainer
         root.AddChild(back);
         back.CallDeferred(Control.MethodName.GrabFocus);
     }
+
+    private static string AspectLabel(Vector2I v) => (v.X / (float)v.Y) switch { > 3f => "  (32:9)", > 2f => "  (21:9)", _ => "" };
 
     /// <summary>A tab page that scrolls vertically if its rows don't fit.</summary>
     private static VBoxContainer Tab(TabContainer tabs, string title)

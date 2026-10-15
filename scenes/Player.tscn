@@ -88,11 +88,14 @@ script = ExtResource("11")
 [node name="Panel" type="Control" parent="InventoryUI"]
 visible = false
 layout_mode = 3
-anchors_preset = 0
-offset_left = 848.0
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -432.0
 offset_top = 70.0
-offset_right = 848.0
+offset_right = -432.0
 offset_bottom = 70.0
+grow_horizontal = 0
 
 [node name="Background" type="ColorRect" parent="InventoryUI/Panel"]
 layout_mode = 0
