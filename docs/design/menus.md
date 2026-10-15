@@ -93,9 +93,21 @@ kept) and Quit.
 (`UI/SettingsPanel.cs`) is shared by the main menu and the pause menu, applies every
 change live and saves on close.
 
-- Audio: master, music, effects volume (Music/SFX buses are created at startup).
-- Display: fullscreen, V-Sync, screen shake, damage numbers.
-- Gameplay: auto-cast, auto-aim.
+Three tabs (2026-10-15 — the single column had grown taller than the screen,
+hiding the Gameplay section and Back); each tab scrolls on its own and Back is
+always visible.
+
+- **Audio**: master, music, effects volume (Music/SFX buses are created at startup).
+- **Display**: **window mode** — Windowed, **Borderless** (a window covering the
+  screen; the default) or Fullscreen (exclusive); **window size** for windowed
+  (1280×720, 1600×900, 1920×1080, 2560×1440, centred, clamped to the screen);
+  V-Sync; voxel graphics; Show FPS. The game lays out at 1280×720 and scales to
+  the window (`canvas_items` stretch, `expand` aspect), so 1920×1080 is exactly
+  ×1.5. Old settings files: `fullscreen=true` becomes Fullscreen, `false` (the old
+  default) becomes Borderless.
+- **Gameplay**: overhead bars, screen shake, damage numbers, admin mode, and the
+  controls reminder. (Auto-aim and auto-cast stay internal: the Survival Rift
+  always auto-aims, realities aim with the mouse.)
 - **Show FPS** (2026-10-15, also **F3** anywhere): a readout in the top-left corner
   (`UI/FpsOverlay.cs`, a layer under the settings autoload so it survives scene
   changes) with frames per second, the average frame time and the **worst frame of
