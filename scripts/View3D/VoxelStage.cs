@@ -244,7 +244,6 @@ public partial class VoxelStage : Node3D
         var liquidCells = new Dictionary<Vector2I, Transform3D>();
         var floorCells = new Dictionary<Vector2I, Vector3>();
         var wallCells = new HashSet<Vector2I>();
-        var heights = Caverns ? new FastNoiseLite { Seed = 7, Frequency = 0.12f } : null;
         foreach (Vector2I cell in map.GetUsedCells(0))
         {
             Vector2I atlas = map.GetCellAtlasCoords(0, cell);
@@ -266,15 +265,23 @@ public partial class VoxelStage : Node3D
             }
 
             Transform3D placed = new(basis, at);
-            if (piece == "wall" && heights is not null)
+            if (piece == "wall" && Caverns)
             {
-                // Cave rock: uneven heights (smooth swells plus a little jitter per block).
-                float jitter = ((cell.X * 73856093) ^ (cell.Y * 19349663)) % 100 / 100f;
-                float rise = 0.72f + 0.6f * (heights.GetNoise2D(cell.X, cell.Y) * 0.5f + 0.5f) + 0.12f * Mathf.Abs(jitter);
-                placed = new Transform3D(basis.Scaled(new Vector3(1f, rise, 1f)), at);
+                // Cave rock is one mesh (CaveWalls, built below), not a block per
+                // cell; the cell gets a floor under it for the chamfered corners.
+                string under = $"floor{Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2}";
+                if (!byPiece.TryGetValue(under, out List<Transform3D>? unders))
+                {
+                    byPiece[under] = unders = new List<Transform3D>();
+                }
+
+                unders.Add(placed);
+            }
+            else
+            {
+                list.Add(placed);
             }
 
-            list.Add(placed);
             if (piece.StartsWith("floor"))
             {
                 floorCells[cell] = at;
@@ -301,6 +308,11 @@ public partial class VoxelStage : Node3D
 
                 beds.Add(new Transform3D(basis, at));
             }
+        }
+
+        if (Caverns && wallCells.Count > 0 && pieces.TryGetValue("wall", out Mesh? rockSource))
+        {
+            created.Add(AddCaveRock(map, wallCells, rockSource));
         }
 
         foreach ((string piece, List<Transform3D> transforms) in byPiece)
@@ -485,7 +497,7 @@ public partial class VoxelStage : Node3D
         {
             foreach (Node n in old)
             {
-                if (n is MultiMeshInstance3D mm && mm.Multimesh?.Mesh is ArrayMesh mesh)
+                if (((n as MultiMeshInstance3D)?.Multimesh?.Mesh ?? (n as MeshInstance3D)?.Mesh) is ArrayMesh mesh)
                 {
                     for (int s = 0; s < mesh.GetSurfaceCount(); s++)
                     {
@@ -501,6 +513,68 @@ public partial class VoxelStage : Node3D
         }
 
         BuildTerrain(map);
+    }
+
+    /// <summary>
+    /// A cavern's walls as one rock mesh (<see cref="CaveWalls"/>, docs/design/art-pipeline.md
+    /// -> "Cave walls"): heights from a continuous noise field around the tile wall's
+    /// height, coloured by voxel_rock.gdshader from the tileset wall's own palette
+    /// (its darkest, middle and lightest colours), so each theme keeps its stone.
+    /// </summary>
+    private MeshInstance3D AddCaveRock(TileMap map, HashSet<Vector2I> wallCells, Mesh wallMesh)
+    {
+        Vector3 origin = Ground(map.ToGlobal(map.MapToLocal(Vector2I.Zero)));
+        Vector3 ex = Ground(map.ToGlobal(map.MapToLocal(Vector2I.Right))) - origin;
+        Vector3 ey = Ground(map.ToGlobal(map.MapToLocal(Vector2I.Down))) - origin;
+        float tileMeters = map.TileSet.TileSize.X * map.GlobalScale.X / PixelsPerMeter;
+        float baseHeight = Mathf.Max(0.5f, wallMesh.GetAabb().End.Y) * tileMeters;
+        var swell = new FastNoiseLite { Seed = 7, Frequency = 0.12f };
+        var grain = new FastNoiseLite { Seed = 11, Frequency = 0.6f };
+        float Height(Vector2 p) =>
+            baseHeight * (0.75f + 0.55f * (swell.GetNoise2D(p.X, p.Y) * 0.5f + 0.5f) + 0.1f * grain.GetNoise2D(p.X, p.Y));
+
+        // Every cell of the map's rectangle that is not open ground is rock — the
+        // empty cells the rasteriser leaves deep inside the rock too, which used to
+        // show as black pits — so the cave reads as carved out of one mass.
+        var open = new HashSet<Vector2I>(map.GetUsedCells(0));
+        open.ExceptWith(wallCells);
+        Rect2I bounds = map.GetUsedRect();
+        var rock = new HashSet<Vector2I>(wallCells);
+        for (int x = bounds.Position.X; x < bounds.End.X; x++)
+        {
+            for (int y = bounds.Position.Y; y < bounds.End.Y; y++)
+            {
+                var c = new Vector2I(x, y);
+                if (!open.Contains(c))
+                {
+                    rock.Add(c);
+                }
+            }
+        }
+
+        ArrayMesh mesh = CaveWalls.Build(rock, p => origin + ex * p.X + ey * p.Y, Height);
+
+        var palette = new List<Color>();
+        for (int s = 0; s < wallMesh.GetSurfaceCount(); s++)
+        {
+            if (wallMesh.SurfaceGetMaterial(s) is BaseMaterial3D bm)
+            {
+                palette.Add(bm.AlbedoColor);
+            }
+        }
+
+        palette.Sort((a, b) => a.Luminance.CompareTo(b.Luminance));
+        Color mid = palette.Count > 0 ? palette[palette.Count / 2] : _wallColor;
+        var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://resources/shaders/voxel_rock.gdshader") };
+        material.SetShaderParameter("albedo", mid);
+        material.SetShaderParameter("albedo_dark", palette.Count > 0 ? palette[0] : mid.Darkened(0.4f));
+        material.SetShaderParameter("albedo_light", palette.Count > 0 ? palette[^1] : mid.Lightened(0.25f));
+        mesh.SurfaceSetMaterial(0, material);
+        _wallMaterials.Add(material);
+        _wallColor = mid;
+        var instance = new MeshInstance3D { Mesh = mesh, Name = "Terrain_rock", CastShadow = GeometryInstance3D.ShadowCastingSetting.On };
+        World.AddChild(instance);
+        return instance;
     }
 
     /// <summary>Copies the wall mesh with the dithering wall shader on every colour surface.</summary>
