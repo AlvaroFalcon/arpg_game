@@ -111,6 +111,28 @@ public partial class Enemy : CharacterBody2D
 
     protected Node2D? Target { get; private set; }
 
+    // --- co-op (docs/design/multiplayer.md -> "Replication") ----------------------
+
+    /// <summary>
+    /// Co-op client: a view of a monster the host simulates. It never thinks,
+    /// moves itself or deals damage; snapshots place it and set its life, and
+    /// the host's despawn event removes it (<see cref="ReplicaDie"/>).
+    /// Set before the node enters the tree.
+    /// </summary>
+    public bool IsReplica { get; set; }
+
+    /// <summary>Co-op: the host's id for this monster (0 = not networked).</summary>
+    public ushort NetId { get; set; }
+
+    /// <summary>Co-op client: ailment tint code from the host (see <see cref="Ailments.TintCode"/>).</summary>
+    public byte ReplicaTint { get; set; }
+
+    /// <summary>Engine msec of the last time this monster was damaged (hit flash on clients).</summary>
+    public ulong LastHurtMsec { get; private set; }
+
+    /// <summary>Seconds until the target is re-chosen (nearest player, co-op aggro).</summary>
+    private float _retarget;
+
     /// <summary>Movement the behaviour wants this frame (px/s).</summary>
     protected Vector2 DesiredVelocity;
 
@@ -266,13 +288,19 @@ public partial class Enemy : CharacterBody2D
 
     public override void _PhysicsProcess(double delta)
     {
+        if (IsReplica)
+        {
+            UpdateVisual((float)delta);
+            return;
+        }
+
         if (Health.IsDead)
         {
             return;
         }
 
         float dt = (float)delta;
-        Target = FindTarget();
+        Target = FindTarget(dt);
 
         if (Dormant)
         {
@@ -481,7 +509,13 @@ public partial class Enemy : CharacterBody2D
 
     protected float Speed => Stats.MovementSpeed.Value;
 
-    private Node2D? FindTarget()
+    /// <summary>
+    /// Decoys first, then the nearest player that is alive and not warded —
+    /// re-chosen a couple of times a second, so in co-op a pack splits between
+    /// players and turns to whoever is closest (docs/design/multiplayer.md ->
+    /// "Aggro"). With one player this is the old rule: that player while alive.
+    /// </summary>
+    private Node2D? FindTarget(float dt)
     {
         // Decoys (Ninja shadow clones) taunt anything nearby.
         foreach (Node node in GetTree().GetNodesInGroup(DecoyGroup))
@@ -492,12 +526,15 @@ public partial class Enemy : CharacterBody2D
             }
         }
 
-        if (Target is not null && IsInstanceValid(Target) && Target.IsInsideTree() && Target.IsInGroup(CombatQuery.PlayerGroup))
+        _retarget -= dt;
+        if (_retarget > 0f && Target is Player current && IsInstanceValid(current) && current.IsInsideTree()
+            && !current.Warded && current.Health is { IsDead: false })
         {
-            return Target.GetNodeOrNull<Health>("Health") is { IsDead: false } ? Target : null;
+            return current;
         }
 
-        return GetTree().GetFirstNodeInGroup(CombatQuery.PlayerGroup) as Node2D;
+        _retarget = 0.4f + _rng.Randf() * 0.3f;
+        return CombatQuery.NearestTargetablePlayer(GetTree(), GlobalPosition);
     }
 
     protected virtual void UpdateVisual(float delta)
@@ -519,7 +556,7 @@ public partial class Enemy : CharacterBody2D
             return;
         }
 
-        Color tint = Ailments?.Tint ?? Colors.White;
+        Color tint = IsReplica ? Ailments.TintForCode(ReplicaTint) : Ailments?.Tint ?? Colors.White;
         Sprite.Modulate = tint * _eliteTint;
     }
 
@@ -534,6 +571,7 @@ public partial class Enemy : CharacterBody2D
 
     private void OnDamaged(float amount)
     {
+        LastHurtMsec = Time.GetTicksMsec();
         _flashTimer = 0.08f;
         SpawnDamageNumber(amount);
     }
@@ -547,6 +585,67 @@ public partial class Enemy : CharacterBody2D
 
         var number = UI.DamageNumber.Spawn(DamageNumberScene, GetTree().CurrentScene, GlobalPosition + new Vector2(GD.Randf() * 16f - 8f, -18f * Scale.Y));
         number.Display(amount);
+    }
+
+    /// <summary>Co-op client: a hit landed on the host (white flash).</summary>
+    public void ReplicaFlash() => _flashTimer = 0.08f;
+
+    /// <summary>Co-op client: shows a damage number for a hit the host resolved.</summary>
+    public void ReplicaDamageNumber(float amount) => SpawnDamageNumber(amount);
+
+    /// <summary>
+    /// Co-op client: the host says this monster is gone — a death puff when it
+    /// died, nothing when it was simply removed. No loot, no events: the host
+    /// already handled all of that.
+    /// </summary>
+    public void ReplicaDie(bool died)
+    {
+        if (IsQueuedForDeletion())
+        {
+            return;
+        }
+
+        if (died && IsInsideTree())
+        {
+            DeathPuff.Spawn(GetTree().CurrentScene, GlobalPosition, IsElite || IsBoss ? 2.2f : 1f, Sprite?.Modulate ?? Colors.White);
+        }
+
+        QueueFree();
+    }
+
+    /// <summary>
+    /// Co-op client: dresses a replica like the host's monster — rarity (size,
+    /// tint, plate), its rolled mods, its name and life total. Stats beyond the
+    /// life total don't matter on a client: it never fights.
+    /// </summary>
+    public void ApplyReplicaLook(MonsterRarity rarity, IReadOnlyList<string> modIds, string shownName, float scale, float maxLife)
+    {
+        if (rarity != MonsterRarity.Normal)
+        {
+            var mods = new List<MonsterMod>();
+            foreach (string id in modIds)
+            {
+                if (MonsterRarities.FindMod(id) is { } mod)
+                {
+                    mods.Add(mod);
+                }
+            }
+
+            ApplyRarity(rarity, mods);
+        }
+
+        if (shownName.Length > 0)
+        {
+            ShownName = shownName;
+        }
+
+        Scale = Vector2.One * scale;
+        if (maxLife > 0f && Stats.Life is { Max: > 0f } life && !Mathf.IsEqualApprox(life.Max, maxLife))
+        {
+            Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.More, (maxLife / life.Max - 1f) * 100f, this));
+        }
+
+        RefillLife();
     }
 
     protected virtual void OnDied()

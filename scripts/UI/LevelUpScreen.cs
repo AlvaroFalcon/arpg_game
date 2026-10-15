@@ -21,6 +21,22 @@ public partial class LevelUpScreen : CanvasLayer
     /// <summary>True while this screen owns the pause.</summary>
     public bool IsOpen { get; private set; }
 
+    /// <summary>
+    /// Co-op (docs/design/multiplayer.md -> "Level-ups"): the run never pauses.
+    /// The chooser is warded while the cards are open (<see cref="OpenChanged"/>)
+    /// and the first card is taken for them after <see cref="Net.PartyRules.LevelUpTimeout"/>.
+    /// </summary>
+    public bool Coop { get; set; }
+
+    /// <summary>Raised when the cards open or close (co-op: ward the player).</summary>
+    public event System.Action<bool>? OpenChanged;
+
+    /// <summary>Raised after a card is applied (co-op client: tell the host).</summary>
+    public event System.Action<UpgradeOffer>? Picked;
+
+    private float _timeLeft;
+    private string _hintText = "";
+
     private Control _root = null!;
     private Label _title = null!;
     private Label _hint = null!;
@@ -66,10 +82,9 @@ public partial class LevelUpScreen : CanvasLayer
     {
         _startPick = true;
         _onStartPicked = onPicked;
-        IsOpen = true;
-        GetTree().Paused = true;
+        SetOpen(true);
         _title.Text = "Choose your first skill";
-        _hint.Text = "Your build grows from here: every level adds a skill, a support or a passive.";
+        SetHint("Your build grows from here: every level adds a skill, a support or a passive.");
         _reroll.Visible = false;
         _buildSummary.Text = "";
         var offers = UpgradeCatalog.Skills.Select(entry => new UpgradeOffer
@@ -80,6 +95,7 @@ public partial class LevelUpScreen : CanvasLayer
             Subtitle = TagLine(entry.Definition.Tags),
             Description = entry.Definition.Description,
             Icon = entry.Definition.Icon,
+            Key = "s:" + entry.Id,
             Apply = () => Build.AddSkill(entry.Id),
         }).ToList();
         _cards.SetOffers(offers);
@@ -108,8 +124,7 @@ public partial class LevelUpScreen : CanvasLayer
             return;
         }
 
-        IsOpen = true;
-        GetTree().Paused = true;
+        SetOpen(true);
         ShowNext();
     }
 
@@ -118,7 +133,7 @@ public partial class LevelUpScreen : CanvasLayer
         _offeringLevel = State.Level - State.PendingLevelUps + 1;
         bool keystone = _offeringLevel % RunBuild.KeystoneEvery == 0;
         _title.Text = keystone ? $"Level {_offeringLevel} — choose a Keystone" : $"Level {_offeringLevel}";
-        _hint.Text = keystone ? "Keystones change how your whole build works. Choose carefully." : "Choose an upgrade  (1 / 2 / 3)";
+        SetHint(keystone ? "Keystones change how your whole build works. Choose carefully." : "Choose an upgrade  (1 / 2 / 3)");
         _reroll.Visible = true;
         RefreshReroll();
         _buildSummary.Text = BuildSummary(Build);
@@ -162,6 +177,7 @@ public partial class LevelUpScreen : CanvasLayer
     private void OnChosen(UpgradeOffer offer)
     {
         offer.Apply();
+        Picked?.Invoke(offer);
         if (_startPick)
         {
             _startPick = false;
@@ -183,8 +199,42 @@ public partial class LevelUpScreen : CanvasLayer
     private void Close()
     {
         _root.Visible = false;
-        IsOpen = false;
-        GetTree().Paused = false;
+        SetOpen(false);
+    }
+
+    private void SetOpen(bool open)
+    {
+        IsOpen = open;
+        _timeLeft = Net.PartyRules.LevelUpTimeout;
+        if (!Coop)
+        {
+            GetTree().Paused = open;
+        }
+
+        OpenChanged?.Invoke(open);
+    }
+
+    private void SetHint(string text)
+    {
+        _hintText = text;
+        _hint.Text = text;
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!Coop || !IsOpen)
+        {
+            return;
+        }
+
+        // Co-op: the run goes on around a warded chooser — but not forever.
+        _timeLeft -= (float)delta;
+        _hint.Text = $"{_hintText}\nThe party fights on — {Mathf.CeilToInt(Mathf.Max(0f, _timeLeft))} s (you are warded while choosing)";
+        if (_timeLeft <= 0f && _cards.OfferCount > 0)
+        {
+            _timeLeft = Net.PartyRules.LevelUpTimeout;
+            ChooseIndex(0);
+        }
     }
 
     /// <summary>One-paragraph description of the build so far.</summary>

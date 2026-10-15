@@ -82,14 +82,29 @@ public partial class Ailments : Node
 
     /// <summary>The tint the owner's visual should take, or white for none.
     /// Ignite outranks shock outranks chill: the one doing damage reads first.</summary>
-    public Color Tint =>
-        IsFrozen ? new Color(0.8f, 0.97f, 1.4f)
-        : IsIgnited ? new Color(1f, 0.6f, 0.35f)
-        : PoisonStacks > 0 ? new Color(0.55f, 1f, 0.5f)
-        : IsCursed ? new Color(0.8f, 0.5f, 1f)
-        : IsShocked ? new Color(1f, 1f, 0.45f)
-        : IsChilled ? new Color(0.55f, 0.8f, 1f)
-        : Colors.White;
+    public Color Tint => TintForCode(TintCode);
+
+    /// <summary>The tint as one byte (co-op snapshots): 0 none, 1 frozen, 2 ignited,
+    /// 3 poisoned, 4 cursed, 5 shocked, 6 chilled — same priority as <see cref="Tint"/>.</summary>
+    public byte TintCode =>
+        IsFrozen ? (byte)1
+        : IsIgnited ? (byte)2
+        : PoisonStacks > 0 ? (byte)3
+        : IsCursed ? (byte)4
+        : IsShocked ? (byte)5
+        : IsChilled ? (byte)6
+        : (byte)0;
+
+    public static Color TintForCode(byte code) => code switch
+    {
+        1 => new Color(0.8f, 0.97f, 1.4f),
+        2 => new Color(1f, 0.6f, 0.35f),
+        3 => new Color(0.55f, 1f, 0.5f),
+        4 => new Color(0.8f, 0.5f, 1f),
+        5 => new Color(1f, 1f, 0.45f),
+        6 => new Color(0.55f, 0.8f, 1f),
+        _ => Colors.White,
+    };
 
     private void OnHitResolved(DamagePayload payload, float taken)
     {

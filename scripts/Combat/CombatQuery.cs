@@ -16,6 +16,40 @@ public static class CombatQuery
     public const string EnemyGroup = "enemies";
     public const string PlayerGroup = "players";
 
+    /// <summary>The player this machine controls (camera, HUD, pickups it sees).
+    /// In single-player it is the only player; in co-op the others are remote.</summary>
+    public const string LocalPlayerGroup = "local_player";
+
+    /// <summary>The local player, falling back to any player (bare test scenes).</summary>
+    public static Player? LocalPlayer(SceneTree tree) =>
+        tree.GetFirstNodeInGroup(LocalPlayerGroup) as Player ?? tree.GetFirstNodeInGroup(PlayerGroup) as Player;
+
+    /// <summary>
+    /// The player a monster should go for: the nearest one that is alive and
+    /// not warded (choosing a level-up card in co-op). Null when nobody qualifies.
+    /// </summary>
+    public static Player? NearestTargetablePlayer(SceneTree tree, Vector2 from)
+    {
+        Player? best = null;
+        float bestSq = float.MaxValue;
+        foreach (Node node in tree.GetNodesInGroup(PlayerGroup))
+        {
+            if (node is not Player p || !GodotObject.IsInstanceValid(p) || p.Warded || p.Health is { IsDead: true })
+            {
+                continue;
+            }
+
+            float d = from.DistanceSquaredTo(p.GlobalPosition);
+            if (d < bestSq)
+            {
+                bestSq = d;
+                best = p;
+            }
+        }
+
+        return best;
+    }
+
     /// <summary>The group whose members are hostile to <paramref name="faction"/>.</summary>
     public static string HostileGroupFor(Faction faction) => faction == Faction.Player ? EnemyGroup : PlayerGroup;
 

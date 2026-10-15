@@ -49,6 +49,53 @@ public partial class Projectile : Area2D
     /// <summary>Max distance a chain may jump to its next target.</summary>
     private const float ChainRange = 300f;
 
+    // --- co-op (docs/design/multiplayer.md -> "Effects") ---------------------------
+
+    public Vector2 Direction => _direction;
+    public float Speed => _speed;
+    public float RangeLeft => Mathf.Max(0f, _range - _traveled);
+    public Faction SourceFaction => _sourceFaction;
+
+    /// <summary>The flight's animation (null = the default arrow shape).</summary>
+    public SpriteFrames? Frames => _frames;
+
+    private SpriteFrames? _frames;
+
+    /// <summary>Raised when the heading changes mid-flight (chain, ricochet): the
+    /// host tells clients so their copy turns too.</summary>
+    public event System.Action<Projectile>? Turned;
+
+    /// <summary>Co-op client: a picture of the host's projectile — flies straight,
+    /// touches nothing, and is turned or ended by the host's events.</summary>
+    public bool Cosmetic { get; private set; }
+
+    public void InitializeCosmetic(Vector2 direction, float speed, float range, float scale, SpriteFrames? frames)
+    {
+        Cosmetic = true;
+        _direction = direction;
+        _speed = speed;
+        _range = range;
+        Rotation = direction.Angle();
+        Scale = Vector2.One * Mathf.Max(0.2f, scale);
+        CollisionLayer = 0;
+        CollisionMask = 0;
+        Monitoring = false;
+        Monitorable = false;
+        if (frames is not null)
+        {
+            UseFrames(frames);
+        }
+    }
+
+    /// <summary>Co-op client: the host's projectile changed heading here.</summary>
+    public void NetTurn(Vector2 position, Vector2 direction)
+    {
+        GlobalPosition = position;
+        _direction = direction;
+        _traveled = 0f;
+        Rotation = direction.Angle();
+    }
+
     // Tracked even at Pierce = 0. Two lines now; load-bearing for pierce and
     // split later (a pierce/chain projectile must never hit the same target
     // twice, including immediately re-hitting the parent's target after a
@@ -114,6 +161,7 @@ public partial class Projectile : Area2D
         Scale = parent.Scale;
         if (parent.GetNodeOrNull<AnimatedSprite2D>("Sprite") is { SpriteFrames: { } frames })
         {
+            _frames = frames;
             CallDeferred(nameof(UseFrames), frames);
         }
         _sourceFaction = parent._sourceFaction;
@@ -154,6 +202,7 @@ public partial class Projectile : Area2D
 
     private void UseFrames(SpriteFrames frames)
     {
+        _frames = frames;
         if (GetNodeOrNull<AnimatedSprite2D>("Sprite") is not { } sprite)
         {
             return;
@@ -223,6 +272,7 @@ public partial class Projectile : Area2D
 
         Rotation = _direction.Angle();
         _alreadyHit.Clear();
+        Turned?.Invoke(this);
     }
 
     private void OnAreaEntered(Area2D area) => ResolveHit(area);
@@ -281,6 +331,7 @@ public partial class Projectile : Area2D
                 _direction = outcome.NewDirection;
                 Rotation = _direction.Angle();
                 _chainsRemaining--;
+                Turned?.Invoke(this);
 
                 // A chain is a fresh leg: it gets a fresh range budget, or a
                 // long first flight would leave nothing to chain with.

@@ -75,7 +75,20 @@ public partial class Flasks : Node
     {
         float dt = (float)delta;
         bool alive = !(_player.Health?.IsDead ?? true);
-        if (alive && !GetTree().Paused)
+        if (alive && _player.Command is { } command)
+        {
+            // A remote co-op player: presses arrive as counters.
+            if (command.ConsumeLifeFlask())
+            {
+                TryDrink(Life);
+            }
+
+            if (command.ConsumeManaFlask())
+            {
+                TryDrink(Mana);
+            }
+        }
+        else if (alive && !GetTree().Paused && _player.IsLocal)
         {
             if (Input.IsActionJustPressed(LifeAction))
             {

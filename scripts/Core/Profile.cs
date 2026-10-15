@@ -158,6 +158,40 @@ public partial class Profile : Node
         Save();
     }
 
+    /// <summary>
+    /// Co-op host and clients: dresses another party member's player node from the
+    /// character their own machine sent (docs/design/multiplayer.md -> "Players"):
+    /// gear, gems, passives, class sprite. No wallet — their currency lives on
+    /// their machine — and nothing here is ever saved.
+    /// </summary>
+    public static void ApplyCharacterTo(Player player, CharacterData c)
+    {
+        foreach ((EquipmentSlot slot, EquipmentItem item) in c.Equipped)
+        {
+            player.Equipment.TryEquip(slot, item, out _);
+        }
+
+        CharacterBuild.Attach(player, c);
+        if (player.GetNodeOrNull<ActorStats>("Stats") is { } stats)
+        {
+            if (stats.Life is { } life)
+            {
+                life.Current = life.Max;
+            }
+
+            if (stats.Mana is { } mana)
+            {
+                mana.Current = mana.Max;
+            }
+        }
+    }
+
+    /// <summary>One item as JSON and back (co-op: gear a remote player found).</summary>
+    public static string SerializeItem(EquipmentItem item) => JsonSerializer.Serialize(ToSave(item));
+
+    public static EquipmentItem? DeserializeItem(string json) =>
+        JsonSerializer.Deserialize<SaveItem>(json) is { } s ? FromSave(s) : null;
+
     public void ApplyTo(Player player)
     {
         CharacterData c = Active;

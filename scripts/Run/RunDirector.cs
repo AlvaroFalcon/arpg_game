@@ -113,7 +113,7 @@ public partial class RunDirector : Node
 
     public override void _PhysicsProcess(double delta)
     {
-        if (!Spawning || State.Ended || State.Player is null)
+        if (!Spawning || State.Ended || State.Players.Count == 0)
         {
             return;
         }
@@ -168,9 +168,10 @@ public partial class RunDirector : Node
         // danger curve's rate times the current intensity — waves from 1D noise, eased
         // off while the player is in trouble — and is spent on enemies by cost.
         UpdateIntensity(t);
-        float rate = SpawnRate(t) * AverageCost * CurrentIntensity * (HeraldAlive ? 0.15f : 1f);
+        int party = State.PartySize;
+        float rate = SpawnRate(t) * Net.PartyRules.SpawnRate(party) * AverageCost * CurrentIntensity * (HeraldAlive ? 0.15f : 1f);
         _budget += rate * dt;
-        int cap = EnemyCap(t);
+        int cap = Mathf.RoundToInt(EnemyCap(t) * Net.PartyRules.EnemyCap(party));
         _leashIn -= dt;
         if (_leashIn <= 0f)
         {
@@ -275,7 +276,7 @@ public partial class RunDirector : Node
     private void UpdateIntensity(float t)
     {
         float wave = WaveIntensity(_waves, t);
-        float life = State.Player?.Stats.Life is { Max: > 0f } pool ? pool.Current / pool.Max : 1f;
+        float life = PartyLifeFraction();
         CurrentIntensity = wave * StressEase(life);
         if (!Surging && wave > 1.3f && t > 45f)
         {
@@ -288,12 +289,68 @@ public partial class RunDirector : Node
         }
     }
 
-    /// <summary>What the camera shows, in world space.</summary>
-    private Rect2 View()
+    /// <summary>The party's average life fraction (a downed player counts as 0):
+    /// the breather comes when the party as a whole is in trouble.</summary>
+    private float PartyLifeFraction()
     {
-        Viewport viewport = State.Player!.GetViewport();
-        return viewport.CanvasTransform.AffineInverse() * viewport.GetVisibleRect();
+        float sum = 0f;
+        int n = 0;
+        foreach (RunPlayer rp in State.Players)
+        {
+            n++;
+            if (rp.Player?.Stats.Life is { Max: > 0f } pool && !rp.Downed)
+            {
+                sum += pool.Current / pool.Max;
+            }
+        }
+
+        return n == 0 ? 1f : sum / n;
     }
+
+    /// <summary>Players still standing (co-op: the downed are skipped).</summary>
+    private List<Player> LivingPlayers()
+    {
+        _living.Clear();
+        foreach (RunPlayer rp in State.Players)
+        {
+            if (rp.Player is { } p && IsInstanceValid(p) && !rp.Downed)
+            {
+                _living.Add(p);
+            }
+        }
+
+        if (_living.Count == 0 && State.Player is { } local)
+        {
+            _living.Add(local);
+        }
+
+        return _living;
+    }
+
+    private readonly List<Player> _living = new();
+
+    /// <summary>A living player picked at random (whose screen an edge spawn borders).</summary>
+    private Player RandomPlayer()
+    {
+        List<Player> living = LivingPlayers();
+        return living[_rng.RandiRange(0, living.Count - 1)];
+    }
+
+    /// <summary>Where the party is: the average position of the living players.</summary>
+    private Vector2 PartyCentre()
+    {
+        List<Player> living = LivingPlayers();
+        Vector2 sum = Vector2.Zero;
+        foreach (Player p in living)
+        {
+            sum += p.GlobalPosition;
+        }
+
+        return sum / Mathf.Max(1, living.Count);
+    }
+
+    /// <summary>What the camera shows, in world space (one player's).</summary>
+    private Rect2 View() => State.ViewOf(State.Player!);
 
     /// <summary>
     /// A spawn point just outside the view: a random point on the view's rectangle
@@ -332,12 +389,27 @@ public partial class RunDirector : Node
     /// </summary>
     private void Leash()
     {
-        Rect2 view = View();
-        float limit = view.Size.Length();
-        Vector2 player = State.Player!.GlobalPosition;
+        List<Player> living = LivingPlayers();
+        float limit = View().Size.Length();
         foreach (Node node in GetTree().GetNodesInGroup(CombatQuery.EnemyGroup))
         {
-            if (node is Enemy { IsBoss: false } enemy && !enemy.Health.IsDead && enemy.GlobalPosition.DistanceTo(player) > limit)
+            if (node is not Enemy { IsBoss: false } enemy || enemy.Health.IsDead)
+            {
+                continue;
+            }
+
+            // Co-op: only an enemy far from *every* living player is pulled back.
+            bool near = false;
+            foreach (Player p in living)
+            {
+                if (enemy.GlobalPosition.DistanceTo(p.GlobalPosition) <= limit)
+                {
+                    near = true;
+                    break;
+                }
+            }
+
+            if (!near)
             {
                 enemy.GlobalPosition = EdgePoint();
             }
@@ -415,7 +487,42 @@ public partial class RunDirector : Node
         return Slime;
     }
 
-    private Vector2 EdgePoint(float extra = 60f) => EdgePointFor(View(), extra, p => Arena.Clamp(p, 40f), _rng);
+    /// <summary>
+    /// A spawn point just outside one living player's view. Co-op: a point that
+    /// lands inside another player's view is re-rolled (around another player),
+    /// so nobody sees monsters pop in.
+    /// </summary>
+    private Vector2 EdgePoint(float extra = 60f)
+    {
+        List<Player> living = LivingPlayers();
+        if (living.Count <= 1)
+        {
+            return EdgePointFor(View(), extra, p => Arena.Clamp(p, 40f), _rng);
+        }
+
+        Vector2 point = Vector2.Zero;
+        for (int attempt = 0; attempt < 4; attempt++)
+        {
+            Player around = living[_rng.RandiRange(0, living.Count - 1)];
+            point = EdgePointFor(State.ViewOf(around), extra, p => Arena.Clamp(p, 40f), _rng);
+            bool seen = false;
+            foreach (Player other in living)
+            {
+                if (other != around && State.ViewOf(other).Grow(-8f).HasPoint(point))
+                {
+                    seen = true;
+                    break;
+                }
+            }
+
+            if (!seen)
+            {
+                break;
+            }
+        }
+
+        return point;
+    }
 
     public Enemy? SpawnAtEdge(PackedScene? scene, bool elite = false) => scene is null ? null : SpawnAt(scene, EdgePoint(), elite);
 
@@ -426,6 +533,13 @@ public partial class RunDirector : Node
         enemy.GlobalPosition = position;
         (float life, float damage) = Scaling(State.Elapsed);
         enemy.ApplyScaling(life, damage);
+        int party = State.PartySize;
+        if (party > 1)
+        {
+            // docs/design/multiplayer.md -> "Party rules": tougher monsters per extra player.
+            enemy.ApplyTierScaling(enemy.IsBoss ? Net.PartyRules.BossLife(party) : Net.PartyRules.MonsterLife(party), 1f);
+        }
+
         enemy.MonsterLevel = MonsterLevelAt(State.Elapsed);
         if (elite)
         {
@@ -445,13 +559,19 @@ public partial class RunDirector : Node
             return;
         }
 
-        int count = 16 + Mathf.RoundToInt(t / 30f);
-        Vector2 centre = State.Player!.GlobalPosition;
-        float radius = State.Player.GetViewportRect().Size.Length() / 2f + 40f;
-        for (int i = 0; i < count; i++)
+        // Co-op: a ring around every living player, the party's total scaled like the spawn rate.
+        List<Player> living = LivingPlayers();
+        int total = Mathf.RoundToInt((16 + Mathf.RoundToInt(t / 30f)) * Net.PartyRules.SpawnRate(State.PartySize));
+        int count = Mathf.Max(8, total / living.Count);
+        foreach (Player player in living.ToArray())
         {
-            Vector2 p = Arena.Clamp(centre + Vector2.Right.Rotated(Mathf.Tau * i / count) * radius, 40f);
-            SpawnAt(scene, p);
+            Vector2 centre = player.GlobalPosition;
+            float radius = State.ViewOf(player).Size.Length() / 2f + 40f;
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 p = Arena.Clamp(centre + Vector2.Right.Rotated(Mathf.Tau * i / count) * radius, 40f);
+                SpawnAt(scene, p);
+            }
         }
 
         EmitSignal(SignalName.Announced, "Swarm!", "They come from every side", new Color(1f, 0.5f, 0.4f));
@@ -464,7 +584,7 @@ public partial class RunDirector : Node
             return null;
         }
 
-        Vector2 at = Arena.Clamp(State.Player!.GlobalPosition + new Vector2(0f, -260f), 120f);
+        Vector2 at = Arena.Clamp(PartyCentre() + new Vector2(0f, -260f), 120f);
         Enemy boss = SpawnAt(scene, at);
         Core.Sfx.Play(this, "boss_warn");
         EmitSignal(SignalName.Announced, name, subtitle, new Color(1f, 0.35f, 0.25f));
@@ -495,10 +615,7 @@ public partial class RunDirector : Node
             }
         }
 
-        foreach (Node node in GetTree().GetNodesInGroup(RunState.PickupGroup))
-        {
-            (node as Pickup)?.Attract();
-        }
+        State.AttractAll();
 
         Core.Sfx.Music(this, "music_boss");
         _colossus = SpawnBoss(Colossus, "The Ember Colossus", "The arena's heart awakens");
@@ -530,14 +647,55 @@ public partial class RunDirector : Node
         EmitSignal(SignalName.Announced, "Victory", "A portal home opens — or stay for greater rewards", new Color(1f, 0.85f, 0.4f));
         Core.Sfx.Play(this, "victory");
         Core.Sfx.Music(this, "music_run");
-        foreach (Node node in GetTree().GetNodesInGroup(RunState.PickupGroup))
-        {
-            (node as Pickup)?.Attract();
-        }
+        State.AttractAll();
 
         ExitPortal = new Portal { Name = "ExitPortal", ZIndex = -1 };
         GetTree().CurrentScene.AddChild(ExitPortal);
         ExitPortal.GlobalPosition = Arena.Clamp(at, 80f);
+        PortalOpened?.Invoke(ExitPortal.GlobalPosition);
+    }
+
+    /// <summary>The exit portal opened (co-op: clients draw it too).</summary>
+    public event System.Action<Vector2>? PortalOpened;
+
+    // --- co-op client mirror -------------------------------------------------------
+
+    /// <summary>Co-op client: shows a banner the host's director announced.</summary>
+    public void Announce(string title, string subtitle, Color color) => EmitSignal(SignalName.Announced, title, subtitle, color);
+
+    /// <summary>Co-op client: a boss replica appeared (boss bar).</summary>
+    public void NotifyBossSpawned(Enemy boss)
+    {
+        if (boss.Name.ToString().Contains("Colossus") || boss is EmberColossus)
+        {
+            _colossus = boss;
+        }
+        else
+        {
+            _herald = boss;
+        }
+
+        EmitSignal(SignalName.BossSpawned, boss);
+    }
+
+    /// <summary>Co-op client: the host's surge and victory state (HUD gauge).</summary>
+    public void ApplyRemoteFlags(bool surging, bool colossusDefeated)
+    {
+        Surging = surging;
+        ColossusDefeated = colossusDefeated;
+    }
+
+    /// <summary>Co-op client: the portal the host opened.</summary>
+    public void ShowRemotePortal(Vector2 at)
+    {
+        if (ExitPortal is not null && IsInstanceValid(ExitPortal))
+        {
+            return;
+        }
+
+        ExitPortal = new Portal { Name = "ExitPortal", ZIndex = -1 };
+        GetTree().CurrentScene.AddChild(ExitPortal);
+        ExitPortal.GlobalPosition = at;
     }
 
     /// <summary>Leaves through the portal: the run ends as a victory.</summary>
@@ -551,22 +709,40 @@ public partial class RunDirector : Node
 
     /// <summary>The portal opens where the Colossus fell — often right on top of the
     /// player — so it only works once they have stepped away from it: nobody should
-    /// leave by accident before choosing whether to stay.</summary>
-    private bool _portalArmed;
+    /// leave by accident before choosing whether to stay. Co-op: per player, and
+    /// the party leaves together — every living player must stand in it.</summary>
+    private readonly HashSet<Player> _portalArmed = new();
 
     private void CheckExitPortal()
     {
-        if (ExitPortal is null || State.Player is null)
+        if (ExitPortal is null)
         {
             return;
         }
 
-        float distance = State.Player.GlobalPosition.DistanceTo(ExitPortal.GlobalPosition);
-        if (distance > 110f)
+        List<Player> living = LivingPlayers();
+        if (living.Count == 0)
         {
-            _portalArmed = true;
+            return;
         }
-        else if (_portalArmed && distance < 34f)
+
+        float radius = living.Count > 1 ? 60f : 34f;
+        bool allIn = true;
+        foreach (Player p in living)
+        {
+            float distance = p.GlobalPosition.DistanceTo(ExitPortal.GlobalPosition);
+            if (distance > 110f)
+            {
+                _portalArmed.Add(p);
+            }
+
+            if (!_portalArmed.Contains(p) || distance >= radius)
+            {
+                allIn = false;
+            }
+        }
+
+        if (allIn)
         {
             TakeExitPortal();
         }

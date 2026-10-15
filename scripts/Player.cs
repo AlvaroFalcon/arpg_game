@@ -90,6 +90,60 @@ public partial class Player : CharacterBody2D
     /// </summary>
     public const float CloseZoom = 1.5f;
 
+    // --- co-op roles (docs/design/multiplayer.md -> "Players") ---------------------
+
+    /// <summary>
+    /// True for the player this machine controls (camera, HUD, inventory, input).
+    /// Single-player: always. Co-op: false for the other party members, which are
+    /// either driven by network <see cref="Command"/>s (on the host) or are
+    /// <see cref="Puppet"/>s placed by snapshots (on a client). Set before _Ready.
+    /// </summary>
+    public bool IsLocal { get; set; } = true;
+
+    /// <summary>Co-op client: another party member, moved only by snapshots.</summary>
+    public bool Puppet { get; set; }
+
+    /// <summary>Network peer that controls this player (0 offline, 1 the host).</summary>
+    public long PeerId { get; set; }
+
+    /// <summary>Display name over a remote player's head.</summary>
+    public string NetName { get; set; } = "";
+
+    /// <summary>When set, movement, sprint, dodge, flasks and aim read this instead
+    /// of the keyboard and mouse (a remote player on the host, or a test).</summary>
+    public Net.PlayerCommand? Command { get; set; }
+
+    /// <summary>Where the player aims: the mouse locally, the sent aim point remotely.</summary>
+    public Vector2 AimPoint => Command is { } c ? c.Aim : GetGlobalMousePosition();
+
+    /// <summary>The movement direction actually used on the last physics step
+    /// (WASD or a click-to-move path), scaled 0..1. A co-op client sends this to
+    /// the host, so pathing to an item moves the host's copy too.</summary>
+    public Vector2 LastMoveDir { get; private set; }
+
+    /// <summary>Co-op: choosing a level-up card — cannot act or be hurt, and
+    /// monsters look for someone else (docs/design/multiplayer.md -> "Level-ups").</summary>
+    public bool Warded
+    {
+        get => _warded;
+        set
+        {
+            _warded = value;
+            if (Health is not null)
+            {
+                Health.Warded = value;
+            }
+        }
+    }
+
+    private bool _warded;
+
+    /// <summary>Co-op: 0..1 progress of an ally reviving this downed player (drawn as a ring).</summary>
+    public float ReviveProgress { get; set; }
+
+    /// <summary>Co-op client: shows a hit the host resolved (number, flash, sound).</summary>
+    public void ShowHurt(float amount) => OnDamaged(amount);
+
     public void UseCloseCamera()
     {
         if (GetNodeOrNull<Camera2D>("Camera2D") is { } camera)
@@ -101,6 +155,15 @@ public partial class Player : CharacterBody2D
     public override void _Ready()
     {
         AddToGroup(CombatQuery.PlayerGroup);
+        if (IsLocal)
+        {
+            AddToGroup(CombatQuery.LocalPlayerGroup);
+        }
+        else
+        {
+            ConfigureRemote();
+        }
+
         if (GetNodeOrNull<Flasks>("Flasks") is null)
         {
             AddChild(new Flasks { Name = "Flasks" });
@@ -135,6 +198,64 @@ public partial class Player : CharacterBody2D
     /// <see cref="_lmbGate"/> never latches on for it.
     /// </summary>
     public override void _UnhandledInput(InputEvent @event) => _lmbGate.HandleUnhandledInput(@event);
+
+    /// <summary>
+    /// Another party member: no camera of its own, no inventory window, no debug
+    /// readout, no reading this machine's mouse — and a name over its head.
+    /// </summary>
+    private void ConfigureRemote()
+    {
+        SetProcessUnhandledInput(false);
+        if (GetNodeOrNull<Camera2D>("Camera2D") is { } camera)
+        {
+            camera.Enabled = false;
+        }
+
+        foreach (string child in new[] { "InventoryUI", "DebugReadout" })
+        {
+            if (GetNodeOrNull(child) is { } node)
+            {
+                RemoveChild(node);
+                node.QueueFree();
+            }
+        }
+
+        if (GetNodeOrNull<PlayerSkillInput>("PlayerSkillInput") is { } skills)
+        {
+            skills.SetProcessUnhandledInput(false);
+        }
+
+        var tag = new Label
+        {
+            Name = "NameTag",
+            Text = NetName,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Position = new Vector2(-80f, -66f),
+            Size = new Vector2(160f, 20f),
+            ZIndex = 5,
+        };
+        tag.AddThemeFontSizeOverride("font_size", 13);
+        tag.AddThemeColorOverride("font_color", new Color(0.75f, 0.9f, 1f));
+        tag.AddThemeColorOverride("font_outline_color", Colors.Black);
+        tag.AddThemeConstantOverride("outline_size", 4);
+        AddChild(tag);
+    }
+
+    public override void _Draw()
+    {
+        // Co-op: a downed player shows how far an ally's revive has come.
+        if (Health is { IsDead: true } && !IsLocalOffline)
+        {
+            DrawArc(new Vector2(0f, -4f), 22f, 0f, Mathf.Tau, 32, new Color(0f, 0f, 0f, 0.5f), 4f, true);
+            if (ReviveProgress > 0f)
+            {
+                DrawArc(new Vector2(0f, -4f), 22f, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * ReviveProgress, 32, new Color(0.45f, 1f, 0.55f), 4f, true);
+            }
+        }
+    }
+
+    /// <summary>True outside co-op (nothing to draw for a downed player there).</summary>
+    private bool IsLocalOffline => IsLocal && PeerId == 0;
 
     /// <summary>
     /// The item a click asked for while it was out of reach. Set by
@@ -261,7 +382,7 @@ public partial class Player : CharacterBody2D
         }
 
         bool moving = Velocity.LengthSquared() > 25f;
-        UpdateFacing(moving ? Velocity : GetGlobalMousePosition() - GlobalPosition);
+        UpdateFacing(moving ? Velocity : Puppet ? Vector2.Zero : AimPoint - GlobalPosition);
         string anim = (moving ? "walk" : "idle") + _facing;
         if (_sprite.SpriteFrames?.HasAnimation(anim) != true)
         {
@@ -273,10 +394,24 @@ public partial class Player : CharacterBody2D
             _sprite.Play(anim);
         }
 
-        if (_hurtFlash > 0f)
+        if (!IsLocalOffline)
+        {
+            QueueRedraw();
+        }
+
+        if (Health is { IsDead: true } && !IsLocalOffline)
+        {
+            // Co-op: downed, waiting for a revive.
+            _sprite.Modulate = new Color(0.45f, 0.45f, 0.55f, 0.6f);
+        }
+        else if (_hurtFlash > 0f)
         {
             _hurtFlash -= (float)delta;
             _sprite.Modulate = new Color(2.5f, 0.6f, 0.6f);
+        }
+        else if (Warded)
+        {
+            _sprite.Modulate = new Color(0.8f, 0.9f, 1.4f, 0.75f);
         }
         else if (Health is { InvulnerableTime: > 0f } && !(Dodge?.IsDashing ?? false))
         {
@@ -315,7 +450,7 @@ public partial class Player : CharacterBody2D
             Stamina = max;
         }
 
-        bool wants = moving && Input.IsActionPressed("sprint") && !Exhausted && Stamina > 0f;
+        bool wants = moving && (Command?.Sprint ?? Input.IsActionPressed("sprint")) && !Exhausted && Stamina > 0f;
         IsSprinting = wants;
         if (wants)
         {
@@ -346,8 +481,15 @@ public partial class Player : CharacterBody2D
     public override void _PhysicsProcess(double delta)
     {
         float speed = _stats.MovementSpeed.Value;
+        LastMoveDir = Vector2.Zero;
 
-        if (!ControlsEnabled || (Health?.IsDead ?? false))
+        // A co-op puppet is placed by snapshots (Net.RiftClient), never simulated.
+        if (Puppet)
+        {
+            return;
+        }
+
+        if (!ControlsEnabled || Warded || (Health?.IsDead ?? false))
         {
             Velocity = Vector2.Zero;
             return;
@@ -362,7 +504,9 @@ public partial class Player : CharacterBody2D
             return;
         }
 
-        Vector2 wasdDir = Input.GetVector("move_left", "move_right", "move_up", "move_down");
+        Vector2 wasdDir = Command is { } command
+            ? command.Move.LimitLength(1f)
+            : Input.GetVector("move_left", "move_right", "move_up", "move_down");
         speed *= UpdateSprint((float)delta, wasdDir != Vector2.Zero || !_navigationAgent.IsNavigationFinished());
         if (wasdDir != Vector2.Zero)
         {
@@ -378,6 +522,7 @@ public partial class Player : CharacterBody2D
 
             CancelPendingPickup();
 
+            LastMoveDir = wasdDir;
             Velocity = wasdDir * speed;
             MoveAndSlide();
             return;
@@ -387,8 +532,8 @@ public partial class Player : CharacterBody2D
         // Move sentinel and skill_slot_lmb is held; or force_move is held
         // regardless of what's bound. Both retarget to the same mouse world
         // position, so this collapses to one boolean feeding one retarget line.
-        bool pathFollow = (_skillUser.SlotIsBuiltInMove(SkillSlotId.Lmb) && _lmbGate.Poll())
-            || Input.IsActionPressed("force_move");
+        bool pathFollow = Command is null
+            && ((_skillUser.SlotIsBuiltInMove(SkillSlotId.Lmb) && _lmbGate.Poll()) || Input.IsActionPressed("force_move"));
         if (pathFollow)
         {
             CancelPendingPickup();
@@ -420,7 +565,8 @@ public partial class Player : CharacterBody2D
         }
 
         Vector2 nextPathPosition = _navigationAgent.GetNextPathPosition();
-        Velocity = GlobalPosition.DirectionTo(nextPathPosition) * speed;
+        LastMoveDir = GlobalPosition.DirectionTo(nextPathPosition);
+        Velocity = LastMoveDir * speed;
         MoveAndSlide();
     }
 }

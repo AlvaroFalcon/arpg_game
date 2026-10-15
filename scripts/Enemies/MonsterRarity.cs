@@ -40,6 +40,20 @@ public static class MonsterRarities
         new MonsterMod { Id = "barrage", Name = "Barrage", RangedOnly = true },
     };
 
+    /// <summary>A mod by id (co-op replicas are told which mods the host rolled).</summary>
+    public static MonsterMod? FindMod(string id)
+    {
+        foreach (MonsterMod m in Mods)
+        {
+            if (m.Id == id)
+            {
+                return m;
+            }
+        }
+
+        return null;
+    }
+
     public static Color Color(MonsterRarity r) => r switch
     {
         MonsterRarity.Magic => new Color(0.45f, 0.6f, 1f),

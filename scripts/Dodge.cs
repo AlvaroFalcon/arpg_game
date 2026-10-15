@@ -109,7 +109,15 @@ public partial class Dodge : Node
             }
         }
 
-        if (InputEnabled && Input.IsActionJustPressed("dodge"))
+        if (_body is Player { Command: { } command })
+        {
+            // A remote co-op player (or a test): the press arrives as a counter.
+            if (command.ConsumeDodge() && InputEnabled)
+            {
+                TryDodge(command.DodgeDir);
+            }
+        }
+        else if (InputEnabled && _body is not Player { IsLocal: false } && Input.IsActionJustPressed("dodge"))
         {
             Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
             Vector2 direction = input != Vector2.Zero
