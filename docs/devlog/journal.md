@@ -336,3 +336,15 @@ The owner approved the cascade from issue #13. Item rarity now rolls from the ra
 ## 2026-10-14 — Spawning: fields, budgets and a director
 
 After researching spawn techniques with and without noise, the owner picked the recommended mix. Realities: pack spots by Bridson Poisson-disk sampling, kept with a chance from a noise density field (chambers hotter than passages), with quotas per walking-distance zone so the whole cave is used; each pack spends a budget (tier × heat × zone × modifiers) on monsters by cost; six noise "territories" give regions a resident species; members stand on a golden-angle spiral. The Rift: a director with intensity waves from 1D noise, a breather when the player is hurt, a cost budget, spawns on the edges of the real view rectangle (never on screen, even beside an arena wall) and a leash that brings stragglers back. A first wave field with two octaves crossed its mean 50 times in 15 minutes — jittery, not waves — so it's one octave at a lower frequency now (25 crossings).
+
+## 2026-10-15 — Monster scaling by time to kill
+
+Owner: "with little effort I deal too much damage to them." Measured first: against a fresh character, a typical one out-damaged monster life by ×6 at tier 1, ×25 at tier 5 and ×130 at tier 10. The single biggest reason was flat "+X damage", which could roll on all eleven gear slots and is added to a skill's small base (Fireball 22 → ~146 with a tier-10 set).
+
+Three changes, all approved after a round of research (PoE's monster level table and added damage effectiveness, D4/Last Epoch level-based mitigation, the design rule that whichever curve grows faster eventually wins):
+
+- **Gear.** Flat added damage only rolls on weapons, rings and the amulet. Skills take it at an *added damage effectiveness*: Spark 50 %, Fireball 100 %, Meteor 150 %.
+- **Monster level drives monster stats.** `MonsterScaling` holds an expected-damage table for a *reference character* at each monster level, and life = time to kill × that damage. The targets are normal 0.4 s, magic 1.5 s, rare 5 s, unique 10 s and boss 45 s. Resistances rise to 30 % at level 85 and armour to 15 % of the reference hit. Each theme resists its own element.
+- **The bot plays the reference character** (`--gear=typical --level=auto`): gems at the right level, supports, ascendancy and a fresh rare set for the tier. It logs time to kill per rarity, so the table is calibrated rather than guessed.
+
+The first table, derived from a paper model, was wrong at both ends: too soft at tier 1 (boss in 19 s) and far too hard from tier 10 (boss 125 s, collapses at 15 and 20). The model hadn't caught that once gems and supports max out around tier 10, only gear keeps the player's damage growing. Two rescaling passes later the Arcanist sits on the targets at tiers 5–20 (rare 5–9 s, boss 39–64 s). Another surprise was armour: with PoE's formula, a target of "25 % against the reference hit" cost melee's smaller hits ~40 %, so the target dropped to 15 %. The Warrior bot is still clearly slower than the Arcanist, a separate class/bot gap.

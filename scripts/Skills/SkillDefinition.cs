@@ -39,6 +39,16 @@ public abstract partial class SkillDefinition : Resource
     public float BaseDamage;
 
     /// <summary>
+    /// How much of the caster's flat added damage (gear "+X damage") this skill
+    /// gets — docs/design/skills.md -> "Added damage effectiveness". Fast or
+    /// many-hit skills with a small base (Spark 50 %) get less, slow heavy hits
+    /// (Meteor 150 %) more, so flat gear stops multiplying low-base skills far
+    /// more than the rest.
+    /// </summary>
+    [Export]
+    public float AddedDamageEffectiveness = 1f;
+
+    /// <summary>
     /// Minimum gap between two consecutive uses of this skill, before
     /// AttackSpeed/CastSpeed scaling. See docs/design/skills.md -> "Rate levers".
     /// </summary>

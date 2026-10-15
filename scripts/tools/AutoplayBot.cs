@@ -50,7 +50,8 @@ public partial class AutoplayBot : Node
             if (kv.Length == 2 && kv[0] == "mode") _mode = kv[1];
             if (kv.Length == 2 && kv[0] == "class") _classId = kv[1];
             if (kv.Length == 2 && kv[0] == "tier") _startTier = kv[1].ToInt();
-            if (kv.Length == 2 && kv[0] == "level") _startLevel = kv[1].ToInt();
+            if (kv.Length == 2 && kv[0] == "level") _startLevel = kv[1] == "auto" ? 0 : kv[1].ToInt();
+            if (kv.Length == 2 && kv[0] == "gear") _gear = kv[1];
             if (kv.Length == 2 && kv[0] == "layouts") _layouts = kv[1].Split(',');
         }
 

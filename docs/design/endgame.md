@@ -99,8 +99,9 @@ One number drives everything (`RealityTiers`, scripts/World/RealityTheme.cs):
 | | Tier 1 | Tier 10 | Tier 20 |
 |---|---|---|---|
 | Monster level / item level | 1 | 41 | 85 |
-| Monster life multiplier | ×1 | ×4.6 | ×25 |
+| Monster life multiplier (normal; see "Monster scaling") | ×1.7 | ×31 | ×73 |
 | Monster damage multiplier | ×1 | ×2.1 | ×5 |
+| Monster resistances (all elements) / armour vs the reference hit | 0 % / 0 % | 14 % / 7 % | 30 % / 15 % |
 | Magic / rare pack chance | 45 % / 30 % | 62 % / 49 % | 80 % / 70 % |
 | Unique-rare chance per spot | 12 % | 25 % | 40 % |
 | Pack budget (grey monsters in a normal pack, before heat/zone) | 6.5 | 10.8 | 15.5 |
@@ -108,11 +109,94 @@ One number drives everything (`RealityTiers`, scripts/World/RealityTheme.cs):
 | Magic per magic pack · rares per rare pack | ≈3 · 1 | ≈5 · 1 | ≈8 · 2 (from tier 12) |
 | Portals (lives) | 3 | 3 | 1 (from tier 15) |
 
-Life and damage multipliers are exponential (25^((t−1)/19), 5^((t−1)/19)): each
-tier is the same *relative* step. Monster life outpaces damage for the same
-reason as in the survivor run — player damage scales with gear and gems, player
-life much less. Item level follows monster level, so the authored affix tiers map
-onto tiers 1–20 without new data.
+Life follows the reference character's damage (next section); damage is
+exponential (5^((t−1)/19)): each tier is the same *relative* step. Monster life
+outpaces damage for the same reason as in the survivor run — player damage
+scales with gear and gems, player life much less. Item level follows monster
+level, so the authored affix tiers map onto tiers 1–20 without new data.
+
+### Monster scaling (2026-10-15)
+
+Owner feedback: "with little effort I deal too much damage to them". The old
+curve was a free-standing ×1 → ×25 life multiplier per tier; measured against
+the player's actual power it fell behind by ×6 at tier 1, ×25 at tier 5 and
+×130 at tier 10, mostly through flat added damage on every gear slot (fixed
+separately: docs/design/affixes.md -> "Slot restrictions", docs/design/skills.md
+-> "Added damage effectiveness"). Now monster stats come from the **monster
+level** (`MonsterScaling`, scripts/World/MonsterScaling.cs — THE place to tune;
+keep this section in sync):
+
+1. **A reference character** per monster level: character level 8 at monster
+   level 1 → 70 at 85; gems at 1 + level/2 (max 20); a damage support in every
+   socket of the main skill; the class's first ascendancy once earned (after
+   tier 5, more after tier 12); one rare per slot at item level = monster level
+   − 5 (best of two rolls by damage affixes). The bot plays exactly this
+   character (`--gear=typical --level=auto`).
+2. **Its single-target damage per second** by monster level, `ExpectedDpsTable`
+   (log-interpolated between anchors), calibrated with the bot. Tiers 1–3
+   are deliberately kept under the reference (it measured ~300 DPS at tier 1):
+   a character fresh from the introduction wears one item, not a rare set.
+
+   | Monster level (tier) | 1 (1) | 10 (3) | 19 (5) | 28 (7) | 37 (9) | 46 (11) | 54 (13) | 63 (15) | 72 (17) | 85 (20) |
+   |---|---|---|---|---|---|---|---|---|---|---|
+   | Expected DPS | 130 | 500 | 850 | 1 300 | 1 900 | 2 900 | 3 700 | 4 300 | 4 900 | 5 500 |
+
+3. **Life = time to kill × expected DPS.** A "standard" monster (authored base
+   life 30; bats lighter, brutes heavier keep their ratio) dies in `TtkNormal`;
+   rarer monsters get the TTK ratio as their total life multiplier in
+   realities (the Survival Rift keeps its own ×2/×5/×12):
+
+   | | Normal | Magic | Rare | Unique-rare | Boss |
+   |---|---|---|---|---|---|
+   | Time to kill (reference character, single target) | 0.4 s | 1.5 s | 5 s | 10 s | 45 s |
+   | Life vs a normal | ×1 | ×3.75 | ×12.5 | ×25 | — |
+
+   A boss's life is set directly: 45 s × expected DPS, whatever its authored
+   life (the per-theme boss multipliers now only matter in the introduction).
+4. **Defences by level** on every reality monster (added on top of species and
+   monster mods): elemental resistances 0 % at level 1 → 30 % at 85, and armour
+   that stops 0 → 15 % of the reference character's hit (PoE armour formula, so
+   many small hits lose more — a melee skill's smaller hits lost ~40 % with a
+   25 % target, so the target was lowered). Each theme's monsters resist their
+   own element by +25 % more: **Ashen** fire, **Drowned** cold, **Crypt**
+   physical (+5 % armour — less than +25 % resistance because small hits lose
+   far more to armour). The type of damage now matters, and penetration has a job.
+5. **Damage** keeps its own gentler curve (×1 → ×5 at level 85).
+
+The introduction (The Threshold) keeps its authored life ×0.6 and no
+defences: its hero is level 1 with no gear.
+
+**Rejected:** dynamic difficulty that measures the player's real damage and
+raises life to match (punishes improving gear and build, the core loop); a
+penalty for the level difference (the gap was damage, not level).
+
+**Bot calibration** (one reality per line, Arcanist with Fireball, before the
+table above; measured in Ashen, where fire is resisted, so these TTK are slow
+by ×1.3–2.2): the first table (anchors 100 → 24 000) gave TTK far under target
+at tier 1 (boss 19 s, magic 0.15 s) and far over from tier 10 (boss 125 s,
+normal 1 s), with collapses at tiers 15 and 20 — the reference character's
+damage flattens once gems and supports are maxed (around tier 10) and only gear
+keeps growing. The anchors were rescaled by measured/target per tier, twice.
+Final pass (median time to kill; each line one reality with fresh random gear,
+so expect ±50 % between runs):
+
+| Tier | Class / reality | Normal | Magic | Rare | Boss | Outcome |
+|---|---|---|---|---|---|---|
+| 5 | Arcanist / Drowned | 0.15 s | — | 5.9 s | 39 s | cleared 2:31 |
+| 5 | Warrior / Bone Warrens | ~0 | 2.3 s | 74 s | 163 s | cleared 5:58 |
+| 10 | Arcanist / Bone Warrens | ~0 | 1.6 s | 4.9 s | 23 s | cleared 1:58 |
+| 10 | Warrior / Drowned | 0.33 s | 2.1 s | — | 64 s | cleared 4:30 |
+| 15 | Arcanist / Drowned | 0.50 s | 1.6 s | — | 64 s | cleared 2:50, 2 portals lost |
+| 15 | Warrior / Ashen | 1.15 s | 50 s | — | — | timeout (boss untouched) |
+| 20 | Arcanist / Bone Warrens | 0.57 s | 1.8 s | 8.9 s | 54 s | cleared 4:53, 2 portals lost |
+| 20 | Warrior / Drowned | 0.48 s | 3.4 s | 1.7 s | 146 s | cleared 4:05, 2 portals lost |
+
+Normals often die to one area hit (median ~0): the target is per monster, and
+area skills beat it by design. The Arcanist lands on the targets; the
+Warrior's melee bot is slower, worst against armour (crypt) and in Ashen, where
+Ember Brutes do most of the damage it takes — a class/bot gap to look at
+separately, not a table problem. Crypt's armour affinity was halved after this
+pass.
 
 **Portals**: dying costs a portal and respawns you at the entrance (a boss fight
 in progress resets: the gate opens and the boss goes back to sleep). The last
@@ -384,8 +468,12 @@ of loot/level toasts.
 ## Tuning (autoplay bot, reality mode)
 
 `scripts/autoplay.sh --mode=reality --class=<id> --tier=1 --runs=6` plays
-realities back to back with a fresh in-memory character that never equips gear
-(so it measures the "levels and gems only" floor), moving up a tier per clear.
+realities back to back with a fresh in-memory character, moving up a tier per
+clear. By default (`--gear=typical`, 2026-10-15) it becomes the reference
+character of "Monster scaling" before every reality, and `--level=auto` sets
+the character level that reference expects at the tier; `--gear=none` is the
+old "levels and gems only" floor the findings below were measured with. Every
+reality logs a `ttk` line: the median and mean time to kill per monster rarity.
 Findings and changes:
 
 | Finding | Change |

@@ -7,6 +7,7 @@ using ArpgGame.Characters;
 using ArpgGame.Combat;
 using ArpgGame.Core;
 using ArpgGame.Enemies;
+using ArpgGame.Progression;
 using ArpgGame.Run;
 using ArpgGame.World;
 
@@ -19,8 +20,15 @@ namespace ArpgGame.Tools;
 /// realities back to back: it paths to the nearest monster or pickup with a
 /// BFS over the layout grid, fights with the same threat avoidance as the
 /// survival bot, spends passive points as it levels, moves up a tier after
-/// each clear and stays put after a collapse. It never equips drops, so it
-/// measures the "level and gems only" floor of progression.
+/// each clear and stays put after a collapse. It never equips drops: with
+/// <c>--gear=none</c> it measures the "level and gems only" floor of
+/// progression; the default <c>--gear=typical</c> gives it, before every
+/// reality, the reference character of docs/design/endgame.md -> "Monster
+/// scaling": gems at the level its character level gives, supports in every
+/// socket, its ascendancy once earned and a fresh set of rare gear at the
+/// tier's item level. <c>--level=auto</c> sets the character level the
+/// reference expects at each tier. Every RESULT line carries the time to kill
+/// per monster rarity (first hit to death), the number the life table aims at.
 /// </summary>
 public partial class AutoplayBot
 {
@@ -37,6 +45,18 @@ public partial class AutoplayBot
     private Vector2 _goal;
     private bool _goalIsEnemy;
     private CharacterData? _character;
+    private string _gear = "typical";
+    private RealityController? _ttkReality;
+    private readonly Dictionary<ulong, float> _firstHit = new();
+    private readonly Dictionary<string, List<float>> _ttk = new();
+    private int _gearedTier;
+
+    /// <summary>Supports the reference character socketed, best first (the bot
+    /// takes the first ones its main skill accepts).</summary>
+    private static readonly string[] SupportPreference =
+    {
+        "elemental_focus", "brutality", "concentrated_effect", "faster_projectiles", "spell_echo", "multistrike", "faster_casting", "melee_splash", "pierce",
+    };
 
     private async Task RealityLoop()
     {
@@ -49,12 +69,24 @@ public partial class AutoplayBot
 
         profile.Persist = false;
         _character = profile.CreateCharacter($"Bot-{_classId}", _classId);
-        _character.Level = Mathf.Max(1, _startLevel);
         int tier = Mathf.Clamp(_startTier, 1, RealityTiers.MaxTier);
+        _character.Level = _startLevel <= 0 ? MonsterScaling.ReferenceCharacterLevel(RealityTiers.MonsterLevel(tier)) : Mathf.Max(1, _startLevel);
+        Health.AnyHitResolved += OnAnyHit;
+        Enemy.AnyKilled += OnAnyKilled;
         int clears = 0;
         for (_runIndex = 0; _runIndex < _runs; _runIndex++)
         {
+            if (_startLevel <= 0)
+            {
+                _character.Level = Mathf.Max(_character.Level, MonsterScaling.ReferenceCharacterLevel(RealityTiers.MonsterLevel(tier)));
+            }
+
             SpendPassives(_character);
+            if (_gear == "typical")
+            {
+                ApplyReferenceCharacter(_character, tier);
+            }
+
             string layout = _layouts is { Length: > 0 } ids ? ids[_runIndex % ids.Length] : LayoutCatalog.Layouts[_runIndex % LayoutCatalog.Layouts.Count].Id;
             RealityLaunch.Tier = tier;
             RealityLaunch.LayoutId = layout;
@@ -68,6 +100,9 @@ public partial class AutoplayBot
                 break;
             }
 
+            _ttkReality = reality;
+            _firstHit.Clear();
+            _ttk.Clear();
             _damageTaken = 0f;
             _lastLife = -1f;
             _dodges = 0;
@@ -102,6 +137,7 @@ public partial class AutoplayBot
             string outcome = reality.Completed ? "CLEARED" : reality.Collapsed ? "COLLAPSED" : "TIMEOUT";
             string boss = reality.Boss is { } b && IsInstanceValid(b) ? $" boss@{b.LifeFraction:P0}" : "";
             Log($"[BOT] RESULT reality={_runIndex + 1} tier={tier} layout={layout} outcome={outcome} time={UI.UiTheme.FormatTime(reality.Elapsed)} kills={reality.Kills}/{reality.MonstersTotal} portalsLeft={reality.PortalsLeft} level={levelBefore}->{_character.Level} dodges={_dodges} dmgTaken={_damageTaken:0}{boss}{perf}");
+            Log($"[BOT] ttk tier={tier} gear={_gear} {TtkSummary()}");
             string sources = string.Join(", ", _damageBySource.OrderByDescending(kv => kv.Value).Take(6).Select(kv => $"{kv.Key} {kv.Value:0}"));
             Log($"[BOT] damage by source: {sources}");
 
@@ -115,9 +151,124 @@ public partial class AutoplayBot
             await ToSignal(GetTree().CreateTimer(0.3, processAlways: true), SceneTreeTimer.SignalName.Timeout);
         }
 
+        Health.AnyHitResolved -= OnAnyHit;
+        Enemy.AnyKilled -= OnAnyKilled;
         Log($"[BOT] done: {clears}/{_runs} cleared, reached tier {tier}, character level {_character.Level}");
         GetTree().Quit();
     }
+
+    private void OnAnyHit(Health health, DamagePayload payload, float taken)
+    {
+        if (_ttkReality is { } r && IsInstanceValid(r) && health.GetParent() is Enemy e && payload.SourceActor is Player)
+        {
+            _firstHit.TryAdd(e.GetInstanceId(), r.Elapsed);
+        }
+    }
+
+    private void OnAnyKilled(Enemy e)
+    {
+        if (_ttkReality is not { } r || !IsInstanceValid(r) || !_firstHit.Remove(e.GetInstanceId(), out float first))
+        {
+            return;
+        }
+
+        string key = e.IsBoss ? "boss" : e.Rarity.ToString().ToLowerInvariant();
+        if (!_ttk.TryGetValue(key, out List<float>? list))
+        {
+            _ttk[key] = list = new List<float>();
+        }
+
+        list.Add(r.Elapsed - first);
+    }
+
+    /// <summary>"normal med=0.31s avg=0.42s n=180 · magic ...": the median resists AoE one-shots and stragglers alike.</summary>
+    private string TtkSummary() => string.Join(" · ", new[] { "normal", "magic", "rare", "unique", "boss" }
+        .Where(_ttk.ContainsKey)
+        .Select(k =>
+        {
+            List<float> l = _ttk[k].OrderBy(v => v).ToList();
+            return $"{k} med={l[l.Count / 2]:0.00}s avg={l.Average():0.00}s n={l.Count}";
+        }));
+
+    /// <summary>
+    /// The reference character of docs/design/endgame.md -> "Monster scaling" at
+    /// this tier: gems at <see cref="MonsterScaling.ReferenceGemLevel"/>, a
+    /// damage support in every socket of the main skill, the class's first
+    /// ascendancy once earned (notables first), and rare gear rolled at the
+    /// tier's item level (best of two rolls per slot by damage affixes —
+    /// a player picks up more than one item per slot).
+    /// </summary>
+    private void ApplyReferenceCharacter(CharacterData c, int tier)
+    {
+        int gemLevel = MonsterScaling.ReferenceGemLevel(c.Level);
+        foreach (GemData gem in c.Gems)
+        {
+            gem.Level = Mathf.Max(gem.Level, gemLevel);
+        }
+
+        LoadoutSlot main = c.Loadout[0];
+        if (c.FindGem(main.SkillUid) is { } skillGem && UpgradeCatalog.Skills.FirstOrDefault(s => s.Id == skillGem.Id) is { } entry)
+        {
+            foreach (string id in SupportPreference)
+            {
+                if (main.SupportUids.Count >= c.SupportSockets)
+                {
+                    break;
+                }
+
+                bool have = main.SupportUids.Any(uid => c.FindGem(uid)?.Id == id);
+                if (!have && UpgradeCatalog.Supports.FirstOrDefault(s => s.Id == id) is { } sup && sup.Accepts(entry.Definition))
+                {
+                    main.SupportUids.Add(c.AddGem(id, true, gemLevel).Uid);
+                }
+            }
+        }
+
+        if (tier > AscendancyCatalog.Tier1Unlock && c.Class.Ascendancies.Count > 0)
+        {
+            c.Ascendancy ??= c.Class.Ascendancies[0];
+            c.AscendancyPoints = AscendancyCatalog.FirstPoints + (tier > AscendancyCatalog.Tier2Unlock ? AscendancyCatalog.SecondPoints : 0);
+            foreach (AscendancyNode node in AscendancyCatalog.For(c.Ascendancy).OrderByDescending(n => n.Notable))
+            {
+                if (c.AscendancyPointsFree <= 0)
+                {
+                    break;
+                }
+
+                c.AscendancyNodes.Add(node.Id);
+            }
+        }
+
+        if (_gearedTier == tier)
+        {
+            return;
+        }
+
+        _gearedTier = tier;
+        int itemLevel = MonsterScaling.ReferenceItemLevel(RealityTiers.MonsterLevel(tier));
+        string weapon = c.ClassId switch { "warrior" => "iron_axe", "rogue" => "bone_dagger", _ => "iron_wand" };
+        foreach ((string id, Items.EquipmentSlot slot) in new[]
+        {
+            (weapon, Items.EquipmentSlot.Weapon), ("oak_buckler", Items.EquipmentSlot.Offhand), ("leather_cap", Items.EquipmentSlot.Helmet),
+            ("ringmail_vest", Items.EquipmentSlot.BodyArmour), ("rawhide_gloves", Items.EquipmentSlot.Gloves), ("rawhide_boots", Items.EquipmentSlot.Boots),
+            ("rope_belt", Items.EquipmentSlot.Belt), ("copper_amulet", Items.EquipmentSlot.Amulet), ("copper_ring", Items.EquipmentSlot.Ring1),
+            ("copper_ring", Items.EquipmentSlot.Ring2), ("linen_trousers", Items.EquipmentSlot.Pants),
+        })
+        {
+            if (Items.ItemFactory.FindBase(id) is not { } b)
+            {
+                continue;
+            }
+
+            Items.EquipmentItem best = Items.ItemFactory.Roll(b, Items.Rarity.Rare, itemLevel, _rng);
+            Items.EquipmentItem other = Items.ItemFactory.Roll(b, Items.Rarity.Rare, itemLevel, _rng);
+            c.Equipped[slot] = DamageAffixes(other) > DamageAffixes(best) ? other : best;
+        }
+
+        Log($"[BOT] reference character: lv {c.Level}, gems {gemLevel}, {c.Loadout[0].SupportUids.Count} supports, ascendancy {c.Ascendancy ?? "-"} ({c.AscendancyNodes.Count}), rare gear ilvl {itemLevel}");
+    }
+
+    private static int DamageAffixes(Items.EquipmentItem item) => item.RolledAffixes.Count(a => a.Definition.Stat == Stats.StatId.Damage);
 
     /// <summary>Spends free points walking outward from the start, notables and keystones welcome.</summary>
     private void SpendPassives(CharacterData c)

@@ -16,6 +16,7 @@ script = ExtResource("s")
 DisplayName = "Fireball"
 Description = "Hurls a ball of fire at the cursor. Fire hits can ignite."
 BaseDamage = 22.0
+AddedDamageEffectiveness = 1.0
 BaseUseTime = 0.45
 Tags = 518
 Speed = 520.0

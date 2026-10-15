@@ -346,7 +346,7 @@ public partial class AscendancyEffects : Node, IDamageHook
             return;
         }
 
-        float damage = Stat.ComputeFormula(skill.Definition.BaseDamage, Player.Stats.GetModifiers(new ModifierQuery(StatId.Damage, tags))) * skill.LevelDamageMultiplier * 0.6f;
+        float damage = Stat.ComputeFormula(skill.Definition.BaseDamage, Player.Stats.GetModifiers(new ModifierQuery(StatId.Damage, tags)), skill.Definition.AddedDamageEffectiveness) * skill.LevelDamageMultiplier * 0.6f;
         Vector2 aim = Player.GlobalPosition.DirectionTo(Player.GetGlobalMousePosition());
         if (Core.GameSettings.Get(this)?.AutoAim == true && CombatQuery.NearestHostile(GetTree(), Player.GlobalPosition, Faction.Player, 500f, requireSight: true) is { } t)
         {

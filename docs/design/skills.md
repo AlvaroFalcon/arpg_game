@@ -200,7 +200,25 @@ result  = (base + caster's Flat damage mods)
 ```
 
 i.e. exactly the existing `Stat` formula from `docs/design/stats.md`, but with the
-base coming from the skill rather than from a stat the actor owns. A level-1 goblin
+base coming from the skill rather than from a stat the actor owns.
+
+**Added damage effectiveness (2026-10-15).** The Flat sum is multiplied by the
+skill's `AddedDamageEffectiveness` before it joins the base
+(`Stat.ComputeFormula(base, mods, effectiveness)`), PoE's rule: flat damage from
+gear is worth the same "+10" to every skill, so a fast or many-hit skill with a
+small base gained far more from it than a slow heavy one. Values
+(`resources/skills/run/*.tres`, shown in the gem tooltip when not 100 %):
+
+| Skill | Base | Effectiveness |
+|---|---|---|
+| Spark, Throwing Knives | 12, 8 | 50 % |
+| Blades | 14 | 60 % |
+| Double Strike | 15 | 70 % |
+| Fireball, Frost Nova, Cleave | 22, 20, 24 | 100 % |
+| Ground Slam, Sunder | 34, 36 | 130 % |
+| Meteor | 50 | 150 % |
+
+Increased and More are untouched: only flat damage depends on the skill. A level-1 goblin
 and a level-80 player firing the same `Fireball.tres` get the same base and
 different totals, because the modifier stack differs.
 

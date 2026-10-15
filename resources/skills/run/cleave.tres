@@ -15,6 +15,7 @@ script = ExtResource("s")
 DisplayName = "Cleave"
 Description = "A wide swing that hits every enemy in front of you. Scales with weapon damage."
 BaseDamage = 24.0
+AddedDamageEffectiveness = 1.0
 BaseUseTime = 0.55
 Tags = 25
 Range = 100.0

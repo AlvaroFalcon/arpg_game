@@ -15,6 +15,7 @@ script = ExtResource("s")
 DisplayName = "Frost Nova"
 Description = "A ring of ice bursts around you, chilling and pushing enemies back."
 BaseDamage = 20.0
+AddedDamageEffectiveness = 1.0
 BaseUseTime = 0.35
 Cooldown = 1.6
 Tags = 1042

@@ -149,7 +149,8 @@ public partial class SkillsPanel : ModalPanel
         if (SkillOf(gem) is { } skill)
         {
             string xp = gem.Level >= GemData.MaxLevel ? "max level" : $"{gem.Experience:0}/{GemData.ExperienceToNext(gem.Level):0} xp";
-            return $"{skill.DisplayName} Lv{gem.Level} ({xp}) — {skill.Tags}: {skill.Description.Replace('\n', ' ')}";
+            string effectiveness = Mathf.IsEqualApprox(skill.AddedDamageEffectiveness, 1f) ? "" : $" Added damage effectiveness {skill.AddedDamageEffectiveness * 100f:0}%.";
+            return $"{skill.DisplayName} Lv{gem.Level} ({xp}) — {skill.Tags}: {skill.Description.Replace('\n', ' ')}{effectiveness}";
         }
 
         return gem.Id;

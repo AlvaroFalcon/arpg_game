@@ -15,6 +15,7 @@ script = ExtResource("s")
 DisplayName = "Double Strike"
 Description = "Two quick stabs in a narrow arc. Fast, precise, crit-friendly."
 BaseDamage = 15.0
+AddedDamageEffectiveness = 0.7
 BaseUseTime = 0.42
 Tags = 9
 Range = 80.0

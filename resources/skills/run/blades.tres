@@ -16,6 +16,7 @@ script = ExtResource("s")
 DisplayName = "Ethereal Blades"
 Description = "Summons blades that orbit you, cutting anything they touch."
 BaseDamage = 14.0
+AddedDamageEffectiveness = 0.6
 BaseUseTime = 0.3
 Cooldown = 3.6
 Tags = 50

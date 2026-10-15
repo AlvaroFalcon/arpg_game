@@ -472,13 +472,65 @@ public partial class EndgameSmokeTest : Node2D
 
     // --- tiers and shards ---------------------------------------------------------
 
+    /// <summary>docs/design/endgame.md -> "Monster scaling".</summary>
+    private void MonsterScalingChecks()
+    {
+        (int Level, float Dps)[] table = MonsterScaling.ExpectedDpsTable;
+        bool anchors = table.All(a => Mathf.Abs(MonsterScaling.ExpectedDps(a.Level) - a.Dps) < 0.5f);
+        bool monotone = Enumerable.Range(2, 99).All(l => MonsterScaling.ExpectedDps(l) >= MonsterScaling.ExpectedDps(l - 1));
+        float mid = MonsterScaling.ExpectedDps((table[0].Level + table[1].Level) / 2);
+        Check("MONSTER-SCALING-TABLE", anchors && monotone && mid > table[0].Dps && mid < table[1].Dps,
+            $"anchors hit: {anchors}, monotone: {monotone}, level {(table[0].Level + table[1].Level) / 2} -> {mid:0} dps");
+
+        // Life = TTK × expected damage: a standard monster dies in TtkNormal, a rare in TtkRare.
+        float lifeAt50 = MonsterScaling.StandardBaseLife * MonsterScaling.LifeMultiplier(50);
+        float ttk = lifeAt50 / MonsterScaling.ExpectedDps(50);
+        float rareTtk = ttk * MonsterScaling.RarityLife(MonsterRarity.Rare);
+        float bossLife = 3000f * MonsterScaling.BossLifeMultiplier(50, 3000f);
+        Check("MONSTER-SCALING-TTK",
+            Mathf.Abs(ttk - MonsterScaling.TtkNormal) < 0.01f && Mathf.Abs(rareTtk - MonsterScaling.TtkRare) < 0.05f
+            && Mathf.Abs(bossLife / MonsterScaling.ExpectedDps(50) - MonsterScaling.TtkBoss) < 0.1f,
+            $"level 50: normal {ttk:0.00}s, rare {rareTtk:0.00}s, boss {bossLife / MonsterScaling.ExpectedDps(50):0.0}s");
+
+        // Defences: nothing at level 1; at 85 the base resistance, the theme's element more, and
+        // armour that stops MaxArmourReduction of the reference hit.
+        var low = GD.Load<PackedScene>("res://scenes/enemies/Slime.tscn").Instantiate<Enemy>();
+        var high = GD.Load<PackedScene>("res://scenes/enemies/Slime.tscn").Instantiate<Enemy>();
+        AddChild(low);
+        AddChild(high);
+        MonsterScaling.ApplyDefences(low, 1, DamageType.Fire);
+        MonsterScaling.ApplyDefences(high, 85, DamageType.Fire);
+        float hit = MonsterScaling.ExpectedDps(85) * MonsterScaling.ReferenceUseTime;
+        float physTaken = DamageMitigation.MitigatePhysical(hit, high.Stats.Armour.Value) / hit;
+        bool lowOk = low.Stats.FireResistance.Value < 25.01f && low.Stats.ColdResistance.Value < 0.01f && low.Stats.Armour.Value < 1f;
+        bool highOk = Mathf.Abs(high.Stats.FireResistance.Value - (MonsterScaling.MaxResistance + MonsterScaling.AffinityResistance)) < 0.01f
+            && Mathf.Abs(high.Stats.ColdResistance.Value - MonsterScaling.MaxResistance) < 0.01f
+            && Mathf.Abs(physTaken - (1f - MonsterScaling.MaxArmourReduction)) < 0.01f;
+        Check("MONSTER-SCALING-DEFENCES", lowOk && highOk,
+            $"level 1 fire {low.Stats.FireResistance.Value:0}/cold {low.Stats.ColdResistance.Value:0}/armour {low.Stats.Armour.Value:0}; level 85 fire {high.Stats.FireResistance.Value:0}/cold {high.Stats.ColdResistance.Value:0}, reference hit takes {physTaken:P0}");
+        low.QueueFree();
+        high.QueueFree();
+
+        // Added damage effectiveness: flat gear counts at the skill's rate.
+        var flat = new List<StatModifier> { new(ModifierType.Flat, 10f, this), new(ModifierType.Increased, 100f, this) };
+        var spark = GD.Load<SkillDefinition>("res://resources/skills/run/spark.tres");
+        var meteor = GD.Load<SkillDefinition>("res://resources/skills/run/meteor.tres");
+        Check("ADDED-DAMAGE-EFFECTIVENESS",
+            Mathf.IsEqualApprox(Stat.ComputeFormula(10f, flat, 0.5f), 30f) && Mathf.IsEqualApprox(Stat.ComputeFormula(10f, flat), 40f)
+            && spark.AddedDamageEffectiveness < 1f && meteor.AddedDamageEffectiveness > 1f,
+            $"base 10 + flat 10 at 50% = {Stat.ComputeFormula(10f, flat, 0.5f):0} (x2 increased); Spark {spark.AddedDamageEffectiveness:P0}, Meteor {meteor.AddedDamageEffectiveness:P0}");
+    }
+
     private void TierChecks()
     {
+        bool rising = Enumerable.Range(2, RealityTiers.MaxTier - 1).All(t => RealityTiers.LifeMultiplier(t) > RealityTiers.LifeMultiplier(t - 1));
         Check("TIER-SCALING",
-            Mathf.IsEqualApprox(RealityTiers.LifeMultiplier(1), 1f) && Mathf.Abs(RealityTiers.LifeMultiplier(20) - 25f) < 0.01f
+            rising && Mathf.IsEqualApprox(RealityTiers.LifeMultiplier(1), MonsterScaling.LifeMultiplier(1))
             && Mathf.Abs(RealityTiers.DamageMultiplier(20) - 5f) < 0.01f && RealityTiers.MonsterLevel(1) == 1 && RealityTiers.MonsterLevel(20) == 85
             && RealityTiers.Portals(14) == 3 && RealityTiers.Portals(15) == 1,
-            $"life x{RealityTiers.LifeMultiplier(20):0.0}, dmg x{RealityTiers.DamageMultiplier(20):0.0}, mlvl {RealityTiers.MonsterLevel(20)} at tier 20");
+            $"life x{RealityTiers.LifeMultiplier(1):0.0} -> x{RealityTiers.LifeMultiplier(20):0}, dmg x{RealityTiers.DamageMultiplier(20):0.0}, mlvl {RealityTiers.MonsterLevel(20)} at tier 20");
+
+        MonsterScalingChecks();
 
         var rng = new RandomNumberGenerator { Seed = 1234 };
         int none = 0, same = 0, plus1 = 0, plus2 = 0;
