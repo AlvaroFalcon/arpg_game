@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Linq;
 using Godot;
 using ArpgGame.Combat;
 using ArpgGame.Skills;
@@ -27,7 +26,25 @@ public interface IBuildContext
 
 public static class BuildQuery
 {
-    /// <summary>True if any build on the player satisfies <paramref name="test"/>.</summary>
-    public static bool Any(Node? player, Func<IBuildContext, bool> test) =>
-        player is not null && player.GetChildren().OfType<IBuildContext>().Any(test);
+    /// <summary>True if any build on the player satisfies <paramref name="test"/>.
+    /// Asked on every kill, so it walks the children without allocating
+    /// (docs/design/performance.md -> "Mass deaths").</summary>
+    public static bool Any(Node? player, Func<IBuildContext, bool> test)
+    {
+        if (player is null)
+        {
+            return false;
+        }
+
+        int count = player.GetChildCount();
+        for (int i = 0; i < count; i++)
+        {
+            if (player.GetChild(i) is IBuildContext build && test(build))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

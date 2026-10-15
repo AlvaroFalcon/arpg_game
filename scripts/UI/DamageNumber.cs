@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 
 namespace ArpgGame.UI;
@@ -5,9 +6,11 @@ namespace ArpgGame.UI;
 /// <summary>
 /// Minimal floating damage number. Not polish — per docs/design/skills.md ->
 /// priority item 7, this is "the instrument": without seeing numbers land you
-/// cannot judge whether a skill's damage/use-time feel right. Rises, fades, then
-/// frees itself; no pooling, since hit frequency in the first slice is nowhere
-/// near a rate that would matter.
+/// cannot judge whether a skill's damage/use-time feel right. Rises and fades.
+/// Numbers made through <see cref="Spawn"/> are pooled (docs/design/performance.md
+/// -> "Mass deaths"): when one finishes it hides and waits to be reused instead of
+/// being freed, because a pack dying at once spawned dozens of scene instances in
+/// one frame.
 /// </summary>
 [GlobalClass]
 public partial class DamageNumber : Node2D
@@ -17,10 +20,52 @@ public partial class DamageNumber : Node2D
 
     private Label _label = null!;
     private float _elapsed;
+    private Color _baseColor = Colors.White;
+    private bool _pooled;
+
+    /// <summary>Finished numbers waiting to be reused (they stay in their scene, hidden).</summary>
+    private static readonly Stack<DamageNumber> Idle = new();
+    private const int MaxIdle = 128;
 
     public override void _Ready()
     {
         _label = GetNode<Label>("Label");
+        _baseColor = _label.GetThemeColor("font_color");
+    }
+
+    /// <summary>A number at <paramref name="at"/> under <paramref name="parent"/>:
+    /// a finished one from the pool when there is one there, else a new instance.</summary>
+    public static DamageNumber Spawn(PackedScene scene, Node parent, Vector2 at)
+    {
+        while (Idle.Count > 0)
+        {
+            DamageNumber n = Idle.Pop();
+            if (!IsInstanceValid(n) || n.IsQueuedForDeletion())
+            {
+                continue;
+            }
+
+            if (n.GetParent() != parent)
+            {
+                // Left behind under another parent (a test scene, say): let it go.
+                n.QueueFree();
+                continue;
+            }
+
+            n._elapsed = 0f;
+            n.Modulate = Colors.White;
+            n._label.AddThemeColorOverride("font_color", n._baseColor);
+            n.GlobalPosition = at;
+            n.Visible = true;
+            n.SetProcess(true);
+            return n;
+        }
+
+        var fresh = scene.Instantiate<DamageNumber>();
+        fresh._pooled = true;
+        parent.AddChild(fresh);
+        fresh.GlobalPosition = at;
+        return fresh;
     }
 
     public void Display(float amount)
@@ -44,7 +89,16 @@ public partial class DamageNumber : Node2D
 
         if (_elapsed >= Lifetime)
         {
-            QueueFree();
+            if (_pooled && Idle.Count < MaxIdle)
+            {
+                Visible = false;
+                SetProcess(false);
+                Idle.Push(this);
+            }
+            else
+            {
+                QueueFree();
+            }
         }
     }
 }

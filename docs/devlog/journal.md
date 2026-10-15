@@ -352,3 +352,11 @@ The first table, derived from a paper model, was wrong at both ends: too soft at
 ## 2026-10-15 — Cave walls as one rock
 
 The owner noticed the cavern walls never joined up: each wall cell was the tileset's brick block with its own random height, so curves (the boss arena's ring above all) were staircases of cubes. Caverns now get one rock mesh. Marching squares over the cell centres keeps straight walls on the cell edge (where the collision is) while cutting convex corners on the diagonal and filling inside ones. Heights come from a continuous noise field, so neighbours share their edges, and a world-space rock shader on the 1/8 m voxel grid uses each theme's own wall palette. Filling every non-floor cell of the map with rock also removed the black pits that empty cells left inside the rock. Room layouts keep their bricks. Screenshots: `cave-*-gate.png`, `cave-*-overview.png`.
+
+## 2026-10-15 — Mass deaths: the frame drop when exploding packs die
+
+The owner reported a big frame drop when lots of exploding enemies die at once. Before changing anything we built a benchmark, `scenes/tools/ExplosionBench.tscn`. It drops 60 monsters on the player in a reality or the Rift (volatile pack, plain deaths, a Chain Reaction cascade, or volatile imps detonating together), kills them in one frame, and logs every frame of the next 2.5 s. Headless runs measure the simulation; Forward+ runs on lavapipe under Xvfb measure the voxel view.
+
+The biggest cost turned out to be the voxel crumbles, not the explosions. Every death read its voxel model back from the GPU (`SurfaceGetArrays`) to pick cube colours, and made its own shadow-casting MultiMesh: 124 ms of CPU in the kill call with the voxel view on, and +183 draw calls. The cube shapes are now cached per mesh, a frame's crumbles share one MultiMesh, and debris uploads its buffer in one call. That brought the kill call to 18 ms and the extra draws to +4.
+
+Headless, damage numbers were the next biggest cost, so they are pooled now. Overlapping blast puffs are capped at 6 per frame, and the per-kill Chain Reaction check no longer allocates. A 60-pack's kill frame went from ~37 to ~27 ms headless. Nothing about gameplay changed. Staggering volatile blasts, one chain hop per frame and a loot spawn queue are written up as proposals in `docs/design/performance.md`.

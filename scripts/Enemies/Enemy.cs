@@ -535,9 +535,7 @@ public partial class Enemy : CharacterBody2D
             return;
         }
 
-        var number = DamageNumberScene.Instantiate<UI.DamageNumber>();
-        GetTree().CurrentScene.AddChild(number);
-        number.GlobalPosition = GlobalPosition + new Vector2(GD.Randf() * 16f - 8f, -18f * Scale.Y);
+        var number = UI.DamageNumber.Spawn(DamageNumberScene, GetTree().CurrentScene, GlobalPosition + new Vector2(GD.Randf() * 16f - 8f, -18f * Scale.Y));
         number.Display(amount);
     }
 

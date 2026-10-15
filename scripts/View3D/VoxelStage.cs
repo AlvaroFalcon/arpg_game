@@ -747,12 +747,31 @@ public partial class VoxelStage : Node3D
         if (enemy.IsBoss)
         {
             VoxelDebris.Burst(World, mesh, Ground(enemy.GlobalPosition), scale, 220);
+            return;
         }
-        else
+
+        // Every crumble of this frame goes into one MultiMesh (docs/design/performance.md
+        // -> "Mass deaths"): a pack dying at once is one node and one draw, not sixty.
+        if (_crumbles.Count == 0)
         {
-            VoxelDebris.Burst(World, mesh, Ground(enemy.GlobalPosition), scale, 16, 0.35f);
+            CallDeferred(nameof(FlushCrumbles));
         }
+
+        _crumbles.Add((mesh, Ground(enemy.GlobalPosition), scale));
     }
+
+    private readonly List<(Mesh Model, Vector3 At, float Scale)> _crumbles = new();
+
+    private void FlushCrumbles()
+    {
+        VoxelDebris.BurstMany(World, _crumbles, 16, 0.35f);
+        _crumbles.Clear();
+    }
+
+    /// <summary>Cosmetic budget for <see cref="Impact"/>: floor-cube puffs started this frame.</summary>
+    private ulong _impactFrame;
+    private readonly List<Vector3> _impactsThisFrame = new();
+    private const int MaxImpactsPerFrame = 6;
 
     /// <summary>Ground debris where a big hit lands (slams, meteors, explosions).</summary>
     public void Impact(Vector2 at2D, float radiusPx, Color tint)
@@ -760,6 +779,31 @@ public partial class VoxelStage : Node3D
         int count = Mathf.Clamp(Mathf.RoundToInt(radiusPx / 4f), 8, 60);
         Vector3 at = Ground(at2D);
         float radius = radiusPx / PixelsPerMeter;
+
+        // Many blasts landing together (a volatile pack) would each kick up their own
+        // floor and wall cubes in one frame. Cosmetic only: past a few per frame, or
+        // on top of one already kicked up this frame, the extra puffs are skipped.
+        ulong frame = Engine.GetProcessFrames();
+        if (frame != _impactFrame)
+        {
+            _impactFrame = frame;
+            _impactsThisFrame.Clear();
+        }
+
+        if (_impactsThisFrame.Count >= MaxImpactsPerFrame)
+        {
+            return;
+        }
+
+        foreach (Vector3 other in _impactsThisFrame)
+        {
+            if (other.DistanceSquaredTo(at) < radius * radius * 0.25f)
+            {
+                return;
+            }
+        }
+
+        _impactsThisFrame.Add(at);
         VoxelDebris.Puff(World, at, radius, tint, count);
 
         // Walls caught in the blast lose a few bricks.
