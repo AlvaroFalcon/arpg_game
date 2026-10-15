@@ -291,6 +291,24 @@ public partial class AffixSmokeTest : Node2D
         Check("SWIFTNESS-AUTHORED-BOOTS-ONLY", swiftnessOnlyOnBoots,
             $"of Swiftness AllowedItemClasses={string.Join(",", swiftness.AllowedItemClasses)}, expected exactly [Boots]");
 
+        // docs/design/affixes.md -> "Flat added damage": weapons and jewellery only.
+        bool flatNeverOnBoots = true;
+        for (int i = 0; i < 100; i++)
+        {
+            flatNeverOnBoots &= AffixRoller.Roll(_rawhideBoots, Rarity.Rare, 120, _library.Entries, rng)
+                .All(a => !(a.Definition.Stat == StatId.Damage && a.Definition.Type == ModifierType.Flat));
+        }
+
+        string[] flatIds = { "heavy", "blazing", "frozen", "charged" };
+        bool flatAuthored = flatIds.All(id =>
+        {
+            AffixDefinition d = _library.Entries.First(a => a.Id == id);
+            return d.AllowedItemClasses.Contains(ItemClass.Wand) && d.AllowedItemClasses.Contains(ItemClass.Ring) && d.AllowedItemClasses.Contains(ItemClass.Amulet)
+                && !d.AllowedItemClasses.Contains(ItemClass.Boots) && !d.AllowedItemClasses.Contains(ItemClass.Helmet);
+        });
+        Check("FLAT-DAMAGE-WEAPONS-AND-JEWELLERY", flatNeverOnBoots && flatAuthored,
+            $"100 Rare boots rolled no flat damage: {flatNeverOnBoots}; heavy/blazing/frozen/charged gated to weapons + jewellery: {flatAuthored}");
+
         AffixDefinition plated = _library.Entries.First(a => a.Id == "plated");
         Check("PLATED-AUTHORED-ARMOUR-SLOTS-ONLY",
             plated.AllowedItemClasses.Count == 6 && plated.AllowedItemClasses.Contains(ItemClass.Pants) && !plated.AllowedItemClasses.Contains(ItemClass.Ring) && !plated.AllowedItemClasses.Contains(ItemClass.Wand),

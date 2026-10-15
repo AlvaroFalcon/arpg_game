@@ -143,6 +143,15 @@ unrestricted roll would be nonsense rather than merely weak:
   Armour, Gloves, Boots. Armour on a ring or a wand has no fiction behind it.
 - **of Swiftness** (movement speed) — Boots only, the genre-standard home for it.
 
+- **Flat added damage** (Heavy, Blazing, Frozen, Charged) — weapons and
+  jewellery only: Wand, Sword, Axe, Dagger, Amulet, Ring (2026-10-15). Before
+  this, every one of the eleven slots could carry "+X damage", and flat damage
+  is added to a skill's small base (Fireball 22): at item level 41 a full set
+  multiplied the base by about ×6.7, the largest single reason monsters fell
+  over (docs/design/endgame.md -> "Monster scaling"). Four slots can still
+  carry it; skills then take it at their added damage effectiveness
+  (docs/design/skills.md). Items that already rolled it elsewhere keep it.
+
 Everything else rolls anywhere its stat makes sense, which is nearly everything.
 Restricting more affixes is a balance lever available later; restricting fewer is
 not, once players have items.

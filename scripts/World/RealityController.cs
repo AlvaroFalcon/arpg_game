@@ -169,6 +169,31 @@ public partial class RealityController : Node2D, IPickupHandler
     /// <summary>The introduction's monsters and guardian are this much softer.</summary>
     private float TutorialLife => IsTutorial ? 0.6f : 1f;
 
+    /// <summary>A normal monster's life multiplier — docs/design/endgame.md ->
+    /// "Monster scaling" (the introduction keeps authored life, softened: its
+    /// hero is level 1 with no gear, far below the reference character).</summary>
+    private float TierLife => IsTutorial ? TutorialLife : MonsterScaling.LifeMultiplier(MonsterLevel);
+
+    /// <summary>Resistances and armour by monster level plus the theme's affinity
+    /// (none in the introduction).</summary>
+    private void ApplyDefences(Enemy enemy)
+    {
+        if (!IsTutorial)
+        {
+            MonsterScaling.ApplyDefences(enemy, MonsterLevel, Theme.Affinity);
+        }
+    }
+
+    /// <summary>Tops a magic/rare/unique monster's rarity life (shared with the
+    /// Survival Rift) up to the reality's time-to-kill ratio.</summary>
+    private void ApplyRarityLife(Enemy enemy)
+    {
+        if (!IsTutorial && enemy.Rarity != MonsterRarity.Normal)
+        {
+            enemy.ApplyTierScaling(MonsterScaling.RarityLife(enemy.Rarity) / MonsterRarities.LifeMultiplier(enemy.Rarity), 1f);
+        }
+    }
+
     public override void _ExitTree()
     {
         Enemy.SplitSpawned -= OnSplitSpawned;
@@ -364,9 +389,10 @@ public partial class RealityController : Node2D, IPickupHandler
             + new Vector2(_rng.RandfRange(-8f, 8f), _rng.RandfRange(-8f, 8f));
         Vector2 at = centre + offset;
         enemy.GlobalPosition = Raster.Walkable(Field.CellOf(at)) ? at : centre;
-        float life = RealityTiers.LifeMultiplier(Tier) * TutorialLife * (Modifiers.Contains("hardened") ? 1.4f : 1f);
+        float life = TierLife * (Modifiers.Contains("hardened") ? 1.4f : 1f);
         float dmg = RealityTiers.DamageMultiplier(Tier) * TutorialLife * (Modifiers.Contains("searing") ? 1.25f : 1f);
         enemy.ApplyTierScaling(life, dmg);
+        ApplyDefences(enemy);
         if (Modifiers.Contains("swift"))
         {
             enemy.Stats.MovementSpeed.AddModifier(new StatModifier(ModifierType.More, 20f, ModifierSource));
@@ -381,6 +407,8 @@ public partial class RealityController : Node2D, IPickupHandler
             enemy.ApplyRarity(MonsterRarity.Magic, new[] { MonsterRarities.Mods.First(m => m.Id == "volatile") });
         }
 
+        ApplyRarityLife(enemy);
+
         RegisterMonster(enemy);
         return enemy;
     }
@@ -389,7 +417,9 @@ public partial class RealityController : Node2D, IPickupHandler
     public void AdoptMonster(Enemy enemy)
     {
         enemy.MonsterLevel = MonsterLevel;
-        enemy.ApplyTierScaling(RealityTiers.LifeMultiplier(Tier), RealityTiers.DamageMultiplier(Tier));
+        enemy.ApplyTierScaling(TierLife, RealityTiers.DamageMultiplier(Tier) * TutorialLife);
+        ApplyDefences(enemy);
+        ApplyRarityLife(enemy);
         RegisterMonster(enemy);
     }
 
@@ -415,9 +445,13 @@ public partial class RealityController : Node2D, IPickupHandler
         boss.AggroRadius = 0f;
         AddChild(boss);
         boss.GlobalPosition = RasterLayout.World(Raster.BossCell);
-        float life = RealityTiers.LifeMultiplier(Tier) * Theme.BossLifeMultiplier * TutorialLife * (Modifiers.Contains("hardened") ? 1.4f : 1f);
+        // Bosses last MonsterScaling.TtkBoss against the reference character; the
+        // introduction's guardian keeps its authored life (softened).
+        float life = (IsTutorial ? Theme.BossLifeMultiplier * TutorialLife : MonsterScaling.BossLifeMultiplier(MonsterLevel, boss.BaseLife * Theme.BossLifeMultiplier) * Theme.BossLifeMultiplier)
+            * (Modifiers.Contains("hardened") ? 1.4f : 1f);
         float dmg = RealityTiers.DamageMultiplier(Tier) * TutorialLife * (Modifiers.Contains("searing") ? 1.25f : 1f);
         boss.ApplyTierScaling(life, dmg);
+        ApplyDefences(boss);
         boss.Killed += OnBossKilled;
         Boss = boss;
     }

@@ -17,6 +17,10 @@ public sealed class RealityTheme
     /// authored as a mid-run boss and needs more to anchor a reality).</summary>
     public float BossLifeMultiplier { get; init; } = 1f;
 
+    /// <summary>docs/design/endgame.md -> "Monster scaling": this reality's monsters
+    /// resist their own element (Physical = extra armour).</summary>
+    public Combat.DamageType? Affinity { get; init; }
+
     public Color Ambient { get; init; } = Colors.White;
     public string Music { get; init; } = "music_run";
     public Color Void { get; init; } = new(0.03f, 0.02f, 0.03f);
@@ -27,19 +31,19 @@ public sealed class RealityTheme
         {
             Id = "ashen", TilesetPath = "res://assets/tiles/ashen_arena_tileset.tres",
             Roster = new[] { "Slime", "Bat", "Imp", "Brute", "Caster" }, Boss = "EmberColossus",
-            BossLifeMultiplier = 0.45f, Ambient = new Color(1f, 0.92f, 0.86f), Void = new Color(0.06f, 0.02f, 0.01f),
+            BossLifeMultiplier = 0.45f, Affinity = Combat.DamageType.Fire, Ambient = new Color(1f, 0.92f, 0.86f), Void = new Color(0.06f, 0.02f, 0.01f),
         },
         new RealityTheme
         {
             Id = "crypt", TilesetPath = "res://assets/tiles/bone_crypt_tileset.tres",
             Roster = new[] { "Skeleton", "Bat", "Caster", "Skeleton", "Brute" }, Boss = "BoneHerald",
-            BossLifeMultiplier = 2.6f, Ambient = new Color(0.82f, 0.88f, 0.95f), Void = new Color(0.02f, 0.03f, 0.04f),
+            BossLifeMultiplier = 2.6f, Affinity = Combat.DamageType.Physical, Ambient = new Color(0.82f, 0.88f, 0.95f), Void = new Color(0.02f, 0.03f, 0.04f),
         },
         new RealityTheme
         {
             Id = "drowned", TilesetPath = "res://assets/tiles/drowned_mirror_tileset.tres",
             Roster = new[] { "Thrall", "Siren", "Thrall", "Bat", "Imp" }, Boss = "Nereth",
-            BossLifeMultiplier = 0.5f, Ambient = new Color(0.8f, 0.92f, 1f), Void = new Color(0.01f, 0.03f, 0.05f),
+            BossLifeMultiplier = 0.5f, Affinity = Combat.DamageType.Cold, Ambient = new Color(0.8f, 0.92f, 1f), Void = new Color(0.01f, 0.03f, 0.05f),
             Music = "music_boss",
         },
     };
@@ -57,11 +61,12 @@ public static class RealityTiers
 
     public static int MonsterLevel(int tier) => Mathf.RoundToInt(1f + (tier - 1) * 4.4f);
 
-    /// <summary>×1 at tier 1, ×25 at tier 20 (exponential).</summary>
-    public static float LifeMultiplier(int tier) => Mathf.Pow(25f, (tier - 1) / 19f);
+    /// <summary>A normal monster's life multiplier at this tier — from its monster
+    /// level, <see cref="MonsterScaling.LifeMultiplier"/>.</summary>
+    public static float LifeMultiplier(int tier) => MonsterScaling.LifeMultiplier(MonsterLevel(tier));
 
-    /// <summary>×1 at tier 1, ×5 at tier 20.</summary>
-    public static float DamageMultiplier(int tier) => Mathf.Pow(5f, (tier - 1) / 19f);
+    /// <summary>×1 at tier 1, ×5 at tier 20 — <see cref="MonsterScaling.DamageMultiplier"/>.</summary>
+    public static float DamageMultiplier(int tier) => MonsterScaling.DamageMultiplier(MonsterLevel(tier));
 
     public static float Lerp(int tier, float a, float b) => Mathf.Lerp(a, b, (tier - 1) / 19f);
 

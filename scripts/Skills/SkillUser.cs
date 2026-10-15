@@ -440,7 +440,7 @@ public partial class SkillUser : Node
     private HitProfile BuildHitProfile(SkillInstance instance, CastContext context, float knockback = 0f)
     {
         IReadOnlyList<StatModifier> damageMods = _stats.GetModifiers(new ModifierQuery(StatId.Damage, context.Tags));
-        float damage = Stat.ComputeFormula(instance.Definition.BaseDamage, damageMods)
+        float damage = Stat.ComputeFormula(instance.Definition.BaseDamage, damageMods, instance.Definition.AddedDamageEffectiveness)
             * instance.LevelDamageMultiplier
             * context.DamageMultiplier;
 

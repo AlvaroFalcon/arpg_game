@@ -16,6 +16,7 @@ script = ExtResource("s")
 DisplayName = "Throwing Knives"
 Description = "Throws a fan of knives that pierce one enemy each."
 BaseDamage = 8.0
+AddedDamageEffectiveness = 0.5
 BaseUseTime = 0.5
 Tags = 5
 Speed = 720.0

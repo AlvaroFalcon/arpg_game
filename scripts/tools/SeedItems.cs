@@ -178,6 +178,12 @@ public partial class SeedItems : Node
         ItemClass.Offhand, ItemClass.Helmet, ItemClass.BodyArmour, ItemClass.Gloves, ItemClass.Boots,
     };
 
+    // docs/design/affixes.md -> "Flat added damage": weapons and jewellery only.
+    private static readonly Array<ItemClass> DamageSlots = new()
+    {
+        ItemClass.Wand, ItemClass.Sword, ItemClass.Axe, ItemClass.Dagger, ItemClass.Amulet, ItemClass.Ring,
+    };
+
     private static void SeedAffixesAndLibrary()
     {
         var library = new AffixLibrary();
@@ -190,6 +196,7 @@ public partial class SeedItems : Node
             Stat = StatId.Damage, Type = ModifierType.Flat,
             MinIlvl = 1,
             ValueAtT1Min = 2f, ValueAtT1Max = 4f, ValueAtT7Min = 45f, ValueAtT7Max = 70f,
+            AllowedItemClasses = new Array<ItemClass>(DamageSlots),
         }));
 
         library.Entries.Add(SaveAffix(new AffixDefinition
@@ -198,6 +205,7 @@ public partial class SeedItems : Node
             Stat = StatId.Damage, Type = ModifierType.Flat, Condition = SkillTags.Fire,
             MinIlvl = 1,
             ValueAtT1Min = 3f, ValueAtT1Max = 5f, ValueAtT7Min = 55f, ValueAtT7Max = 85f,
+            AllowedItemClasses = new Array<ItemClass>(DamageSlots),
         }));
 
         library.Entries.Add(SaveAffix(new AffixDefinition
@@ -206,6 +214,7 @@ public partial class SeedItems : Node
             Stat = StatId.Damage, Type = ModifierType.Flat, Condition = SkillTags.Cold,
             MinIlvl = 1,
             ValueAtT1Min = 3f, ValueAtT1Max = 5f, ValueAtT7Min = 55f, ValueAtT7Max = 85f,
+            AllowedItemClasses = new Array<ItemClass>(DamageSlots),
         }));
 
         library.Entries.Add(SaveAffix(new AffixDefinition
@@ -214,6 +223,7 @@ public partial class SeedItems : Node
             Stat = StatId.Damage, Type = ModifierType.Flat, Condition = SkillTags.Lightning,
             MinIlvl = 1,
             ValueAtT1Min = 2f, ValueAtT1Max = 7f, ValueAtT7Min = 40f, ValueAtT7Max = 100f,
+            AllowedItemClasses = new Array<ItemClass>(DamageSlots),
         }));
 
         library.Entries.Add(SaveAffix(new AffixDefinition

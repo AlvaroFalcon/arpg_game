@@ -52,7 +52,8 @@ public sealed class Stat
     /// <see cref="Stat"/> instance at all (e.g. a skill's base damage combined with
     /// a modifier list fetched via <see cref="ActorStats.GetModifiers"/>).
     /// </summary>
-    public static float ComputeFormula(float baseValue, IReadOnlyList<StatModifier> modifiers)
+    /// <param name="flatEffectiveness">Scales the Flat sum only (a skill's added damage effectiveness).</param>
+    public static float ComputeFormula(float baseValue, IReadOnlyList<StatModifier> modifiers, float flatEffectiveness = 1f)
     {
         float flatSum = 0f;
         float increasedSum = 0f;
@@ -74,7 +75,7 @@ public sealed class Stat
             }
         }
 
-        return (baseValue + flatSum) * (1f + increasedSum / 100f) * moreProduct;
+        return (baseValue + flatSum * flatEffectiveness) * (1f + increasedSum / 100f) * moreProduct;
     }
 
     public void AddModifier(StatModifier modifier)

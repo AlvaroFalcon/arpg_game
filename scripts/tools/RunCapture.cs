@@ -622,6 +622,16 @@ public partial class RunCapture : Node
                 await Snap($"cave-{name}-liquid.png");
             }
 
+            // The boss arena's entrance: the wall ring curves around the gate.
+            if (reality.Raster.Gate.Count > 0)
+            {
+                Vector2I g = reality.Raster.Gate[reality.Raster.Gate.Count / 2];
+                Vector2 away = ((Vector2)(g - reality.Raster.BossCell)).Normalized();
+                reality.Player.GlobalPosition = RasterLayout.World(g) + away * 120f;
+                await Wait(2.0f);
+                await Snap($"cave-{name}-gate.png");
+            }
+
             var camera = reality.Player.GetNode<Camera2D>("Camera2D");
             reality.Player.GlobalPosition = RasterLayout.World(middle);
             Vector2 zoom = camera.Zoom;

@@ -221,6 +221,38 @@ vulkan`); the Compatibility renderer works but drops shadows, glow and DOF.
 overlays re-projected; per-voxel destructible walls (today walls only shed chips);
 hand-authored voxel props (`slices` mode) for the hideout and realities.
 
+### Cave walls **[IMPLEMENTED 2026-10-15]**
+
+Owner feedback: the cavern walls "don't join up — each block looks like its own
+piece, worst on curves like the boss entrance". They were the tileset's brick
+wall block, one per wall cell, each with its own random height: the tops
+stepped, every block drew its own mortar edges, and a diagonal (the arena's
+ring) became a staircase of cubes.
+
+Caverns now build their walls as **one rock mesh** (`CaveWalls`,
+scripts/View3D/CaveWalls.cs; `VoxelStage.AddCaveRock`):
+
+- **Outline by marching squares** over the cell centres. A straight wall still
+  ends exactly on the cell edge, where its collision is; a convex corner is cut
+  on the diagonal and an inside corner filled, so curves read as one chamfered
+  face (the floor is drawn under wall cells for the cut corners). A diagonal
+  pair of rock cells joins into one piece.
+- **Heights from a continuous field** (two noise octaves around the tile wall's
+  height) sampled at the vertices, so neighbouring pieces share their edges —
+  no steps. The tops are lit flat per triangle: faceted rock.
+- **Solid mass**: every cell of the map's rectangle that isn't open ground is
+  rock, including the empty cells deep inside the rock that used to show as
+  black pits.
+- **`voxel_rock.gdshader`** colours it in world space on a 1/8 m grid (the
+  scene's voxel size): blotches of three tones taken from the tileset wall's
+  own palette (darkest, middle, lightest — each theme keeps its stone), darker
+  sides with wavy strata, a lighter top. It keeps the wall dither in front of
+  the player (same uniforms as `voxel_wall.gdshader`).
+
+Room layouts (the introduction, the hideout) keep the brick blocks: built
+walls are supposed to look built. Screenshots: `cave-*-gate.png` (the arena
+entrance), `cave-*-overview.png`.
+
 ## Alternatives considered
 
 - **MCP-driven drawing in the live editor.** The nicer workflow for a human session

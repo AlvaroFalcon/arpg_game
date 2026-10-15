@@ -16,6 +16,7 @@ script = ExtResource("s")
 DisplayName = "Spark"
 Description = "Fires crackling sparks that chain between enemies. Lightning hits can shock."
 BaseDamage = 12.0
+AddedDamageEffectiveness = 0.5
 BaseUseTime = 0.4
 Tags = 4102
 Speed = 640.0
