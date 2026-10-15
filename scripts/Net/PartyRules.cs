@@ -11,13 +11,16 @@ namespace ArpgGame.Net;
 /// <code>
 /// players  spawn rate  enemy cap  monster life  boss life  xp/loot share
 ///    1        ×1.00      ×1.00       ×1.00        ×1.00       ×1.00
-///    2        ×1.50      ×1.35       ×1.40        ×1.70       ×0.67
-///    3        ×2.00      ×1.70       ×1.80        ×2.40       ×0.50
-///    4        ×2.50      ×2.05       ×2.20        ×3.10       ×0.40
+///    2        ×1.50      ×1.15       ×1.50        ×1.70       ×0.67
+///    3        ×2.00      ×1.30       ×2.00        ×2.40       ×0.50
+///    4        ×2.50      ×1.45       ×2.50        ×3.10       ×0.40
 /// </code>
 ///
 /// More enemies and tougher enemies, because two to four builds kill much faster
-/// than one. Loot is instanced (every player rolls their own drops from every
+/// than one. The enemy cap grows slowly on purpose: the host simulates every
+/// monster, and a first table (cap ×2.05 for four) put 535 monsters on the
+/// host, ~4× its solo physics cost (docs/design/multiplayer.md -> "Performance").
+/// The extra pressure comes from spawn rate and monster life instead. Loot is instanced (every player rolls their own drops from every
 /// kill), so the share brings each player's experience and drop rate back to
 /// about what they would get alone: the party is not a loot multiplier.
 /// </summary>
@@ -37,10 +40,10 @@ public static class PartyRules
     public static float SpawnRate(int players) => 1f + 0.5f * Extra(players);
 
     /// <summary>Multiplier on how many enemies may be alive at once.</summary>
-    public static float EnemyCap(int players) => 1f + 0.35f * Extra(players);
+    public static float EnemyCap(int players) => 1f + 0.15f * Extra(players);
 
     /// <summary>Multiplier on ordinary (and elite) monster life.</summary>
-    public static float MonsterLife(int players) => 1f + 0.4f * Extra(players);
+    public static float MonsterLife(int players) => 1f + 0.5f * Extra(players);
 
     /// <summary>Multiplier on boss life: everybody focuses the boss.</summary>
     public static float BossLife(int players) => 1f + 0.7f * Extra(players);

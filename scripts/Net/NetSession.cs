@@ -377,24 +377,44 @@ public partial class NetSession : Node
 
     public void SendSnapshot(long peer, byte[] data)
     {
+        if (!Active)
+        {
+            return; // the session closed under a run still on screen
+        }
+
         SnapshotBytesSent += data.Length;
         RpcId(peer, MethodName.RpcSnapshot, data);
     }
 
     public void SendHostEvents(long peer, byte[] data)
     {
+        if (!Active)
+        {
+            return; // the session closed under a run still on screen
+        }
+
         EventBytesSent += data.Length;
         RpcId(peer, MethodName.RpcHostEvents, data);
     }
 
     public void SendInput(byte[] data)
     {
+        if (!Active)
+        {
+            return; // the session closed under a run still on screen
+        }
+
         InputBytesSent += data.Length;
         RpcId(1, MethodName.RpcInput, data);
     }
 
     public void SendClientEvents(byte[] data)
     {
+        if (!Active)
+        {
+            return; // the session closed under a run still on screen
+        }
+
         EventBytesSent += data.Length;
         RpcId(1, MethodName.RpcClientEvents, data);
     }

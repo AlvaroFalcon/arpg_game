@@ -191,6 +191,17 @@ public partial class Profile : Node
                 mana.Current = mana.Max;
             }
         }
+
+        // The copy's bag is never shown: free the item nodes it was read into.
+        foreach ((EquipmentItem item, Vector2I _) in c.Inventory)
+        {
+            if (GodotObject.IsInstanceValid(item) && !item.IsInsideTree())
+            {
+                item.QueueFree();
+            }
+        }
+
+        c.Inventory.Clear();
     }
 
     /// <summary>One item as JSON and back (co-op: gear a remote player found).</summary>

@@ -185,6 +185,7 @@ public partial class RunController : Node2D
         {
             // The host casts for everyone; this machine only shows it.
             Player.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;
+            MuteLocalEffects(Player);
         }
 
         State.Player = Player;
@@ -289,6 +290,7 @@ public partial class RunController : Node2D
             {
                 p.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;
                 p.Dodge!.InputEnabled = false;
+                MuteLocalEffects(p);
             }
             else
             {
@@ -298,6 +300,16 @@ public partial class RunController : Node2D
 
             RunPlayer rp = State.AddPlayer(p, build);
             rp.ViewSize = member.ViewSize;
+        }
+    }
+
+    /// <summary>Co-op client: ascendancy behaviours that spawn effects on their own
+    /// timers stay off here — the host runs them and its events replay them.</summary>
+    private static void MuteLocalEffects(Player player)
+    {
+        if (Characters.CharacterBuild.Of(player)?.Ascendancy is { } ascendancy)
+        {
+            ascendancy.ProcessMode = ProcessModeEnum.Disabled;
         }
     }
 
