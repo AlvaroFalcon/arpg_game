@@ -120,6 +120,15 @@ was 5 + 3·level gold) and the panel has a free **Reset tree**. Characters saved
 with the old tree (`PassiveTree.Version` 1, or any unknown node id) get every
 point back on load, silently.
 
+**Panel UI.** Hovering an unallocated node previews the cheapest path
+(`PassiveTree.PathTo`) in cyan and the tooltip shows its cost; left-click allocates
+the whole path if you have the points, otherwise nothing is taken and it says
+"needs N points, you have M". Right-click refunds (free, refused if it would orphan
+nodes); **Reset tree** needs a second click within 3 s. The search box glows nodes
+whose name/effect matches (Esc clears it before closing). Header: "spent / total
+points". Pan by drag, zoom at the cursor, opens centred on your start; "Fit tree"
+shows everything.
+
 ## Ascendancies
 
 Eight nodes each, **4 points from the tier-5 trial, +2 from tier 12** — every

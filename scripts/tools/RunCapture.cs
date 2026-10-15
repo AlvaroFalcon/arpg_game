@@ -272,6 +272,11 @@ public partial class RunCapture : Node
             }
         }
 
+        if (ArpgGame.Core.Profile.Get(this) is { } seen)
+        {
+            seen.Hideout.GuideSeen = true; // the welcome guide would cover every panel shot
+        }
+
         GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
         await Wait(1.0f);
         Node hideout = GetTree().CurrentScene;
@@ -297,6 +302,9 @@ public partial class RunCapture : Node
         panels.Tree.Open();
         await Wait(0.3f);
         await Snap("panel-passives.png");
+        panels.Tree.PreviewForCapture("life");
+        await Wait(0.3f);
+        await Snap("panel-passives-search-path.png");
         panels.Tree.Close();
         var altar = hideout.GetNode<AscendancyPanel>("AscendancyPanel");
         altar.Open();

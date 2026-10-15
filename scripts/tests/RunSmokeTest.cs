@@ -549,7 +549,9 @@ public partial class RunSmokeTest : Node2D
         full = player.Stats.Life.Current;
         player.Health.TakeDamage(new DamagePayload(10f, DamageType.Physical, null, Faction.Enemy, SkillTags.None, DamageDeliveryKind.Hit));
         float physLost = full - player.Stats.Life.Current;
-        Check("ELEMENTAL-DAMAGE-TAKEN", Mathf.IsEqualApprox(fireLost, 5f) && Mathf.IsEqualApprox(physLost, 10f), $"10 fire took {fireLost:0.0}, 10 physical took {physLost:0.0}");
+        // Physical is untouched by the elemental stat (only armour applies to it).
+        float physExpected = DamageMitigation.MitigatePhysical(10f, player.Stats.Armour.Value);
+        Check("ELEMENTAL-DAMAGE-TAKEN", Mathf.IsEqualApprox(fireLost, 5f) && Mathf.Abs(physLost - physExpected) < 0.05f, $"10 fire took {fireLost:0.0}, 10 physical took {physLost:0.0} (armour alone: {physExpected:0.0})");
         player.Stats.Get(StatId.ElementalDamageTaken).RemoveModifier(lessElemental);
 
         // Freeze: a Cold hit with 100% chance stops an enemy for a moment.
