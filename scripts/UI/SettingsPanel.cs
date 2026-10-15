@@ -41,6 +41,7 @@ public partial class SettingsPanel : PanelContainer
         AddToggle(box, "Screen shake", settings?.ScreenShake ?? true, v => settings?.SetScreenShake(v));
         AddToggle(box, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
         AddToggle(box, "Show FPS (F3)", settings?.ShowFps ?? false, v => settings?.SetShowFps(v));
+        AddToggle(box, "Admin mode (testing: max-level test characters)", settings?.AdminMode ?? false, v => settings?.SetAdminMode(v));
 
         box.AddChild(UiTheme.Label("Gameplay", 22, UiTheme.Ember));
 

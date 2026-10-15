@@ -111,6 +111,41 @@ public partial class Profile : Node
         return data;
     }
 
+    /// <summary>
+    /// Admin mode's test character (docs/design/menus.md -> "Admin mode"): maximum
+    /// level with every passive point free, the introduction skipped, gems at their
+    /// top level, a million gold, three shards of every tier with all tiers counted
+    /// as cleared, and 50 of every crafting orb for the account.
+    /// </summary>
+    public CharacterData CreateTestCharacter(string name, string classId)
+    {
+        CharacterData data = CharacterData.Create(string.IsNullOrWhiteSpace(name) ? "Tester" : name.Trim(), classId);
+        data.Level = CharacterData.MaxLevel;
+        data.TutorialDone = true;
+        foreach (GemData gem in data.Gems)
+        {
+            gem.Level = GemData.MaxLevel;
+        }
+
+        data.Gold = 1_000_000;
+        data.HighestTierCleared = World.RealityTiers.MaxTier;
+        for (int tier = 1; tier <= World.RealityTiers.MaxTier; tier++)
+        {
+            data.AddShards(tier, 3);
+        }
+
+        foreach ((string orb, float _) in Items.DropTables.Orbs)
+        {
+            Currency[orb] = Currency.GetValueOrDefault(orb) + 50;
+        }
+
+        Currency[Items.DropTables.FallbackOrb] = Currency.GetValueOrDefault(Items.DropTables.FallbackOrb) + 50;
+        Characters.Add(data);
+        ActiveIndex = Characters.Count - 1;
+        Save();
+        return data;
+    }
+
     public void DeleteCharacter(int index)
     {
         if (index < 0 || index >= Characters.Count)
@@ -301,6 +336,9 @@ public partial class Profile : Node
         public int Level { get; set; } = 1;
         public float Experience { get; set; }
         public List<string> Passives { get; set; } = new();
+
+        /// <summary><see cref="ArpgGame.Characters.PassiveTree.Version"/> the passives were saved with (absent = 1).</summary>
+        public int TreeVersion { get; set; } = 1;
         public string? Ascendancy { get; set; }
         public List<string> AscendancyNodes { get; set; } = new();
         public int AscendancyPoints { get; set; }
@@ -389,6 +427,7 @@ public partial class Profile : Node
             Level = c.Level,
             Experience = c.Experience,
             Passives = c.Passives.ToList(),
+            TreeVersion = ArpgGame.Characters.PassiveTree.Version,
             Ascendancy = c.Ascendancy,
             AscendancyNodes = c.AscendancyNodes.ToList(),
             AscendancyPoints = c.AscendancyPoints,
@@ -462,6 +501,12 @@ public partial class Profile : Node
             {
                 c.Shards[t] = n;
             }
+        }
+
+        // A save from an older tree (other node ids): every point back, silently.
+        if (s.TreeVersion < ArpgGame.Characters.PassiveTree.Version || c.Passives.Any(id => ArpgGame.Characters.PassiveTree.Get(id) is null))
+        {
+            ArpgGame.Characters.PassiveTree.ResetAll(c);
         }
 
         c.Passives.Add(c.Class.TreeStart);

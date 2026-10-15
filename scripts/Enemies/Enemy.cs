@@ -289,6 +289,16 @@ public partial class Enemy : CharacterBody2D
             }
         }
 
+        if (Ailments is { IsFrozen: true })
+        {
+            // Frozen: no thinking, no walking, no contact damage — only knockback drift.
+            _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
+            Velocity = _knockback;
+            MoveAndSlide();
+            UpdateVisual(dt);
+            return;
+        }
+
         TickMods(dt);
 
         DesiredVelocity = Vector2.Zero;

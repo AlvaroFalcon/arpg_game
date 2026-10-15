@@ -81,6 +81,9 @@ public sealed class DamagePayload
 
     public float ShockChance;
 
+    /// <summary>Chance a Cold hit freezes its target (Avatar of Frost, passive tree).</summary>
+    public float FreezeChance;
+
     /// <summary>False for a hit from a skill supported by "Elemental Focus"-style
     /// supports (trade ailments for damage).</summary>
     public bool CanInflictAilments = true;

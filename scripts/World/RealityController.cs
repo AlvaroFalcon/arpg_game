@@ -571,6 +571,12 @@ public partial class RealityController : Node2D, IPickupHandler
                 Player.Health?.Heal(lifeOnKill);
             }
 
+            float manaOnKill = Player.Stats.Get(StatId.ManaOnKill).Value;
+            if (manaOnKill > 0f && Player.Stats.Mana is { } mana)
+            {
+                mana.Current = Mathf.Min(mana.Max, mana.Current + manaOnKill);
+            }
+
             if (BuildQuery.Any(Player, b => b.ChainReaction))
             {
                 var hit = new HitProfile { Damage = (enemy.Stats.Life?.Max ?? 0f) * 0.2f, Type = DamageType.Fire, Source = Player, Faction = Faction.Player, Tags = SkillTags.Fire | SkillTags.Area, KnockbackForce = 80f };

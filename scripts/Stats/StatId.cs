@@ -83,4 +83,11 @@ public enum StatId
     // Survival Rift auto-casting (docs/design/run.md -> "Auto-cast timing"): how
     // often skills fire on their own. 1 = each skill's base interval.
     AutoCastSpeed = 39,
+
+    // Passive-tree redesign (docs/design/stats.md -> "Passive tree stats").
+    LifeLeech = 40,             // Flat, percent of damage dealt (as taken by the enemy) recovered as Life
+    ManaOnKill = 41,            // Flat Mana restored per kill
+    FreezeChance = 42,          // Flat 0..1, rolled by Cold hits
+    ElementalDamageTaken = 43,  // More/Less on Fire/Cold/Lightning damage taken (base 1)
+    PhysicalDamageTaken = 44,   // More/Less on Physical damage taken (base 1)
 }

@@ -102,6 +102,11 @@ change live and saves on close.
   the last second**, coloured yellow over 25 ms and red over 50 ms. The worst frame
   is the number to watch for hitches: one 80 ms frame among sixty barely moves the
   FPS figure. Off by default; saved like the rest.
+- **Admin mode** (2026-10-15, testing): adds a "Test character" button to character
+  creation — maximum level (70) with every passive point free, the introduction
+  skipped, gems at level 20, 1 000 000 gold, three shards of every tier with every
+  tier counted as cleared (so Arehucaz sells them all), and 50 of every crafting
+  orb added to the account (`Profile.CreateTestCharacter`). Off by default.
 
 Screen shake can be turned off without losing information: every shake accompanies
 a visible telegraph or flash.

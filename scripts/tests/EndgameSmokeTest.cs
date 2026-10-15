@@ -628,6 +628,37 @@ public partial class EndgameSmokeTest : Node2D
         unreachable = PassiveTree.Nodes.Count - seen.Count;
         int keystones = PassiveTree.Nodes.Values.Count(n => n.Kind == PassiveKind.Keystone);
         Check("PASSIVE-TREE-CONNECTED", unreachable == 0 && keystones >= 6, $"{PassiveTree.Nodes.Count} nodes, {keystones} keystones, {unreachable} unreachable");
+
+        // The redesign (docs/design/classes.md -> "Passive tree"): ~340 nodes, so 69 points
+        // take about a fifth; the nearest notable costs a real road; paths allocate in order.
+        int notables = PassiveTree.Nodes.Values.Count(n => n.Kind == PassiveKind.Notable);
+        CharacterData fresh = CharacterData.Create("Road", "arcanist");
+        int nearest = PassiveTree.Nodes.Values.Where(n => n.Kind == PassiveKind.Notable).Min(n => PassiveTree.PathTo(fresh, n.Id).Count);
+        List<string> road = PassiveTree.PathTo(fresh, "mana_notable");
+        bool ordered = road.Count > 0 && road[^1] == "mana_notable";
+        var walk = new HashSet<string>(fresh.Passives);
+        foreach (string id in road)
+        {
+            ordered &= PassiveTree.Get(id)!.Links.Any(walk.Contains);
+            walk.Add(id);
+        }
+
+        Check("PASSIVE-TREE-SIZE", PassiveTree.Nodes.Count is >= 320 and <= 380 && keystones == 12 && notables == 24 && nearest >= 7,
+            $"{PassiveTree.Nodes.Count} nodes, {notables} notables, {keystones} keystones; nearest notable from a start costs {nearest} points (69 points at level 70 = {69f / PassiveTree.Nodes.Count:P0} of the tree)");
+        Check("PASSIVE-PATH", ordered && PassiveTree.PathTo(fresh, "start_rogue").Count == 0,
+            $"path to Wellspring: {road.Count} nodes, each adjacent to what came before: {ordered}");
+
+        foreach (string id in road)
+        {
+            fresh.Passives.Add(id);
+        }
+
+        string saved = Profile.SerializeCharacter(fresh);
+        CharacterData? same = Profile.DeserializeCharacter(saved);
+        CharacterData? old = Profile.DeserializeCharacter(saved.Replace($"\"TreeVersion\":{PassiveTree.Version}", "\"TreeVersion\":1"));
+        PassiveTree.ResetAll(fresh);
+        Check("PASSIVE-RESET", fresh.Passives.Count == 1 && same is not null && same.Passives.Count == road.Count + 1 && old is not null && old.Passives.Count == 1 && PassiveTree.RefundCost(c) == 0,
+            $"reset leaves the start; a save from this tree keeps {same?.Passives.Count} nodes, one from the old tree comes back with {old?.Passives.Count}; refunds cost {PassiveTree.RefundCost(c)}");
     }
 
     private void GemChecks()

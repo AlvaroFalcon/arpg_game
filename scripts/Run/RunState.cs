@@ -219,6 +219,12 @@ public partial class RunState : Node, IPickupHandler
                 Player.Health?.Heal(lifeOnKill);
             }
 
+            float manaOnKill = Player.Stats.Get(StatId.ManaOnKill).Value;
+            if (manaOnKill > 0f && Player.Stats.Mana is { } mana)
+            {
+                mana.Current = Mathf.Min(mana.Max, mana.Current + manaOnKill);
+            }
+
             if (Progression.BuildQuery.Any(Player, b => b.ChainReaction))
             {
                 float maxLife = enemy.Stats.Life?.Max ?? 0f;
