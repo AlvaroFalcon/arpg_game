@@ -45,6 +45,11 @@ public partial class GameSettings : Node
     /// <summary>Aim at the nearest enemy instead of the mouse cursor.</summary>
     public bool AutoAim { get; private set; }
 
+    /// <summary>Frame-rate readout in the corner (<see cref="UI.FpsOverlay"/>); F3 toggles it.</summary>
+    public bool ShowFps { get; private set; }
+
+    private UI.FpsOverlay? _fps;
+
     public static GameSettings? Get(Node context) =>
         context.IsInsideTree() ? context.GetTree().Root.GetNodeOrNull<GameSettings>("GameSettings") : null;
 
@@ -84,6 +89,31 @@ public partial class GameSettings : Node
     public void SetOverheadBars(bool v) { OverheadBars = v; NotifyChanged(); }
     public void SetAutoCast(bool v) { AutoCast = v; NotifyChanged(); }
     public void SetAutoAim(bool v) { AutoAim = v; NotifyChanged(); }
+    public void SetShowFps(bool v) { ShowFps = v; ApplyFps(); NotifyChanged(); }
+
+    private void ApplyFps()
+    {
+        if (ShowFps && _fps is null)
+        {
+            _fps = new UI.FpsOverlay { Name = "FpsOverlay" };
+            AddChild(_fps);
+        }
+        else if (!ShowFps && _fps is not null)
+        {
+            _fps.QueueFree();
+            _fps = null;
+        }
+    }
+
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F3 })
+        {
+            SetShowFps(!ShowFps);
+            Save();
+            GetViewport().SetInputAsHandled();
+        }
+    }
 
     private void NotifyChanged() => EmitSignal(SignalName.Changed);
 
@@ -91,6 +121,7 @@ public partial class GameSettings : Node
     {
         ApplyAudio();
         ApplyDisplay();
+        ApplyFps();
     }
 
     private void ApplyAudio()
@@ -144,6 +175,7 @@ public partial class GameSettings : Node
         OverheadBars = (bool)config.GetValue("display", "overhead_bars", OverheadBars);
         AutoCast = (bool)config.GetValue("gameplay", "auto_cast", AutoCast);
         AutoAim = (bool)config.GetValue("gameplay", "auto_aim", AutoAim);
+        ShowFps = (bool)config.GetValue("display", "show_fps", ShowFps);
     }
 
     public void Save()
@@ -160,6 +192,7 @@ public partial class GameSettings : Node
         config.SetValue("display", "overhead_bars", OverheadBars);
         config.SetValue("gameplay", "auto_cast", AutoCast);
         config.SetValue("gameplay", "auto_aim", AutoAim);
+        config.SetValue("display", "show_fps", ShowFps);
         config.Save(SavePath);
     }
 }

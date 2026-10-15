@@ -449,7 +449,8 @@ public partial class RealityController : Node2D, IPickupHandler
         // introduction's guardian keeps its authored life (softened).
         float life = (IsTutorial ? Theme.BossLifeMultiplier * TutorialLife : MonsterScaling.BossLifeMultiplier(MonsterLevel, boss.BaseLife * Theme.BossLifeMultiplier) * Theme.BossLifeMultiplier)
             * (Modifiers.Contains("hardened") ? 1.4f : 1f);
-        float dmg = RealityTiers.DamageMultiplier(Tier) * TutorialLife * (Modifiers.Contains("searing") ? 1.25f : 1f);
+        // Its hits are aimed at the reference character's life (MonsterScaling.BossHitShare).
+        float dmg = (IsTutorial ? TutorialLife : MonsterScaling.BossDamageMultiplier(MonsterLevel)) * (Modifiers.Contains("searing") ? 1.25f : 1f);
         boss.ApplyTierScaling(life, dmg);
         ApplyDefences(boss);
         boss.Killed += OnBossKilled;

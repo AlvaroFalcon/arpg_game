@@ -492,6 +492,14 @@ public partial class EndgameSmokeTest : Node2D
             && Mathf.Abs(bossLife / MonsterScaling.ExpectedDps(50) - MonsterScaling.TtkBoss) < 0.1f,
             $"level 50: normal {ttk:0.00}s, rare {rareTtk:0.00}s, boss {bossLife / MonsterScaling.ExpectedDps(50):0.0}s");
 
+        // Boss hits are aimed at the reference character's life (owner: standing still never killed you).
+        float share1 = MonsterScaling.AuthoredBossHit * MonsterScaling.BossDamageMultiplier(1) / MonsterScaling.ReferenceLife(1);
+        float share85 = MonsterScaling.AuthoredBossHit * MonsterScaling.BossDamageMultiplier(85) / MonsterScaling.ReferenceLife(85);
+        Check("BOSS-DAMAGE-SHARE",
+            Mathf.Abs(share1 - MonsterScaling.BossHitShare) < 0.01f && Mathf.Abs(share85 - MonsterScaling.BossHitShare) < 0.01f
+            && MonsterScaling.BossDamageMultiplier(85) > MonsterScaling.DamageMultiplier(85),
+            $"a typical boss hit takes {share1:P0} of the reference life at level 1, {share85:P0} at 85 (x{MonsterScaling.BossDamageMultiplier(1):0.0} -> x{MonsterScaling.BossDamageMultiplier(85):0.0})");
+
         // Defences: nothing at level 1; at 85 the base resistance, the theme's element more, and
         // armour that stops MaxArmourReduction of the reference hit.
         var low = GD.Load<PackedScene>("res://scenes/enemies/Slime.tscn").Instantiate<Enemy>();
