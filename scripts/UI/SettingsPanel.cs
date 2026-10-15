@@ -17,7 +17,7 @@ public partial class SettingsPanel : PanelContainer
 
     public static SettingsPanel Create(Control parent)
     {
-        var panel = new SettingsPanel { Theme = UiTheme.Theme, CustomMinimumSize = new Vector2(560f, 0f) };
+        var panel = new SettingsPanel { Theme = UiTheme.Theme, CustomMinimumSize = new Vector2(600f, 0f) };
         parent.AddChild(panel);
         return panel;
     }
@@ -25,34 +25,93 @@ public partial class SettingsPanel : PanelContainer
     public override void _Ready()
     {
         GameSettings? settings = GameSettings.Get(this);
-        VBoxContainer box = UiTheme.VBox(this, 12);
-        box.AddChild(UiTheme.Label("Settings", 34, UiTheme.Gold, HorizontalAlignment.Center));
+        VBoxContainer root = UiTheme.VBox(this, 10);
+        root.AddChild(UiTheme.Label("Settings", 34, UiTheme.Gold, HorizontalAlignment.Center));
 
-        box.AddChild(UiTheme.Label("Audio", 22, UiTheme.Ember));
-        AddSlider(box, "Master volume", settings?.MasterVolume ?? 0.8f, v => settings?.SetMasterVolume(v));
-        AddSlider(box, "Music volume", settings?.MusicVolume ?? 0.7f, v => settings?.SetMusicVolume(v));
-        AddSlider(box, "Effects volume", settings?.SfxVolume ?? 0.8f, v => settings?.SetSfxVolume(v));
+        // Three tabs, each scrolling on its own: the panel never grows past the
+        // screen (it used to, and the Gameplay section and Back fell off the bottom).
+        var tabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0f, 420f) };
+        tabs.AddThemeFontSizeOverride("font_size", 18);
+        root.AddChild(tabs);
 
-        box.AddChild(UiTheme.Label("Display", 22, UiTheme.Ember));
-        AddToggle(box, "Fullscreen", settings?.Fullscreen ?? false, v => settings?.SetFullscreen(v));
-        AddToggle(box, "V-Sync", settings?.VSync ?? true, v => settings?.SetVSync(v));
-        AddToggle(box, "Voxel graphics (HD-2D) — applies on the next scene", settings?.VoxelGraphics ?? true, v => settings?.SetVoxelGraphics(v));
-        AddToggle(box, "Life and mana bars over your character", settings?.OverheadBars ?? true, v => settings?.SetOverheadBars(v));
-        AddToggle(box, "Screen shake", settings?.ScreenShake ?? true, v => settings?.SetScreenShake(v));
-        AddToggle(box, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
-        AddToggle(box, "Show FPS (F3)", settings?.ShowFps ?? false, v => settings?.SetShowFps(v));
-        AddToggle(box, "Admin mode (testing: max-level test characters)", settings?.AdminMode ?? false, v => settings?.SetAdminMode(v));
+        VBoxContainer audio = Tab(tabs, "Audio");
+        AddSlider(audio, "Master volume", settings?.MasterVolume ?? 0.8f, v => settings?.SetMasterVolume(v));
+        AddSlider(audio, "Music volume", settings?.MusicVolume ?? 0.7f, v => settings?.SetMusicVolume(v));
+        AddSlider(audio, "Effects volume", settings?.SfxVolume ?? 0.8f, v => settings?.SetSfxVolume(v));
 
-        box.AddChild(UiTheme.Label("Gameplay", 22, UiTheme.Ember));
+        VBoxContainer display = Tab(tabs, "Display");
+        OptionButton? size = null;
+        AddOptions(display, "Window mode", new[] { "Windowed", "Borderless", "Fullscreen" }, (int)(settings?.WindowMode ?? WindowModeKind.Borderless), i =>
+        {
+            settings?.SetWindowMode((WindowModeKind)i);
+            if (size is not null)
+            {
+                size.Disabled = i != (int)WindowModeKind.Windowed;
+            }
+        });
+        Vector2I current = settings?.WindowSize ?? new Vector2I(1600, 900);
+        size = AddOptions(display, "Window size", Array.ConvertAll(GameSettings.WindowSizes, v => $"{v.X} × {v.Y}{AspectLabel(v)}"),
+            Math.Max(0, Array.IndexOf(GameSettings.WindowSizes, current)), i => settings?.SetWindowSize(GameSettings.WindowSizes[i]));
+        size.Disabled = settings?.WindowMode != WindowModeKind.Windowed;
+        AddToggle(display, "Use the whole screen on ultrawide (21:9, 32:9) — off: 16:9 with side bars", settings?.FillWideScreens ?? true, v => settings?.SetFillWideScreens(v));
+        AddToggle(display, "V-Sync", settings?.VSync ?? true, v => settings?.SetVSync(v));
+        AddToggle(display, "Voxel graphics (HD-2D) — applies on the next scene", settings?.VoxelGraphics ?? true, v => settings?.SetVoxelGraphics(v));
+        AddToggle(display, "Show FPS (F3)", settings?.ShowFps ?? false, v => settings?.SetShowFps(v));
 
-        box.AddChild(UiTheme.Label(
-            "WASD move · Mouse aim · Space dodge · I inventory · Esc pause",
-            15, UiTheme.TextDim, HorizontalAlignment.Center));
+        VBoxContainer gameplay = Tab(tabs, "Gameplay");
+        AddToggle(gameplay, "Life and mana bars over your character", settings?.OverheadBars ?? true, v => settings?.SetOverheadBars(v));
+        AddToggle(gameplay, "Screen shake", settings?.ScreenShake ?? true, v => settings?.SetScreenShake(v));
+        AddToggle(gameplay, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
+        AddToggle(gameplay, "Admin mode (testing: max-level test characters)", settings?.AdminMode ?? false, v => settings?.SetAdminMode(v));
+        Label controls = UiTheme.Label(
+            "WASD move · Mouse aim · LMB/RMB/1-4 skills · Space dodge · Shift sprint · Q/R flasks\nI inventory · C character · K skills · P passive tree · Esc menu",
+            15, UiTheme.TextDim, HorizontalAlignment.Center);
+        controls.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        gameplay.AddChild(controls);
 
         Button back = UiTheme.Button("Back", Close);
         back.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-        box.AddChild(back);
+        root.AddChild(back);
         back.CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    private static string AspectLabel(Vector2I v) => (v.X / (float)v.Y) switch { > 3f => "  (32:9)", > 2f => "  (21:9)", _ => "" };
+
+    /// <summary>A tab page that scrolls vertically if its rows don't fit.</summary>
+    private static VBoxContainer Tab(TabContainer tabs, string title)
+    {
+        var scroll = new ScrollContainer { Name = title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        tabs.AddChild(scroll);
+        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        box.AddThemeConstantOverride("separation", 10);
+        var pad = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (string side in new[] { "left", "right", "top", "bottom" })
+        {
+            pad.AddThemeConstantOverride($"margin_{side}", 12);
+        }
+
+        scroll.AddChild(pad);
+        pad.AddChild(box);
+        return box;
+    }
+
+    private static OptionButton AddOptions(VBoxContainer box, string text, string[] items, int selected, Action<int> onChanged)
+    {
+        HBoxContainer row = UiTheme.HBox(box);
+        Label label = UiTheme.Label(text, 18);
+        label.CustomMinimumSize = new Vector2(200f, 0f);
+        row.AddChild(label);
+        var options = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        options.AddThemeFontSizeOverride("font_size", 18);
+        foreach (string item in items)
+        {
+            options.AddItem(item);
+        }
+
+        options.Selected = Mathf.Clamp(selected, 0, items.Length - 1);
+        options.ItemSelected += i => onChanged((int)i);
+        row.AddChild(options);
+        return options;
     }
 
     public void Close()

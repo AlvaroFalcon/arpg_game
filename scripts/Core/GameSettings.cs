@@ -27,7 +27,26 @@ public partial class GameSettings : Node
     public float MasterVolume { get; private set; } = 0.8f;
     public float MusicVolume { get; private set; } = 0.7f;
     public float SfxVolume { get; private set; } = 0.8f;
-    public bool Fullscreen { get; private set; }
+    /// <summary>docs/design/menus.md -> "Settings": windowed, borderless (a window
+    /// covering the screen — the default, quick to alt-tab) or exclusive fullscreen.</summary>
+    public WindowModeKind WindowMode { get; private set; } = WindowModeKind.Borderless;
+
+    /// <summary>Window size in windowed mode (the game renders at any size: the
+    /// 1280×720 layout scales up to fill it).</summary>
+    public Vector2I WindowSize { get; private set; } = new(1600, 900);
+
+    /// <summary>16:9 sizes, then ultrawide 21:9 (2560×1080, 3440×1440, 3840×1600) and 32:9 (5120×1440).</summary>
+    public static readonly Vector2I[] WindowSizes =
+    {
+        new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440),
+        new(2560, 1080), new(3440, 1440), new(3840, 1600), new(5120, 1440),
+    };
+
+    /// <summary>Wide screens (21:9, 32:9) show more of the world to the sides by
+    /// default; off keeps the classic 16:9 view with bars at the sides.</summary>
+    public bool FillWideScreens { get; private set; } = true;
+
+    public bool Fullscreen => WindowMode != WindowModeKind.Windowed;
     public bool VSync { get; private set; } = true;
     public bool ScreenShake { get; private set; } = true;
     public bool DamageNumbers { get; private set; } = true;
@@ -83,7 +102,9 @@ public partial class GameSettings : Node
     public void SetMasterVolume(float v) { MasterVolume = Mathf.Clamp(v, 0f, 1f); ApplyAudio(); NotifyChanged(); }
     public void SetMusicVolume(float v) { MusicVolume = Mathf.Clamp(v, 0f, 1f); ApplyAudio(); NotifyChanged(); }
     public void SetSfxVolume(float v) { SfxVolume = Mathf.Clamp(v, 0f, 1f); ApplyAudio(); NotifyChanged(); }
-    public void SetFullscreen(bool v) { Fullscreen = v; ApplyDisplay(); NotifyChanged(); }
+    public void SetWindowMode(WindowModeKind v) { WindowMode = v; ApplyDisplay(); NotifyChanged(); }
+    public void SetWindowSize(Vector2I v) { WindowSize = v; ApplyDisplay(); NotifyChanged(); }
+    public void SetFillWideScreens(bool v) { FillWideScreens = v; ApplyDisplay(); NotifyChanged(); }
     public void SetVSync(bool v) { VSync = v; ApplyDisplay(); NotifyChanged(); }
     public void SetScreenShake(bool v) { ScreenShake = v; NotifyChanged(); }
     public void SetDamageNumbers(bool v) { DamageNumbers = v; NotifyChanged(); }
@@ -155,7 +176,33 @@ public partial class GameSettings : Node
             return;
         }
 
-        DisplayServer.WindowSetMode(Fullscreen ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
+        // The layout is 1280×720: "expand" widens the view on screens wider than
+        // 16:9 (anchored HUD pieces follow their corners); "keep" letterboxes.
+        if (GetTree()?.Root is { } root)
+        {
+            root.ContentScaleAspect = FillWideScreens ? Window.ContentScaleAspectEnum.Expand : Window.ContentScaleAspectEnum.Keep;
+        }
+
+        switch (WindowMode)
+        {
+            case WindowModeKind.Fullscreen:
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.ExclusiveFullscreen);
+                break;
+            case WindowModeKind.Borderless:
+                // Godot's non-exclusive fullscreen is a borderless window covering the screen.
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
+                break;
+            default:
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
+                DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.Borderless, false);
+                Vector2I screen = DisplayServer.ScreenGetUsableRect().Size;
+                Vector2I size = new(Mathf.Min(WindowSize.X, screen.X), Mathf.Min(WindowSize.Y, screen.Y));
+                DisplayServer.WindowSetSize(size);
+                Vector2I origin = DisplayServer.ScreenGetUsableRect().Position;
+                DisplayServer.WindowSetPosition(origin + (screen - size) / 2);
+                break;
+        }
+
         DisplayServer.WindowSetVsyncMode(VSync ? DisplayServer.VSyncMode.Enabled : DisplayServer.VSyncMode.Disabled);
     }
 
@@ -171,7 +218,15 @@ public partial class GameSettings : Node
         MasterVolume = (float)config.GetValue("audio", "master", MasterVolume);
         MusicVolume = (float)config.GetValue("audio", "music", MusicVolume);
         SfxVolume = (float)config.GetValue("audio", "sfx", SfxVolume);
-        Fullscreen = (bool)config.GetValue("display", "fullscreen", Fullscreen);
+        // Older files only had a fullscreen flag: on = exclusive fullscreen; off was simply
+        // the old default, so it becomes the new default (borderless).
+        WindowMode = config.HasSectionKey("display", "window_mode")
+            ? (WindowModeKind)(int)config.GetValue("display", "window_mode", (int)WindowMode)
+            : config.HasSectionKey("display", "fullscreen")
+                ? ((bool)config.GetValue("display", "fullscreen", false) ? WindowModeKind.Fullscreen : WindowModeKind.Borderless)
+                : WindowMode;
+        WindowSize = (Vector2I)config.GetValue("display", "window_size", WindowSize);
+        FillWideScreens = (bool)config.GetValue("display", "fill_wide_screens", FillWideScreens);
         VSync = (bool)config.GetValue("display", "vsync", VSync);
         ScreenShake = (bool)config.GetValue("gameplay", "screen_shake", ScreenShake);
         DamageNumbers = (bool)config.GetValue("gameplay", "damage_numbers", DamageNumbers);
@@ -189,7 +244,9 @@ public partial class GameSettings : Node
         config.SetValue("audio", "master", MasterVolume);
         config.SetValue("audio", "music", MusicVolume);
         config.SetValue("audio", "sfx", SfxVolume);
-        config.SetValue("display", "fullscreen", Fullscreen);
+        config.SetValue("display", "window_mode", (int)WindowMode);
+        config.SetValue("display", "window_size", WindowSize);
+        config.SetValue("display", "fill_wide_screens", FillWideScreens);
         config.SetValue("display", "vsync", VSync);
         config.SetValue("gameplay", "screen_shake", ScreenShake);
         config.SetValue("gameplay", "damage_numbers", DamageNumbers);
@@ -201,4 +258,11 @@ public partial class GameSettings : Node
         config.SetValue("gameplay", "admin_mode", AdminMode);
         config.Save(SavePath);
     }
+}
+
+public enum WindowModeKind
+{
+    Windowed,
+    Borderless,
+    Fullscreen,
 }

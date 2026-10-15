@@ -56,7 +56,48 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : _only == "settings" ? SettingsScript() : Script();
+    }
+
+    /// <summary>`--only=settings`: the settings panel's three tabs (docs/design/menus.md -> "Settings").</summary>
+    private async Task SettingsScript()
+    {
+        await Shot(Scenes(main: true), "menu-main.png", 1.0f);
+        if (GetTree().CurrentScene is UI.MainMenu menu)
+        {
+            menu.OpenSettingsForCapture();
+            await Wait(0.4f);
+            if (menu.FindChild("*", true, false) is not null && FindTabs(menu) is { } tabs)
+            {
+                foreach ((int index, string name) in new[] { (0, "audio"), (1, "display"), (2, "gameplay") })
+                {
+                    tabs.CurrentTab = index;
+                    await Wait(0.3f);
+                    await Snap($"settings-{name}.png");
+                }
+            }
+        }
+
+        GD.Print("[CAPTURE] done");
+        GetTree().Quit();
+    }
+
+    private static TabContainer? FindTabs(Node node)
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            if (child is TabContainer t)
+            {
+                return t;
+            }
+
+            if (FindTabs(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private async Task Script()

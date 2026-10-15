@@ -93,9 +93,30 @@ kept) and Quit.
 (`UI/SettingsPanel.cs`) is shared by the main menu and the pause menu, applies every
 change live and saves on close.
 
-- Audio: master, music, effects volume (Music/SFX buses are created at startup).
-- Display: fullscreen, V-Sync, screen shake, damage numbers.
-- Gameplay: auto-cast, auto-aim.
+Three tabs (2026-10-15 — the single column had grown taller than the screen,
+hiding the Gameplay section and Back); each tab scrolls on its own and Back is
+always visible.
+
+- **Audio**: master, music, effects volume (Music/SFX buses are created at startup).
+- **Display**: **window mode** — Windowed, **Borderless** (a window covering the
+  screen; the default) or Fullscreen (exclusive); **window size** for windowed
+  (1280×720, 1600×900, 1920×1080, 2560×1440, centred, clamped to the screen);
+  V-Sync; voxel graphics; Show FPS. The game lays out at 1280×720 and scales to
+  the window (`canvas_items` stretch, `expand` aspect), so 1920×1080 is exactly
+  ×1.5. Old settings files: `fullscreen=true` becomes Fullscreen, `false` (the old
+  default) becomes Borderless.
+- **Ultrawide** (2026-10-15, the owner plays on one): wider than 16:9, the view
+  simply widens (`expand`): 21:9 at 1080 lines is a 1707×720 layout, the world
+  shows more to the sides, the voxel camera follows, and HUD pieces stay on their
+  anchored corners. A toggle keeps 16:9 with side bars instead
+  (`FillWideScreens`, `ContentScaleAspect` Keep). Windowed sizes include
+  2560×1080, 3440×1440, 3840×1600 (21:9) and 5120×1440 (32:9). Checked at
+  2560×1080 across menus, town, panels, realities and the HUD editor; the one
+  panel placed at a fixed x (the inventory, at 848 = 1280 − 432) is now anchored
+  to the right edge. Screenshots: `ultrawide-inventory.png`, `ultrawide-reality.png`.
+- **Gameplay**: overhead bars, screen shake, damage numbers, admin mode, and the
+  controls reminder. (Auto-aim and auto-cast stay internal: the Survival Rift
+  always auto-aims, realities aim with the mouse.)
 - **Show FPS** (2026-10-15, also **F3** anywhere): a readout in the top-left corner
   (`UI/FpsOverlay.cs`, a layer under the settings autoload so it survives scene
   changes) with frames per second, the average frame time and the **worst frame of
