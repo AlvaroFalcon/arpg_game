@@ -109,6 +109,8 @@ It auto-detects the Mono/.NET Godot binary (checks `$GODOT_BIN`, `godot4`/`godot
 | [game-dev-blogger](.claude/agents/game-dev-blogger.md) | Writing devlog posts from `docs/devlog/journal.md`, technical-but-friendly tone, screenshots, decision rationale |
 | [game-designer](.claude/agents/game-designer.md) | Design/mechanics questions, genre research, balancing advice — general game design expertise, not Godot-specific |
 | [godot-expert](.claude/agents/godot-expert.md) | Writing/reviewing GDScript or C#, scene setup, engine architecture, performance, headless testing |
+| [performance-expert](.claude/agents/performance-expert.md) | Frame drops, spikes, CPU/GPU budgets; measures before/after (`docs/design/performance.md`) |
+| [multiplayer-expert](.claude/agents/multiplayer-expert.md) | Online co-op (host-authoritative, ENet, up to 4 players): replication, lobby, party rules (`docs/design/multiplayer.md`) |
 
 ## MCP tools available
 
