@@ -92,6 +92,13 @@ public partial class Profile : Node
 
     public override void _Ready()
     {
+        // scripts/coop_local.sh: the second window plays a throwaway copy of the
+        // profile, so two instances on one PC never overwrite each other's save.
+        if (System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--profile-readonly") >= 0)
+        {
+            Persist = false;
+        }
+
         Load();
     }
 
