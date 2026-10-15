@@ -127,6 +127,11 @@ so balance numbers stay comparable with earlier passes.
   click to pick up): elites 30 %, bosses 2 items each.
 - **Crafting orbs** (the same orbs as realities, [crafting.md](crafting.md)): 0.4 %
   per ordinary kill, 25 % per elite, 3 per boss. They go to the account like any orb.
+- **Drops spawn from a queue.** Gems, life orbs, gold, crafting orbs and gear are
+  rolled on the kill frame but appear a few per frame (at most 2 items or 8
+  pickups a frame, `LootQueue`), so a mass kill's drops trickle in over a few
+  frames instead of costing one frame. Nothing is lost; power-ups still appear at
+  once. Same queue in realities (performance.md -> "Mass deaths").
 - **Power-ups** (rare, at most one of each on the floor; elites are 40× likelier to
   drop one):
   - **Cataclysm** (red burst, 0.09 % per kill) — every non-boss enemy on screen

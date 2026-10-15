@@ -1,6 +1,6 @@
 # Performance
 
-Status: **first pass done (mass deaths)**. This doc records frame-time problems
+Status: **second pass done (mass deaths: all four proposals implemented)**. This doc records frame-time problems
 we measured, what caused them, what we changed, and the budgets we keep. Every
 number here comes from a benchmark you can re-run. Add to it when a new problem
 gets measured.
@@ -16,14 +16,15 @@ gives a big frame drop).
 - **Volatile** monsters. This is the reality modifier "A quarter of monsters
   explode on death", plus the `volatile` mod on magic and rare monsters. Each
   death spawns an `AreaBurst` (r 90, 1.0 s telegraph). When a pack dies
-  together, all of the blasts land on the **same frame** one second later.
+  together, all of the blasts land on the **same frame** one second later
+  (before the second pass, which staggers and merges them).
 - **Volatile imps** (`ExploderEnemy`). Imps that prime together also detonate
   together. Their blast kills the imp itself.
 - **Player on-kill explosions.** These are Chain Reaction (a Rift keystone or a
   character keystone) and the Warrior's Decay ascendancy (25 %). They are delay-0
   bursts that hit monsters, so they can cascade. A delay-0 burst detonates on its
   first physics step, so in the benchmark **a whole 60-monster cascade resolved
-  within two frames**.
+  within two frames** (before the second pass: one hop per frame now).
 - Enemy blasts (volatile, imp) only hit the player. They never chain through
   monsters.
 
@@ -117,7 +118,7 @@ there should be larger than the CPU number suggests.
    largest item headless.
 3. **Loot in realities.** An item drop costs ~1 ms (instance, affix roll, icon,
    ground label) and a pickup 0.1–0.3 ms. A magic pack drops 3–8 items: 5–10 ms.
-   *Not changed*: see proposals.
+   Fixed in the second pass (loot spawn queue).
 4. **Node teardown.** Freeing 60 monsters of ~8 nodes each costs ~7 ms (the
    `free` control). This is inherent to freeing them. *Not changed*: see
    rejected options.
@@ -130,7 +131,7 @@ there should be larger than the CPU number suggests.
    Godot array plus LINQ, ~1.5 ms per 60 kills. `DeathPuff` is ~2 ms per 60
    nodes. The volatile spawn is ~3 ms per 60.
 
-### Fixes (none change gameplay)
+### Fixes, first pass (none change gameplay)
 
 - **Cube shapes cached per mesh** (`VoxelDebris.CubesOf`). A model frame is read
   back once per session, never again.
@@ -158,6 +159,9 @@ there should be larger than the CPU number suggests.
   headless. It is ~0.2 ms after the fixes, ~0.35 ms before (a 60-pack's kill
   call was 21 ms before and is 11–13 ms after).
 - Cosmetic 3D effects started in one frame: ≤ 6 impact puffs and 1 crumble node.
+- Loot spawned in one frame: ≤ 2 items or 8 pickups (`LootQueue.FrameBudget`).
+- On-kill explosions: one hop per frame. Volatile blasts: one hit per target per
+  0.25 s, and one telegraph per cluster.
 - Anything that can happen per death must not touch the GPU synchronously
   (no `SurfaceGetArrays`, `Texture.GetImage`, `Viewport.GetTexture().GetImage()`).
 
@@ -175,24 +179,100 @@ there should be larger than the CPU number suggests.
 - **Threads.** The cost is spread over Godot node APIs that must run on the main
   thread.
 
-### Proposals (owner decision needed: they change gameplay or touch shared code)
+### Second pass: the four proposals (approved by the owner 2026-10-15)
 
-1. **One chain hop per frame.** On-kill explosions (Chain Reaction, Decay)
-   would detonate the frame after the death that spawned them, not in the same
-   physics step. A cascade then spreads over several frames and reads as a
-   ripple. The timing changes by ~16 ms per hop.
-2. **Stagger volatile blasts.** Give each blast a delay of 1.0 s ± 0.1 s, so a
-   pack's 60 detonations spread over ~12 frames.
-   - Gameplay note: today 60 overlapping blasts are 60 separate hits on the
-     player in one frame, which is effectively instant death. Merging
-     overlapping volatile blasts (or a per-frame cap on hits from them) would be
-     both fairer and cheaper.
-3. **Loot spawn queue.** Spawn drops (items, orbs, gold) at most ~2 items per
-   frame from a queue, a few frames late. No numbers change, but it edits
-   `RealityController`/`RunState`, which were being worked on in parallel, so it
-   is left for a coordinated change. It is worth ~5–10 ms on a magic pack's
-   death frame.
-4. **One telegraph per cluster.** 60 volatile telegraphs draw 60 overlapping
-   translucent discs for a second. That overdraw is invisible on lavapipe's
-   numbers but real on low-end GPUs. Drawing one merged outline would change
-   what the player reads.
+The owner approved all four ("sí, dale con todo para que vaya mejor"). Items 1
+and 2 change what the player sees and, for volatile blasts, how much damage they
+take. That is intended and is written into the design docs (endgame.md,
+progression.md, run.md).
+
+1. **One chain hop per frame** (`AreaBurst.SpawnOnKill`). Chain Reaction (realities
+   and the Rift) and the Warrior's Decay spawn a burst that may not detonate until
+   the physics frame after the death that spawned it. A cascade spreads as a
+   ripple, ~16 ms per hop. Damage, radius and chance are unchanged.
+   - Measured: the bench's 60-monster cascade went from two heavy frames (#1, #2)
+     to two lighter ones (#2, #3) plus a tail. The disc is dense (14 px apart,
+     70 px blasts), so it is only 2–3 hops deep. One hop kills ~25 monsters, and a
+     hop's cost is those deaths. A per-frame cap on chain *deaths* would spread it
+     further, but it would also delay kills and drops, so it was not done.
+2. **Volatile blasts staggered and merged** (`Enemy.OnDied` → `AreaBurst.SpawnMerged`,
+   group `"volatile"`).
+   - The delay is 1.0 s ± 0.1 s (uniform), so a pack's blasts land over ~12 frames.
+   - **Hit window.** A target hit by a volatile blast ignores further volatile
+     blasts for 0.25 s (`AreaBurst.GroupHitWindow`). The window is counted in
+     physics frames of the current delta, so it holds at any time scale. The
+     first blast to land hits, and the others still flash. A pack killed together
+     is one hit. Packs killed 0.25 s or more apart still hit separately.
+   - Why a window rather than "merge into one blast with the max damage": the
+     window keeps every blast's own area and damage, and it needs no cluster
+     bookkeeping for damage. Within a pack the damage is the same
+     (15 + 3 × monster level), so "first" and "max" are equal in practice.
+   - Imps (`ExploderEnemy`) are not in the group. Their blast is their attack,
+     and they prime one by one as they reach the player.
+3. **Loot spawn queue** (`Items.LootQueue`, owned by `RealityController.Loot` and
+   `RunState.Loot`, pumped at the start of each one's `_PhysicsProcess`).
+   - Drops are rolled on the kill frame (same chances, positions and amounts) and
+     spawned in order under a budget. An item costs 1 and a pickup 0.25, with a
+     budget of 2 per frame (2 items or 8 pickups a frame).
+   - Queued: reality monster drops (items, gems, shards, gold, crafting orbs, life
+     orbs) and Rift kill drops (experience gems, life, gold, orbs, gear).
+   - Not queued:
+     - boss rewards in realities (one death, and tests and the tutorial expect
+       them at once);
+     - the tutorial's gift;
+     - Rift power-ups (Cataclysm, Lodestone), whose "one on the floor" check must
+       see the real floor.
+   - Nothing is lost while the scene lives. If the scene is freed within a few
+     frames of a kill, the queued drops go with it, as anything on the floor would.
+   - `RunSmokeTest` waits 2 frames before checking that Cataclysm's victims drop
+     experience.
+4. **One telegraph per cluster** (`AreaBurst.SpawnMerged`).
+   - A volatile blast that spawns within the radius (90 px) of an open cluster's
+     first blast (the leader) joins that cluster.
+   - The leader draws one outline that covers every member and fills until the
+     last member lands. The outline is centred on the leader, and its radius
+     reaches the farthest member's edge.
+   - Members draw only their own impact flash.
+   - The 60-pack shows ~5 outlines instead of 60 discs
+     (`docs/devlog/screenshots/perf-volatile-merged-telegraph.png`).
+   - Cosmetic only: the outline slightly overstates the union of the real areas.
+
+`RunSmokeTest` checks item 2's gameplay: 8 volatile Slimes dying on the player
+give 8 blasts, 1 hit, landing over several distinct frames.
+
+#### Results, second pass (60 Slimes, headless, median of 3 runs, ms)
+
+- **Doc** is the first pass's *after* column above.
+- **Re-run** is the previous commit measured again in the same session as the
+  new numbers, back to back. This machine drifts by several ms between sessions,
+  so the re-run is the fair comparison.
+
+| Scenario | Kill call: doc / re-run → now | Kill frame #0+#1: doc / re-run → now | Worst frame in 2.5 s: doc / re-run → now |
+|---|---|---|---|
+| Reality, volatile | 12.7 / 18.9 → **11.1** | 26.9 / 35.6 → **30.4** | 14.8 / 20.9 → **17.9** |
+| Reality, plain deaths | 10.7 / 15.3 → **9.7** | 20.1 / 28.5 → **21.0** | 15.1 / 17.3 → **10.6** |
+| Reality, chain reaction | 3.0 / 3.9 → 3.6 | 19.9 / 28.2 → **6.7** | 24.7 / 24.9 → **15.8** |
+| Reality, imps detonating | 0.7 / 0.6 → 0.7 | 14.7 / 17.3 → 14.2 | 23.4 / 21.9 → 20.0 (not targeted, noise) |
+| Rift, volatile | 16.6 / 15.4 → **9.4** | 30.6 / 29.1 → **20.2** | 19.9 / 27.1 → **17.7** |
+| Rift, chain reaction | 3.6 / 4.1 → 4.5 | 21.3 / 24.1 → **10.4** | 17.9 / 28.8 → **16.9** |
+
+- **Chain.** The kill frame is now cheap because the cascade starts one frame
+  later. The heavy frames are #2 and #3 (~15 + 13 ms) instead of #1 and #2
+  (~25 + 18 ms).
+- **Volatile.** The blasts landing were already cheap headless. The first pass
+  capped the voxel view's impact puffs, and staggering now spreads them too.
+- **Loot.** The kill call dropped 5–6 ms wherever loot or experience drops. That
+  is the queue.
+- **Unexplained.** Spikes later in the Rift runs (#8–#33, ~17 ms) show up both
+  before and after. They are not the blasts (those land around #60) and are not
+  attributed yet.
+
+### Proposals
+
+None open: the four from the first pass are implemented above.
+
+Possible next steps, measured but not proposed yet:
+
+- A per-frame budget on chain-reaction *deaths* (see item 1).
+- `RunState.SpawnExperience` calls `GetNodesInGroup` (which allocates an array)
+  for every gem, to check the 300-gem cap. A counter would remove that.

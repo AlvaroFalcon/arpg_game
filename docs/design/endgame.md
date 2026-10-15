@@ -436,6 +436,14 @@ scripts/Enemies/MonsterRarity.cs):
 
 Mods: Hasted, Armoured, Fire-touched, Vampiric, Volatile (telegraphed death
 explosion), Frost Aura, Splitter, Regenerating, Empowered, Barrage (ranged only).
+
+Volatile blasts (the mod and the Volatile reality modifier) land 1.0 s ± 0.1 s
+after the death (90 px, 15 + 3 × monster level fire). Blasts close together
+share **one telegraph** drawn over the whole cluster, and a target takes **at most
+one volatile blast every 0.25 s** — the first to land; the rest of the pack's
+blasts still flash but don't hit it. Before this (2026-10-15) a pack dying
+together landed every blast on the same frame, one hit each: 60 overlapping
+blasts were 60 hits, instant death. Details: performance.md -> "Mass deaths".
 Unique-rares also cast a **signature** attack from the boss toolkit (slam, rain of
 circles, orb nova, triple lane) under the same telegraph rules as bosses.
 

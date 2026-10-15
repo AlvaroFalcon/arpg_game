@@ -74,6 +74,7 @@ public partial class RunSmokeTest : Node2D
         await BuildChecks();
         ExperienceChecks();
         await AreaAndChainChecks();
+        await VolatileChecks();
         await ContactChecks();
         await BossPhaseChecks();
         ProfileChecks();
@@ -275,6 +276,54 @@ public partial class RunSmokeTest : Node2D
         await Frames(1);
     }
 
+    // Volatile packs (docs/design/performance.md -> "Mass deaths"): blasts are
+    // staggered over frames and the player takes one hit from a pack, not one per monster.
+    private async Task VolatileChecks()
+    {
+        Player player = SpawnPlayer(new Vector2(5000, 2000));
+        await Frames(2);
+        var volatileMod = new[] { MonsterRarities.Mods.First(m => m.Id == "volatile") };
+        var pack = new System.Collections.Generic.List<Enemy>();
+        for (int i = 0; i < 8; i++)
+        {
+            Enemy e = SpawnEnemy("Slime", player.GlobalPosition + Vector2.Right.Rotated(i * 0.785f) * 30f);
+            e.ApplyRarity(MonsterRarity.Magic, volatileMod);
+            e.Dormant = true;
+            pack.Add(e);
+        }
+
+        await Frames(2);
+        int hits = 0;
+        var landed = new System.Collections.Generic.HashSet<ulong>();
+        void OnHit(Health h, DamagePayload p, float taken)
+        {
+            if (h == player.Health)
+            {
+                hits++;
+            }
+        }
+
+        Health.AnyHitResolved += OnHit;
+        foreach (Enemy e in pack)
+        {
+            e.Health.ApplyResolvedDamage(1e9f, null);
+        }
+
+        await Frames(1);
+        var blasts = GetChildren().OfType<AreaBurst>().Where(b => b.MergeGroup == "volatile").ToList();
+        foreach (AreaBurst b in blasts)
+        {
+            b.Impacted += _ => landed.Add(Engine.GetPhysicsFrames());
+        }
+
+        await Frames(80);
+        Health.AnyHitResolved -= OnHit;
+        Check("VOLATILE-ONE-HIT-PER-PACK", blasts.Count == 8 && hits == 1, $"{blasts.Count} blasts, player hit {hits} time(s)");
+        Check("VOLATILE-STAGGERED", landed.Count >= 2, $"8 blasts landed over {landed.Count} distinct frames");
+        player.QueueFree();
+        await Frames(1);
+    }
+
     private async Task ContactChecks()
     {
         Player player = SpawnPlayer(new Vector2(3000, 3000));
@@ -422,6 +471,7 @@ public partial class RunSmokeTest : Node2D
         await Frames(2);
         int killed = state.Nuke(player);
         Check("NUKE-KILLS-ON-SCREEN", near.Health.IsDead && !far.Health.IsDead && killed >= 1, $"near dead={near.Health.IsDead}, far dead={far.Health.IsDead}, killed={killed}");
+        await Frames(2); // kill drops spawn from a queue, a few per frame
         Check("NUKE-GIVES-EXPERIENCE", GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>().Any(p => p.Kind == PickupKind.Experience), "the slain drop their gems");
 
         // Lodestone: a gem far across the map flies in and is collected.

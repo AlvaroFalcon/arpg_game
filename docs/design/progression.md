@@ -82,6 +82,10 @@ Weaving** (+1 chain).
 | Glass Cannon | 60 % more damage | 40 % less max life |
 | Avatar of Fire | Everything deals Fire, 25 % more damage, +15 % ignite | Cold/Lightning bonuses stop applying |
 | Chain Reaction | Kills explode for 20 % of the victim's max life as Fire | — (it is a gamble on clear speed) |
+
+Chain Reaction's explosions (and the Warrior's Decay) go off on the frame after
+the kill, so a cascade spreads through a pack one hop per frame (~16 ms) as a
+visible ripple instead of resolving at once (performance.md -> "Mass deaths").
 | Phase Dancer | +2 dodge charges, faster recharge, dodging casts a frost nova | 15 % more damage taken |
 | Blood Magic | Skills cost Life (never below 40 %), 30 % more life, +3 regen | Life is now your mana |
 | Echoing Mind | Every spell repeats once | 35 % less cast speed |

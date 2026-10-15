@@ -324,7 +324,7 @@ public partial class AscendancyEffects : Node, IDamageHook
         if (Has("war_decay") && _rng.Randf() < 0.25f)
         {
             var hit = new HitProfile { Damage = (enemy.Stats.Life?.Max ?? 0f) * 0.1f, Type = DamageType.Physical, Source = Player, Faction = Faction.Player, Tags = SkillTags.Area };
-            AreaBurst.Spawn(GetTree().CurrentScene, enemy.GlobalPosition, 70f, 0f, new Color(0.7f, 0.4f, 1f), hit);
+            AreaBurst.SpawnOnKill(GetTree().CurrentScene, enemy.GlobalPosition, 70f, new Color(0.7f, 0.4f, 1f), hit);
         }
 
         if (Has("ninja_fleet"))

@@ -545,7 +545,10 @@ public partial class Enemy : CharacterBody2D
         AnyKilled?.Invoke(this);
         if (HasMod("volatile"))
         {
-            AreaBurst.Spawn(GetTree().CurrentScene, GlobalPosition, 90f, 1.0f, Colors.Red, MakeHit(15f + 3f * MonsterLevel, DamageType.Fire, SkillTags.Area));
+            // Staggered ±0.1 s so a pack's blasts spread over frames, and merged: one
+            // telegraph per cluster, one hit per target per window (performance.md).
+            float delay = 1.0f + (GD.Randf() - 0.5f) * 0.2f;
+            AreaBurst.SpawnMerged(GetTree().CurrentScene, GlobalPosition, 90f, delay, Colors.Red, MakeHit(15f + 3f * MonsterLevel, DamageType.Fire, SkillTags.Area), "volatile");
         }
 
         if (HasMod("splitter") && SceneFilePath.Length > 0)

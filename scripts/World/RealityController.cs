@@ -459,8 +459,12 @@ public partial class RealityController : Node2D, IPickupHandler
 
     // --- loop ------------------------------------------------------------------------
 
+    /// <summary>Monster drops waiting to spawn (a few per frame, see <see cref="LootQueue"/>).</summary>
+    public LootQueue Loot { get; } = new();
+
     public override void _PhysicsProcess(double delta)
     {
+        Loot.Pump();
         float dt = (float)delta;
         if (!Completed && !Collapsed)
         {
@@ -570,7 +574,7 @@ public partial class RealityController : Node2D, IPickupHandler
             if (BuildQuery.Any(Player, b => b.ChainReaction))
             {
                 var hit = new HitProfile { Damage = (enemy.Stats.Life?.Max ?? 0f) * 0.2f, Type = DamageType.Fire, Source = Player, Faction = Faction.Player, Tags = SkillTags.Fire | SkillTags.Area, KnockbackForce = 80f };
-                AreaBurst.Spawn(this, enemy.GlobalPosition, 70f * enemy.Scale.X, 0f, new Color(1f, 0.5f, 0.15f), hit);
+                AreaBurst.SpawnOnKill(this, enemy.GlobalPosition, 70f * enemy.Scale.X, new Color(1f, 0.5f, 0.15f), hit);
             }
         }
 
@@ -593,29 +597,37 @@ public partial class RealityController : Node2D, IPickupHandler
         {
             if (_rng.Randf() < roll)
             {
-                DropItem(at + Jitter(30f), enemy.Rarity switch
+                Vector2 p = at + Jitter(30f);
+                DropSource source = enemy.Rarity switch
                 {
                     MonsterRarity.Magic => DropSource.MagicMonster,
                     MonsterRarity.Rare => DropSource.RareMonster,
                     MonsterRarity.Unique => DropSource.UniqueMonster,
                     _ => DropSource.NormalMonster,
-                });
+                };
+                Loot.Add(LootQueue.ItemCost, () => DropItem(p, source));
             }
         }
 
+        // Everything below is rolled now and spawned a few per frame (Loot).
         if (_rng.Randf() < gem * q)
         {
-            DropGem(at + Jitter(20f));
+            Vector2 p = at + Jitter(20f);
+            Loot.Add(LootQueue.PickupCost, () => DropGem(p));
         }
 
         if (_rng.Randf() < shard * q)
         {
-            DropShard(at + Jitter(20f), Tier);
+            Vector2 p = at + Jitter(20f);
+            int tier = Tier;
+            Loot.Add(LootQueue.PickupCost, () => DropShard(p, tier));
         }
 
         if (_rng.Randf() < gold * q)
         {
-            Pickup.Spawn(this, PickupKind.Gold, Mathf.Round((2 + Tier) * (enemy.Rarity >= MonsterRarity.Rare ? 6 : 1) * (1f + Jewels[JewelStat.Gold])), at + Jitter(12f));
+            float amount = Mathf.Round((2 + Tier) * (enemy.Rarity >= MonsterRarity.Rare ? 6 : 1) * (1f + Jewels[JewelStat.Gold]));
+            Vector2 p = at + Jitter(12f);
+            Loot.Add(LootQueue.PickupCost, () => Pickup.Spawn(this, PickupKind.Gold, amount, p));
         }
 
         // Crafting orbs (docs/design/crafting.md -> "Where orbs come from").
@@ -624,7 +636,8 @@ public partial class RealityController : Node2D, IPickupHandler
         {
             if (_rng.Randf() < roll)
             {
-                DropCurrency(at + Jitter(24f));
+                Vector2 p = at + Jitter(24f);
+                Loot.Add(LootQueue.PickupCost, () => DropCurrency(p));
             }
         }
 
@@ -632,7 +645,8 @@ public partial class RealityController : Node2D, IPickupHandler
         float orb = enemy.Rarity switch { MonsterRarity.Normal => 0.05f, MonsterRarity.Magic => 0.15f, _ => 0.6f };
         if (_rng.Randf() < orb)
         {
-            Pickup.Spawn(this, PickupKind.Life, 0.2f, at + Jitter(10f));
+            Vector2 p = at + Jitter(10f);
+            Loot.Add(LootQueue.PickupCost, () => Pickup.Spawn(this, PickupKind.Life, 0.2f, p));
         }
     }
 
