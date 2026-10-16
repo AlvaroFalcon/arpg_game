@@ -9,13 +9,21 @@ namespace ArpgGame.UI;
 /// <summary>
 /// A row of clickable upgrade cards — the level-up screen and the starting
 /// skill pick share it (docs/design/menus.md -> "Level-up"). Keys 1-9 pick a
-/// card too, so the choice never needs the mouse in a hurry.
+/// card too (handled by <see cref="LevelUpScreen"/>, which owns the keyboard
+/// while it is open). Cards take no keyboard focus, so Space or Enter pressed in
+/// the heat of a fight never picks one, and clicks only count once the row is
+/// <see cref="Armed"/>.
 /// </summary>
 public partial class UpgradeCards : HBoxContainer
 {
     public event Action<UpgradeOffer>? Chosen;
 
     private readonly List<UpgradeOffer> _offers = new();
+
+    /// <summary>Clicks before this moment (Time.GetTicksMsec) are ignored.</summary>
+    public ulong ArmedAtMsec { get; set; }
+
+    public bool Armed => Time.GetTicksMsec() >= ArmedAtMsec;
 
     public void SetOffers(IReadOnlyList<UpgradeOffer> offers)
     {
@@ -55,14 +63,20 @@ public partial class UpgradeCards : HBoxContainer
         var card = new Button
         {
             CustomMinimumSize = new Vector2(width, 330f),
-            FocusMode = FocusModeEnum.All,
+            FocusMode = FocusModeEnum.None,
             ClipContents = true,
         };
         card.AddThemeStyleboxOverride("normal", UiTheme.Box(UiTheme.Panel, accent with { A = 0.55f }, 2, 8, 14));
         card.AddThemeStyleboxOverride("hover", UiTheme.Box(new Color(0.16f, 0.13f, 0.22f), accent, 3, 8, 14));
         card.AddThemeStyleboxOverride("focus", UiTheme.Box(new Color(0.16f, 0.13f, 0.22f, 0f), accent, 3, 8, 14));
         card.AddThemeStyleboxOverride("pressed", UiTheme.Box(new Color(0.22f, 0.18f, 0.3f), accent, 3, 8, 14));
-        card.Pressed += () => Choose(offer);
+        card.Pressed += () =>
+        {
+            if (Armed)
+            {
+                Choose(offer);
+            }
+        };
 
         var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         box.AddThemeConstantOverride("separation", 8);
@@ -112,25 +126,6 @@ public partial class UpgradeCards : HBoxContainer
         Chosen?.Invoke(offer);
     }
 
-    public override void _UnhandledInput(InputEvent @event)
-    {
-        if (!IsVisibleInTree() || @event is not InputEventKey { Pressed: true, Echo: false } key)
-        {
-            return;
-        }
-
-        int index = key.PhysicalKeycode switch
-        {
-            >= Key.Key1 and <= Key.Key9 => (int)(key.PhysicalKeycode - Key.Key1),
-            _ => -1,
-        };
-        if (index >= 0 && index < _offers.Count)
-        {
-            GetViewport().SetInputAsHandled();
-            Choose(_offers[index]);
-        }
-    }
-
     /// <summary>Picks the card at <paramref name="index"/> as if clicked (tools, tests).</summary>
     public void ChooseIndex(int index)
     {
@@ -141,12 +136,4 @@ public partial class UpgradeCards : HBoxContainer
     }
 
     public int OfferCount => _offers.Count;
-
-    public void FocusFirst()
-    {
-        if (GetChildCount() > 0 && GetChild(0) is Control c)
-        {
-            c.CallDeferred(Control.MethodName.GrabFocus);
-        }
-    }
 }

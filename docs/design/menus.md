@@ -138,6 +138,14 @@ a visible telegraph or flash.
 - Level-up: three cards (keys 1–3), reroll (R, two per run), the build so far
   underneath. Queued level-ups are offered back to back. Card colour: gold keystone,
   ember new skill, green support, rarity colour for passives.
+- **The cards own the keyboard while open** (owner feedback 2026-10-16: a stray key
+  made the window vanish — the first card had keyboard focus, so Space, the dodge
+  key, or Enter picked it). Every key is swallowed before the GUI and gameplay see
+  it; only 1–9 (pick) and R (reroll) act. Cards take no keyboard focus. For the
+  first 0.45 s the row is shown dimmed and ignores keys and clicks, so a press
+  already on its way when the cards pop up doesn't count. In co-op, where the run
+  keeps going, dodge, flasks and the inventory key also stand down
+  (`LevelUpScreen.BlocksInput`). Tests: RunSmokeTest `LEVELUP-*`.
 - Results: victory/defeat, time, level, kills, elites, bosses, gold, the build, and
   **three items — keep one**, shown with the normal item tooltip text.
 

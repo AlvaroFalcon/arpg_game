@@ -88,7 +88,7 @@ public partial class Flasks : Node
                 TryDrink(Mana);
             }
         }
-        else if (alive && !GetTree().Paused && _player.IsLocal)
+        else if (alive && !GetTree().Paused && _player.IsLocal && !UI.LevelUpScreen.BlocksInput)
         {
             if (Input.IsActionJustPressed(LifeAction))
             {

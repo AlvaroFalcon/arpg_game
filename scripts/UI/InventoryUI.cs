@@ -124,7 +124,7 @@ public partial class InventoryUI : CanvasLayer, IClosablePanel
 
     public override void _Process(double delta)
     {
-        if (Input.IsActionJustPressed("toggle_inventory"))
+        if (Input.IsActionJustPressed("toggle_inventory") && !LevelUpScreen.BlocksInput)
         {
             SetOpen(!_panel.Visible);
         }
