@@ -114,6 +114,7 @@ It auto-detects the Mono/.NET Godot binary (checks `$GODOT_BIN`, `godot4`/`godot
 | [performance-expert](.claude/agents/performance-expert.md) | Frame drops, spikes, CPU/GPU budgets; measures before/after (`docs/design/performance.md`) |
 | [multiplayer-expert](.claude/agents/multiplayer-expert.md) | Online co-op (host-authoritative, ENet, up to 4 players): replication, lobby, party rules (`docs/design/multiplayer.md`) |
 | [security-expert](.claude/agents/security-expert.md) | Security reviews: co-op networking (RPCs, UPnP, join codes, rate limits), untrusted data (network payloads, saves), DoS, privacy; threat model + attack tests |
+| [ui-ux-expert](.claude/agents/ui-ux-expert.md) | Menus, HUD, flows and feedback/error states: reviews from real captures, redesigns and implements fixes (`docs/design/menus.md`) |
 
 ## MCP tools available
 
