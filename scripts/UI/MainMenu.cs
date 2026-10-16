@@ -61,7 +61,8 @@ public partial class MainMenu : Node2D
 
 		play.CallDeferred(Control.MethodName.GrabFocus);
 
-		// scripts/coop_local.sh: --coop-host[=port] / --coop-join=address:port open the lobby at once.
+		// scripts/coop_local.sh: --coop-host[=port] / --coop-join=address:port open the lobby at once
+		// (with --coop-code=CODE, and --coop-no-upnp for one PC).
 		foreach (string arg in OS.GetCmdlineUserArgs())
 		{
 			string[] kv = arg.TrimStart('-').Split('=', 2);
@@ -95,11 +96,26 @@ public partial class MainMenu : Node2D
 
 	private void OpenCoopJoin(string address) => OpenCoop(null, address);
 
+	/// <summary>"--name=value" → value, "--name" → "", absent → null.</summary>
+	private static string? UserArg(string name)
+	{
+		foreach (string arg in OS.GetCmdlineUserArgs())
+		{
+			string[] kv = arg.TrimStart('-').Split('=', 2);
+			if (kv[0] == name)
+			{
+				return kv.Length == 2 ? kv[1] : "";
+			}
+		}
+
+		return null;
+	}
+
 	/// <summary>Co-op lobby — docs/design/multiplayer.md -> "Session and lobby".</summary>
 	private void OpenCoop(int? hostPort = null, string? join = null)
 	{
 		_menu.Visible = false;
-		var panel = new CoopPanel { AutoHostPort = hostPort, AutoJoin = join, AutoStartAt = AutoStartArg() };
+		var panel = new CoopPanel { AutoHostPort = hostPort, AutoJoin = join, AutoStartAt = AutoStartArg(), AutoCode = UserArg("coop-code"), NoUpnp = UserArg("coop-no-upnp") is not null };
 		_center.AddChild(panel);
 		panel.Back += () =>
 		{

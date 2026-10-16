@@ -8,6 +8,8 @@ Up to four friends play the Survival Rift together, each with their own saved ch
 
 Owner decisions (2026-10-15): co-op only, up to 4 players. One player hosts a listen server over ENet. Friends connect by IP, using a VPN (Tailscale, Radmin VPN, ZeroTier) or port forwarding. Steam/EOS relays come later. Loot is per player. Characters come from the clients and are trusted (friends only, no anti-cheat). The Survival Rift comes first.
 
+Owner decision (2026-10-16, "option 3"): direct-IP hosting should work without a VPN, safely. Hosting opens the router port by UPnP, a join code protects the lobby, and the host enforces limits on everything a client sends. See "Security".
+
 ## Architecture
 
 **Host-authoritative.** The host runs the game exactly as it runs offline: director, monsters, damage, deaths, drops, experience. Two nodes are added to the run scene, and the game code doesn't know they exist.
@@ -61,10 +63,62 @@ Notes:
 `scripts/Net/NetSession.cs` is an autoload (`/root/NetSession` on every machine, so its RPCs resolve whatever scene is loaded). It owns the peer, the lobby, starting the run, and every RPC.
 
 - `NetTransport` is **the one place that creates the peer** (`ENetMultiplayerPeer`, default port 7777). A Steam or EOS relay only has to return its own `MultiplayerPeer` from `Host`/`Join`.
-- Main menu → **Co-op (Survival Rift)** (`UI/CoopPanel`): Host (port) or Join (`ip:port`). The lobby lists up to 4 players with name, class and level, and marks the host. The host gets Start; everyone gets Leave and Back. Each player plays their *active* character.
-- On connect, a client sends its character (save-file JSON), its window size and a protocol number. The host turns away a mismatched build, a full party, or a run already in progress (no late join).
+- Main menu → **Co-op (Survival Rift)** (`UI/CoopPanel`): Host (port) or Join (`ip:port` plus the host's **join code**). The host's lobby shows the join code, the address friends use, and this PC's LAN/VPN addresses, each with a Copy button. The lobby lists up to 4 players with name, class and level, and marks the host. The host gets Start; everyone gets Leave and Back. Each player plays their *active* character.
+- On connect, the client first sends the join code in the engine's authentication step (see "Security"). Once it is accepted, the client sends its hello: its character (save-file JSON), its window size and a protocol number. The host turns away a wrong code, a mismatched build, a full party, a run already in progress (no late join), or a character that fails the sanity checks.
 - Start: everyone loads `Run.tscn`. The host holds the clock and the director until every client reports ready (clients repeat "ready" until the host answers), or 20 s pass.
 - A session lasts one run. Leaving the results screen leaves the party.
+
+## Security (direct IP without a VPN, 2026-10-16)
+
+Hosting by IP over the open internet means anyone who finds the address and port can try to connect. Friends only, no anti-cheat, still holds: the aim is that a stranger can't get in, and that a broken or hostile client can't crash or stall the host. It is not about stopping a friend from cheating.
+
+### UPnP: opening the port automatically (`scripts/Net/PortMapper.cs`)
+
+- When the lobby opens, `NetSession.Host` starts `PortMapper.Open(port)`. Discovery and mapping are HTTP calls to the router that can take seconds. They run on **one background worker that runs every router call in order** (a chained `Task`). The main thread only sees a state (`Off`, `Working`, `Open`, `Failed`) and a message, which `Poll()` updates every frame from a result queue. The game never freezes. The only blocking call is at quit (below).
+- The mapping is **UDP `port` → this PC**, description "ARPG co-op", with a **2 h lease**, renewed every hour while hosting. If the game crashes, the router drops it on its own when the lease runs out. Some older routers only accept leases with no expiry (`OnlyPermanentLeaseSupported`). Then the mapper maps with no lease, which stays until removed, and says so in the lobby.
+- **Removed** when the lobby or session closes (Leave, Back, End, the host leaving the run from the pause menu), when **the host's run ends** (`RiftHost.OnRunEnded` → `ReleasePortMapping`; nobody can join a finished run), and on **quit**. On quit, `NOTIFICATION_WM_CLOSE_REQUEST` and the autoload's `_ExitTree` both call `ReleaseOnExit`, which waits up to 1.5 s for the router (4 s if discovery is still running). Because the calls are strictly ordered, a removal issued while discovery is running is queued behind it, so a race can't leave a mapping behind. A test pins this: close during a slow discovery gives the calls `discover, map, unmap`.
+- **Fallback.** No router answered, UPnP is turned off, the router refused, or the router's external address is not public. A non-public address is private, `100.64.0.0/10` CG-NAT, loopback, link-local or empty: a provider or second router shares it, so forwarding wouldn't work either. In that case nothing stays mapped and the lobby says: *"Your router didn't open the port automatically — forward UDP 7777 manually or use a VPN like Tailscale/Radmin."*, followed by the reason. Hosting keeps working for LAN and VPN friends either way.
+- Not detected: a router that reports a public address while a second NAT sits in front of it (double NAT with a public-looking address). Spotting it would need an outside service to tell us our address, and we add no services. In that case the lobby shows an address friends can't reach, and the advice is the same: VPN.
+- The lobby shows **"Friends join with: <external-ip>:<port>"** and Copy (`DisplayServer.ClipboardSet`), plus **"Same network / VPN:"** with this PC's LAN and VPN addresses (`IP.GetLocalAddresses`; 192.168/10/172.16 first, then 100.x Tailscale and 26.x Radmin).
+- Tests and scripts on one PC skip UPnP (`Host(..., openRouterPort: false)`, `--coop-no-upnp`). The router is behind `IPortGateway`: `UpnpGateway` (Godot's `Upnp`) in the game, `NoGateway` and a recording fake in tests (`NetSession.GatewayFactory`).
+
+### Join code (`scripts/Net/JoinCode.cs`)
+
+- Every lobby draws a random **6-character code** (`RandomNumberGenerator`, crypto) from an alphabet without look-alikes (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`, no 0/O/1/I/L), shown as `K7Q-29M`. "New code" draws another for people who haven't joined yet. Typing ignores case, spaces and dashes.
+- The code travels in Godot's **authentication step** (`SceneMultiplayer.AuthCallback`/`SendAuth`/`CompleteAuth`). Until both sides complete it, the engine admits no peer and **drops every other packet from it**. So no RPC from a peer without a code ever runs, and the hello with the character is not even sent before the code is accepted. The message is `"ARPG"`, a 16-bit protocol and the code (at most 64 bytes, else refused). The comparison is constant-time.
+- A wrong code gets an answer with the reason (the joiner sees "Wrong join code…") and the peer is disconnected once the answer has left. `ENetPacketPeer.PeerDisconnectLater`: ENet's plain disconnect would drop the answer first. A peer that sends nothing is dropped by the engine after `AuthTimeout` (8 s). The hello timeout (10 s after admission) stays.
+- **Failed attempts are rate-limited per address**: 5 wrong codes within a minute, then the address is ignored for a minute. Ignored means disconnected on arrival, with no answer. 31⁶ ≈ 887 million codes at 5 guesses a minute is out of reach. A version mismatch doesn't count as a failure.
+- Tests and the bench use the fixed `JoinCode.TestCode`. `scripts/coop_local.sh` draws a random code per launch and passes it to every window. The game never hosts without a code.
+- Engine quirk (4.1.1): `complete_auth` sends its confirmation to whatever target peer was set last. The host therefore calls `SendAuth(id, ok)` right before `CompleteAuth(id)`. `SendAuth` sets the target, channel 0 and reliable mode.
+
+### Host limits (`scripts/Net/NetGuard.cs` → `NetLimits`, one table)
+
+| What | Limit | Real use |
+|---|---|---|
+| Auth message | 64 bytes | 12 |
+| Hello (lobby entry + character JSON) | 256 K characters | about 1 KB for a fresh level-70 test character, tens of KB with a full bag |
+| Input packet | 64 bytes | 14 |
+| Client event batch | 4096 bytes | under 100 |
+| Messages per peer | token bucket: 150/s, burst 300 | about 60/s (input every physics frame) |
+| Wrong codes per address | 5 a minute, then ignored for 60 s | — |
+
+- Over a size or rate limit, the peer is **kicked** (disconnected) and the lobby's security lines say who and why (`NetSession.SecurityLog`, the last three lines shown).
+- `RpcInput` and `RpcClientEvents` are **ignored until the sender has a valid hello** (it is in the lobby). A second hello is ignored. Kicked peers' leftover messages are ignored.
+- **What the host checks in a character** (`Profile.ValidateCharacterJson`, plain data, no item nodes): name 1–32 characters; level 1–70; known class; experience finite and ≥ 0; at most 600 passives, 64 ascendancy nodes, 200 gems (levels 1–20), 6 loadout slots, 160 items (16 affixes and 16 base stats each, values finite and within ±1 000 000, item level 0–200, valid rarity); every id at most 64 characters; wallet values ≥ 0. The lobby entry's name and level are taken from the character itself, and the window size must be finite (then clamped as before). Failing any check refuses the player with the reason ("Your character was refused (level 999 is out of range)").
+- `ServerRelay` is off: clients only talk to the host and don't learn each other's peer ids. `AllowObjectDecoding` stays off (Godot's default), so no RPC can make the host build an arbitrary object.
+- `NetWriter.Str` no longer overruns on strings over 65 535 bytes. It cuts at the last whole UTF-8 character that fits. The old version wrote the whole string after a clamped length.
+
+### Still trusted, still exposed
+
+- **Characters are trusted beyond sanity**: a friend can edit their save and bring a stronger character. That is by decision. The checks only keep the host from breaking.
+- **Inputs are trusted the way a keyboard is.** Movement speed, cooldowns and damage come from the host's simulation of that character, so a client can't send "I hit for a million". A modified client can still play perfectly: aim, dodge timing.
+- **The engine decodes an RPC before our handler sees its size.** ENet accepts packets up to 32 MB, and Godot 4.1 doesn't expose that limit. Someone *with the code* can make the host decode one big packet before being kicked. Strangers without the code can only send auth packets, which are size-checked first, and the engine drops anything else they send.
+- **IP exposure.** Everyone who joins learns the host's public IP (direct UDP). Clients don't learn each other's IPs. Strangers who scan the port learn that something answers there, and nothing more without the code. Share the code only with the people you invite. A new lobby means a new code.
+- **No encryption.** ENet traffic is plain UDP: someone on the path (same café Wi-Fi) could read or tamper with it. Godot can wrap ENet in DTLS (`ENetConnection.DtlsServerSetup`), but certificates for player-hosted games are their own project. Relays solve it better.
+
+### Why relays (Steam/EOS) are the step for a public release
+
+UPnP fails on many networks: CG-NAT is common on mobile and fibre ISPs, and some routers have UPnP off or don't support it. Manual forwarding is too much to ask of players. Direct IP also exposes the host's address to everyone who joins. Steam Networking Sockets or EOS P2P give NAT traversal with a relay fallback, no open ports, no IP exposure (the relay hides it), encryption, identity (an account instead of a code) and invites. `NetTransport` is still the one place that creates the peer, so a relay transport returns its own `MultiplayerPeer`. The join code becomes a lobby invite, and the per-address limiter keys on the account id (`NetTransport.RemoteAddress`). The host limits and character checks stay as they are.
 
 ## Party rules (`scripts/Net/PartyRules.cs`, one table, proposals)
 
@@ -87,7 +141,17 @@ Notes:
 
 ## Testing
 
-**Automated:** `./scripts/run_all_tests.sh CoopSmokeTest` (about 30 s). The test process hosts and starts two more Godot processes as clients on 127.0.0.1. It then drives a real Rift over ENet and asserts 27 checks:
+**Automated:** `./scripts/run_all_tests.sh CoopSmokeTest` (about 35 s). The test process hosts and starts two more Godot processes as clients on 127.0.0.1. It then drives a real Rift over ENet and asserts 43 checks.
+
+Security (2026-10-16). The attacks come from extra sessions in the same process, each on its own `SceneMultiplayer` branch (`SceneTree.SetMultiplayer(api, "/root/IntruderN")`), so the host sees them as separate machines:
+- logic: join code format and matching, the attempt limiter, the message budget, `NetWriter.Str` past 65 535 bytes, character validation, public/CG-NAT address detection
+- UPnP with a recording fake router: open → renew → close (`discover, map, map, unmap`); CG-NAT refused and nothing mapped; close during a slow discovery on a permanent-lease-only router still ends in `unmap`
+- **no router at all** (the real `NoGateway` path): the fallback message, and hosting still works (the whole run below happens on that lobby)
+- a wrong code is refused with the reason and disconnected; the right code (typed `test-42`) is accepted
+- a flood of 1000 messages gets the peer kicked; an oversized hello is kicked; a level-999 character is refused
+- after the party is gone, 5 wrong codes from 127.0.0.1, then the 6th is ignored; Leave releases the port mapping
+
+The game itself:
 
 - lobby on both sides
 - players on every machine (puppets on clients)
@@ -105,10 +169,12 @@ It judges by its RESULT line, mirrored to `user://test_results/CoopSmokeTest.txt
 ### Testing it yourself
 
 1. **One PC:** run `./scripts/coop_local.sh`. It builds, opens a host window with the lobby on port 7777, then a second window that joins 127.0.0.1. Press Start in the host window. `COOP_CLIENTS=3` opens four windows. The joining windows play a throwaway copy of your profile (`--profile-readonly`), so the two windows never overwrite each other's save. Both use your active character.
-2. **With friends:** everyone needs the same build.
-   - **Tailscale / Radmin VPN / ZeroTier (easiest):** everyone joins the same network. The host presses Host, and friends Join with the host's VPN address, e.g. `100.101.102.103:7777`.
+2. **With friends:** everyone needs the same build. Friends type the address *and* the join code from the host's lobby.
+   - **Direct (UPnP):** the host presses Host. After a second or two the lobby shows "Friends join with: <public-ip>:7777" (Copy) and the join code (Copy). If the operating system asks, allow the game through the firewall. If the lobby shows the fallback message instead, use one of the next two options.
+   - **Tailscale / Radmin VPN / ZeroTier:** everyone joins the same network. Friends Join with the host's VPN address, shown under "Same network / VPN", e.g. `100.101.102.103:7777`.
    - **Port forwarding:** the host forwards **UDP** 7777 to their PC on the router, allows the game through the firewall, and shares their public IP.
-   - LAN: the host's local IP (`192.168.x.y:7777`).
+   - LAN: the host's local IP (`192.168.x.y:7777`), also under "Same network / VPN".
+   - Not testable in the cloud, so it needs a real check: UPnP on a real router (mapping shown in the router's page, removed on Leave, at run end and on quit), a friend joining from outside, and the CG-NAT message on a mobile hotspot.
 
 ## Performance (measured 2026-10-15)
 
@@ -136,7 +202,7 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 - Survival Rift only. Realities, the hideout and the tutorial are single-player.
 - Not replicated: shadow clones and consecrated ground (the host's ascendancy effects still work there), boss cast bars (attack names and callouts are), dodge afterimages of other players, other players' facing while standing still, and the sound of hits that land on other players' monsters.
 - No late join, no rejoin after a drop, and no lobby between runs: host again.
-- Remote characters are trusted, with no validation (friends only, by decision).
+- Remote characters are trusted beyond the host's sanity checks (friends only, by decision; see "Security").
 - Clients predict only their own movement. Monsters and projectiles show 100 ms in the past plus latency, so a projectile can look like it misses at high ping.
 - `--profile-readonly` windows on one PC share the same active character.
 - Not yet measured: real internet latency and packet loss, and a host on real desktop hardware.
@@ -144,6 +210,6 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 ## Next steps
 
 - **Realities:** the same host/client split. `RealityController` gets the `RunState` treatment (per-player loot and portals), clients build the cavern from the seed (`CaveGenerator` is already seeded), `FlowField` follows several players (a multi-source field), and the boss arena gate waits for the party.
-- **Steam/EOS:** a `NetTransport` branch returning a Steam/EOS `MultiplayerPeer`, a lobby invite instead of an IP, and a relay with no port forwarding.
+- **Steam/EOS:** a `NetTransport` branch returning a Steam/EOS `MultiplayerPeer`, a lobby invite instead of an IP and code, and a relay with no port forwarding (see "Security" → "Why relays").
 - Bandwidth, if needed: delta-encode monster positions against the last acked snapshot, and send far monsters at a lower rate still.
 - A lobby that persists between runs, and rejoin by name after a drop.

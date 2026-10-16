@@ -83,14 +83,30 @@ public sealed class NetWriter
 
     public void F32(float v) => U32(BitConverter.SingleToUInt32Bits(v));
 
+    /// <summary>A UTF-8 string with a 16-bit length. Longer than 65 535 bytes, it is
+    /// cut at the last whole character that fits (the old version wrote the full
+    /// string after a clamped length, overrunning the buffer's bookkeeping).</summary>
     public void Str(string s)
     {
         int count = Encoding.UTF8.GetByteCount(s);
-        count = Math.Min(count, ushort.MaxValue);
-        U16((ushort)count);
-        Ensure(count);
-        Encoding.UTF8.GetBytes(s, 0, s.Length, _buffer, _length);
-        _length += count;
+        if (count <= ushort.MaxValue)
+        {
+            U16((ushort)count);
+            Ensure(count);
+            Encoding.UTF8.GetBytes(s, 0, s.Length, _buffer, _length);
+            _length += count;
+            return;
+        }
+
+        byte[] all = Encoding.UTF8.GetBytes(s);
+        int cut = ushort.MaxValue;
+        while (cut > 0 && (all[cut] & 0xC0) == 0x80)
+        {
+            cut--; // all[cut] continues a character: cut before that character starts
+        }
+
+        U16((ushort)cut);
+        Bytes(all.AsSpan(0, cut));
     }
 
     public void Bytes(ReadOnlySpan<byte> bytes)

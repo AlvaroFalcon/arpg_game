@@ -49,6 +49,33 @@ public static class NetTransport
         return (0, 0);
     }
 
+    /// <summary>The remote address of a connected peer, for the host's per-address
+    /// limits ("" if the transport cannot tell — a relay would key on its own user id).</summary>
+    public static string RemoteAddress(MultiplayerPeer? peer, long id)
+    {
+        if (peer is ENetMultiplayerPeer enet && enet.GetPeer((int)id) is { } packetPeer)
+        {
+            return packetPeer.GetRemoteAddress();
+        }
+
+        return "";
+    }
+
+    /// <summary>Disconnects a peer once what was already queued for it has been
+    /// sent (the reason it was turned away). ENet's plain disconnect drops the
+    /// outgoing queue first, so the reason would never arrive.</summary>
+    public static void DisconnectAfterSend(MultiplayerPeer? peer, long id)
+    {
+        if (peer is ENetMultiplayerPeer enet && enet.GetPeer((int)id) is { } packetPeer)
+        {
+            packetPeer.PeerDisconnectLater();
+            enet.Host?.Flush();
+            return;
+        }
+
+        peer?.DisconnectPeer((int)id);
+    }
+
     /// <summary>"192.168.1.20:7777", "my-pc.tail1234.ts.net", "[::1]:7777" → host and port.</summary>
     public static bool TryParseAddress(string text, out string host, out int port)
     {

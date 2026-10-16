@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Two windowed instances of the game on this PC, for trying co-op alone:
-# the first hosts (lobby open on the port), the second joins 127.0.0.1.
+# the first hosts (lobby open on the port), the second joins 127.0.0.1 with
+# the lobby's join code (a random one per launch, passed to both; UPnP is
+# skipped since nobody joins from outside).
 # Press Start in the host window once the second player shows in the lobby.
 #
 # Usage: ./scripts/coop_local.sh [port] [extra godot args...]
@@ -58,14 +60,21 @@ fi
 # New or edited C# only reaches the game after a build (CLAUDE.md -> Toolchain).
 (cd "${PROJECT_DIR}" && dotnet build ArpgGame.csproj -nologo -v q >/dev/null)
 
-echo "host:   window 1, lobby on port ${PORT}"
-"${GODOT}" --path "${PROJECT_DIR}" --position 40,60 --resolution 960x540 "$@" -- --coop-host="${PORT}" &
+# A join code from the game's alphabet (docs/design/multiplayer.md -> "Security").
+ALPHABET="23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+CODE=""
+for _ in 1 2 3 4 5 6; do
+  CODE+="${ALPHABET:$((RANDOM % ${#ALPHABET})):1}"
+done
+
+echo "host:   window 1, lobby on port ${PORT}, join code ${CODE}"
+"${GODOT}" --path "${PROJECT_DIR}" --position 40,60 --resolution 960x540 "$@" -- --coop-host="${PORT}" --coop-code="${CODE}" --coop-no-upnp &
 pids=($!)
 sleep "${DELAY}"
 for ((i = 1; i <= CLIENTS; i++)); do
   echo "client: window $((i + 1)), joining 127.0.0.1:${PORT}"
   "${GODOT}" --path "${PROJECT_DIR}" --position $((40 + 980 * (i % 2))),$((60 + 300 * (i / 2))) --resolution 960x540 "$@" \
-    -- --coop-join="127.0.0.1:${PORT}" --profile-readonly &
+    -- --coop-join="127.0.0.1:${PORT}" --coop-code="${CODE}" --profile-readonly &
   pids+=($!)
 done
 

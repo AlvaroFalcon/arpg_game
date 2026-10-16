@@ -78,7 +78,7 @@ public partial class CoopBenchHost : CoopTestDriver
         NetSession session = NetSession.Get(this)!;
         Core.Profile profile = SetUpProfile("Host", "arcanist")!;
         int port = 7700 + (int)(GD.Randi() % 80);
-        session.Host(port, profile.Active);
+        session.Host(port, profile.Active, JoinCode.TestCode, openRouterPort: false);
         string[] classes = { "warrior", "rogue", "arcanist" };
         for (int i = 0; i < Clients; i++)
         {
@@ -235,7 +235,7 @@ public partial class CoopBenchClient : CoopTestDriver
         NetSession session = NetSession.Get(this)!;
         Core.Profile profile = SetUpProfile(PlayerName, PlayerName.TrimEnd('0', '1', '2', '3'))!;
         await Frames(2);
-        session.Join("127.0.0.1", Port, profile.Active);
+        session.Join("127.0.0.1", Port, profile.Active, JoinCode.TestCode);
         await WaitFor(() => Run?.NetClient is not null, 120f);
         RiftClient client = Run!.NetClient!;
         // Wander in a slow circle like a player kiting.

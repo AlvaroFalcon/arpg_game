@@ -390,3 +390,14 @@ Two bugs only showed up in the real two-process test (`CoopSmokeTest`: a host an
 Measured with a party of four at a late wave (`CoopBench`): about 40 KB/s per client and under 1 ms of host CPU for replication. A Cataclysm killing 366 monsters costs nothing noticeable on the wire. The first party table doubled the monster count and the host's physics with it, so the enemy cap now grows slowly and the extra pressure comes from monster life instead.
 
 Try it on one PC with `scripts/coop_local.sh`. Screenshots: `coop-lobby.png`, `coop-rift.png`.
+
+## 2026-10-16 — Co-op without a VPN: UPnP, join codes, host limits
+
+The owner wanted friends to be able to join by IP without installing a VPN, and safely. Hosting now asks the router to open UDP 7777 by UPnP. The mapping has a 2 h lease, renewed while hosting. It is removed on Leave, when the run ends and on quit, and a crash leaves it to the lease. The lobby then shows "Friends join with: <public-ip>:7777" with a Copy button, and the PC's LAN/VPN addresses. When the router won't do it (no UPnP, or CG-NAT, where the router's own internet address is private), the lobby says so in plain words and suggests forwarding the port or a VPN. Hosting keeps working for LAN and VPN either way. Router calls run on one background worker, strictly in order, so a slow discovery never freezes the menu and a Leave during discovery still removes the mapping.
+
+Every lobby has a 6-character join code (`K7Q-29M`, no look-alike characters). It travels in Godot's authentication step, so the engine drops everything else a peer sends until the code is accepted. Five wrong codes in a minute and that address is ignored for a minute. The host also caps the size of every client message, gives each peer a message budget (150/s, burst 300), and sanity-checks the character it receives (level range, finite numbers, list and string sizes). A failed check kicks or refuses the peer, with the reason shown on both sides. Characters are still trusted beyond that, by decision.
+
+Two engine details found on the way. In 4.1.1, `complete_auth` sends its confirmation to whichever peer was targeted last, so the host sends its "ok" with `send_auth` right before it. ENet's plain disconnect throws away the outgoing queue, so a refusal reason would never arrive; refusals now use `peer_disconnect_later`.
+
+`CoopSmokeTest` grew from 27 to 43 checks. The attacks (wrong code, flood, oversized hello, a level-999 character, the rate limit) come from extra sessions in the same process, each on its own `SceneMultiplayer` branch. UPnP is tested with a recording fake router and with no router at all, the real cloud case. A real router still needs a manual test with friends. Design: `docs/design/multiplayer.md` → "Security".
+

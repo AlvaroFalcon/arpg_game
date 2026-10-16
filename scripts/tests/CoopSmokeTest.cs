@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -23,7 +24,11 @@ namespace ArpgGame.Tests;
 /// each side sees: the lobby, players on every machine, a host monster
 /// appearing on the clients, client input moving its player on the host, a
 /// kill seen on the clients, per-player loot, a level-up picked on a client,
-/// a client leaving mid-run and the host leaving. Clients answer the host's
+/// a client leaving mid-run and the host leaving. Security (docs/design/
+/// multiplayer.md -> "Security"): join code, UPnP state machine with a fake
+/// router and with none, size and rate limits, character validation, failed-
+/// attempt blocking — the attacks come from extra in-process sessions on their
+/// own SceneMultiplayer branch (<see cref="CoopTestHost.NewIntruder"/>). Clients answer the host's
 /// questions over the run's own event channel; the host judges and prints the
 /// RESULT line (also mirrored to user://test_results/CoopSmokeTest.txt).
 ///
@@ -253,21 +258,24 @@ public partial class CoopTestHost : CoopTestDriver
             return;
         }
 
-        // --- lobby ---------------------------------------------------------------------
-        var rng = new RandomNumberGenerator();
-        rng.Randomize();
-        Error hosted = Error.Failed;
-        for (int attempt = 0; attempt < 5 && hosted != Error.Ok; attempt++)
-        {
-            _port = 7790 + rng.RandiRange(0, 400);
-            hosted = session.Host(_port, profile.Active);
-        }
+        await SecurityUnitChecks(profile);
 
+        // --- lobby ---------------------------------------------------------------------
+        // No router in the cloud: hosting must still work and say why the port isn't open.
+        NetSession.GatewayFactory = () => new NoGateway();
+        Error hosted = await HostOnFreePort(session, profile);
         Check("HOST-STARTS", hosted == Error.Ok && session.IsHost && session.Members.Count == 1, $"port {_port}: {hosted}, members={session.Members.Count}");
         if (hosted != Error.Ok)
         {
             return;
         }
+
+        bool settled = await WaitFor(() => session.Ports.State != PortMapper.MapState.Working, 10f);
+        Check("UPNP-NO-GATEWAY-FALLBACK", settled && session.Ports.State == PortMapper.MapState.Failed
+                && session.Ports.Message.Contains($"forward UDP {_port} manually") && session.Ports.Message.Contains("Tailscale") && session.IsHost,
+            $"state={session.Ports.State}, message='{session.Ports.Message}', still hosting={session.IsHost}");
+
+        await IntruderChecks(session, profile);
 
         StartClient("alpha");
         StartClient("beta");
@@ -410,6 +418,242 @@ public partial class CoopTestHost : CoopTestDriver
         bool betaHandled = await WaitFor(() => FileContains(ClientLog("beta"), "HOST-LEFT"), 15f);
         string betaLine = ReadFile(ClientLog("beta")).Split('\n').LastOrDefault(l => l.Contains("HOST-LEFT")) ?? "no line";
         Check("HOST-LEAVE-HANDLED-ON-CLIENT", betaHandled && betaLine.Contains("PASS"), betaLine);
+
+        await RateLimitCheck(session, profile);
+    }
+
+    private async Task<Error> HostOnFreePort(NetSession session, Profile profile)
+    {
+        var rng = new RandomNumberGenerator();
+        rng.Randomize();
+        Error hosted = Error.Failed;
+        for (int attempt = 0; attempt < 5 && hosted != Error.Ok; attempt++)
+        {
+            _port = 7790 + rng.RandiRange(0, 400);
+            hosted = session.Host(_port, profile.Active, JoinCode.TestCode);
+        }
+
+        await Frames(1);
+        return hosted;
+    }
+
+    // --- security -----------------------------------------------------------------------
+
+    /// <summary>A second session in this process on its own SceneMultiplayer
+    /// branch (/root/IntruderN/NetSession): to the host it is just another
+    /// machine, so it can misbehave in ways the real client never would.</summary>
+    private async Task<NetSession> NewIntruder()
+    {
+        var holder = new Node { Name = $"Intruder{++_intruders}" };
+        GetTree().Root.AddChild(holder);
+        GetTree().SetMultiplayer(new SceneMultiplayer(), holder.GetPath());
+        var intruder = new NetSession { Name = "NetSession" };
+        holder.AddChild(intruder);
+        await Frames(1);
+        return intruder;
+    }
+
+    private async Task DropIntruder(NetSession intruder)
+    {
+        Node holder = intruder.GetParent();
+        intruder.Leave();
+        GetTree().SetMultiplayer(null, holder.GetPath());
+        holder.QueueFree();
+        await Frames(2);
+    }
+
+    private int _intruders;
+
+    private async Task IntruderChecks(NetSession session, Profile profile)
+    {
+        // Wrong code: refused with the reason, disconnected, never listed.
+        NetSession wrong = await NewIntruder();
+        int log = session.SecurityLog.Count;
+        wrong.Join("127.0.0.1", _port, profile.Active, "ZZZ-ZZZ");
+        bool refused = await WaitFor(() => !wrong.Active, 10f);
+        Check("WRONG-CODE-REJECTED", refused && wrong.Status.Contains("Wrong join code") && session.Members.Count == 1
+                && session.SecurityLog.Skip(log).Any(l => l.Contains("turned away") && l.Contains("Wrong join code")),
+            $"intruder: active={wrong.Active}, '{wrong.Status}'; host lobby={session.Members.Count}; host log: {session.SecurityLog.LastOrDefault()}");
+        await DropIntruder(wrong);
+
+        // Right code: listed (the real clients below prove the full run with it).
+        NetSession right = await NewIntruder();
+        right.Join("127.0.0.1", _port, profile.Active, "test-42");
+        bool listed = await WaitFor(() => session.Members.Count == 2 && right.Joined, 10f);
+        Check("RIGHT-CODE-ACCEPTED", listed, $"lobby={session.Members.Count}, intruder joined={right.Joined}, '{right.Status}' (code typed as 'test-42')");
+
+        // Flood: a joined peer sending a thousand messages in one frame is kicked.
+        // (Reliable ones: ENet's throttle would drop part of an unreliable burst
+        // on the sender's side, which is not what this checks.)
+        if (listed)
+        {
+            log = session.SecurityLog.Count;
+            byte[] batch = new byte[1];
+            for (int i = 0; i < 1000; i++)
+            {
+                right.SendClientEvents(batch);
+            }
+
+            bool kicked = await WaitFor(() => session.Members.Count == 1 && !right.Active, 10f);
+            Check("FLOOD-KICKED", kicked && session.SecurityLog.Skip(log).Any(l => l.Contains("kicked") && l.Contains("messages a second")),
+                $"lobby={session.Members.Count}, intruder active={right.Active}; host log: {session.SecurityLog.LastOrDefault()}");
+        }
+
+        await DropIntruder(right);
+
+        // Oversized hello: kicked before the JSON is read.
+        NetSession big = await NewIntruder();
+        log = session.SecurityLog.Count;
+        big.HelloJsonOverride = new string('x', NetLimits.HelloChars + 1000);
+        big.Join("127.0.0.1", _port, profile.Active, JoinCode.TestCode);
+        bool bigGone = await WaitFor(() => !big.Active, 15f);
+        Check("OVERSIZED-HELLO-REJECTED", bigGone && session.Members.Count == 1 && session.SecurityLog.Skip(log).Any(l => l.Contains("hello of")),
+            $"intruder active={big.Active}, lobby={session.Members.Count}; host log: {session.SecurityLog.LastOrDefault()}");
+        await DropIntruder(big);
+
+        // A character out of range: refused with the reason.
+        NetSession cheat = await NewIntruder();
+        log = session.SecurityLog.Count;
+        var character = System.Text.Json.Nodes.JsonNode.Parse(Profile.SerializeCharacter(profile.Active))!;
+        character["Level"] = 999;
+        LobbyMember member = NetSession.MemberFor(profile.Active, new Vector2(1280f, 720f));
+        member.Character = character.ToJsonString();
+        cheat.HelloJsonOverride = System.Text.Json.JsonSerializer.Serialize(member);
+        cheat.Join("127.0.0.1", _port, profile.Active, JoinCode.TestCode);
+        bool cheatGone = await WaitFor(() => !cheat.Active, 10f);
+        Check("INVALID-CHARACTER-REJECTED", cheatGone && cheat.Status.Contains("refused") && session.Members.Count == 1
+                && session.SecurityLog.Skip(log).Any(l => l.Contains("level 999")),
+            $"intruder: active={cheat.Active}, '{cheat.Status}'; lobby={session.Members.Count}; host log: {session.SecurityLog.LastOrDefault()}");
+        await DropIntruder(cheat);
+    }
+
+    /// <summary>After the real party is gone: five wrong codes from one address,
+    /// then that address is ignored (no answer at all).</summary>
+    private async Task RateLimitCheck(NetSession session, Profile profile)
+    {
+        Error hosted = await HostOnFreePort(session, profile);
+        if (hosted != Error.Ok)
+        {
+            Check("RATE-LIMIT", false, $"could not host again: {hosted}");
+            return;
+        }
+
+        var reasons = new List<string>();
+        for (int i = 0; i < NetLimits.FailedAttempts + 1; i++)
+        {
+            NetSession attacker = await NewIntruder();
+            attacker.Join("127.0.0.1", _port, profile.Active, "ZZZZZZ");
+            await WaitFor(() => !attacker.Active, 12f);
+            reasons.Add(attacker.Active ? "still connected" : attacker.Status);
+            await DropIntruder(attacker);
+        }
+
+        bool lastIgnored = reasons[^1] != "still connected" && !reasons[^1].Contains("Wrong join code");
+        bool blockedLogged = session.SecurityLog.Any(l => l.Contains("blocked for a minute"));
+        bool ignoredLogged = session.SecurityLog.Any(l => l.StartsWith("ignored"));
+        Check("FAILED-ATTEMPTS-RATE-LIMITED", reasons.Take(NetLimits.FailedAttempts).All(r => r.Contains("Wrong join code")) && lastIgnored && blockedLogged && ignoredLogged,
+            $"answers: {string.Join(" | ", reasons.Select(r => r.Length > 40 ? r[..40] : r))}; blocked logged={blockedLogged}, ignored logged={ignoredLogged}");
+        session.Leave();
+        Check("UPNP-RELEASED-ON-LEAVE", session.Ports.State == PortMapper.MapState.Off, $"state={session.Ports.State}");
+    }
+
+    /// <summary>Logic checks that need no network: join codes, limits, the string
+    /// writer, character validation, and the UPnP state machine with a fake router.</summary>
+    private async Task SecurityUnitChecks(Profile profile)
+    {
+        string code = JoinCode.Generate();
+        Check("JOIN-CODE-FORMAT", JoinCode.IsWellFormed(code) && JoinCode.Format(code).Length == 7 && JoinCode.Format(code)[3] == '-'
+                && JoinCode.Matches(code, JoinCode.Normalize(JoinCode.Format(code).ToLowerInvariant())) && !JoinCode.Matches(code, "")
+                && !JoinCode.IsWellFormed(JoinCode.Normalize("K0Q-29M")) && !JoinCode.IsWellFormed(JoinCode.Normalize("K7Q-29")),
+            $"{code} shown as {JoinCode.Format(code)}; 'K0Q-29M' (has 0) rejected, 6 chars required");
+
+        var limiter = new AttemptLimiter();
+        bool blockedEarly = false;
+        for (int i = 0; i < NetLimits.FailedAttempts - 1; i++)
+        {
+            blockedEarly |= limiter.Fail("1.2.3.4", 10 + i);
+        }
+
+        bool blockedAtLimit = limiter.Fail("1.2.3.4", 15);
+        Check("ATTEMPT-LIMITER", !blockedEarly && blockedAtLimit && limiter.IsBlocked("1.2.3.4", 30) && !limiter.IsBlocked("5.6.7.8", 30)
+                && !limiter.IsBlocked("1.2.3.4", 15 + NetLimits.BlockSeconds + 1),
+            $"{NetLimits.FailedAttempts} failures block for {NetLimits.BlockSeconds} s; other addresses unaffected");
+
+        var budget = new PeerBudget();
+        int allowed = 0;
+        for (int i = 0; i < 1000; i++)
+        {
+            allowed += budget.Spend(100.0) ? 1 : 0;
+        }
+
+        bool steady = true;
+        var budget2 = new PeerBudget();
+        for (int i = 0; i < 600; i++)
+        {
+            steady &= budget2.Spend(200.0 + i / 60.0); // ten seconds of 60 Hz input
+        }
+
+        Check("MESSAGE-BUDGET", allowed == (int)NetLimits.MessageBurst && steady, $"burst allowed {allowed} of 1000; 60/s for 10 s allowed={steady}");
+
+        var w = new NetWriter(16);
+        string huge = new string('a', ushort.MaxValue - 1) + "é" + "tail";
+        w.Str(huge);
+        var r = new NetReader(w.ToArray());
+        string back = r.Str();
+        Check("NETWRITER-LONG-STRING", w.Length <= 2 + ushort.MaxValue && back.Length == ushort.MaxValue - 1 && !r.More,
+            $"wrote {w.Length} bytes for a {System.Text.Encoding.UTF8.GetByteCount(huge)}-byte string, read back {back.Length} chars (cut before the split 'é')");
+
+        string valid = Profile.SerializeCharacter(profile.Active);
+        string? okReason = Profile.ValidateCharacterJson(valid, out string vName, out int vLevel);
+        var node = System.Text.Json.Nodes.JsonNode.Parse(valid)!;
+        node["Level"] = 0;
+        string? lowReason = Profile.ValidateCharacterJson(node.ToJsonString(), out _, out _);
+        node["Level"] = 10;
+        node["Name"] = new string('n', 500);
+        string? nameReason = Profile.ValidateCharacterJson(node.ToJsonString(), out _, out _);
+        string? junkReason = Profile.ValidateCharacterJson("{\"Gems\": 5}", out _, out _);
+        Check("CHARACTER-VALIDATION", okReason is null && vName == profile.Active.Name && vLevel == profile.Active.Level && lowReason is not null && nameReason is not null && junkReason is not null,
+            $"valid → {okReason ?? "ok"}; level 0 → {lowReason}; 500-char name → {nameReason}; junk → {junkReason}; character JSON {valid.Length} chars");
+
+        // UPnP with a fake router: opens, renews, closes; CG-NAT refused; close mid-discovery leaves nothing.
+        var good = new FakeGateway();
+        var mapper = new PortMapper(() => good);
+        mapper.Open(7777);
+        await WaitFor(() => { mapper.Poll(Time.GetTicksMsec()); return mapper.State != PortMapper.MapState.Working; }, 5f);
+        bool open = mapper.State == PortMapper.MapState.Open && mapper.ExternalAddress == "203.0.113.7";
+        mapper.RenewSoon();
+        mapper.Poll(Time.GetTicksMsec());
+        mapper.CloseAndWait(2000);
+        string calls = string.Join(", ", good.Calls);
+        Check("UPNP-OPEN-RENEW-CLOSE", open && calls == $"discover, map 7777 {PortMapper.LeaseSeconds}, map 7777 {PortMapper.LeaseSeconds}, unmap 7777" && mapper.State == PortMapper.MapState.Off,
+            $"open={open} ({mapper.Message}); router calls: {calls}");
+
+        var cgnat = new FakeGateway { External = "100.72.4.9" };
+        var mapper2 = new PortMapper(() => cgnat);
+        mapper2.Open(7777);
+        await WaitFor(() => { mapper2.Poll(Time.GetTicksMsec()); return mapper2.State != PortMapper.MapState.Working; }, 5f);
+        Check("UPNP-CGNAT-FALLBACK", mapper2.State == PortMapper.MapState.Failed && mapper2.Message.Contains("CG-NAT") && mapper2.Message.Contains("forward UDP 7777 manually") && !cgnat.Calls.Any(c => c.StartsWith("map")),
+            $"{mapper2.State}: {mapper2.Message}; router calls: {string.Join(", ", cgnat.Calls)}");
+        mapper2.CloseAndWait(1000);
+
+        var slow = new FakeGateway { DelayMs = 400, PermanentOnly = true };
+        var mapper3 = new PortMapper(() => slow);
+        mapper3.Open(7777);
+        await Frames(2);
+        mapper3.CloseAndWait(3000);
+        for (int i = 0; i < 3; i++)
+        {
+            mapper3.Poll(Time.GetTicksMsec());
+            await Frames(1);
+        }
+
+        string calls3 = string.Join(", ", slow.Calls);
+        Check("UPNP-CLOSE-DURING-DISCOVERY", mapper3.State == PortMapper.MapState.Off && calls3 == $"discover, map 7777 {PortMapper.LeaseSeconds}, map 7777 0, unmap 7777",
+            $"state={mapper3.State}; router calls: {calls3} (permanent-only router: retried with no lease, then removed)");
+
+        Check("PUBLIC-ADDRESS-CHECK", PortMapper.IsPublicAddress("203.0.113.7") && !PortMapper.IsPublicAddress("100.64.0.1") && !PortMapper.IsPublicAddress("192.168.1.1")
+                && !PortMapper.IsPublicAddress("10.0.0.1") && !PortMapper.IsPublicAddress("172.20.0.1") && !PortMapper.IsPublicAddress("") && PortMapper.IsPublicAddress("2001:db8::1") == true,
+            "public vs private / CG-NAT / empty");
     }
 
     private void OnTestMessage(long peer, string message)
@@ -473,7 +717,7 @@ public partial class CoopTestClient : CoopTestDriver
                 Log($"HOST-LEFT: {(ended ? "PASS" : "FAIL")} — '{reason}', run ended={ended}, session active={session.Active}");
             }
         };
-        session.Join("127.0.0.1", Port, profile.Active);
+        session.Join("127.0.0.1", Port, profile.Active, JoinCode.TestCode);
         bool joined = await WaitFor(() => session.Joined && session.Members.Count == 3, 60f);
         Log($"lobby: joined={joined}, members={string.Join(", ", session.Members.Select(m => m.Name))}");
         bool inRun = await WaitFor(() => Run?.NetClient is not null, 60f);
@@ -577,4 +821,35 @@ public partial class CoopTestClient : CoopTestDriver
 
         return $"unknown question '{question}'";
     }
+}
+
+/// <summary>A router for the UPnP checks: records every call, can be slow,
+/// CG-NATed (private external address) or permanent-lease-only.</summary>
+public sealed class FakeGateway : IPortGateway
+{
+    public string External { get; init; } = "203.0.113.7";
+    public int DelayMs { get; init; }
+    public bool PermanentOnly { get; init; }
+    public ConcurrentQueue<string> Calls { get; } = new();
+
+    public string? Discover()
+    {
+        if (DelayMs > 0)
+        {
+            System.Threading.Thread.Sleep(DelayMs);
+        }
+
+        Calls.Enqueue("discover");
+        return null;
+    }
+
+    public string ExternalAddress() => External;
+
+    public MapResult Map(int port, string description, int leaseSeconds)
+    {
+        Calls.Enqueue($"map {port} {leaseSeconds}");
+        return PermanentOnly && leaseSeconds != 0 ? MapResult.OnlyPermanent : MapResult.Ok;
+    }
+
+    public void Unmap(int port) => Calls.Enqueue($"unmap {port}");
 }

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using Godot;
 using ArpgGame.Core;
 using ArpgGame.Net;
@@ -8,9 +9,13 @@ namespace ArpgGame.UI;
 
 /// <summary>
 /// Co-op from the main menu — docs/design/multiplayer.md -> "Session and lobby".
-/// Host (a port, 7777 by default) or Join (address:port), then the lobby: up
-/// to four players with name, class and level; the host presses Start, anyone
-/// can Leave. Everyone plays their own saved character (the active one).
+/// Host (a port, 7777 by default) or Join (address:port + the host's join
+/// code), then the lobby: up to four players with name, class and level; the
+/// host presses Start, anyone can Leave. Everyone plays their own saved
+/// character (the active one). The host's lobby shows the join code, the
+/// address friends use (the router's public address when UPnP opened the port,
+/// else the fallback advice) and this PC's LAN/VPN addresses, each with Copy —
+/// docs/design/multiplayer.md -> "Security".
 /// </summary>
 public partial class CoopPanel : PanelContainer
 {
@@ -21,12 +26,21 @@ public partial class CoopPanel : PanelContainer
     public int? AutoHostPort { get; set; }
     public string? AutoJoin { get; set; }
 
+    /// <summary>Set before adding: the join code to host with / join with (scripts).</summary>
+    public string? AutoCode { get; set; }
+
+    /// <summary>Set before adding: don't try UPnP (scripts/coop_local.sh, one PC).</summary>
+    public bool NoUpnp { get; set; }
+
     /// <summary>Host only: start by itself once this many players are in (scripts, captures).</summary>
     public int AutoStartAt { get; set; }
 
     private VBoxContainer _body = null!;
     private LineEdit _port = null!;
     private LineEdit _address = null!;
+    private LineEdit _code = null!;
+    private VBoxContainer _share = null!;
+    private string _shareSignature = "";
     private Label _status = null!;
     private VBoxContainer _members = null!;
     private Button _start = null!;
@@ -63,15 +77,19 @@ public partial class CoopPanel : PanelContainer
 
         HBoxContainer joinRow = UiTheme.HBox(connect, 10);
         joinRow.AddChild(UiTheme.Label("Address", 18, UiTheme.Text));
-        _address = new LineEdit { Text = $"127.0.0.1:{NetTransport.DefaultPort}", CustomMinimumSize = new Vector2(260f, 0f), PlaceholderText = "ip:port" };
+        _address = new LineEdit { Text = $"127.0.0.1:{NetTransport.DefaultPort}", CustomMinimumSize = new Vector2(240f, 0f), PlaceholderText = "ip:port" };
         joinRow.AddChild(_address);
+        joinRow.AddChild(UiTheme.Label("Code", 18, UiTheme.Text));
+        _code = new LineEdit { CustomMinimumSize = new Vector2(130f, 0f), PlaceholderText = "K7Q-29M", MaxLength = 12 };
+        joinRow.AddChild(_code);
         Button join = UiTheme.Button("Join", Join, 18, 160f);
         join.Disabled = !hasCharacter;
         joinRow.AddChild(join);
 
         Label help = UiTheme.Label(
-            "Same PC or LAN: 127.0.0.1 / the host's local IP. Over the internet: the host's Tailscale, Radmin VPN or ZeroTier address, " +
-            $"or the host forwards UDP port {NetTransport.DefaultPort} on their router and shares their public IP.",
+            "The host's lobby shows the address and join code to use. Hosting tries to open the port on the router by itself (UPnP); " +
+            $"if it can't, the host forwards UDP {NetTransport.DefaultPort} by hand or everyone uses a VPN (Tailscale, Radmin VPN, ZeroTier). " +
+            "Same PC: 127.0.0.1.",
             14, UiTheme.TextDim);
         help.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         help.CustomMinimumSize = new Vector2(700f, 0f);
@@ -81,6 +99,8 @@ public partial class CoopPanel : PanelContainer
         _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _status.CustomMinimumSize = new Vector2(700f, 0f);
         _body.AddChild(_status);
+
+        _share = UiTheme.VBox(_body, 6);
 
         _body.AddChild(UiTheme.Label("Party", 20, UiTheme.Gold));
         _members = UiTheme.VBox(_body, 4);
@@ -112,6 +132,7 @@ public partial class CoopPanel : PanelContainer
         else if (hasCharacter && AutoJoin is { } address)
         {
             _address.Text = address;
+            _code.Text = AutoCode ?? "";
             Join();
         }
     }
@@ -138,7 +159,7 @@ public partial class CoopPanel : PanelContainer
             return;
         }
 
-        _session.Host(port, profile.Active);
+        _session.Host(port, profile.Active, AutoCode, openRouterPort: !NoUpnp);
         Refresh();
     }
 
@@ -155,7 +176,7 @@ public partial class CoopPanel : PanelContainer
             return;
         }
 
-        _session.Join(host, port, profile.Active);
+        _session.Join(host, port, profile.Active, _code.Text);
         Refresh();
     }
 
@@ -187,6 +208,7 @@ public partial class CoopPanel : PanelContainer
             _members.AddChild(UiTheme.Label(_session.Active ? "Waiting for the lobby…" : "Not in a party.", 16, UiTheme.TextDim));
         }
 
+        RefreshShare();
         _connect.Visible = !_session.Active;
         _start.Visible = _session.IsHost;
         _start.Text = _session.Members.Count > 1 ? $"Start ({_session.Members.Count} players)" : "Start (alone)";
@@ -202,6 +224,97 @@ public partial class CoopPanel : PanelContainer
         if (_session is { IsHost: true, InRun: false })
         {
             _session.StartRun();
+        }
+    }
+
+    /// <summary>The host's "how friends join" box: code, public address, LAN/VPN addresses.</summary>
+    private void RefreshShare()
+    {
+        NetSession session = _session!;
+        string[] local = session.IsHost ? PortMapper.LocalAddresses() : Array.Empty<string>();
+        string signature = session.IsHost
+            ? $"{session.Code}|{session.Ports.State}|{session.Ports.Message}|{session.Ports.ExternalAddress}|{string.Join(",", local)}|{session.SecurityLog.Count}|{session.InRun}"
+            : "";
+        if (signature == _shareSignature)
+        {
+            return;
+        }
+
+        _shareSignature = signature;
+        foreach (Node child in _share.GetChildren())
+        {
+            _share.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        _share.Visible = session.IsHost;
+        if (!session.IsHost)
+        {
+            return;
+        }
+
+        int port = session.Port;
+        string code = JoinCode.Format(session.Code);
+        Row($"Join code:  {code}", UiTheme.Gold, 22, ("Copy", code), ("New code", null));
+
+        PortMapper ports = session.Ports;
+        switch (ports.State)
+        {
+            case PortMapper.MapState.Working:
+                Row(ports.Message, UiTheme.TextDim, 16);
+                break;
+            case PortMapper.MapState.Open:
+                string external = $"{ports.ExternalAddress}:{port}";
+                Row($"Friends join with:  {external}", UiTheme.Text, 18, ("Copy", external));
+                Row(ports.Message, UiTheme.TextDim, 14);
+                break;
+            case PortMapper.MapState.Failed:
+                Row(ports.Message, UiTheme.Ember, 15);
+                Row($"Once UDP {port} is forwarded, friends join with your public IP (search \"what is my IP\") and :{port}.", UiTheme.TextDim, 14);
+                break;
+            default:
+                if (!session.InRun)
+                {
+                    Row("Router port not opened automatically (UPnP off for this lobby).", UiTheme.TextDim, 14);
+                }
+
+                break;
+        }
+
+        if (local.Length > 0)
+        {
+            string first = $"{local[0]}:{port}";
+            string all = string.Join(",  ", local.Take(3).Select(a => $"{a}:{port}"));
+            Row($"Same network / VPN:  {all}", UiTheme.Text, 16, ("Copy", first));
+        }
+
+        foreach (string line in session.SecurityLog.TakeLast(3))
+        {
+            Row(line, UiTheme.TextDim, 13);
+        }
+    }
+
+    private void Row(string text, Color colour, int size, params (string Label, string? Copy)[] buttons)
+    {
+        HBoxContainer row = UiTheme.HBox(_share, 10);
+        Label label = UiTheme.Label(text, size, colour);
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        label.CustomMinimumSize = new Vector2(480f, 0f);
+        row.AddChild(label);
+        foreach ((string caption, string? copy) in buttons)
+        {
+            row.AddChild(UiTheme.Button(caption, () =>
+            {
+                if (copy is null)
+                {
+                    _session?.NewCode();
+                    return;
+                }
+
+                DisplayServer.ClipboardSet(copy);
+                _status.Text = $"Copied {copy}";
+            }, 15, 110f));
         }
     }
 }

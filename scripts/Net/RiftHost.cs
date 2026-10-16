@@ -768,6 +768,9 @@ public partial class RiftHost : Node, IRunLink
 
     private void OnRunEnded(bool victory)
     {
+        // Nobody can join a finished run: close the router port now, not when the
+        // host finally leaves the results screen (docs/design/multiplayer.md -> "Security").
+        _session.ReleasePortMapping();
         Broadcast(w =>
         {
             w.U8(RiftProtocol.RunEnded);

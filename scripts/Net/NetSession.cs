@@ -50,8 +50,16 @@ public interface IRunLink
 /// </summary>
 public partial class NetSession : Node
 {
-    /// <summary>Bumped whenever the wire format changes: a mismatched build is turned away.</summary>
-    public const int Protocol = 1;
+    /// <summary>Bumped whenever the wire format changes: a mismatched build is turned away.
+    /// 2: the join code travels in the engine's authentication step.</summary>
+    public const int Protocol = 2;
+
+    /// <summary>First bytes of the authentication message ("ARPG").</summary>
+    private static readonly byte[] AuthMagic = { 0x41, 0x52, 0x50, 0x47 };
+
+    /// <summary>Makes the router gateway for <see cref="Ports"/>. Tests swap in a
+    /// fake (UPnP can't be exercised in the cloud); the game uses the real one.</summary>
+    public static Func<IPortGateway> GatewayFactory { get; set; } = () => new UpnpGateway();
 
     public enum SessionRole
     {
@@ -88,7 +96,31 @@ public partial class NetSession : Node
     /// <summary>The run scene currently attached (null between scenes).</summary>
     public IRunLink? Run { get; set; }
 
+    /// <summary>Host: the party's join code (normalised, e.g. "K7Q29M"; show it with
+    /// <see cref="JoinCode.Format"/>). Empty when not hosting.</summary>
+    public string Code { get; private set; } = "";
+
+    /// <summary>Host: the router port mapping (UPnP) for this lobby.</summary>
+    public PortMapper Ports { get; private set; } = null!;
+
+    /// <summary>Host: the port the lobby listens on.</summary>
+    public int Port { get; private set; }
+
+    /// <summary>Host: who was turned away or kicked and why, newest last (the lobby
+    /// shows the last few; tests assert on it).</summary>
+    public List<string> SecurityLog { get; } = new();
+
+    /// <summary>Tests only: send this instead of the real hello JSON.</summary>
+    public string? HelloJsonOverride { get; set; }
+
     private LobbyMember? _me;
+    private string _joinCode = "";
+    private SceneMultiplayer? _scene;
+    private MultiplayerApi _api = null!;
+    private readonly AttemptLimiter _attempts = new();
+    private readonly Dictionary<long, PeerBudget> _budgets = new();
+    private readonly HashSet<long> _authAnswered = new();
+    private readonly HashSet<long> _kicked = new();
 
     public static NetSession? Get(Node context) =>
         context.IsInsideTree() ? context.GetTree().Root.GetNodeOrNull<NetSession>("NetSession") : null;
@@ -96,20 +128,105 @@ public partial class NetSession : Node
     public override void _Ready()
     {
         ProcessMode = ProcessModeEnum.Always;
-        Multiplayer.PeerConnected += OnPeerConnected;
-        Multiplayer.PeerDisconnected += OnPeerDisconnected;
-        Multiplayer.ConnectedToServer += OnConnectedToServer;
-        Multiplayer.ConnectionFailed += OnConnectionFailed;
-        Multiplayer.ServerDisconnected += OnServerDisconnected;
+        Ports = new PortMapper(() => GatewayFactory());
+        Ports.Changed += OnPortsChanged;
+        // Kept: the API this node was wired to (a test can move a branch to another one).
+        _api = Multiplayer;
+        _api.PeerConnected += OnPeerConnected;
+        _api.PeerDisconnected += OnPeerDisconnected;
+        _api.ConnectedToServer += OnConnectedToServer;
+        _api.ConnectionFailed += OnConnectionFailed;
+        _api.ServerDisconnected += OnServerDisconnected;
+        _scene = _api as SceneMultiplayer;
+        if (_scene is not null)
+        {
+            _scene.PeerAuthenticating += OnPeerAuthenticating;
+            _scene.PeerAuthenticationFailed += OnPeerAuthenticationFailed;
+        }
     }
 
     public override void _ExitTree()
     {
-        Multiplayer.PeerConnected -= OnPeerConnected;
-        Multiplayer.PeerDisconnected -= OnPeerDisconnected;
-        Multiplayer.ConnectedToServer -= OnConnectedToServer;
-        Multiplayer.ConnectionFailed -= OnConnectionFailed;
-        Multiplayer.ServerDisconnected -= OnServerDisconnected;
+        // The game is closing (or a test tears the tree down): the router mapping goes first.
+        ReleaseOnExit();
+        Ports.Changed -= OnPortsChanged;
+        _api.PeerConnected -= OnPeerConnected;
+        _api.PeerDisconnected -= OnPeerDisconnected;
+        _api.ConnectedToServer -= OnConnectedToServer;
+        _api.ConnectionFailed -= OnConnectionFailed;
+        _api.ServerDisconnected -= OnServerDisconnected;
+        if (_scene is not null)
+        {
+            _scene.PeerAuthenticating -= OnPeerAuthenticating;
+            _scene.PeerAuthenticationFailed -= OnPeerAuthenticationFailed;
+        }
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMCloseRequest)
+        {
+            // Window closed while hosting: remove the router mapping before the
+            // process ends (a crash instead leaves it to the lease).
+            ReleaseOnExit();
+        }
+    }
+
+    /// <summary>Quitting: leave the party and remove the router mapping, waiting
+    /// for the router (longer if discovery is still running, so the removal
+    /// queued behind it can go through). Idempotent.</summary>
+    private void ReleaseOnExit()
+    {
+        int wait = Ports.State == PortMapper.MapState.Working ? 4000 : 1500;
+        Leave();
+        Ports.CloseAndWait(wait);
+    }
+
+    public override void _Process(double delta) => Ports.Poll(Time.GetTicksMsec());
+
+    private void OnPortsChanged() => LobbyChanged?.Invoke();
+
+    /// <summary>Host: removes the router mapping now (the run ended — nobody can
+    /// join any more). The session itself carries on.</summary>
+    public void ReleasePortMapping() => Ports.Close();
+
+    /// <summary>Host: a fresh join code for players who haven't joined yet.</summary>
+    public void NewCode()
+    {
+        if (IsHost && !InRun)
+        {
+            Code = JoinCode.Generate();
+            LobbyChanged?.Invoke();
+        }
+    }
+
+    /// <summary>Both ends: the join code is checked in the engine's authentication
+    /// step, before the peer is admitted — until then the engine drops every other
+    /// packet from it, so no RPC of an unauthenticated peer ever runs.</summary>
+    private void ConfigureAuth()
+    {
+        if (_scene is null)
+        {
+            return;
+        }
+
+        _scene.AuthCallback = new Callable(this, MethodName.OnAuth);
+        _scene.AuthTimeout = NetLimits.AuthTimeout;
+        // Clients only ever talk to the host: no relaying between clients (it
+        // would also tell every client the others' peer ids).
+        _scene.ServerRelay = false;
+    }
+
+    private void Security(string line)
+    {
+        SecurityLog.Add(line);
+        if (SecurityLog.Count > 50)
+        {
+            SecurityLog.RemoveAt(0);
+        }
+
+        GD.Print($"Co-op: {line}");
+        LobbyChanged?.Invoke();
     }
 
     public static LobbyMember MemberFor(CharacterData c, Vector2 view) => new()
@@ -124,9 +241,20 @@ public partial class NetSession : Node
 
     // --- starting and ending --------------------------------------------------------
 
-    public Error Host(int port, CharacterData character)
+    /// <summary>Opens a lobby on <paramref name="port"/>. <paramref name="code"/>: the
+    /// join code (null draws a random one; tests pass a fixed one).
+    /// <paramref name="openRouterPort"/>: try UPnP (off for tests and scripts on one PC).</summary>
+    public Error Host(int port, CharacterData character, string? code = null, bool openRouterPort = true)
     {
         Leave();
+        string chosen = code is null ? JoinCode.Generate() : JoinCode.Normalize(code);
+        if (!JoinCode.IsWellFormed(chosen))
+        {
+            Status = $"A join code is {JoinCode.Length} letters or digits (no 0, O, 1, I or L).";
+            return Error.InvalidParameter;
+        }
+
+        ConfigureAuth();
         (MultiplayerPeer? peer, Error error) = NetTransport.Host(port, PartyRules.MaxPlayers - 1);
         if (peer is null)
         {
@@ -138,18 +266,35 @@ public partial class NetSession : Node
         Role = SessionRole.Host;
         Joined = true;
         InRun = false;
+        Code = chosen;
+        Port = port;
+        _attempts.Clear();
         _me = MemberFor(character, ViewSize());
         _me.PeerId = 1;
         Members.Clear();
         Members.Add(_me);
-        Status = $"Hosting on port {port}. Friends join with your address and this port.";
+        Status = $"Hosting on port {port}.";
+        if (openRouterPort)
+        {
+            Ports.Open(port);
+        }
+
         LobbyChanged?.Invoke();
         return Error.Ok;
     }
 
-    public Error Join(string address, int port, CharacterData character)
+    public Error Join(string address, int port, CharacterData character, string code)
     {
         Leave();
+        string normalised = JoinCode.Normalize(code);
+        if (!JoinCode.IsWellFormed(normalised))
+        {
+            Status = $"Type the host's join code: {JoinCode.Length} letters or digits, like K7Q-29M.";
+            return Error.InvalidParameter;
+        }
+
+        _joinCode = normalised;
+        ConfigureAuth();
         (MultiplayerPeer? peer, Error error) = NetTransport.Join(address, port);
         if (peer is null)
         {
@@ -179,10 +324,16 @@ public partial class NetSession : Node
         }
 
         MultiplayerPeer? peer = Multiplayer.MultiplayerPeer;
+        Ports.Close();
         Role = SessionRole.Offline;
         Joined = false;
         InRun = false;
         Members.Clear();
+        Code = "";
+        _joinCode = "";
+        _budgets.Clear();
+        _authAnswered.Clear();
+        _kicked.Clear();
         _me = null;
         if (peer is not null and not OfflineMultiplayerPeer)
         {
@@ -198,9 +349,9 @@ public partial class NetSession : Node
         bool wasActive = Active;
         IRunLink? run = Run;
         Leave();
-        Status = reason;
         if (wasActive)
         {
+            Status = reason;
             run?.OnHostLost(reason);
             Ended?.Invoke(reason);
             LobbyChanged?.Invoke();
@@ -236,7 +387,7 @@ public partial class NetSession : Node
 
         GetTree().CreateTimer(HelloTimeout).Timeout += () =>
         {
-            if (IsInstanceValid(this) && IsHost && Member(id) is null)
+            if (IsInstanceValid(this) && IsHost && Member(id) is null && !_kicked.Contains(id))
             {
                 Kick(id);
             }
@@ -249,6 +400,10 @@ public partial class NetSession : Node
         {
             return;
         }
+
+        _budgets.Remove(id);
+        _authAnswered.Remove(id);
+        _kicked.Remove(id);
 
         int removed = Members.RemoveAll(m => m.PeerId == id);
         Run?.OnPeerLeft(id);
@@ -266,13 +421,211 @@ public partial class NetSession : Node
         }
 
         Status = "Connected — joining the party…";
-        RpcId(1, MethodName.RpcHello, Protocol, JsonSerializer.Serialize(_me));
+        RpcId(1, MethodName.RpcHello, Protocol, HelloJsonOverride ?? JsonSerializer.Serialize(_me));
         LobbyChanged?.Invoke();
     }
 
     private void OnConnectionFailed() => End("Could not reach the host. Check the address, the port and the host's firewall or VPN.");
 
     private void OnServerDisconnected() => End(InRun ? "The host left — the run is over." : "The host closed the session.");
+
+    // --- authentication: the join code (engine auth step, before any RPC) ------------
+
+    private void OnPeerAuthenticating(long id)
+    {
+        if (IsClient && id == 1)
+        {
+            // First message to the host: magic, protocol, code. Nothing else is sent
+            // (or would be accepted) until the host answers.
+            byte[] code = System.Text.Encoding.ASCII.GetBytes(_joinCode);
+            byte[] message = new byte[AuthMagic.Length + 2 + code.Length];
+            AuthMagic.CopyTo(message, 0);
+            message[4] = (byte)Protocol;
+            message[5] = (byte)(Protocol >> 8);
+            code.CopyTo(message, 6);
+            _scene?.SendAuth(1, message);
+            Status = "Connected — checking the join code…";
+            LobbyChanged?.Invoke();
+            return;
+        }
+
+        if (!IsHost)
+        {
+            return;
+        }
+
+        string address = NetTransport.RemoteAddress(Multiplayer.MultiplayerPeer, id);
+        if (_attempts.IsBlocked(address, Now))
+        {
+            // Too many wrong codes from there: not even an answer.
+            Multiplayer.MultiplayerPeer?.DisconnectPeer((int)id);
+            Security($"ignored {address}: too many wrong codes, blocked for a minute");
+            return;
+        }
+
+        if (InRun || Members.Count >= PartyRules.MaxPlayers)
+        {
+            Refuse(id, InRun ? "The run has already started." : "The party is full.");
+        }
+    }
+
+    private void OnPeerAuthenticationFailed(long id)
+    {
+        if (IsClient && id == 1 && Active)
+        {
+            End("The host did not accept the connection (wrong join code, version, or the host's game closed).");
+        }
+        else if (IsHost)
+        {
+            // Never admitted, so no PeerDisconnected will come for it.
+            _budgets.Remove(id);
+            _authAnswered.Remove(id);
+            _kicked.Remove(id);
+        }
+    }
+
+    /// <summary>The engine's auth callback: the host reads the joiner's code, the
+    /// joiner reads the host's answer.</summary>
+    private void OnAuth(long id, byte[] data)
+    {
+        if (_scene is null)
+        {
+            return;
+        }
+
+        if (IsClient)
+        {
+            if (id != 1)
+            {
+                return;
+            }
+
+            if (data.Length >= 1 && data[0] == 1)
+            {
+                // Engine quirk (4.1.1): complete_auth sends its confirmation to the last
+                // target peer; on a client that's always the host.
+                _scene.CompleteAuth(1);
+                Status = "Join code accepted — joining the party…";
+                LobbyChanged?.Invoke();
+            }
+            else
+            {
+                string refusal = data.Length > 1 ? System.Text.Encoding.UTF8.GetString(data, 1, Math.Min(data.Length - 1, 200)) : "The host turned you away.";
+                End(refusal);
+            }
+
+            return;
+        }
+
+        if (!IsHost || _kicked.Contains(id))
+        {
+            return;
+        }
+
+        if (!_authAnswered.Add(id))
+        {
+            // One code per connection; anything more only spends its budget.
+            Spend(id);
+            return;
+        }
+
+        string address = NetTransport.RemoteAddress(Multiplayer.MultiplayerPeer, id);
+        string? reason = null;
+        bool counts = true;
+        if (data.Length > NetLimits.AuthBytes || data.Length < AuthMagic.Length + 2 || !data.AsSpan(0, AuthMagic.Length).SequenceEqual(AuthMagic))
+        {
+            reason = "That is not an ARPG co-op client.";
+        }
+        else if ((data[4] | (data[5] << 8)) != Protocol)
+        {
+            reason = "Your game version does not match the host's.";
+            counts = false;
+        }
+        else
+        {
+            string given = JoinCode.Normalize(System.Text.Encoding.ASCII.GetString(data, 6, data.Length - 6));
+            if (!JoinCode.Matches(Code, given))
+            {
+                reason = "Wrong join code. Ask the host for the code shown in their lobby.";
+            }
+        }
+
+        if (reason is not null)
+        {
+            bool blocked = counts && _attempts.Fail(address, Now);
+            Refuse(id, reason);
+            Security($"turned away {address}: {reason}{(blocked ? " (blocked for a minute)" : "")}");
+            return;
+        }
+
+        // SendAuth sets the target peer, channel 0 and reliable mode, which the
+        // following CompleteAuth's confirmation then reuses (4.1.1 doesn't set them).
+        _scene.SendAuth((int)id, new byte[] { 1 });
+        _scene.CompleteAuth((int)id);
+    }
+
+    /// <summary>Host: answers a connecting peer with a reason and closes it once sent.</summary>
+    private void Refuse(long id, string reason)
+    {
+        _authAnswered.Add(id);
+        _kicked.Add(id);
+        byte[] text = System.Text.Encoding.UTF8.GetBytes(reason);
+        byte[] message = new byte[text.Length + 1];
+        text.CopyTo(message, 1);
+        _scene?.SendAuth((int)id, message);
+        NetTransport.DisconnectAfterSend(Multiplayer.MultiplayerPeer, id);
+    }
+
+    private static double Now => Time.GetTicksMsec() / 1000.0;
+
+    /// <summary>Host: one message from <paramref name="peer"/>; kicks it past its budget.</summary>
+    private bool Spend(long peer)
+    {
+        if (!_budgets.TryGetValue(peer, out PeerBudget? budget))
+        {
+            budget = new PeerBudget();
+            _budgets[peer] = budget;
+        }
+
+        if (budget.Spend(Now))
+        {
+            return true;
+        }
+
+        KickFor(peer, $"more than {NetLimits.MessagesPerSecond:0} messages a second");
+        return false;
+    }
+
+    /// <summary>Host: may this message from a client be processed? Checks the
+    /// sender's budget and the payload size (kicking on either), and that the
+    /// sender completed a valid hello (otherwise the message is ignored).</summary>
+    private bool Admit(long sender, int size, int cap, string what, bool needMember = true)
+    {
+        if (!IsHost || _kicked.Contains(sender) || !Spend(sender))
+        {
+            return false;
+        }
+
+        if (size > cap)
+        {
+            KickFor(sender, $"{what} of {size} bytes (limit {cap})");
+            return false;
+        }
+
+        return !needMember || Member(sender) is not null;
+    }
+
+    private void KickFor(long peer, string why)
+    {
+        if (!_kicked.Add(peer))
+        {
+            return;
+        }
+
+        string name = Member(peer)?.Name ?? $"peer {peer}";
+        Security($"kicked {name} ({NetTransport.RemoteAddress(Multiplayer.MultiplayerPeer, peer)}): {why}");
+        Kick(peer);
+    }
 
     private void BroadcastLobby()
     {
@@ -289,12 +642,12 @@ public partial class NetSession : Node
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
     private void RpcHello(int protocol, string memberJson)
     {
-        if (!IsHost)
+        long sender = Multiplayer.GetRemoteSenderId();
+        if (!Admit(sender, memberJson.Length, NetLimits.HelloChars, "hello", needMember: false) || Member(sender) is not null)
         {
-            return;
+            return; // over a limit (kicked), or a repeated hello (ignored)
         }
 
-        long sender = Multiplayer.GetRemoteSenderId();
         string? reason = protocol != Protocol ? "Your game version does not match the host's."
             : InRun ? "The run has already started."
             : Members.Count >= PartyRules.MaxPlayers ? "The party is full."
@@ -306,29 +659,54 @@ public partial class NetSession : Node
             {
                 member = JsonSerializer.Deserialize<LobbyMember>(memberJson);
             }
-            catch (JsonException)
+            catch (Exception e) when (e is JsonException or NotSupportedException or ArgumentException or InvalidOperationException)
             {
                 member = null;
             }
 
-            if (member is null)
-            {
-                reason = "Your character could not be read.";
-            }
+            reason = member is null ? "Your character could not be read." : CheckMember(member);
         }
 
         if (reason is not null)
         {
+            _kicked.Add(sender);
+            Security($"turned away peer {sender} ({NetTransport.RemoteAddress(Multiplayer.MultiplayerPeer, sender)}): {reason}");
             RpcId(sender, MethodName.RpcRejected, reason);
+            NetTransport.DisconnectAfterSend(Multiplayer.MultiplayerPeer, sender);
             return;
         }
 
         member!.PeerId = sender;
-        member.ViewWidth = Mathf.Clamp(member.ViewWidth, 320f, 7680f);
-        member.ViewHeight = Mathf.Clamp(member.ViewHeight, 240f, 4320f);
-        Members.RemoveAll(m => m.PeerId == sender);
         Members.Add(member);
         BroadcastLobby();
+    }
+
+    /// <summary>Host: is a joining player's lobby entry and character sane
+    /// (docs/design/multiplayer.md -> "Security")? Null if so; fixes up the
+    /// entry's name and level from the character itself.</summary>
+    private static string? CheckMember(LobbyMember member)
+    {
+        if (!float.IsFinite(member.ViewWidth) || !float.IsFinite(member.ViewHeight))
+        {
+            return "Your character was refused (bad window size).";
+        }
+
+        if (member.Character is null || member.Character.Length > NetLimits.HelloChars)
+        {
+            return "Your character was refused (too large).";
+        }
+
+        if (Core.Profile.ValidateCharacterJson(member.Character, out string name, out int level) is { } why)
+        {
+            return $"Your character was refused ({why}).";
+        }
+
+        member.Name = name;
+        member.Level = level;
+        member.ClassName = (member.ClassName ?? "").Length > NetLimits.NameChars ? member.ClassName![..NetLimits.NameChars] : member.ClassName ?? "";
+        member.ViewWidth = Mathf.Clamp(member.ViewWidth, 320f, 7680f);
+        member.ViewHeight = Mathf.Clamp(member.ViewHeight, 240f, 4320f);
+        return null;
     }
 
     [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
@@ -446,18 +824,20 @@ public partial class NetSession : Node
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.UnreliableOrdered, TransferChannel = 0)]
     private void RpcInput(byte[] data)
     {
-        if (IsHost)
+        long sender = Multiplayer.GetRemoteSenderId();
+        if (Admit(sender, data.Length, NetLimits.InputBytes, "input"))
         {
-            Run?.OnClientInput(Multiplayer.GetRemoteSenderId(), data);
+            Run?.OnClientInput(sender, data);
         }
     }
 
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
     private void RpcClientEvents(byte[] data)
     {
-        if (IsHost)
+        long sender = Multiplayer.GetRemoteSenderId();
+        if (Admit(sender, data.Length, NetLimits.ClientEventBytes, "event batch"))
         {
-            Run?.OnClientEvents(Multiplayer.GetRemoteSenderId(), data);
+            Run?.OnClientEvents(sender, data);
         }
     }
 
