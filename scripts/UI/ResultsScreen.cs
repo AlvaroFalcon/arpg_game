@@ -80,12 +80,36 @@ public partial class ResultsScreen : CanvasLayer
 
         HBoxContainer buttons = UiTheme.HBox(_box, 16);
         buttons.Alignment = BoxContainer.AlignmentMode.Center;
-        buttons.AddChild(UiTheme.Button("Return to Hideout", () => Leave(OnHideout)));
-        buttons.AddChild(UiTheme.Button("Main Menu", () => Leave(OnMenu)));
+        Button hideout = UiTheme.Button("Return to hideout", () => { });
+        Button menu = UiTheme.Button("Main menu", () => { });
+        hideout.Pressed += () => LeaveOrConfirm(hideout, OnHideout);
+        menu.Pressed += () => LeaveOrConfirm(menu, OnMenu);
+        buttons.AddChild(hideout);
+        buttons.AddChild(menu);
         Core.Sfx.Play(this, state.Victory ? "victory" : "defeat");
     }
 
-    private void Leave(Action? next)
+    /// <summary>Leaving before choosing forfeits the reward: the first press asks
+    /// (docs/design/menus.md -> "Results"), the second leaves.</summary>
+    private void LeaveOrConfirm(Button button, Action? next)
+    {
+        bool unclaimed = _claimed < _keep && _rewards.GetChildCount() > 0;
+        if (unclaimed && !button.HasMeta("confirm"))
+        {
+            button.SetMeta("confirm", true);
+            button.Text = "Leave without an item?";
+            button.AddThemeColorOverride("font_color", UiTheme.Ember);
+            _rewardHint.Text = _claimed == 0
+                ? "You haven't chosen an item yet — press again to leave without one."
+                : $"{_keep - _claimed} more to choose — press again to leave without them.";
+            return;
+        }
+
+        Leave(next);
+    }
+
+    /// <summary>Public for tests and scripts.</summary>
+    public void Leave(Action? next)
     {
         GetTree().Paused = false;
         next?.Invoke();

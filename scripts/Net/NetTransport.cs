@@ -40,6 +40,81 @@ public static class NetTransport
         return error == Error.Ok ? (peer, error) : (null, error);
     }
 
+    /// <summary>ENet's own defaults (enet.h): a peer that stops acknowledging is
+    /// dropped after 5–30 s depending on its round trip.</summary>
+    private const int DefaultTimeoutLimit = 32, DefaultTimeoutMinMs = 5000, DefaultTimeoutMaxMs = 30000;
+
+    /// <summary>Client, right after <see cref="Join"/>: give up on a host that
+    /// never answers after about <paramref name="maxMs"/> instead of ENet's ~30 s
+    /// (a dead address is the common failure, and silence is the worst state).
+    /// Applies to the connect request because ENet computes its retry limit when
+    /// the request is first sent, on the next poll.</summary>
+    public static void ShortenConnectTimeout(MultiplayerPeer? peer, int maxMs)
+    {
+        if (peer is ENetMultiplayerPeer enet && enet.GetPeer(1) is { } server)
+        {
+            // Retries keep ENet's pace; only the deadline moves (a fixed maximum).
+            server.SetTimeout(DefaultTimeoutLimit, maxMs, maxMs);
+        }
+    }
+
+    /// <summary>Client, once the host answered: back to ENet's defaults, so a
+    /// short stall mid-run doesn't drop the player.</summary>
+    public static void RestoreTimeout(MultiplayerPeer? peer)
+    {
+        if (peer is ENetMultiplayerPeer enet && enet.GetPeer(1) is { } server)
+        {
+            server.SetTimeout(DefaultTimeoutLimit, DefaultTimeoutMinMs, DefaultTimeoutMaxMs);
+        }
+    }
+
+    /// <summary>The text "Copy invite" puts on the clipboard: the address and the
+    /// code in one line a friend pastes into the address field.</summary>
+    public static string Invite(string address, string code) => $"{address} {JoinCode.Format(code)}";
+
+    /// <summary>A pasted invite ("203.0.113.7:7777 K7Q-29M", or a chat line
+    /// around it) → its address and code. False when the text holds no address
+    /// followed by a well-formed code (a bare address stays as typed).</summary>
+    public static bool TryParseInvite(string text, out string address, out string code)
+    {
+        address = "";
+        code = "";
+        string[] tokens = text.Split(new[] { ' ', '\t', '\n', '\r', ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries);
+        int at = -1;
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            string t = tokens[i].Trim('"', '\'', '(', ')', '<', '>');
+            if ((t.Contains('.') || t.Contains(':')) && TryParseAddress(t, out _, out _))
+            {
+                address = t.TrimEnd('.');
+                at = i;
+                break;
+            }
+        }
+
+        if (at < 0)
+        {
+            return false;
+        }
+
+        for (int i = at + 1; i < tokens.Length; i++)
+        {
+            // "K7Q-29M", or typed in two halves ("k7q 29m").
+            string one = JoinCode.Normalize(tokens[i].Trim('"', '\'', '(', ')', '.', '<', '>'));
+            string two = i + 1 < tokens.Length ? one + JoinCode.Normalize(tokens[i + 1].Trim('"', '\'', '(', ')', '.', '<', '>')) : "";
+            foreach (string candidate in new[] { one, two })
+            {
+                if (JoinCode.IsWellFormed(candidate))
+                {
+                    code = JoinCode.Format(candidate);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Total bytes this machine sent and received on the wire since the
     /// last call (ENet's own counters, headers included) — the performance
     /// numbers in docs/design/multiplayer.md come from here. Zero for a

@@ -1,25 +1,48 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ArpgGame.Characters;
 using ArpgGame.Core;
 using ArpgGame.Net;
 
 namespace ArpgGame.UI;
 
 /// <summary>
-/// Co-op from the main menu — docs/design/multiplayer.md -> "Session and lobby".
-/// Host (a port, 7777 by default) or Join (address:port + the host's join
-/// code), then the lobby: up to four players with name, class and level; the
-/// host presses Start, anyone can Leave. Everyone plays their own saved
-/// character (the active one). The host's lobby shows the join code, the
-/// address friends use (the router's public address when UPnP opened the port,
-/// else the fallback advice) and this PC's LAN/VPN addresses, each with Copy —
-/// docs/design/multiplayer.md -> "Security".
+/// Co-op from the main menu — docs/design/menus.md -> "Co-op" and
+/// docs/design/multiplayer.md -> "Session and lobby". One screen, one state at
+/// a time:
+/// <list type="bullet">
+/// <item><b>Choose</b>: two cards, Host a game / Join a friend. Joining needs
+/// both the host's address (finds their PC) and the join code (lets you in);
+/// pasting the host's invite into the address field fills both. Mistakes are
+/// shown next to the field, Enter submits.</item>
+/// <item><b>Connecting</b>: a spinner, the step (reaching the host, checking the
+/// code, joining), the elapsed time and Cancel. Gives up after
+/// <see cref="NetSession.ConnectTimeout"/>.</item>
+/// <item><b>Failed</b>: what went wrong (unreachable, wrong code, full, already
+/// started, version) and what to check, with Try again.</item>
+/// <item><b>Lobby</b>: the host's invite (address and code, big, with Copy and
+/// Copy invite, the router state) and four party slots, free ones marked.</item>
+/// </list>
 /// </summary>
 public partial class CoopPanel : PanelContainer
 {
+    public enum View
+    {
+        Unavailable,
+        NoCharacter,
+        Choose,
+        Connecting,
+        Failed,
+        Lobby,
+    }
+
     public event Action? Back;
+
+    /// <summary>"Create a character" from the no-character state.</summary>
+    public event Action? CreateCharacter;
 
     /// <summary>Set before adding: host on this port / join this address right away
     /// (scripts/coop_local.sh passes them on the command line).</summary>
@@ -35,105 +58,100 @@ public partial class CoopPanel : PanelContainer
     /// <summary>Host only: start by itself once this many players are in (scripts, captures).</summary>
     public int AutoStartAt { get; set; }
 
+    /// <summary>Set before adding: the session to drive (tests bind a second one;
+    /// the game uses the autoload).</summary>
+    public NetSession? Session { get; set; }
+
+    public View Current { get; private set; } = View.Unavailable;
+
+    /// <summary>Inline errors under the join fields ("" when fine).</summary>
+    public string AddressError => _addressError?.Text ?? "";
+    public string CodeError => _codeError?.Text ?? "";
+    public string PortError => _portError?.Text ?? "";
+
+    /// <summary>The failure card's title ("Wrong join code", "Couldn't reach the host"…).</summary>
+    public string FailureTitle { get; private set; } = "";
+
+    /// <summary>One line per party slot as shown ("Kaelen · Level 24 Samurai · Host · You", "Free — waiting for a friend").</summary>
+    public IReadOnlyList<string> SlotTexts => _slotTexts;
+
+    /// <summary>What the host's "Copy invite" puts on the clipboard.</summary>
+    public string InviteText { get; private set; } = "";
+
+    // Kept across openings of the screen (a retry shouldn't make you type again).
+    private static string _lastAddress = "";
+    private static string _lastCode = "";
+
     private VBoxContainer _body = null!;
-    private LineEdit _port = null!;
-    private LineEdit _address = null!;
-    private LineEdit _code = null!;
-    private VBoxContainer _share = null!;
-    private string _shareSignature = "";
-    private Label _status = null!;
-    private VBoxContainer _members = null!;
-    private Button _start = null!;
-    private Button _leave = null!;
-    private Control _connect = null!;
+    private VBoxContainer _view = null!;
+    private Label _who = null!;
+    private Label _notice = null!;
+    private Button _back = null!;
+    private string _signature = "";
+    private bool _attempted;
+    private bool _lastWasHost;
+    private readonly List<string> _slotTexts = new();
+
+    private LineEdit? _port;
+    private LineEdit? _address;
+    private LineEdit? _code;
+    private Label? _portError;
+    private Label? _addressError;
+    private Label? _codeError;
+    private Label? _pasted;
+    private Label? _elapsed;
+    private readonly List<(Label Label, JoinPhase Phase)> _steps = new();
+
     private NetSession? _session;
+
+    private bool HasCharacter => Profile.Get(this) is { HasCharacters: true };
 
     public override void _Ready()
     {
-        CustomMinimumSize = new Vector2(760f, 0f);
+        CustomMinimumSize = new Vector2(1000f, 0f);
         AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, UiTheme.PanelBorder, 2, 8, 18));
         _body = UiTheme.VBox(this, 10);
         _body.AddChild(UiTheme.Label("Co-op — Survival Rift", 32, UiTheme.Gold, HorizontalAlignment.Center));
+        _who = UiTheme.Label("", 16, UiTheme.TextDim, HorizontalAlignment.Center);
+        _body.AddChild(_who);
+        // Short feedback (copied, host errors) right under the title, where the eye is.
+        _notice = UiTheme.Label("", 16, UiTheme.Experience, HorizontalAlignment.Center);
+        _notice.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _notice.Visible = false;
+        _body.AddChild(_notice);
+        _view = UiTheme.VBox(_body, 10);
 
-        Profile? profile = Profile.Get(this);
-        bool hasCharacter = profile is { HasCharacters: true };
-        string who = hasCharacter
-            ? $"Playing as {profile!.Active.Name}, level {profile.Active.Level} {profile.Active.AscendancyDef?.Name ?? profile.Active.Class.Name} (change it in Play)"
-            : "Create a character first (Play → New character).";
-        _body.AddChild(UiTheme.Label(who, 16, UiTheme.TextDim, HorizontalAlignment.Center));
+        HBoxContainer footer = UiTheme.HBox(_body, 12);
+        footer.Alignment = BoxContainer.AlignmentMode.Center;
+        _back = UiTheme.Button("Back", GoBack, 18, 160f);
+        footer.AddChild(_back);
 
-        var connect = new VBoxContainer();
-        connect.AddThemeConstantOverride("separation", 8);
-        _body.AddChild(connect);
-        _connect = connect;
-
-        HBoxContainer hostRow = UiTheme.HBox(connect, 10);
-        hostRow.AddChild(UiTheme.Label("Port", 18, UiTheme.Text));
-        _port = new LineEdit { Text = NetTransport.DefaultPort.ToString(), CustomMinimumSize = new Vector2(120f, 0f) };
-        hostRow.AddChild(_port);
-        Button host = UiTheme.Button("Host co-op", Host, 18, 220f);
-        host.Disabled = !hasCharacter;
-        hostRow.AddChild(host);
-
-        HBoxContainer joinRow = UiTheme.HBox(connect, 10);
-        joinRow.AddChild(UiTheme.Label("Address", 18, UiTheme.Text));
-        _address = new LineEdit { Text = $"127.0.0.1:{NetTransport.DefaultPort}", CustomMinimumSize = new Vector2(240f, 0f), PlaceholderText = "ip:port" };
-        joinRow.AddChild(_address);
-        joinRow.AddChild(UiTheme.Label("Code", 18, UiTheme.Text));
-        _code = new LineEdit { CustomMinimumSize = new Vector2(130f, 0f), PlaceholderText = "K7Q-29M", MaxLength = 12 };
-        joinRow.AddChild(_code);
-        Button join = UiTheme.Button("Join", Join, 18, 160f);
-        join.Disabled = !hasCharacter;
-        joinRow.AddChild(join);
-
-        Label help = UiTheme.Label(
-            "The host's lobby shows the address and join code to use. Hosting tries to open the port on the router by itself (UPnP); " +
-            $"if it can't, the host forwards UDP {NetTransport.DefaultPort} by hand or everyone uses a VPN (Tailscale, Radmin VPN, ZeroTier). " +
-            "Same PC: 127.0.0.1.",
-            14, UiTheme.TextDim);
-        help.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        help.CustomMinimumSize = new Vector2(700f, 0f);
-        connect.AddChild(help);
-
-        _status = UiTheme.Label("", 16, UiTheme.Ember, HorizontalAlignment.Center);
-        _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _status.CustomMinimumSize = new Vector2(700f, 0f);
-        _body.AddChild(_status);
-
-        _share = UiTheme.VBox(_body, 6);
-
-        _body.AddChild(UiTheme.Label("Party", 20, UiTheme.Gold));
-        _members = UiTheme.VBox(_body, 4);
-
-        HBoxContainer buttons = UiTheme.HBox(_body, 12);
-        buttons.Alignment = BoxContainer.AlignmentMode.Center;
-        _start = UiTheme.Button("Start", () => _session?.StartRun(), 20, 200f);
-        buttons.AddChild(_start);
-        _leave = UiTheme.Button("Leave", () => { _session?.Leave(); Refresh(); }, 20, 160f);
-        buttons.AddChild(_leave);
-        buttons.AddChild(UiTheme.Button("Back", () =>
-        {
-            _session?.Leave();
-            Back?.Invoke();
-        }, 20, 160f));
-
-        _session = NetSession.Get(this);
+        _session = Session ?? NetSession.Get(this);
         if (_session is not null)
         {
             _session.LobbyChanged += Refresh;
         }
 
+        Profile? profile = Profile.Get(this);
+        _who.Text = profile is { HasCharacters: true }
+            ? $"Playing as {profile.Active.Name}, level {profile.Active.Level} {profile.Active.AscendancyDef?.Name ?? profile.Active.Class.Name}  ·  change character in Play"
+            : "";
+        _who.Visible = _who.Text.Length > 0;
+
         Refresh();
-        if (hasCharacter && AutoHostPort is { } port)
+        if (HasCharacter && AutoHostPort is { } port)
         {
-            _port.Text = port.ToString();
-            Host();
+            if (_port is not null)
+            {
+                _port.Text = port.ToString();
+            }
+
+            PressHost();
         }
-        else if (hasCharacter && AutoJoin is { } address)
+        else if (HasCharacter && AutoJoin is { } address)
         {
-            _address.Text = address;
-            _code.Text = AutoCode ?? "";
-            Join();
+            SetJoinFields(address, AutoCode ?? "");
+            PressJoin();
         }
     }
 
@@ -145,75 +163,288 @@ public partial class CoopPanel : PanelContainer
         }
     }
 
-    private void Host()
+    public override void _Process(double delta)
     {
-        if (_session is null || Profile.Get(this) is not { } profile)
+        if (_session is null)
         {
             return;
         }
 
-        int port = _port.Text.ToInt();
-        if (port is <= 0 or > 65535)
+        if (Current == View.Connecting)
         {
-            _status.Text = "That port is not a number between 1 and 65535.";
+            UpdateConnecting();
+        }
+
+        // The session can end without a lobby event reaching us first (timeouts).
+        if (Signature() != _signature)
+        {
+            Refresh();
+        }
+    }
+
+    public override void _Input(InputEvent e)
+    {
+        if (!IsVisibleInTree() || !e.IsActionPressed("ui_cancel"))
+        {
             return;
         }
 
-        _session.Host(port, profile.Active, AutoCode, openRouterPort: !NoUpnp);
+        switch (Current)
+        {
+            case View.Connecting:
+                PressCancel();
+                break;
+            case View.Failed:
+                ShowForm();
+                break;
+            case View.Lobby:
+                // Leaving a lobby ends it for everyone: only the Leave button does that.
+                return;
+            default:
+                GoBack();
+                break;
+        }
+
+        GetViewport().SetInputAsHandled();
+    }
+
+    // --- actions (public for tests and the capture tool) -------------------------
+
+    public void SetJoinFields(string address, string code)
+    {
+        _lastAddress = address;
+        _lastCode = code;
+        if (_address is not null)
+        {
+            _address.Text = address;
+        }
+
+        if (_code is not null)
+        {
+            _code.Text = code;
+        }
+    }
+
+    public void SetHostPort(int port)
+    {
+        if (_port is not null)
+        {
+            _port.Text = port.ToString();
+        }
+    }
+
+    public void PressHost()
+    {
+        EnsureForm();
+        if (_session is null || Profile.Get(this) is not { HasCharacters: true } profile)
+        {
+            return;
+        }
+
+        int port = _port?.Text.Trim().ToInt() ?? NetTransport.DefaultPort;
+        if (_port is not null && (!_port.Text.Trim().IsValidInt() || port is <= 0 or > 65535))
+        {
+            SetError(_port, _portError, "The port is a number from 1 to 65535 (7777 unless you changed it on purpose).");
+            return;
+        }
+
+        _attempted = true;
+        _lastWasHost = true;
+        if (_session.Host(port, profile.Active, AutoCode, openRouterPort: !NoUpnp) != Error.Ok)
+        {
+            SetError(_port, _portError, _session.Status);
+            return;
+        }
+
         Refresh();
     }
 
-    private void Join()
+    public void PressJoin()
     {
-        if (_session is null || Profile.Get(this) is not { } profile)
+        EnsureForm();
+        if (_session is null || Profile.Get(this) is not { HasCharacters: true } profile || _address is null || _code is null)
         {
             return;
         }
 
-        if (!NetTransport.TryParseAddress(_address.Text, out string host, out int port))
+        string addressText = _address.Text.Trim();
+        string codeText = _code.Text.Trim();
+        _lastAddress = addressText;
+        _lastCode = codeText;
+        string? addressWrong = addressText.Length == 0
+            ? "Type the host's address. They see it in their lobby (Copy invite)."
+            : !NetTransport.TryParseAddress(addressText, out _, out _)
+                ? "That isn't an address. It looks like 203.0.113.7:7777 — four numbers with dots, then : and the port."
+                : null;
+        string normalised = JoinCode.Normalize(codeText);
+        string? codeWrong = codeText.Length == 0
+            ? "Type the join code from the host's lobby — 6 letters or digits, like K7Q-29M."
+            : !JoinCode.IsWellFormed(normalised)
+                ? $"A join code is {JoinCode.Length} letters or digits, like K7Q-29M (there is no 0, O, 1, I or L)."
+                : null;
+        SetError(_address, _addressError, addressWrong);
+        SetError(_code, _codeError, codeWrong);
+        if (addressWrong is not null || codeWrong is not null)
         {
-            _status.Text = "Write the host's address as ip:port, e.g. 100.64.0.7:7777.";
+            (addressWrong is not null ? _address : _code).GrabFocus();
             return;
         }
 
-        _session.Join(host, port, profile.Active, _code.Text);
+        NetTransport.TryParseAddress(addressText, out string host, out int port);
+        _attempted = true;
+        _lastWasHost = false;
+        if (_session.Join(host, port, profile.Active, codeText) != Error.Ok)
+        {
+            SetError(_address, _addressError, _session.Status);
+            return;
+        }
+
         Refresh();
+    }
+
+    public void PressCancel()
+    {
+        _attempted = false;
+        _session?.Leave();
+        Refresh();
+    }
+
+    private void GoBack()
+    {
+        _session?.Leave();
+        Back?.Invoke();
+    }
+
+    /// <summary>Host/Join pressed from another state (a retry, scripts): the form first.</summary>
+    private void EnsureForm()
+    {
+        if (Current is View.Failed)
+        {
+            ShowForm();
+        }
+    }
+
+    /// <summary>From the failure card back to the form (fields kept).</summary>
+    private void ShowForm()
+    {
+        _attempted = false;
+        _signature = "";
+        Refresh();
+    }
+
+    private void Retry()
+    {
+        if (_lastWasHost)
+        {
+            PressHost();
+        }
+        else
+        {
+            PressJoin();
+        }
+    }
+
+    // --- state --------------------------------------------------------------------
+
+    private View Decide()
+    {
+        if (_session is null)
+        {
+            return View.Unavailable;
+        }
+
+        if (!HasCharacter)
+        {
+            return View.NoCharacter;
+        }
+
+        if (_session.IsHost || (_session.IsClient && _session.Phase == JoinPhase.InLobby))
+        {
+            return View.Lobby;
+        }
+
+        if (_session.IsClient)
+        {
+            return View.Connecting;
+        }
+
+        return _attempted && _session.LastEnd != SessionEnd.None ? View.Failed : View.Choose;
+    }
+
+    /// <summary>Everything the current view shows; a change rebuilds it.</summary>
+    private string Signature()
+    {
+        View view = Decide();
+        if (_session is null)
+        {
+            return view.ToString();
+        }
+
+        string lobby = view == View.Lobby
+            ? string.Join("|", _session.Members.Select(m => $"{m.PeerId}:{m.Name}:{m.Level}:{m.ClassName}"))
+              + $"#{_session.Code}#{_session.Ports.State}#{_session.Ports.Message}#{_session.Ports.ExternalAddress}#{_session.SecurityLog.Count}#{_session.InRun}"
+            : "";
+        string connecting = view == View.Connecting ? _session.Phase.ToString() : "";
+        string failed = view == View.Failed ? $"{_session.LastEnd}:{_session.Status}" : "";
+        return $"{view}#{lobby}#{connecting}#{failed}";
     }
 
     private void Refresh()
     {
-        if (_session is null)
+        string signature = Signature();
+        if (signature == _signature)
         {
-            _status.Text = "Co-op is unavailable (no session service).";
             return;
         }
 
-        _status.Text = _session.Status;
-        foreach (Node child in _members.GetChildren())
+        _signature = signature;
+        // Keep what was typed when the form is rebuilt.
+        if (_address is not null && IsInstanceValid(_address))
         {
-            _members.RemoveChild(child);
+            _lastAddress = _address.Text;
+        }
+
+        if (_code is not null && IsInstanceValid(_code))
+        {
+            _lastCode = _code.Text;
+        }
+
+        foreach (Node child in _view.GetChildren())
+        {
+            _view.RemoveChild(child);
             child.QueueFree();
         }
 
-        for (int i = 0; i < _session.Members.Count; i++)
+        _port = _address = _code = null;
+        _portError = _addressError = _codeError = _pasted = null;
+        _elapsed = null;
+        _steps.Clear();
+        _slotTexts.Clear();
+        Current = Decide();
+        _back.Visible = Current is not View.Lobby and not View.Connecting;
+        switch (Current)
         {
-            LobbyMember m = _session.Members[i];
-            string role = m.PeerId == 1 ? "  (host)" : "";
-            string you = m.PeerId == _session.LocalPeerId ? "  — you" : "";
-            _members.AddChild(UiTheme.Label($"{i + 1}.  {m.Name}  ·  level {m.Level} {m.ClassName}{role}{you}", 18, m.PeerId == _session.LocalPeerId ? UiTheme.Gold : UiTheme.Text));
+            case View.Unavailable:
+                _view.AddChild(Wrapped("Co-op is unavailable (no session service).", 18, UiTheme.Ember, 900f));
+                break;
+            case View.NoCharacter:
+                BuildNoCharacter();
+                break;
+            case View.Choose:
+                BuildChoose();
+                break;
+            case View.Connecting:
+                BuildConnecting();
+                break;
+            case View.Failed:
+                BuildFailed();
+                break;
+            case View.Lobby:
+                BuildLobby();
+                break;
         }
 
-        if (_session.Members.Count == 0)
-        {
-            _members.AddChild(UiTheme.Label(_session.Active ? "Waiting for the lobby…" : "Not in a party.", 16, UiTheme.TextDim));
-        }
-
-        RefreshShare();
-        _connect.Visible = !_session.Active;
-        _start.Visible = _session.IsHost;
-        _start.Text = _session.Members.Count > 1 ? $"Start ({_session.Members.Count} players)" : "Start (alone)";
-        _leave.Visible = _session.Active;
-        if (AutoStartAt > 0 && _session.IsHost && !_session.InRun && _session.Members.Count >= AutoStartAt)
+        if (Current == View.Lobby && AutoStartAt > 0 && _session is { IsHost: true, InRun: false } s && s.Members.Count >= AutoStartAt)
         {
             CallDeferred(MethodName.AutoStart);
         }
@@ -227,94 +458,506 @@ public partial class CoopPanel : PanelContainer
         }
     }
 
-    /// <summary>The host's "how friends join" box: code, public address, LAN/VPN addresses.</summary>
-    private void RefreshShare()
+    // --- views --------------------------------------------------------------------
+
+    private void BuildNoCharacter()
     {
-        NetSession session = _session!;
-        string[] local = session.IsHost ? PortMapper.LocalAddresses() : Array.Empty<string>();
-        string signature = session.IsHost
-            ? $"{session.Code}|{session.Ports.State}|{session.Ports.Message}|{session.Ports.ExternalAddress}|{string.Join(",", local)}|{session.SecurityLog.Count}|{session.InRun}"
-            : "";
-        if (signature == _shareSignature)
+        VBoxContainer box = UiTheme.VBox(_view, 12);
+        box.AddChild(UiTheme.Label("You need a character first", 24, UiTheme.Text, HorizontalAlignment.Center));
+        box.AddChild(Wrapped("Everyone plays their own saved character in co-op, and keeps what they find. Create one (it takes a few seconds), then come back here to host or join.", 16, UiTheme.TextDim, 900f, HorizontalAlignment.Center));
+        Button create = UiTheme.PrimaryButton("Create a character", () => CreateCharacter?.Invoke(), 20, 320f);
+        create.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        box.AddChild(create);
+        create.CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    private void BuildChoose()
+    {
+        HBoxContainer cards = UiTheme.HBox(_view, 16);
+        cards.Alignment = BoxContainer.AlignmentMode.Center;
+
+        // Host
+        VBoxContainer host = Card(cards, "Host a game");
+        host.AddChild(Wrapped($"Open a lobby on this PC for up to {PartyRules.MaxPlayers} players. You get an address and a join code to send your friends.", 15, UiTheme.TextDim, 400f));
+        host.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
+        HBoxContainer portRow = UiTheme.HBox(host, 8);
+        portRow.AddChild(UiTheme.Label("Port", 15, UiTheme.TextDim));
+        _port = UiTheme.Field("7777", 100f, 16);
+        _port.Text = NetTransport.DefaultPort.ToString();
+        _port.MaxLength = 5;
+        _port.TextSubmitted += _ => PressHost();
+        _port.TextChanged += _ => SetError(_port, _portError, null);
+        portRow.AddChild(_port);
+        portRow.AddChild(UiTheme.Label("UDP · leave 7777 unless you know why", 13, UiTheme.TextDim));
+        _portError = ErrorLabel(host);
+        Button hostButton = UiTheme.PrimaryButton("Host lobby", PressHost, 20, 400f);
+        host.AddChild(hostButton);
+
+        // Join
+        VBoxContainer join = Card(cards, "Join a friend");
+        join.AddChild(Wrapped("You need both from the host's lobby: the address finds their PC, the code lets you in.", 15, UiTheme.TextDim, 400f));
+        join.AddChild(UiTheme.Label("Host's address", 16, UiTheme.Text));
+        _address = UiTheme.Field("e.g. 203.0.113.7:7777 — or paste the invite", 400f);
+        _address.Text = _lastAddress;
+        join.AddChild(_address);
+        _addressError = ErrorLabel(join);
+        _pasted = UiTheme.Label("", 13, UiTheme.Experience);
+        _pasted.Visible = false;
+        join.AddChild(_pasted);
+        join.AddChild(UiTheme.Label("Join code", 16, UiTheme.Text));
+        _code = UiTheme.Field("K7Q-29M", 200f, 20);
+        _code.MaxLength = 12;
+        _code.Text = _lastCode;
+        join.AddChild(_code);
+        _codeError = ErrorLabel(join);
+        Button joinButton = UiTheme.PrimaryButton("Join", PressJoin, 20, 400f);
+        join.AddChild(joinButton);
+
+        _address.TextChanged += OnAddressTyped;
+        _address.TextSubmitted += _ =>
+        {
+            if (_code!.Text.Trim().Length == 0)
+            {
+                _code.GrabFocus();
+            }
+            else
+            {
+                PressJoin();
+            }
+        };
+        _code.TextChanged += _ => SetError(_code, _codeError, null);
+        _code.TextSubmitted += _ => PressJoin();
+
+        _view.AddChild(Wrapped(
+            $"Same PC: 127.0.0.1:{NetTransport.DefaultPort}.  Same Wi-Fi: the host's 192.168… address.  Over the internet: the address the host's lobby shows " +
+            "(their router opens the port by itself when it can), or a VPN both of you run — Tailscale, Radmin VPN, ZeroTier.",
+            14, UiTheme.TextDim, 960f, HorizontalAlignment.Center));
+        (_lastAddress.Length > 0 ? joinButton : hostButton).CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    /// <summary>A pasted invite fills both fields.</summary>
+    private void OnAddressTyped(string text)
+    {
+        SetError(_address!, _addressError, null);
+        if (NetTransport.TryParseInvite(text, out string address, out string code) && address != text.Trim())
+        {
+            _address!.Text = address;
+            _address.CaretColumn = address.Length;
+            _code!.Text = code;
+            SetError(_code, _codeError, null);
+            _pasted!.Text = "Invite pasted — address and join code filled in.";
+            _pasted.Visible = true;
+        }
+    }
+
+    private void BuildConnecting()
+    {
+        NetSession s = _session!;
+        VBoxContainer box = UiTheme.VBox(_view, 12);
+        HBoxContainer head = UiTheme.HBox(box, 14);
+        head.Alignment = BoxContainer.AlignmentMode.Center;
+        head.AddChild(new Spinner(34f));
+        head.AddChild(UiTheme.Label($"Joining {s.JoinTarget}", 26, UiTheme.Text));
+
+        VBoxContainer steps = UiTheme.VBox(box, 6);
+        steps.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        foreach ((JoinPhase phase, string text) in new[]
+        {
+            (JoinPhase.Connecting, "1.  Reaching the host's PC"),
+            (JoinPhase.CheckingCode, "2.  Checking the join code"),
+            (JoinPhase.Joining, "3.  Joining the party"),
+        })
+        {
+            Label l = UiTheme.Label(text, 18, UiTheme.TextDim);
+            steps.AddChild(l);
+            _steps.Add((l, phase));
+        }
+
+        _elapsed = UiTheme.Label("", 15, UiTheme.TextDim, HorizontalAlignment.Center);
+        _elapsed.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _elapsed.CustomMinimumSize = new Vector2(900f, 0f);
+        box.AddChild(_elapsed);
+        Button cancel = UiTheme.Button("Cancel", PressCancel, 18, 200f);
+        cancel.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        box.AddChild(cancel);
+        cancel.CallDeferred(Control.MethodName.GrabFocus);
+        UpdateConnecting();
+    }
+
+    /// <summary>Each frame while connecting: which step, how long, when it gives up.</summary>
+    private void UpdateConnecting()
+    {
+        if (_session is null || _elapsed is null || !IsInstanceValid(_elapsed))
         {
             return;
         }
 
-        _shareSignature = signature;
-        foreach (Node child in _share.GetChildren())
+        JoinPhase phase = _session.Phase;
+        foreach ((Label label, JoinPhase step) in _steps)
         {
-            _share.RemoveChild(child);
-            child.QueueFree();
+            bool done = step < phase;
+            bool current = step == phase;
+            label.AddThemeColorOverride("font_color", done ? UiTheme.Experience : current ? UiTheme.Gold : UiTheme.TextDim);
+            string baseText = label.Text.Split("   ")[0];
+            label.Text = done ? $"{baseText}   — done" : baseText;
         }
 
-        _share.Visible = session.IsHost;
-        if (!session.IsHost)
+        double total = NetSession.Clock - _session.JoinStarted;
+        double inPhase = NetSession.Clock - _session.PhaseSince;
+        _elapsed.Text = phase == JoinPhase.Connecting
+            ? inPhase < 4.0
+                ? $"{total:0} s"
+                : $"{total:0} s — no answer yet. Gives up after {NetSession.ConnectTimeout:0} s."
+            : $"{total:0} s — the host answered.";
+    }
+
+    private void BuildFailed()
+    {
+        NetSession s = _session!;
+        (string title, string[] checks) = Explain(s.LastEnd, s.JoinTarget);
+        FailureTitle = title;
+        VBoxContainer box = UiTheme.VBox(_view, 10);
+        box.AddChild(UiTheme.Label(title, 28, UiTheme.Life, HorizontalAlignment.Center));
+        // The session's own words, minus a repeat of the title.
+        string detail = s.Status.StartsWith(title, StringComparison.OrdinalIgnoreCase) ? s.Status[title.Length..].TrimStart('.', ' ', '—') : s.Status;
+        if (detail.Length > 0)
         {
-            return;
+            box.AddChild(Wrapped(detail, 17, UiTheme.Text, 900f, HorizontalAlignment.Center));
+        }
+        if (checks.Length > 0)
+        {
+            var list = new PanelContainer();
+            list.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.07f, 0.06f, 0.1f), UiTheme.PanelBorder, 1, 6, 14));
+            box.AddChild(list);
+            VBoxContainer lines = UiTheme.VBox(list, 6);
+            lines.AddChild(UiTheme.Label("What to check", 16, UiTheme.Gold));
+            foreach (string check in checks)
+            {
+                lines.AddChild(Wrapped($"•  {check}", 15, UiTheme.Text, 880f));
+            }
         }
 
-        int port = session.Port;
-        string code = JoinCode.Format(session.Code);
-        Row($"Join code:  {code}", UiTheme.Gold, 22, ("Copy", code), ("New code", null));
+        HBoxContainer buttons = UiTheme.HBox(box, 12);
+        buttons.Alignment = BoxContainer.AlignmentMode.Center;
+        Button retry = UiTheme.PrimaryButton("Try again", Retry, 18, 220f);
+        buttons.AddChild(retry);
+        buttons.AddChild(UiTheme.Button(_lastWasHost ? "Back to co-op" : "Change address or code", ShowForm, 18, 280f));
+        retry.CallDeferred(Control.MethodName.GrabFocus);
+    }
 
-        PortMapper ports = session.Ports;
-        switch (ports.State)
+    /// <summary>The failure card for each way a session ends: a title in the
+    /// player's words and what to check next.</summary>
+    public static (string Title, string[] Checks) Explain(SessionEnd why, string target) => why switch
+    {
+        SessionEnd.Unreachable => ("Couldn't reach the host", new[]
         {
-            case PortMapper.MapState.Working:
-                Row(ports.Message, UiTheme.TextDim, 16);
-                break;
-            case PortMapper.MapState.Open:
-                string external = $"{ports.ExternalAddress}:{port}";
-                Row($"Friends join with:  {external}", UiTheme.Text, 18, ("Copy", external));
-                Row(ports.Message, UiTheme.TextDim, 14);
-                break;
-            case PortMapper.MapState.Failed:
-                Row(ports.Message, UiTheme.Ember, 15);
-                Row($"Once UDP {port} is forwarded, friends join with your public IP (search \"what is my IP\") and :{port}.", UiTheme.TextDim, 14);
-                break;
-            default:
-                if (!session.InRun)
-                {
-                    Row("Router port not opened automatically (UPnP off for this lobby).", UiTheme.TextDim, 14);
-                }
+            $"The address is exactly the one in the host's lobby, port included ({(target.Length > 0 ? target : "ip:7777")}).",
+            "The host is still in their lobby (the lobby closes if they press Back).",
+            "The host's lobby says whether their router opened the port. If it says it didn't, the host forwards UDP 7777 to their PC in the router's settings — or you both install a VPN like Tailscale or Radmin VPN and the host sends their VPN address instead.",
+            "The host's firewall lets the game in (Windows asks the first time you host: allow it).",
+            "Same PC: 127.0.0.1:7777.  Same Wi-Fi: the host's 192.168… address, not the internet one.",
+        }),
+        SessionEnd.WrongCode => ("Wrong join code", new[]
+        {
+            "The host's PC answered, so the address is right — only the code didn't match.",
+            "Ask for the code in their lobby now: it changes with every new lobby and with New code.",
+            "Codes never contain 0, O, 1, I or L. Case and the dash don't matter.",
+            "After 5 wrong codes in a minute the host ignores your address for a minute.",
+        }),
+        SessionEnd.PartyFull => ("The party is full", new[]
+        {
+            $"A party is at most {PartyRules.MaxPlayers} players. Ask someone to leave the lobby, then try again.",
+        }),
+        SessionEnd.RunStarted => ("The run has already started", new[]
+        {
+            "Nobody can join a run in progress. When it ends, the host opens a new lobby and you join that one (with its new code).",
+        }),
+        SessionEnd.VersionMismatch => ("Different game versions", new[]
+        {
+            "Everyone needs the same version. Update the game from the launcher (both of you), then try again.",
+        }),
+        SessionEnd.CharacterRefused => ("Your character was refused", new[]
+        {
+            "The host checks every character for broken data. Pick another character in Play and try again.",
+        }),
+        SessionEnd.NotAccepted => ("The host turned the connection away", new[]
+        {
+            "If you typed wrong codes several times, wait a minute: the host ignores an address for a minute after 5 wrong codes.",
+            "Check the code with the host, then try again.",
+        }),
+        SessionEnd.HostClosed => ("The host closed the lobby", new[]
+        {
+            "Ask the host to open a new lobby and send the new invite: the code changes every time.",
+        }),
+        SessionEnd.HostLeftRun => ("The host left", Array.Empty<string>()),
+        _ => ("Something went wrong", Array.Empty<string>()),
+    };
 
-                break;
+    private void BuildLobby()
+    {
+        NetSession s = _session!;
+        HBoxContainer columns = UiTheme.HBox(_view, 18);
+        columns.Alignment = BoxContainer.AlignmentMode.Center;
+
+        if (s.IsHost)
+        {
+            BuildInvite(columns, s);
+        }
+
+        // Party slots.
+        VBoxContainer party = Card(columns, $"Party  {s.Members.Count}/{PartyRules.MaxPlayers}", s.IsHost ? 440f : 640f);
+        for (int i = 0; i < PartyRules.MaxPlayers; i++)
+        {
+            party.AddChild(Slot(i < s.Members.Count ? s.Members[i] : null, s));
+        }
+
+        foreach (string line in s.IsHost ? s.SecurityLog.TakeLast(2) : Enumerable.Empty<string>())
+        {
+            party.AddChild(Wrapped(line, 12, UiTheme.TextDim, 400f));
+        }
+
+        HBoxContainer buttons = UiTheme.HBox(_view, 12);
+        buttons.Alignment = BoxContainer.AlignmentMode.Center;
+        if (s.IsHost)
+        {
+            int n = s.Members.Count;
+            Button start = UiTheme.PrimaryButton(n > 1 ? $"Start run — {n} players" : "Start run alone", () => _session?.StartRun(), 20, 320f);
+            buttons.AddChild(start);
+            start.CallDeferred(Control.MethodName.GrabFocus);
+        }
+        else
+        {
+            string hostName = s.Members.FirstOrDefault(m => m.PeerId == 1)?.Name ?? "the host";
+            buttons.AddChild(new Spinner(24f));
+            buttons.AddChild(UiTheme.Label($"In the party — waiting for {hostName} to start the run.", 18, UiTheme.Text));
+        }
+
+        buttons.AddChild(UiTheme.Button(s.IsHost ? "Close lobby" : "Leave", () =>
+        {
+            _attempted = false;
+            _session?.Leave();
+            Refresh();
+        }, 18, 180f));
+    }
+
+    private void BuildInvite(HBoxContainer columns, NetSession s)
+    {
+        VBoxContainer invite = Card(columns, "Invite friends", 480f);
+        invite.AddChild(UiTheme.Label("Send them both — or Copy invite, which holds both:", 14, UiTheme.TextDim));
+
+        int port = s.Port;
+        string[] local = PortMapper.LocalAddresses();
+        (string address, string kind) = PrimaryAddress(s, local, port);
+        string code = JoinCode.Format(s.Code);
+        InviteText = NetTransport.Invite(address, s.Code);
+
+        Value(invite, "Address", address, 24, UiTheme.Text, ("Copy", () => Copy(address, "Address copied.")));
+        invite.AddChild(UiTheme.Label(kind, 13, UiTheme.TextDim));
+        Value(invite, "Join code", code, 34, UiTheme.Gold, ("Copy", () => Copy(code, "Join code copied.")), ("New code", () => _session?.NewCode()));
+
+        Button copyInvite = UiTheme.PrimaryButton("Copy invite (address + code)", () => Copy(InviteText, "Invite copied — paste it to your friends; their address field fills both."), 18, 440f);
+        invite.AddChild(copyInvite);
+
+        PortMapper ports = s.Ports;
+        (string routerText, Color routerColour) = ports.State switch
+        {
+            PortMapper.MapState.Working => (ports.Message, UiTheme.TextDim),
+            PortMapper.MapState.Open => ($"Internet: ready. {ports.Message}", UiTheme.Experience),
+            PortMapper.MapState.Failed => ($"Internet: not reachable yet. {ports.Message}", UiTheme.Ember),
+            _ => ("Router port not opened (UPnP off for this lobby): same PC, same network or VPN only.", UiTheme.TextDim),
+        };
+        invite.AddChild(Wrapped(routerText, 13, routerColour, 440f));
+
+        IEnumerable<string> others = local.Select(a => $"{a}:{port}").Where(a => a != address).Take(3);
+        foreach (string other in others)
+        {
+            string label = $"{other}  ({Kind(other)})";
+            Value(invite, "", label, 14, UiTheme.Text, ("Copy invite", () => Copy(NetTransport.Invite(other, s.Code), $"Invite with {other} copied.")));
+        }
+    }
+
+    /// <summary>The address to put in the invite: the router's public one when
+    /// UPnP opened the port, else a VPN address, else this PC on the LAN.</summary>
+    private static (string Address, string Kind) PrimaryAddress(NetSession s, string[] local, int port)
+    {
+        if (s.Ports.State == PortMapper.MapState.Open && s.Ports.ExternalAddress.Length > 0)
+        {
+            return ($"{s.Ports.ExternalAddress}:{port}", "Internet address — works for friends anywhere.");
+        }
+
+        string? vpn = local.FirstOrDefault(IsVpn);
+        if (vpn is not null)
+        {
+            return ($"{vpn}:{port}", "VPN address — friends need the same VPN running (Tailscale, Radmin VPN, ZeroTier).");
         }
 
         if (local.Length > 0)
         {
-            string first = $"{local[0]}:{port}";
-            string all = string.Join(",  ", local.Take(3).Select(a => $"{a}:{port}"));
-            Row($"Same network / VPN:  {all}", UiTheme.Text, 16, ("Copy", first));
+            return ($"{local[0]}:{port}", "Same network only (your Wi-Fi). For the internet, see the line below.");
         }
 
-        foreach (string line in session.SecurityLog.TakeLast(3))
+        return ($"127.0.0.1:{port}", "This PC only.");
+    }
+
+    private static bool IsVpn(string address) => address.StartsWith("100.") || address.StartsWith("26.") || address.StartsWith("25.");
+
+    private static string Kind(string address) => IsVpn(address) ? "VPN" : "same network";
+
+    private Control Slot(LobbyMember? member, NetSession s)
+    {
+        var box = new PanelContainer { CustomMinimumSize = new Vector2(0f, 64f) };
+        bool you = member is not null && member.PeerId == s.LocalPeerId;
+        box.AddThemeStyleboxOverride("panel", member is null
+            ? UiTheme.Box(new Color(0.07f, 0.06f, 0.1f, 0.6f), new Color(0.25f, 0.22f, 0.32f), 1, 6, 10)
+            : UiTheme.Box(new Color(0.13f, 0.11f, 0.18f), you ? UiTheme.Gold : UiTheme.PanelBorder, 2, 6, 10));
+        HBoxContainer row = UiTheme.HBox(box, 12);
+        if (member is null)
         {
-            Row(line, UiTheme.TextDim, 13);
+            var empty = new Control { CustomMinimumSize = new Vector2(48f, 48f) };
+            row.AddChild(empty);
+            VBoxContainer text = UiTheme.VBox(row, 0);
+            text.AddChild(UiTheme.Label("Free — waiting for a friend", 17, UiTheme.TextDim));
+            if (s.IsHost)
+            {
+                text.AddChild(UiTheme.Label("Send them the invite", 13, new Color(0.5f, 0.48f, 0.55f)));
+            }
+
+            _slotTexts.Add("Free — waiting for a friend");
+            return box;
+        }
+
+        row.AddChild(UiTheme.Portrait(SpriteFor(member.ClassName), 48f));
+        VBoxContainer info = UiTheme.VBox(row, 0);
+        info.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        info.AddChild(UiTheme.Label(member.Name, 19, you ? UiTheme.Gold : UiTheme.Text));
+        info.AddChild(UiTheme.Label($"Level {member.Level} {member.ClassName}", 14, UiTheme.TextDim));
+        var tags = new List<string>();
+        if (member.PeerId == 1)
+        {
+            tags.Add("Host");
+        }
+
+        if (you)
+        {
+            tags.Add("You");
+        }
+
+        foreach (string tag in tags)
+        {
+            PanelContainer cap = UiTheme.KeyCap(tag, 13);
+            cap.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            row.AddChild(cap);
+        }
+
+        _slotTexts.Add($"{member.Name} · Level {member.Level} {member.ClassName}{string.Concat(tags.Select(t => $" · {t}"))}");
+        return box;
+    }
+
+    private static string SpriteFor(string className)
+    {
+        foreach (AscendancyDefinition a in ClassCatalog.Ascendancies)
+        {
+            if (a.Name == className)
+            {
+                return a.Sprite;
+            }
+        }
+
+        foreach (ClassDefinition c in ClassCatalog.Classes)
+        {
+            if (c.Name == className)
+            {
+                return c.Sprite;
+            }
+        }
+
+        return "player";
+    }
+
+    // --- helpers --------------------------------------------------------------------
+
+    private void Copy(string text, string notice)
+    {
+        DisplayServer.ClipboardSet(text);
+        Notice(notice, UiTheme.Experience);
+    }
+
+    private void Notice(string text, Color colour)
+    {
+        _notice.Text = text;
+        _notice.AddThemeColorOverride("font_color", colour);
+        _notice.Visible = text.Length > 0;
+        GetTree().CreateTimer(4.0, processAlways: true).Timeout += () =>
+        {
+            if (IsInstanceValid(_notice) && _notice.Text == text)
+            {
+                _notice.Visible = false;
+            }
+        };
+    }
+
+    private static void SetError(LineEdit? field, Label? label, string? error)
+    {
+        if (field is not null)
+        {
+            UiTheme.FieldError(field, error is not null);
+        }
+
+        if (label is not null)
+        {
+            label.Text = error ?? "";
+            label.Visible = error is not null;
         }
     }
 
-    private void Row(string text, Color colour, int size, params (string Label, string? Copy)[] buttons)
+    private static Label ErrorLabel(Node parent)
     {
-        HBoxContainer row = UiTheme.HBox(_share, 10);
-        Label label = UiTheme.Label(text, size, colour);
-        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        label.CustomMinimumSize = new Vector2(480f, 0f);
-        row.AddChild(label);
-        foreach ((string caption, string? copy) in buttons)
-        {
-            row.AddChild(UiTheme.Button(caption, () =>
-            {
-                if (copy is null)
-                {
-                    _session?.NewCode();
-                    return;
-                }
+        Label l = UiTheme.Label("", 14, UiTheme.Ember);
+        l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        l.CustomMinimumSize = new Vector2(400f, 0f);
+        l.Visible = false;
+        parent.AddChild(l);
+        return l;
+    }
 
-                DisplayServer.ClipboardSet(copy);
-                _status.Text = $"Copied {copy}";
-            }, 15, 110f));
+    private static VBoxContainer Card(Node parent, string title, float width = 460f)
+    {
+        var card = new PanelContainer { CustomMinimumSize = new Vector2(width, 0f) };
+        card.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.08f, 0.07f, 0.12f), UiTheme.PanelBorder, 1, 8, 16));
+        parent.AddChild(card);
+        VBoxContainer v = UiTheme.VBox(card, 8);
+        v.AddChild(UiTheme.Label(title, 22, UiTheme.Gold));
+        return v;
+    }
+
+    private static void Value(Node parent, string caption, string value, int size, Color colour, params (string Label, Action Action)[] buttons)
+    {
+        HBoxContainer row = UiTheme.HBox(parent, 10);
+        if (caption.Length > 0)
+        {
+            Label c = UiTheme.Label(caption, 14, UiTheme.TextDim);
+            c.CustomMinimumSize = new Vector2(78f, 0f);
+            row.AddChild(c);
         }
+
+        Label v = UiTheme.Label(value, size, colour);
+        v.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        v.ClipText = true;
+        row.AddChild(v);
+        foreach ((string label, Action action) in buttons)
+        {
+            Button b = UiTheme.Button(label, action, 14, label.Length > 6 ? 110f : 70f);
+            b.CustomMinimumSize = new Vector2(b.CustomMinimumSize.X, 34f);
+            b.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            row.AddChild(b);
+        }
+    }
+
+    private static Label Wrapped(string text, int size, Color colour, float width, HorizontalAlignment align = HorizontalAlignment.Left)
+    {
+        Label l = UiTheme.Label(text, size, colour, align);
+        l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        l.CustomMinimumSize = new Vector2(width, 0f);
+        return l;
     }
 }
