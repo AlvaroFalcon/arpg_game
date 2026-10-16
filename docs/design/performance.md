@@ -276,3 +276,129 @@ Possible next steps, measured but not proposed yet:
 - A per-frame budget on chain-reaction *deaths* (see item 1).
 - `RunState.SpawnExperience` calls `GetNodesInGroup` (which allocates an array)
   for every gem, to check the 300-gem cap. A counter would remove that.
+
+## Co-op (Survival Rift, 4 players) — measured 2026-10-16
+
+Independent check of the numbers in `multiplayer.md` -> "Performance", plus
+the first fixes. One 4-core cloud container, headless.
+
+### Method
+
+- **Party bench:** `scenes/tools/CoopBench.tscn` (host plus 3 client processes,
+  clock jumped to 350 s, 30 s fill, 20 s measured, then a Cataclysm). It now
+  also logs the host's **frame wall time**, **physics steps per frame**, a
+  **probe of every physics step's scripts** (one node at priority
+  `int.MinValue`, one at `int.MaxValue`) and managed allocations and GCs on
+  every process.
+- **Pinned run:** host on cores 0–1 (`taskset`), clients re-pinned to cores
+  2–3. The host gets its own CPU and the clients can't steal it.
+- **Solo bench (offline, no session):** `scenes/tools/RiftBench.tscn`,
+  `--fixed-fps 60` (one step per frame, unthrottled, so a frame's wall time is
+  its cost). Clock 350 s, 2400 fill frames, 1200 measured, then a Cataclysm. The
+  player auto-casts, and the monsters can't die, so the count sits at the cap
+  (275) and runs can be compared. It ran on base `e54b12f` (git worktree) and on
+  HEAD. Median of 3.
+- **Attribution:** `dotnet-trace collect --format speedscope` on the host and
+  on one client during the steady window, then summed inclusive time per method.
+
+### The earlier numbers were misread
+
+- `Performance.Monitor.TimePhysicsProcess` (and `TimeProcess`) is **the worst
+  step of the last second**, refreshed once a second, not the step just run.
+  "82 ms avg" was the average of per-second maxima.
+- The real problem was bigger. The host ran **8 physics steps every frame**
+  (the `max_physics_steps_per_frame` cap), with 291 ms frames. That is a death
+  spiral, so the Rift ran at about 45 % speed. The 20 Hz snapshot clock counts
+  game time, so snapshots went out at about 9 Hz. That is why bandwidth read
+  ~40 KB/s.
+
+### Cause
+
+Per-frame scans over every monster, multiplied by four players. This was not
+the replication code.
+
+| Hot spot (host, 4 players) | Share of main thread |
+|---|---|
+| `PlayerSkillInput.AutoAimTarget` → `NearestHostile`: every player, every physics frame, a `GetNodeOrNull<Health>("Health")` per monster (a string → `NodePath` each time) | 40 % |
+| `Enemy.FindTarget` → `NearestTargetablePlayer`: `GetNodesInGroup` per call. When every player is warded (cards open) it returns null, so **every monster re-scans every frame** | 21 % |
+| `Enemy.FindTarget` decoy check: `GetNodesInGroup("decoys")` per monster per frame, plus a string → `StringName` | 8 % |
+| `OrbitBlades`: `HostilesInRadius` (full scan plus a new list) **per blade** per frame, also on clients, which can't deal damage | 16 % (after the above) |
+| `TargetFrame.PickTarget`: LINQ over the group, enumerated twice | 4.5 % host, 13 % client |
+| `RiftHost` (snapshots, events) | 4–7 % |
+
+### Fixes (no gameplay change; the results are the same)
+
+- `CombatQuery`: `HealthOf()` reads the cached `Enemy.Health`/`Player.Health`.
+  The group and path names are cached `StringName`/`NodePath`. The player list
+  for `NearestTargetablePlayer` and `LocalPlayer` is read once per frame, and
+  warded/dead/valid are still checked on every call.
+- `Enemy.FindTarget`: `SceneTree.HasGroup("decoys")` comes before listing the
+  group (an empty group doesn't exist).
+- `PlayerSkillInput.SurvivalCast`: the auto-aim target is looked up only when a
+  slot actually fires. Before, it was looked up every frame.
+- `OrbitBlades`: one scan per frame within `Radius + HitRadius`, then a
+  distance test per blade on that short list. It is the same set by the
+  triangle inequality. Clients skip the scan.
+- `TargetFrame.PickTarget`: one pass with no LINQ, and the same picks (first
+  minimum).
+
+### Results
+
+| | Before | After |
+|---|---|---|
+| Host frame wall, 4p shared CPU | 291 ms avg, p95 447, max 1393 | **25.7 ms**, p95 61, max 148 |
+| Host physics steps per frame | 8.00 (death spiral) | 1.53 |
+| Host physics scripts per step | 32.5 ms, p95 46 | **10.3 ms**, p95 15 |
+| Host, pinned to 2 cores (clients isolated) | — | frame 22.9 ms, scripts 10.2 ms/step, 1.37 steps/frame |
+| Solo through a session (`--clients=0`), pinned | — | frame 16.8 ms, scripts 5.5 ms/step, 1.01 steps/frame (257 monsters) |
+| `RiftHost` step | 0.9 ms, p95 3.6 | 0.5 ms, p95 1.8 |
+| Snapshots per client, real time | ~33 KB/s (at ~9 Hz) | **~65 KB/s** wire (0.52 Mbit/s), p95 72 |
+| Host upload, 3 clients | ~0.8 Mbit/s | **~1.6 Mbit/s** |
+| Host managed allocations | 19 MB/s | 6.3 MB/s (no GC in 20 s) |
+| Client managed allocations | 3.4 MB/s | 3.7 MB/s (more snapshots now) |
+| Cataclysm (300 at once): replication step | ≤0.6 ms | ≤1.2 ms; wire 30 KB/s/client next 2 s |
+| **Offline solo** (RiftBench, 275 monsters) base → HEAD → fixed | 20.5 → 18.0 ms avg | **15.2 ms** avg, p95 27.6 → 24.9 → 20.2, p99 36 → 31 → 25 |
+| Offline managed allocations base → HEAD → fixed | 297 → 196 KB/frame | **47 KB/frame** |
+
+- **Offline didn't get slower with co-op.** HEAD is already faster than base,
+  because the old `FindTarget` built a `NodePath` per monster per frame. The
+  fixes take it further.
+- **The host's extra cost is co-op gameplay, not networking.** With its own two
+  cores, the host's scripts cost 10.2 ms per step against 5.5 solo. That covers
+  1.5× the monsters, four players' skills, and four sets of instanced drops
+  (~400 pickups on the floor against ~26). Replication is 0.5 ms of that.
+  Sharing the CPU with the clients adds frame-time variance (p95 61 against 50),
+  not much average.
+- **Bandwidth is inside a home budget** (1 Mbit/s down per client, 3 Mbit/s up
+  for the host): 52 % and 53 % of it. The snapshot is 8 bytes per monster.
+  Nearly every monster is within `NearRadius` (1400 px), so nearly all go at
+  20 Hz.
+
+### Budgets
+
+- Host, 4 players, late wave: ≤16.7 ms per physics step on a desktop
+  (1 step per frame). Here it is ~1.4 steps per frame on 2 cloud cores, so it
+  is not met yet.
+- Replication (`RiftHost`): ≤1 ms avg, ≤3 ms p95 per step.
+- Per client: ≤0.5 Mbit/s down (50 % of a home budget). Host: ≤2 Mbit/s up for
+  3 clients.
+
+### Proposals (not done)
+
+1. **Bandwidth, if it needs margin** (in `scripts/Net`, owner: multiplayer):
+   (a) `NearRadius` from the client's reported view rectangle plus a margin
+   (~950 px for 1280×720), instead of 1400 px. Off-screen monsters would go at
+   5 Hz. (b) Send life and flags only when they change, with a bit in the id.
+   Most monsters' life doesn't change between snapshots. That saves ~25 %.
+   (c) 12-bit positions relative to the receiver. Together, roughly half.
+2. **Remote players' drops on the host:** ~300 hidden `Pickup` nodes with areas
+   and `_PhysicsProcess` (6–9 % of the host). The host could keep them as data
+   and test the owner's distance in one loop.
+3. **Monster AI scans** (`Enemy._PhysicsProcess`, still ~28 % of the host)
+   would want a spatial grid or a shared per-frame monster list for
+   `NearestHostile`/`HostilesInRadius`. Profile again on a desktop first.
+4. **Design question for the owner:** when every player is warded, every
+   monster still asks for a target every frame. That is cheap now (a cached
+   list of up to 4 players). Holding "no target" until the 0.4–0.7 s retarget
+   timer runs out would make it free, but monsters would then find a player
+   that much later. That is a gameplay change, so it was not done.

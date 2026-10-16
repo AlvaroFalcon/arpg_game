@@ -68,6 +68,11 @@ public partial class OrbitBlades : Node2D
         Modulate = new Color(1f, 1f, 1f, fade);
 
         float now = _elapsed;
+        // One scan of the hostiles per frame for all the blades (a blade's hits are
+        // all within Radius + HitRadius of the centre), and none on a co-op client,
+        // which never resolves damage — docs/design/performance.md -> "Co-op".
+        List<Health>? near = Net.NetMode.ClientSide ? null : CombatQuery.HostilesInRadius(GetTree(), GlobalPosition, Radius + HitRadius + 12f, Hit.Faction, 0f);
+        float reach = HitRadius + 12f;
         for (int i = 0; i < _blades.Count; i++)
         {
             float a = _angle + Mathf.Tau * i / _blades.Count;
@@ -75,9 +80,20 @@ public partial class OrbitBlades : Node2D
             Node2D blade = _blades[i];
             blade.Position = offset;
             blade.Rotation = a * 3f;
-
-            foreach (Health health in CombatQuery.HostilesInRadius(GetTree(), GlobalPosition + offset, HitRadius, Hit.Faction))
+            if (near is null)
             {
+                continue;
+            }
+
+            Vector2 at = GlobalPosition + offset;
+            foreach (Health health in near)
+            {
+                // Same test HostilesInRadius(at, HitRadius) makes, on the short list.
+                if (health.IsDead || health.GetParent() is not Node2D body || at.DistanceSquaredTo(body.GlobalPosition) > reach * reach)
+                {
+                    continue;
+                }
+
                 ulong id = health.GetInstanceId();
                 if (_lastHit.TryGetValue(id, out float last) && now - last < HitCooldown)
                 {

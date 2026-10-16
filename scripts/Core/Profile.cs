@@ -62,6 +62,10 @@ public partial class Profile : Node
     /// <summary>When false, nothing is written to disk (tests).</summary>
     public bool Persist { get; set; } = true;
 
+    /// <summary>Where <see cref="Save"/> writes and <see cref="Load"/> reads (tests
+    /// point it at a scratch file; the game always uses <see cref="SavePath"/>).</summary>
+    public string FilePath { get; set; } = SavePath;
+
     public static Profile? Get(Node context) =>
         context.IsInsideTree() ? context.GetTree().Root.GetNodeOrNull<Profile>("Profile") : null;
 
@@ -92,6 +96,13 @@ public partial class Profile : Node
 
     public override void _Ready()
     {
+        // scripts/coop_local.sh: the second window plays a throwaway copy of the
+        // profile, so two instances on one PC never overwrite each other's save.
+        if (System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--profile-readonly") >= 0)
+        {
+            Persist = false;
+        }
+
         Load();
     }
 
@@ -157,6 +168,51 @@ public partial class Profile : Node
         ActiveIndex = Mathf.Clamp(ActiveIndex >= index ? ActiveIndex - 1 : ActiveIndex, 0, Mathf.Max(0, Characters.Count - 1));
         Save();
     }
+
+    /// <summary>
+    /// Co-op host and clients: dresses another party member's player node from the
+    /// character their own machine sent (docs/design/multiplayer.md -> "Players"):
+    /// gear, gems, passives, class sprite. No wallet — their currency lives on
+    /// their machine — and nothing here is ever saved.
+    /// </summary>
+    public static void ApplyCharacterTo(Player player, CharacterData c)
+    {
+        foreach ((EquipmentSlot slot, EquipmentItem item) in c.Equipped)
+        {
+            player.Equipment.TryEquip(slot, item, out _);
+        }
+
+        CharacterBuild.Attach(player, c);
+        if (player.GetNodeOrNull<ActorStats>("Stats") is { } stats)
+        {
+            if (stats.Life is { } life)
+            {
+                life.Current = life.Max;
+            }
+
+            if (stats.Mana is { } mana)
+            {
+                mana.Current = mana.Max;
+            }
+        }
+
+        // The copy's bag is never shown: free the item nodes it was read into.
+        foreach ((EquipmentItem item, Vector2I _) in c.Inventory)
+        {
+            if (GodotObject.IsInstanceValid(item) && !item.IsInsideTree())
+            {
+                item.QueueFree();
+            }
+        }
+
+        c.Inventory.Clear();
+    }
+
+    /// <summary>One item as JSON and back (co-op: gear a remote player found).</summary>
+    public static string SerializeItem(EquipmentItem item) => JsonSerializer.Serialize(ToSave(item));
+
+    public static EquipmentItem? DeserializeItem(string json) =>
+        JsonSerializer.Deserialize<SaveItem>(json) is { } s ? FromSave(s) : null;
 
     public void ApplyTo(Player player)
     {
@@ -547,8 +603,52 @@ public partial class Profile : Node
             return;
         }
 
-        using FileAccess? f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
-        f?.StoreString(ToJson());
+        // Serialise first, then replace the file in one step: the old version opened
+        // (truncated) the file before serialising, so anything that made the JSON
+        // writer throw — a NaN or infinity anywhere in the account, e.g. from a
+        // hostile co-op host — left an empty save and lost every character.
+        string json;
+        try
+        {
+            json = ToJson();
+        }
+        catch (Exception e)
+        {
+            GD.PushError($"Profile: not saved, the account could not be written ({e.Message}); the file on disk is unchanged.");
+            return;
+        }
+
+        WriteAtomically(FilePath, json);
+    }
+
+    /// <summary>Writes <paramref name="text"/> to a temporary file next to
+    /// <paramref name="path"/>, then moves it over the old file, so a crash or
+    /// error mid-write never leaves a truncated save behind.</summary>
+    public static bool WriteAtomically(string path, string text)
+    {
+        string target = ProjectSettings.GlobalizePath(path);
+        string temp = target + ".tmp";
+        try
+        {
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(target)!);
+            System.IO.File.WriteAllText(temp, text);
+            System.IO.File.Move(temp, target, overwrite: true);
+            return true;
+        }
+        catch (Exception e)
+        {
+            GD.PushError($"Profile: could not write {path} ({e.Message}).");
+            try
+            {
+                System.IO.File.Delete(temp);
+            }
+            catch (Exception)
+            {
+                // nothing more to do
+            }
+
+            return false;
+        }
     }
 
     /// <summary>The whole account as the save-file JSON (tests round-trip it).</summary>
@@ -570,14 +670,14 @@ public partial class Profile : Node
     {
         LegacySave.Migrate();
         Characters.Clear();
-        if (!FileAccess.FileExists(SavePath))
+        if (!FileAccess.FileExists(FilePath))
         {
             return;
         }
 
         try
         {
-            using FileAccess? f = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
+            using FileAccess? f = FileAccess.Open(FilePath, FileAccess.ModeFlags.Read);
             if (f is not null)
             {
                 LoadJson(f.GetAsText());
@@ -585,7 +685,7 @@ public partial class Profile : Node
         }
         catch (Exception e)
         {
-            GD.PushWarning($"Profile: could not read {SavePath} ({e.Message}); starting fresh.");
+            GD.PushWarning($"Profile: could not read {FilePath} ({e.Message}); starting fresh.");
         }
     }
 

@@ -69,7 +69,27 @@ public partial class Health : Node
     /// </summary>
     public float InvulnerableTime { get; private set; }
 
-    public bool IsInvulnerable => InvulnerableTime > 0f || IgnoreDamage;
+    public bool IsInvulnerable => InvulnerableTime > 0f || IgnoreDamage || Warded;
+
+    /// <summary>Co-op: the player is choosing a level-up card (docs/design/multiplayer.md
+    /// -> "Level-ups"). Ignores hits like <see cref="IgnoreDamage"/>, but is its own
+    /// flag so it never clears a test's or a tool's immunity.</summary>
+    public bool Warded { get; set; }
+
+    /// <summary>
+    /// Co-op client only: the host owns every life total, so a replica's life
+    /// and death are written here from snapshots instead of from hits
+    /// (docs/design/multiplayer.md -> "Replication"). No signals are raised.
+    /// </summary>
+    public void SetNetState(float current, bool dead)
+    {
+        if (_stats?.Life is { } life)
+        {
+            life.Current = Mathf.Clamp(current, 0f, life.Max);
+        }
+
+        IsDead = dead;
+    }
 
     /// <summary>Capture tools and tests only: every hit is ignored, with none of
     /// the visual flicker real invulnerability shows.</summary>
@@ -116,7 +136,8 @@ public partial class Health : Node
     /// </summary>
     public void ApplyResolvedDamage(float amount, Node2D? source)
     {
-        if (IsDead || IsInvulnerable || amount <= 0f || _stats.Life is not { } life)
+        // A co-op client never resolves damage: the host does (Net.NetMode).
+        if (Net.NetMode.ClientSide || IsDead || IsInvulnerable || amount <= 0f || _stats.Life is not { } life)
         {
             return;
         }
@@ -145,6 +166,16 @@ public partial class Health : Node
         }
     }
 
+    /// <summary>Co-op revive: back on their feet with part of their life.</summary>
+    public void Revive(float lifeFraction)
+    {
+        Revive();
+        if (_stats.Life is { } life)
+        {
+            life.Current = life.Max * Mathf.Clamp(lifeFraction, 0.01f, 1f);
+        }
+    }
+
     /// <summary>Restores life, clamped to Max. Never revives the dead.</summary>
     public void Heal(float amount)
     {
@@ -166,7 +197,8 @@ public partial class Health : Node
 
     public void TakeDamage(DamagePayload payload)
     {
-        if (IsDead)
+        // A co-op client never resolves damage: the host does (Net.NetMode).
+        if (IsDead || Net.NetMode.ClientSide)
         {
             return;
         }

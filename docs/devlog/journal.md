@@ -376,3 +376,40 @@ Related themes sit near each other but never together: projectile damage in the 
 The panel now previews the cheapest path to whatever you hover, with its cost, and allocates the whole path on click. It also has search, fit/centre buttons, and a free Reset tree. Refunds are free while the tree is play-tested, and characters saved with the old tree silently get their points back.
 
 Also new: an admin mode setting that adds a max-level test character (gold, shards, orbs) to character creation. Screenshots: `panel-passives.png`, `panel-passives-search-path.png`.
+
+## 2026-10-15 — Co-op Survival Rift (up to four players)
+
+Friends can now play the Survival Rift together. One player hosts from the main menu (Co-op → Host, port 7777) and up to three others join by IP. It works over Tailscale, Radmin VPN or ZeroTier, or with a forwarded UDP port. Everyone brings their own saved character and keeps their own loot.
+
+How it works: the host runs the game as offline. A watcher node sends each client 20 Hz quantised snapshots (players, plus the monsters near that player), and once per physics frame a batch of events. The events cover monsters appearing and dying, projectiles, telegraphs and swings to replay locally, that player's own drops, level-ups and gear. Clients predict their own movement and reconcile against the host. They draw everything else 100 ms in the past, between snapshots. Loot is instanced: every kill rolls drops for every player, and each client sees only its own. Nobody pauses. A player choosing cards is warded, a fallen player is downed until an ally stands next to them for 3 s, and the run is lost when everyone is down. Party scaling lives in one table (`Net/PartyRules.cs`), and everything is written up in `docs/design/multiplayer.md`.
+
+Two bugs only showed up in the real two-process test (`CoopSmokeTest`: a host and two client processes on localhost, 27 checks):
+- Godot 4.1.1 sends any RPC on a transfer channel above 0 *unreliably*, whatever its transfer mode says, so "reliable" messages were silently lost under load. Everything is on channel 0 now.
+- Client reconciliation applied the same error twice when two snapshots acknowledged the same input, and the player flew off to −48 billion.
+
+Measured with a party of four at a late wave (`CoopBench`): about 40 KB/s per client and under 1 ms of host CPU for replication. A Cataclysm killing 366 monsters costs nothing noticeable on the wire. The first party table doubled the monster count and the host's physics with it, so the enemy cap now grows slowly and the extra pressure comes from monster life instead.
+
+Try it on one PC with `scripts/coop_local.sh`. Screenshots: `coop-lobby.png`, `coop-rift.png`.
+
+## 2026-10-16 — Co-op without a VPN: UPnP, join codes, host limits
+
+The owner wanted friends to be able to join by IP without installing a VPN, and safely. Hosting now asks the router to open UDP 7777 by UPnP. The mapping has a 2 h lease, renewed while hosting. It is removed on Leave, when the run ends and on quit, and a crash leaves it to the lease. The lobby then shows "Friends join with: <public-ip>:7777" with a Copy button, and the PC's LAN/VPN addresses. When the router won't do it (no UPnP, or CG-NAT, where the router's own internet address is private), the lobby says so in plain words and suggests forwarding the port or a VPN. Hosting keeps working for LAN and VPN either way. Router calls run on one background worker, strictly in order, so a slow discovery never freezes the menu and a Leave during discovery still removes the mapping.
+
+Every lobby has a 6-character join code (`K7Q-29M`, no look-alike characters). It travels in Godot's authentication step, so the engine drops everything else a peer sends until the code is accepted. Five wrong codes in a minute and that address is ignored for a minute. The host also caps the size of every client message, gives each peer a message budget (150/s, burst 300), and sanity-checks the character it receives (level range, finite numbers, list and string sizes). A failed check kicks or refuses the peer, with the reason shown on both sides. Characters are still trusted beyond that, by decision.
+
+Two engine details found on the way. In 4.1.1, `complete_auth` sends its confirmation to whichever peer was targeted last, so the host sends its "ok" with `send_auth` right before it. ENet's plain disconnect throws away the outgoing queue, so a refusal reason would never arrive; refusals now use `peer_disconnect_later`.
+
+`CoopSmokeTest` grew from 27 to 43 checks. The attacks (wrong code, flood, oversized hello, a level-999 character, the rate limit) come from extra sessions in the same process, each on its own `SceneMultiplayer` branch. UPnP is tested with a recording fake router and with no router at all, the real cloud case. A real router still needs a manual test with friends. Design: `docs/design/multiplayer.md` → "Security".
+
+
+## 2026-10-16 — Co-op security review: attacking our own host (and our own client)
+
+A security pass over the co-op code, with real attacks against local instances. A new suite, `SecuritySmokeTest` (17 checks), plays the stranger, the broken friend and the hostile host. It uses raw ENet peers that speak no Godot protocol, extra sessions in the same process, and a second Godot process as the victim client.
+
+The worst finding wasn't on the network side. `Profile.Save` opened (and so emptied) `profile.json` *before* serialising, and .NET's JSON writer throws on NaN or infinity. A host sending an infinite run clock made the client's best time infinite, and the save at the end of the run left an empty file: every character, the stash, the orbs, gone. Saving now serialises first, refuses to write on failure, and replaces the file atomically. The client also clamps every number a host sends before it can reach the save: run clock, kills, gold, experience. A finite but absurd clock (10¹⁰ s) would instead have rolled a hundred million reward orbs and hung the game.
+
+Also fixed on the client: the host's lobby list is sanitised (50 junk members used to mean 50 spawned players), monster spawns may only instantiate monster scenes, node creation from host events is capped, a NaN snapshot clock is ignored (it made every position NaN), and the host can no longer delete the client's own player.
+
+On the host side, slots were the weak point. ENet was created with exactly three client slots, so three strangers holding code-less connections locked every friend out. Now there are 32 slots, the party size is enforced by the lobby, at most 4 connections per address can wait for a code, the wait is 5 s, and a timeout counts as a failed attempt. The failure limiter keys IPv6 by /64, can't be reset by rotating addresses, and has a global ceiling (120 failures a minute) so many addresses don't multiply the guessing rate. Refused peers that never acknowledge the answer are dropped after 2 s instead of ENet's ~30 s. The session now refuses to host if it can't install the join-code callback, instead of quietly admitting everyone. UPnP: a lobby closed during discovery maps nothing (so quitting never waits for a discovery), a refused lease is retried with none, and a failed renewal shows the fallback advice.
+
+Accepted and documented: the engine reassembles even a stranger's auth packet (up to 32 MB) before our size check, and prints an error per pre-auth junk packet. A host can still give a friend rewards within sane bounds. Someone with many addresses can keep friends from joining (nobody already in is affected). Relays fix the last two. Design: `docs/design/multiplayer.md` → "Security".

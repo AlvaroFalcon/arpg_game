@@ -484,7 +484,13 @@ public partial class SkillUser : Node
         {
             float length = definition.Range * area;
             LineStrike lane = LineStrike.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, aim, length, definition.LineWidth * Mathf.Sqrt(area), definition.LineDelay, hit);
-            lane.Impacted += () => ReportHit(_caster, hit.Damage);
+            lane.Impacted += () =>
+            {
+                if (IsInstanceValid(this))
+                {
+                    ReportHit(_caster, hit.Damage);
+                }
+            };
             return;
         }
 

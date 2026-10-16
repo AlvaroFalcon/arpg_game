@@ -36,6 +36,11 @@ public sealed class UpgradeOffer
     public string Description { get; init; } = "";
     public Texture2D? Icon { get; init; }
     public System.Action Apply { get; init; } = () => { };
+
+    /// <summary>The choice as text ("s:spark", "g:support:skill", "p:passive:rarity"...),
+    /// replayed with <see cref="RunBuild.ApplyKey"/> — a co-op client sends it so the
+    /// host's copy of that player takes the same card (docs/design/multiplayer.md).</summary>
+    public string Key { get; init; } = "";
 }
 
 /// <summary>
@@ -236,6 +241,7 @@ public partial class RunBuild : Node, IBuildContext
                     Subtitle = "Keystone",
                     Description = k.Description,
                     Icon = LoadIcon("icon_keystone"),
+                    Key = "k:" + k.Id,
                     Apply = () => { AddKeystone(k); Log($"Keystone: {k.Name}"); },
                 },
             })
@@ -267,6 +273,7 @@ public partial class RunBuild : Node, IBuildContext
                         Subtitle = "New skill",
                         Description = entry.Definition.Description,
                         Icon = entry.Definition.Icon,
+                        Key = "s:" + entry.Id,
                         Apply = () => { AddSkill(entry.Id); Log($"Skill: {entry.Definition.DisplayName}"); },
                     },
                 });
@@ -290,6 +297,7 @@ public partial class RunBuild : Node, IBuildContext
                         Subtitle = "Skill level",
                         Description = $"+{Mathf.RoundToInt(SkillInstance.DamagePerLevel * 100)}% more damage than the previous level.",
                         Icon = s.Definition.Icon,
+                        Key = "l:" + UpgradeCatalog.SkillIdOf(s.Definition),
                         Apply = () => { s.Level++; Log($"{s.Definition.DisplayName} → Lv {s.Level}"); },
                     },
                 });
@@ -327,6 +335,7 @@ public partial class RunBuild : Node, IBuildContext
                         Subtitle = $"Support → {s.Definition.DisplayName}",
                         Description = sup.Description,
                         Icon = LoadIcon("icon_support"),
+                        Key = $"g:{sup.Id}:{UpgradeCatalog.SkillIdOf(s.Definition)}",
                         Apply = () => { AddSupport(s, sup); Log($"{sup.Name} → {s.Definition.DisplayName}"); },
                     },
                 });
@@ -363,6 +372,7 @@ public partial class RunBuild : Node, IBuildContext
                         Subtitle = p.Scales ? $"{rarity} passive" : "Notable passive",
                         Description = p.Describe(mult),
                         Icon = LoadIcon("icon_passive"),
+                        Key = $"p:{p.Id}:{(int)rarity}:{(p.Scales ? 1 : 0)}",
                         Apply = () => { AddPassive(p, mult); Log($"{p.Name}: {p.Describe(mult).Replace('\n', ' ')}"); },
                     };
                 },
@@ -370,6 +380,56 @@ public partial class RunBuild : Node, IBuildContext
         }
 
         return list;
+    }
+
+    /// <summary>
+    /// Applies a card from its <see cref="UpgradeOffer.Key"/> (co-op: the host
+    /// replays a client's pick on its copy of that player). Returns false for a
+    /// key that no longer applies (unknown id, skill not owned).
+    /// </summary>
+    public bool ApplyKey(string key)
+    {
+        string[] k = key.Split(':');
+        if (k.Length < 2)
+        {
+            return false;
+        }
+
+        switch (k[0])
+        {
+            case "s":
+                bool added = AddSkill(k[1]);
+                if (added)
+                {
+                    Log($"Skill: {UpgradeCatalog.FindSkill(k[1])?.Definition.DisplayName ?? k[1]}");
+                }
+
+                return added;
+            case "l" when FindSkill(k[1]) is { } skill:
+                skill.Level++;
+                Log($"{skill.Definition.DisplayName} → Lv {skill.Level}");
+                return true;
+            case "g" when k.Length >= 3 && FindSkill(k[2]) is { } target && UpgradeCatalog.Supports.FirstOrDefault(x => x.Id == k[1]) is { } support:
+                bool ok = AddSupport(target, support);
+                if (ok)
+                {
+                    Log($"{support.Name} → {target.Definition.DisplayName}");
+                }
+
+                return ok;
+            case "p" when UpgradeCatalog.Passives.FirstOrDefault(x => x.Id == k[1]) is { } passive:
+                var rarity = (UpgradeRarity)(k.Length >= 3 ? k[2].ToInt() : 0);
+                float mult = passive.Scales ? RarityMultiplier(rarity) : 1f;
+                AddPassive(passive, mult);
+                Log($"{passive.Name}: {passive.Describe(mult).Replace('\n', ' ')}");
+                return true;
+            case "k" when UpgradeCatalog.Keystones.FirstOrDefault(x => x.Id == k[1]) is { } keystone:
+                AddKeystone(keystone);
+                Log($"Keystone: {keystone.Name}");
+                return true;
+        }
+
+        return false;
     }
 
     public static UpgradeRarity RollRarity(RandomNumberGenerator rng)

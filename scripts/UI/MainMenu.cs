@@ -38,6 +38,7 @@ public partial class MainMenu : Node2D
 
 		Button play = AddButton("Play", OpenCharacters);
 		AddButton("Settings", OpenSettings);
+		AddButton("Co-op (Survival Rift)", () => OpenCoop());
 		AddButton("Training Grounds (sandbox)", () => Scenes.Go(this, Scenes.Sandbox));
 		AddButton("Quit", () => GetTree().Quit());
 
@@ -59,6 +60,69 @@ public partial class MainMenu : Node2D
 		version.OffsetRight = -16f;
 
 		play.CallDeferred(Control.MethodName.GrabFocus);
+
+		// scripts/coop_local.sh: --coop-host[=port] / --coop-join=address:port open the lobby at once
+		// (with --coop-code=CODE, and --coop-no-upnp for one PC).
+		foreach (string arg in OS.GetCmdlineUserArgs())
+		{
+			string[] kv = arg.TrimStart('-').Split('=', 2);
+			if (kv[0] == "coop-host")
+			{
+				int port = kv.Length == 2 ? kv[1].ToInt() : Net.NetTransport.DefaultPort;
+				CallDeferred(MethodName.OpenCoopHost, port);
+			}
+			else if (kv[0] == "coop-join" && kv.Length == 2)
+			{
+				CallDeferred(MethodName.OpenCoopJoin, kv[1]);
+			}
+		}
+	}
+
+	private void OpenCoopHost(int port) => OpenCoop(port, null);
+
+	private static int AutoStartArg()
+	{
+		foreach (string arg in OS.GetCmdlineUserArgs())
+		{
+			string[] kv = arg.TrimStart('-').Split('=', 2);
+			if (kv.Length == 2 && kv[0] == "coop-autostart")
+			{
+				return kv[1].ToInt();
+			}
+		}
+
+		return 0;
+	}
+
+	private void OpenCoopJoin(string address) => OpenCoop(null, address);
+
+	/// <summary>"--name=value" → value, "--name" → "", absent → null.</summary>
+	private static string? UserArg(string name)
+	{
+		foreach (string arg in OS.GetCmdlineUserArgs())
+		{
+			string[] kv = arg.TrimStart('-').Split('=', 2);
+			if (kv[0] == name)
+			{
+				return kv.Length == 2 ? kv[1] : "";
+			}
+		}
+
+		return null;
+	}
+
+	/// <summary>Co-op lobby — docs/design/multiplayer.md -> "Session and lobby".</summary>
+	private void OpenCoop(int? hostPort = null, string? join = null)
+	{
+		_menu.Visible = false;
+		var panel = new CoopPanel { AutoHostPort = hostPort, AutoJoin = join, AutoStartAt = AutoStartArg(), AutoCode = UserArg("coop-code"), NoUpnp = UserArg("coop-no-upnp") is not null };
+		_center.AddChild(panel);
+		panel.Back += () =>
+		{
+			panel.QueueFree();
+			_menu.Visible = true;
+			((Button)_menu.GetChild(5)).CallDeferred(Control.MethodName.GrabFocus);
+		};
 	}
 
 	private Button AddButton(string text, System.Action action)

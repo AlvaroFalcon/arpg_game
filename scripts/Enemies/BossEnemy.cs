@@ -185,6 +185,20 @@ public abstract partial class BossEnemy : Enemy
 
     protected void CallOut(string text, Color color) => MechanicCalled?.Invoke(text, color);
 
+    /// <summary>Co-op client: the host's boss changed phase or attack (boss bar text).</summary>
+    public void SetReplicaInfo(int phase, string attack)
+    {
+        CurrentAttack = attack;
+        if (phase > Phase)
+        {
+            Phase = phase;
+            PhaseChanged?.Invoke(phase, PhaseMessage(phase));
+        }
+    }
+
+    /// <summary>Co-op client: a callout the host's boss made ("GET OUT!").</summary>
+    public void ReplicaCall(string text, Color color) => MechanicCalled?.Invoke(text, color);
+
     protected void Announce(string attack)
     {
         CurrentAttack = attack;

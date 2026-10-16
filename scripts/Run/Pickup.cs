@@ -62,6 +62,26 @@ public partial class Pickup : Node2D
 
     public const string HandlerGroup = "pickup_handler";
 
+    // --- co-op (docs/design/multiplayer.md -> "Loot") -------------------------------
+
+    /// <summary>
+    /// Instanced loot: the only player who can attract and collect this drop.
+    /// Null = the local player (single-player, and every drop that predates co-op).
+    /// On the host, drops owned by a remote player are invisible but still
+    /// simulated there; that player's client shows its own cosmetic copy.
+    /// </summary>
+    public Player? OwnerPlayer;
+
+    /// <summary>Co-op client: a copy of a drop the host owns. It flies to the
+    /// local player like the real one but never applies anything; the host's
+    /// "collected" event removes it.</summary>
+    public bool Cosmetic;
+
+    /// <summary>Co-op: the host's id for this drop (0 = not networked).</summary>
+    public uint NetId;
+
+    private float _cosmeticLinger = -1f;
+
     private static readonly SpriteFrames? SmallFrames = Load("xp_small");
     private static readonly SpriteFrames? MediumFrames = Load("xp_medium");
     private static readonly SpriteFrames? LargeFrames = Load("xp_large");
@@ -282,7 +302,21 @@ public partial class Pickup : Node2D
     public override void _PhysicsProcess(double delta)
     {
         float dt = (float)delta;
-        if (GetTree().GetFirstNodeInGroup(Combat.CombatQuery.PlayerGroup) is not Player player)
+        if (_cosmeticLinger >= 0f)
+        {
+            // Reached the player on a client: hidden, waiting for the host's word
+            // (freed anyway if it never comes).
+            _cosmeticLinger += dt;
+            if (_cosmeticLinger > 3f)
+            {
+                QueueFree();
+            }
+
+            return;
+        }
+
+        Player? player = OwnerPlayer is { } owner && IsInstanceValid(owner) ? owner : Combat.CombatQuery.LocalPlayer(GetTree());
+        if (player is null || player.Health is { IsDead: true })
         {
             return;
         }
@@ -321,6 +355,13 @@ public partial class Pickup : Node2D
 
     private void Collect(Player player)
     {
+        if (Cosmetic)
+        {
+            Visible = false;
+            _cosmeticLinger = 0f;
+            return;
+        }
+
         if (GetTree().GetFirstNodeInGroup(HandlerGroup) is IPickupHandler handler)
         {
             handler.OnPickup(this, player);

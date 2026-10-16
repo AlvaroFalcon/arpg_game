@@ -22,6 +22,9 @@ public partial class BossBullet : Node2D
     private float _travelled;
     private AnimatedSprite2D? _sprite;
 
+    /// <summary>Its animation (co-op: replayed on clients by resource path).</summary>
+    public SpriteFrames? Frames => _sprite?.SpriteFrames;
+
     public static BossBullet Spawn(Node parent, Vector2 origin, Vector2 velocity, HitProfile hit, SpriteFrames? frames, float scale = 2f)
     {
         var bullet = new BossBullet { Velocity = velocity, Hit = hit, ZIndex = 2 };

@@ -191,7 +191,7 @@ public partial class VoxelStage : Node3D
 
         if (_player is null || !IsInstanceValid(_player))
         {
-            _player = GetTree().GetFirstNodeInGroup(CombatQuery.PlayerGroup) as Node2D;
+            _player = CombatQuery.LocalPlayer(GetTree());
         }
 
         if (_player is not null)

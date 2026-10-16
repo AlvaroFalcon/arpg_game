@@ -12,6 +12,11 @@ public partial class SlashEffect : Node2D
     private float _arc;
     private Color _tint;
 
+    // Read by the co-op host to replay the swing on clients.
+    public float Range => _range;
+    public float ArcDegrees => Mathf.RadToDeg(_arc);
+    public Color Tint => _tint;
+
     public static void Spawn(Node parent, Vector2 origin, Vector2 direction, float range, float arcDegrees, Color tint)
     {
         var fx = new SlashEffect { _range = range, _arc = Mathf.DegToRad(arcDegrees), _tint = tint, ZIndex = 3 };

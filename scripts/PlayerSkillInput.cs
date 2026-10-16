@@ -196,18 +196,41 @@ public partial class PlayerSkillInput : Node
 
     /// <summary>How far a slot is from its next automatic cast (1 = just fired, 0 = ready).</summary>
     public float AutoCastFraction(SkillSlotId slot) =>
-        _autoTimers.TryGetValue(slot, out float left) && _autoIntervals.TryGetValue(slot, out float total) && total > 0f
+        _remoteFractions.TryGetValue(slot, out float remote) ? remote
+        : _autoTimers.TryGetValue(slot, out float left) && _autoIntervals.TryGetValue(slot, out float total) && total > 0f
             ? Mathf.Clamp(left / total, 0f, 1f)
             : 0f;
 
+    private readonly Dictionary<SkillSlotId, float> _remoteFractions = new();
+
+    /// <summary>Co-op client: the host runs the casting, so the HUD's cast timers
+    /// come from snapshots (one value per slot, in <see cref="AllSlots"/> order).</summary>
+    public void SetRemoteFractions(System.ReadOnlySpan<byte> fractions)
+    {
+        for (int i = 0; i < AllSlots.Length && i < fractions.Length; i++)
+        {
+            _remoteFractions[AllSlots[i]] = fractions[i] / 255f;
+        }
+    }
+
+    /// <summary>Host: this player's cast timers, one byte per slot (snapshot).</summary>
+    public void WriteFractions(System.Span<byte> into)
+    {
+        for (int i = 0; i < AllSlots.Length && i < into.Length; i++)
+        {
+            into[i] = (byte)Mathf.RoundToInt(AutoCastFraction(AllSlots[i]) * 255f);
+        }
+    }
+
+    public static int SlotCount => AllSlots.Length;
+
     private void SurvivalCast()
     {
-        Vector2 target = AutoAimTarget()?.GlobalPosition ?? _caster.GetGlobalMousePosition();
-        Vector2 aim = _caster.GlobalPosition.DirectionTo(target);
-        if (aim == Vector2.Zero)
-        {
-            aim = Vector2.Right;
-        }
+        // The target is only needed when a skill fires: looking it up every frame
+        // (a scan of every monster, per player) was the host's biggest cost in co-op.
+        Vector2 target = Vector2.Zero;
+        Vector2 aim = Vector2.Zero;
+        bool aimed = false;
 
         float dt = (float)GetPhysicsProcessDeltaTime();
         int index = 0;
@@ -228,6 +251,17 @@ public partial class PlayerSkillInput : Node
 
             index++;
             left -= dt;
+            if (left <= 0f && !aimed)
+            {
+                aimed = true;
+                target = AutoAimTarget()?.GlobalPosition ?? (_caster is Player p ? p.AimPoint : _caster.GetGlobalMousePosition());
+                aim = _caster.GlobalPosition.DirectionTo(target);
+                if (aim == Vector2.Zero)
+                {
+                    aim = Vector2.Right;
+                }
+            }
+
             if (left <= 0f && _skillUser.TryCast(slot, aim, target) is null)
             {
                 left = interval;

@@ -183,7 +183,7 @@ public partial class ItemTooltipControl : CanvasLayer
     private bool TryComparisonTarget(EquipmentItem item, out EquipmentItem? equipped)
     {
         equipped = null;
-        Equipment? equipment = GetTree().GetFirstNodeInGroup(Combat.CombatQuery.PlayerGroup)?.GetNodeOrNull<Equipment>("Equipment");
+        Equipment? equipment = Combat.CombatQuery.LocalPlayer(GetTree())?.GetNodeOrNull<Equipment>("Equipment");
         IReadOnlyList<EquipmentSlot> slots = Equipment.CandidateSlots(item.Descriptor.ItemClass);
         if (equipment is null || slots.Count == 0 || slots.Any(slot => equipment.GetEquipped(slot) == item))
         {
