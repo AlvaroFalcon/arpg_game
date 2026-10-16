@@ -104,6 +104,11 @@ change live and saves on close.
 Three tabs (2026-10-15 — the single column had grown taller than the screen,
 hiding the Gameplay section and Back); each tab scrolls on its own and Back is
 always visible.
+The panel keeps **one size on every tab** (2026-10-16, owner report: it resized on
+each switch). A TabContainer measures only the open tab by default, and the
+Display tab's rows are the widest; `UseHiddenTabsForMinSize` makes it measure them
+all, and the panel is 720 px wide. RunSmokeTest `SETTINGS-TABS-KEEP-SIZE` switches
+through the tabs and compares sizes (it read 600 → 728 → 600 px before the fix).
 
 - **Audio**: master, music, effects volume (Music/SFX buses are created at startup).
 - **Display**: **window mode** — Windowed, **Borderless** (a window covering the

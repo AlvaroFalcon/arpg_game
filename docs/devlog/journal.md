@@ -472,3 +472,7 @@ After:
 ![Couldn't reach the host](screenshots/coop-failed.png)
 ![Wrong join code](screenshots/coop-wrong-code.png)
 ![No character yet](screenshots/coop-no-character.png)
+
+## 2026-10-16 — Settings panel keeps its size across tabs
+
+Owner report: the settings panel changed size every time you switched tabs. A TabContainer sizes itself to the open tab only, and the Display tab's long toggle ("Use the whole screen on ultrawide…") is wider than anything on Audio or Gameplay, so the centred panel went 600 → 728 → 600 px. Now `UseHiddenTabsForMinSize` measures every tab and the panel is 720 px wide. RunSmokeTest `SETTINGS-TABS-KEEP-SIZE` reproduces the old jump when the fix is reverted.

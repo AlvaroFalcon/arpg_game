@@ -15,9 +15,12 @@ public partial class SettingsPanel : PanelContainer
 {
     public event Action? Closed;
 
+    /// <summary>Wide enough for the widest row (the ultrawide toggle) on every tab.</summary>
+    public const float PanelWidth = 720f;
+
     public static SettingsPanel Create(Control parent)
     {
-        var panel = new SettingsPanel { Theme = UiTheme.Theme, CustomMinimumSize = new Vector2(600f, 0f) };
+        var panel = new SettingsPanel { Theme = UiTheme.Theme, CustomMinimumSize = new Vector2(PanelWidth, 0f) };
         parent.AddChild(panel);
         return panel;
     }
@@ -30,7 +33,10 @@ public partial class SettingsPanel : PanelContainer
 
         // Three tabs, each scrolling on its own: the panel never grows past the
         // screen (it used to, and the Gameplay section and Back fell off the bottom).
-        var tabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0f, 420f) };
+        // The panel keeps one size whichever tab is open (owner report: it used to
+        // resize on every tab switch, since a TabContainer measures only the open
+        // tab by default and Display's rows are the widest).
+        var tabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0f, 420f), UseHiddenTabsForMinSize = true, Name = "Tabs" };
         tabs.AddThemeFontSizeOverride("font_size", 18);
         root.AddChild(tabs);
 
