@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ArpgGame.Net;
 
@@ -37,8 +38,21 @@ public static class NetLimits
     public const double FailedWindowSeconds = 60.0;
     public const double BlockSeconds = 60.0;
 
-    /// <summary>Seconds a connecting peer has to send its code (the engine drops it after).</summary>
-    public const double AuthTimeout = 8.0;
+    /// <summary>Wrong, malformed or missing codes from all addresses together, per
+    /// <see cref="FailedWindowSeconds"/>, before every new connection is turned away
+    /// unanswered until the window drains: a ceiling for many-address brute force.</summary>
+    public const int GlobalFailedAttempts = 120;
+
+    /// <summary>Connections from one address still waiting for their code at once.</summary>
+    public const int PendingPerAddress = 4;
+
+    /// <summary>Seconds a connecting peer has to send its code (the engine drops it
+    /// after, and it counts as a failed attempt). A real client sends it at once.</summary>
+    public const double AuthTimeout = 5.0;
+
+    /// <summary>A turned-away peer is told why, then dropped for good after this
+    /// many seconds even if it never acknowledges the answer.</summary>
+    public const double RefuseGraceSeconds = 2.0;
 
     // character sanity bounds (docs/design/multiplayer.md -> "Security" -> "What the host checks")
     public const int NameChars = 32;
@@ -56,50 +70,106 @@ public static class NetLimits
 /// <summary>
 /// Failed join attempts per address: after <see cref="NetLimits.FailedAttempts"/>
 /// failures within <see cref="NetLimits.FailedWindowSeconds"/>, the address is
-/// ignored for <see cref="NetLimits.BlockSeconds"/>. Clock in seconds, passed in
-/// (tests drive it by hand).
+/// ignored for <see cref="NetLimits.BlockSeconds"/>. IPv6 addresses count per /64
+/// (one home connection owns a whole /64, so per-address would be free to dodge).
+/// Past <see cref="NetLimits.GlobalFailedAttempts"/> failures from everyone in a
+/// window, <see cref="GloballyBlocked"/> turns every newcomer away. Memory is
+/// bounded: stale entries are pruned first, then the oldest goes (never a wholesale
+/// reset an attacker could trigger by rotating addresses). Clock in seconds,
+/// passed in (tests drive it by hand).
 /// </summary>
 public sealed class AttemptLimiter
 {
+    public const int MaxTracked = 1024;
+
     private readonly Dictionary<string, List<double>> _failures = new();
     private readonly Dictionary<string, double> _blockedUntil = new();
+    private readonly Queue<double> _global = new();
+
+    /// <summary>The limiter's key for an address: IPv4 as is, IPv6 by its /64.</summary>
+    public static string Key(string address)
+    {
+        if (System.Net.IPAddress.TryParse(address, out System.Net.IPAddress? ip))
+        {
+            if (ip.IsIPv4MappedToIPv6)
+            {
+                return ip.MapToIPv4().ToString();
+            }
+
+            if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+            {
+                byte[] b = ip.GetAddressBytes();
+                Array.Clear(b, 8, 8);
+                return new System.Net.IPAddress(b) + "/64";
+            }
+        }
+
+        return address;
+    }
 
     public bool IsBlocked(string address, double now)
     {
-        if (_blockedUntil.TryGetValue(address, out double until))
+        string key = Key(address);
+        if (_blockedUntil.TryGetValue(key, out double until))
         {
             if (now < until)
             {
                 return true;
             }
 
-            _blockedUntil.Remove(address);
-            _failures.Remove(address);
+            _blockedUntil.Remove(key);
+            _failures.Remove(key);
         }
 
         return false;
     }
 
+    /// <summary>Too many failures from everyone lately: turn every newcomer away.</summary>
+    public bool GloballyBlocked(double now)
+    {
+        while (_global.Count > 0 && now - _global.Peek() > NetLimits.FailedWindowSeconds)
+        {
+            _global.Dequeue();
+        }
+
+        return _global.Count >= NetLimits.GlobalFailedAttempts;
+    }
+
     /// <summary>Records a failure; true if the address is now blocked.</summary>
     public bool Fail(string address, double now)
     {
-        if (!_failures.TryGetValue(address, out List<double>? times))
+        string key = Key(address);
+        _global.Enqueue(now);
+        GloballyBlocked(now);
+        if (!_failures.TryGetValue(key, out List<double>? times))
         {
-            // Bounded memory: a flood of distinct addresses forgets the oldest.
-            if (_failures.Count > 1024)
+            if (_failures.Count >= MaxTracked)
             {
-                _failures.Clear();
+                Prune(now);
             }
 
             times = new List<double>();
-            _failures[address] = times;
+            _failures[key] = times;
         }
 
         times.RemoveAll(t => now - t > NetLimits.FailedWindowSeconds);
         times.Add(now);
         if (times.Count >= NetLimits.FailedAttempts)
         {
-            _blockedUntil[address] = now + NetLimits.BlockSeconds;
+            if (_blockedUntil.Count >= MaxTracked)
+            {
+                foreach (string k in _blockedUntil.Where(kv => kv.Value <= now).Select(kv => kv.Key).ToList())
+                {
+                    _blockedUntil.Remove(k);
+                }
+
+                if (_blockedUntil.Count >= MaxTracked)
+                {
+                    _blockedUntil.Remove(_blockedUntil.MinBy(kv => kv.Value).Key);
+                }
+            }
+
+            _blockedUntil[key] = now + NetLimits.BlockSeconds;
             times.Clear();
             return true;
         }
@@ -107,10 +177,27 @@ public sealed class AttemptLimiter
         return false;
     }
 
+    /// <summary>Addresses tracked (tests: memory stays bounded).</summary>
+    public int Tracked => _failures.Count + _blockedUntil.Count;
+
+    private void Prune(double now)
+    {
+        foreach (string k in _failures.Where(kv => kv.Value.Count == 0 || now - kv.Value[^1] > NetLimits.FailedWindowSeconds).Select(kv => kv.Key).ToList())
+        {
+            _failures.Remove(k);
+        }
+
+        while (_failures.Count >= MaxTracked)
+        {
+            _failures.Remove(_failures.MinBy(kv => kv.Value[^1]).Key);
+        }
+    }
+
     public void Clear()
     {
         _failures.Clear();
         _blockedUntil.Clear();
+        _global.Clear();
     }
 }
 

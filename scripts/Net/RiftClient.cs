@@ -29,6 +29,46 @@ public partial class RiftClient : Node, IRunLink
 {
     private const string ProjectileScenePath = "res://scenes/combat/Projectile.tscn";
 
+    // --- limits on what a host may make this machine do ---------------------------------
+    // docs/design/multiplayer.md -> "Security" -> "A hostile host". The host is a
+    // friend, but a broken or hostile one must not hang, exhaust or corrupt this
+    // machine: every number from the wire is made finite and kept in a sane range,
+    // node creation is capped, and only monster scenes can be instantiated.
+
+    /// <summary>Monster replicas are instantiated only from here.</summary>
+    public const string EnemySceneDir = "res://scenes/enemies/";
+
+    /// <summary>Above this many children under the run scene, nothing new is
+    /// spawned from host events (a late wave is well under 2 000).</summary>
+    public const int MaxSceneChildren = 6000;
+
+    /// <summary>Event batches waiting for their moment; past this the oldest is applied at once.</summary>
+    public const int MaxQueuedBatches = 600;
+
+    /// <summary>Longest interned string kept (paths and ids are far shorter).</summary>
+    public const int MaxStringChars = 512;
+
+    /// <summary>Longest banner, toast or callout text shown.</summary>
+    public const int MaxTextChars = 200;
+
+    /// <summary>Largest amount of gold one collected drop may credit.</summary>
+    public const float MaxGoldPerPickup = 1_000_000f;
+
+    /// <summary>Largest character experience one event may grant.</summary>
+    public const float MaxCharacterXp = 1e9f;
+
+    /// <summary>A float from the host: finite, clamped to [min, max], else <paramref name="fallback"/>.</summary>
+    public static float Sane(float v, float min, float max, float fallback = 0f) =>
+        float.IsFinite(v) ? Mathf.Clamp(v, min, max) : fallback;
+
+    private static string Text(string s) => s.Length > MaxTextChars ? s[..MaxTextChars] : s;
+
+    /// <summary>Room for one more node spawned from a host event?</summary>
+    private bool Room => Scene.GetChildCount() < MaxSceneChildren;
+
+    /// <summary>Host events skipped by the limits above (tests, diagnostics).</summary>
+    public int Refused { get; private set; }
+
     /// <summary>Test hook: when set, the local player walks this way (both locally and on the host).</summary>
     public static Vector2? TestMove { get; set; }
 
@@ -48,7 +88,7 @@ public partial class RiftClient : Node, IRunLink
     private readonly Dictionary<long, Track> _playerTracks = new();
     private readonly Dictionary<ushort, Projectile> _projectiles = new();
     private readonly Dictionary<uint, Pickup> _pickups = new();
-    private readonly Dictionary<string, PackedScene> _scenes = new();
+    private readonly Dictionary<string, PackedScene?> _scenes = new();
     private readonly Queue<(double Time, byte[] Data)> _eventBatches = new();
     private readonly (ushort Seq, Vector2 Pos)[] _history = new (ushort, Vector2)[128];
     private readonly NetWriter _input = new(32);
@@ -312,6 +352,12 @@ public partial class RiftClient : Node, IRunLink
         r.U32();
         double hostTime = r.F32();
         byte part = r.U8();
+        if (!double.IsFinite(hostTime) || hostTime < 0 || hostTime > 1e7)
+        {
+            Refused++;
+            return; // a broken clock would make every position NaN or frozen
+        }
+
         ObserveHostTime(hostTime);
         Snapshots++;
         if (part == 0)
@@ -344,8 +390,10 @@ public partial class RiftClient : Node, IRunLink
 
     private void ReadShared(NetReader r, double hostTime)
     {
-        float elapsed = r.F32();
-        int kills = r.I32();
+        // These numbers become this player's rewards and best time in their profile:
+        // keep them finite and within a day of play.
+        float elapsed = Sane(r.F32(), 0f, 86_400f);
+        int kills = Math.Max(0, r.I32());
         int elites = r.U16();
         int bosses = r.U16();
         byte flags = r.U8();
@@ -465,15 +513,40 @@ public partial class RiftClient : Node, IRunLink
         _heardFromHost = true;
         var r = new NetReader(data);
         double stamp = r.F32();
+        if (!double.IsFinite(stamp))
+        {
+            stamp = 0; // play it now rather than never (or block every batch behind it)
+        }
+
         _eventBatches.Enqueue((stamp, data));
+        while (_eventBatches.Count > MaxQueuedBatches)
+        {
+            ApplyEvents(_eventBatches.Dequeue().Data);
+        }
     }
 
     private string Str(ushort id) => id != 0 && _strings.TryGetValue(id, out string? s) ? s : "";
 
+    private readonly Dictionary<string, SpriteFrames?> _frames = new();
+
     private SpriteFrames? Frames(ushort id)
     {
         string path = Str(id);
-        return path.Length > 0 && ResourceLoader.Exists(path) ? GD.Load<SpriteFrames>(path) : null;
+        if (path.Length == 0)
+        {
+            return null;
+        }
+
+        if (!_frames.TryGetValue(path, out SpriteFrames? frames))
+        {
+            // Only game resources, and only sprite frames (anything else is ignored).
+            frames = path.StartsWith("res://") && !path.Contains("..") && ResourceLoader.Exists(path)
+                ? ResourceLoader.Load(path) as SpriteFrames
+                : null;
+            _frames[path] = frames;
+        }
+
+        return frames;
     }
 
     private Node Scene => GetTree().CurrentScene;
@@ -482,14 +555,23 @@ public partial class RiftClient : Node, IRunLink
     {
         var r = new NetReader(data);
         r.F32();
-        while (r.More)
+        try
         {
-            byte type = r.U8();
-            if (!ApplyEvent(type, r))
+            while (r.More)
             {
-                GD.PushWarning($"RiftClient: unknown event {type}, dropping the rest of the batch");
-                return;
+                byte type = r.U8();
+                if (!ApplyEvent(type, r))
+                {
+                    GD.PushWarning($"RiftClient: unknown event {type}, dropping the rest of the batch");
+                    return;
+                }
             }
+        }
+        catch (Exception e)
+        {
+            // A malformed batch costs the rest of that batch, never the run.
+            Refused++;
+            GD.PushWarning($"RiftClient: bad event batch from the host ({e.GetType().Name}: {e.Message})");
         }
     }
 
@@ -500,7 +582,8 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.StringDef:
             {
                 ushort id = r.U16();
-                _strings[id] = r.Str();
+                string text = r.Str();
+                _strings[id] = text.Length > MaxStringChars ? "" : text;
                 return true;
             }
 
@@ -528,6 +611,11 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.PlayerLeft:
             {
                 long peer = r.I32();
+                if (_players.TryGetValue(peer, out Player? mine) && mine == Local)
+                {
+                    return true; // this machine's own player is never removed by the host
+                }
+
                 if (_players.Remove(peer, out Player? p) && IsInstanceValid(p))
                 {
                     if (State.PlayerOf(p) is { } rp)
@@ -545,11 +633,17 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.Burst:
             {
                 Vector2 at = r.Pos();
-                float radius = r.F32();
-                float delay = r.F32();
+                float radius = Sane(r.F32(), 0f, 4000f);
+                float delay = Sane(r.F32(), 0f, 10f);
                 Color tint = r.Colour();
-                float inner = r.F32();
+                float inner = Sane(r.F32(), 0f, 4000f);
                 byte flags = r.U8();
+                if (!Room)
+                {
+                    Refused++;
+                    return true;
+                }
+
                 AreaBurst.Spawn(Scene, at, radius, delay, tint, new HitProfile { Faction = (flags & 1) != 0 ? Faction.Player : Faction.Enemy }, inner, (flags & 2) != 0);
                 return true;
             }
@@ -558,10 +652,16 @@ public partial class RiftClient : Node, IRunLink
             {
                 Vector2 at = r.Pos();
                 float angle = r.Angle();
-                float length = r.F32();
-                float width = r.F32();
-                float delay = r.F32();
+                float length = Sane(r.F32(), 0f, 6000f);
+                float width = Sane(r.F32(), 0f, 2000f);
+                float delay = Sane(r.F32(), 0f, 10f);
                 byte flags = r.U8();
+                if (!Room)
+                {
+                    Refused++;
+                    return true;
+                }
+
                 LineStrike line = LineStrike.Spawn(Scene, at, Vector2.Right.Rotated(angle), length, width, delay, new HitProfile { Faction = (flags & 1) != 0 ? Faction.Player : Faction.Enemy });
                 line.Harmless = (flags & 2) != 0;
                 return true;
@@ -570,12 +670,18 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.Bullet:
             {
                 Vector2 at = r.Pos();
-                var velocity = new Vector2(r.F32(), r.F32());
-                float angular = r.F32();
-                float scale = r.F32();
-                float range = r.F32();
+                var velocity = new Vector2(Sane(r.F32(), -10000f, 10000f), Sane(r.F32(), -10000f, 10000f));
+                float angular = Sane(r.F32(), -100f, 100f);
+                float scale = Sane(r.F32(), 0.05f, 20f, 1f);
+                float range = Sane(r.F32(), 0f, 20000f);
                 SpriteFrames? frames = Frames(r.U16());
                 bool player = r.Bool();
+                if (!Room)
+                {
+                    Refused++;
+                    return true;
+                }
+
                 BossBullet bullet = BossBullet.Spawn(Scene, at, velocity, new HitProfile { Faction = player ? Faction.Player : Faction.Enemy }, frames, scale);
                 bullet.AngularVelocity = angular;
                 bullet.Range = range;
@@ -586,9 +692,15 @@ public partial class RiftClient : Node, IRunLink
             {
                 Vector2 at = r.Pos();
                 float angle = r.Angle();
-                float range = r.F32();
-                float arc = r.F32();
+                float range = Sane(r.F32(), 0f, 4000f);
+                float arc = Sane(r.F32(), 0f, Mathf.Tau);
                 Color tint = r.Colour();
+                if (!Room)
+                {
+                    Refused++;
+                    return true;
+                }
+
                 SlashEffect.Spawn(Scene, at, Vector2.Right.Rotated(angle), range, arc, tint);
                 return true;
             }
@@ -596,12 +708,12 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.Orbit:
             {
                 long peer = r.I32();
-                int count = r.U8();
-                float radius = r.F32();
-                float duration = r.F32();
-                float speed = r.F32();
+                int count = Math.Min((int)r.U8(), 32);
+                float radius = Sane(r.F32(), 0f, 2000f);
+                float duration = Sane(r.F32(), 0f, 60f);
+                float speed = Sane(r.F32(), -100f, 100f);
                 SpriteFrames? frames = Frames(r.U16());
-                if (_players.TryGetValue(peer, out Player? anchor) && IsInstanceValid(anchor))
+                if (_players.TryGetValue(peer, out Player? anchor) && IsInstanceValid(anchor) && Room)
                 {
                     var blades = new OrbitBlades { Anchor = anchor, Count = count, Radius = radius, Duration = duration, AngularSpeed = speed, Frames = frames, Hit = new HitProfile { Faction = Faction.Player } };
                     Scene.AddChild(blades);
@@ -616,12 +728,18 @@ public partial class RiftClient : Node, IRunLink
                 ushort id = r.U16();
                 Vector2 at = r.Pos();
                 float angle = r.Angle();
-                float speed = r.F32();
-                float range = r.F32();
-                float scale = r.F32();
+                float speed = Sane(r.F32(), 0f, 20000f);
+                float range = Sane(r.F32(), 0f, 20000f);
+                float scale = Sane(r.F32(), 0.05f, 20f, 1f);
                 SpriteFrames? frames = Frames(r.U16());
                 r.Bool();
-                PackedScene scene = SceneFor(ProjectileScenePath);
+                if (!Room)
+                {
+                    Refused++;
+                    return true;
+                }
+
+                PackedScene scene = SceneFor(ProjectileScenePath)!;
                 var projectile = scene.Instantiate<Projectile>();
                 Scene.AddChild(projectile);
                 projectile.GlobalPosition = at;
@@ -670,9 +788,20 @@ public partial class RiftClient : Node, IRunLink
             {
                 uint id = r.U32();
                 var kind = (PickupKind)r.U8();
-                float value = r.F32();
+                float value = Sane(r.F32(), 0f, MaxGoldPerPickup);
                 Vector2 at = r.Pos();
                 string key = Str(r.U16());
+                if (!Enum.IsDefined(kind) || !Room)
+                {
+                    Refused++;
+                    return true;
+                }
+
+                if (_pickups.Remove(id, out Pickup? old) && IsInstanceValid(old))
+                {
+                    old.QueueFree();
+                }
+
                 Pickup pickup = Pickup.Spawn(Scene, kind, value, at);
                 pickup.Cosmetic = true;
                 pickup.NetId = id;
@@ -696,9 +825,10 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.Collected:
             {
                 var kind = (PickupKind)r.U8();
-                float value = r.F32();
+                // Credited to this player's wallet and saved with their profile.
+                float value = Sane(r.F32(), 0f, MaxGoldPerPickup);
                 string key = Str(r.U16());
-                int detail = r.I32();
+                int detail = Math.Max(0, r.I32());
                 Collected(kind, value, key, detail);
                 return true;
             }
@@ -715,20 +845,27 @@ public partial class RiftClient : Node, IRunLink
                 return true;
             case RiftProtocol.Progress:
             {
-                int level = r.U16();
-                float xp = r.F32();
+                int level = Math.Clamp((int)r.U16(), 1, 999);
+                float xp = Sane(r.F32(), 0f, 1e12f);
                 int levels = r.U8();
                 State.ApplyLocalProgress(level, xp, levels);
                 return true;
             }
 
             case RiftProtocol.CharacterXp:
-                Characters.CharacterBuild.Of(Local)?.GrantExperience(r.F32());
+                // Saved with this player's character: never NaN, infinite or negative.
+                Characters.CharacterBuild.Of(Local)?.GrantExperience(Sane(r.F32(), 0f, MaxCharacterXp));
                 return true;
             case RiftProtocol.ItemDrop:
             {
                 Vector2 at = r.Pos();
                 string json = r.Str();
+                if (Core.Profile.ValidateItemJson(json) is not null || !Room)
+                {
+                    Refused++;
+                    return true;
+                }
+
                 if (Core.Profile.DeserializeItem(json) is { } item)
                 {
                     Scene.AddChild(item);
@@ -740,8 +877,8 @@ public partial class RiftClient : Node, IRunLink
 
             case RiftProtocol.Banner:
             {
-                string title = r.Str();
-                string sub = r.Str();
+                string title = Text(r.Str());
+                string sub = Text(r.Str());
                 Color color = r.Colour();
                 Director.Announce(title, sub, color);
                 return true;
@@ -763,7 +900,7 @@ public partial class RiftClient : Node, IRunLink
             {
                 ushort id = r.U16();
                 int phase = r.U8();
-                string attack = r.Str();
+                string attack = Text(r.Str());
                 if (_enemies.TryGetValue(id, out Enemy? e) && e is BossEnemy boss && IsInstanceValid(boss))
                 {
                     boss.SetReplicaInfo(phase, attack);
@@ -775,7 +912,7 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.Callout:
             {
                 ushort id = r.U16();
-                string text = r.Str();
+                string text = Text(r.Str());
                 Color color = r.Colour();
                 if (_enemies.TryGetValue(id, out Enemy? e) && e is BossEnemy boss && IsInstanceValid(boss))
                 {
@@ -797,8 +934,8 @@ public partial class RiftClient : Node, IRunLink
             case RiftProtocol.DamageNumber:
             {
                 ushort id = r.U16();
-                float amount = r.F32();
-                if (_enemies.TryGetValue(id, out Enemy? e) && IsInstanceValid(e))
+                float amount = Sane(r.F32(), 0f, 1e12f);
+                if (_enemies.TryGetValue(id, out Enemy? e) && IsInstanceValid(e) && Room)
                 {
                     e.ReplicaDamageNumber(amount);
                 }
@@ -808,7 +945,7 @@ public partial class RiftClient : Node, IRunLink
 
             case RiftProtocol.Toast:
             {
-                string text = r.Str();
+                string text = Text(r.Str());
                 Color color = r.Colour();
                 State.ShowToast(text, color);
                 return true;
@@ -822,11 +959,11 @@ public partial class RiftClient : Node, IRunLink
         return false;
     }
 
-    private PackedScene SceneFor(string path)
+    private PackedScene? SceneFor(string path)
     {
         if (!_scenes.TryGetValue(path, out PackedScene? scene))
         {
-            scene = GD.Load<PackedScene>(path);
+            scene = ResourceLoader.Load(path) as PackedScene;
             _scenes[path] = scene;
         }
 
@@ -839,8 +976,8 @@ public partial class RiftClient : Node, IRunLink
         string path = Str(r.U16());
         Vector2 at = r.Pos();
         var rarity = (MonsterRarity)r.U8();
-        float scale = r.F32();
-        string name = r.Str();
+        float scale = Sane(r.F32(), 0.1f, 10f, 1f);
+        string name = Text(r.Str());
         int modCount = r.U8();
         var mods = new List<string>(modCount);
         for (int i = 0; i < modCount; i++)
@@ -848,10 +985,20 @@ public partial class RiftClient : Node, IRunLink
             mods.Add(Str(r.U16()));
         }
 
-        float maxLife = r.F32();
+        float maxLife = Sane(r.F32(), 1f, 1e12f, 1f);
         bool dormant = r.U8() != 0;
-        if (path.Length == 0 || !ResourceLoader.Exists(path))
+        // Only monster scenes, and only if the root really is a monster: a host
+        // can't make this machine instantiate any other scene of the game.
+        if (!Enum.IsDefined(rarity) || !path.StartsWith(EnemySceneDir) || !path.EndsWith(".tscn") || path.Contains("..")
+            || !ResourceLoader.Exists(path) || !Room || SceneFor(path) is not { } packed)
         {
+            Refused++;
+            return;
+        }
+
+        if (packed.Instantiate() is not Enemy enemy)
+        {
+            Refused++;
             return;
         }
 
@@ -860,7 +1007,6 @@ public partial class RiftClient : Node, IRunLink
             stale.QueueFree();
         }
 
-        var enemy = SceneFor(path).Instantiate<Enemy>();
         enemy.IsReplica = true;
         enemy.NetId = id;
         enemy.Dormant = dormant;

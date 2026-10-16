@@ -85,26 +85,9 @@ public partial class Profile
 
         foreach (SaveItem item in s.Items)
         {
-            if (item is null || BadId(item.Base) || (item.Name?.Length ?? 0) > NetLimits.IdChars
-                || item.Rarity < 0 || item.Rarity > (int)Items.Rarity.Set
-                || item.Ilvl < 0 || item.Ilvl > NetLimits.MaxItemLevel
-                || item.SealCount is < 0 or > 16
-                || (item.Slot is { } slot && slot.Length > NetLimits.IdChars)
-                || item.X is < -1 or > 64 || item.Y is < -1 or > 64)
+            if (BadItem(item) is { } why)
             {
-                return "bad item";
-            }
-
-            if (item.BaseStats is null || item.BaseStats.Count > NetLimits.MaxBaseStatsPerItem
-                || item.BaseStats.Any(v => v is null || v.Length != 4 || v.Any(f => !Sane(f))))
-            {
-                return "bad item stats";
-            }
-
-            if (item.Affixes is null || item.Affixes.Count > NetLimits.MaxAffixesPerItem
-                || item.Affixes.Any(a => a is null || BadId(a.Id) || a.Tier is < 0 or > 64 || !Sane(a.Value)))
-            {
-                return "bad item affixes";
+                return why;
             }
         }
 
@@ -113,6 +96,59 @@ public partial class Profile
             || s.Gold < 0 || !Finite(s.BestSurvivalTime))
         {
             return "bad wallet";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Co-op client: is one item's JSON (a gear drop the host sent) sane? Same
+    /// checks as the items of a character in <see cref="ValidateCharacterJson"/>.
+    /// Null if so — docs/design/multiplayer.md -> "Security" -> "A hostile host".
+    /// </summary>
+    public static string? ValidateItemJson(string json)
+    {
+        if (json.Length > 16 * 1024)
+        {
+            return "item too large";
+        }
+
+        SaveItem? item;
+        try
+        {
+            item = JsonSerializer.Deserialize<SaveItem>(json);
+        }
+        catch (Exception e) when (e is JsonException or NotSupportedException or ArgumentException or InvalidOperationException)
+        {
+            return "the item could not be read";
+        }
+
+        return BadItem(item);
+    }
+
+    private static string? BadItem(SaveItem? item)
+    {
+        if (item is null || BadId(item.Base) || (item.Name?.Length ?? 0) > NetLimits.IdChars
+            || item.Rarity < 0 || item.Rarity > (int)Items.Rarity.Set
+            || item.Ilvl < 0 || item.Ilvl > NetLimits.MaxItemLevel
+            || item.SealCount is < 0 or > 16
+            || (item.Slot is { } slot && (slot.Length > NetLimits.IdChars || !Enum.TryParse(slot, out Items.EquipmentSlot parsed) || !Enum.IsDefined(parsed)))
+            || item.X is < -1 or > 64 || item.Y is < -1 or > 64)
+        {
+            return "bad item";
+        }
+
+        if (item.BaseStats is null || item.BaseStats.Count > NetLimits.MaxBaseStatsPerItem
+            || item.BaseStats.Any(v => v is null || v.Length != 4 || v.Any(f => !Sane(f))
+                || !Enum.IsDefined(typeof(Stats.StatId), (int)v[0]) || !Enum.IsDefined(typeof(Stats.ModifierType), (int)v[1])))
+        {
+            return "bad item stats";
+        }
+
+        if (item.Affixes is null || item.Affixes.Count > NetLimits.MaxAffixesPerItem
+            || item.Affixes.Any(a => a is null || BadId(a.Id) || a.Tier is < 0 or > 64 || !Sane(a.Value)))
+        {
+            return "bad item affixes";
         }
 
         return null;

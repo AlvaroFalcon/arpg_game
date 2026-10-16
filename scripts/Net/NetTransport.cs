@@ -19,6 +19,13 @@ public static class NetTransport
     /// unreliably (see NetSession). Kept so a later engine can split traffic.</summary>
     public const int Channels = 4;
 
+    /// <summary>ENet connection slots on the host. Far more than the party: a
+    /// stranger holding a few unauthenticated connections must not lock friends
+    /// out (the party size is enforced by the lobby, not by ENet, which would
+    /// drop extra connections silently). Each waits at most
+    /// <see cref="NetLimits.AuthTimeout"/> for its code.</summary>
+    public const int MaxConnections = 32;
+
     public static (MultiplayerPeer? Peer, Error Error) Host(int port, int maxClients)
     {
         var peer = new ENetMultiplayerPeer();

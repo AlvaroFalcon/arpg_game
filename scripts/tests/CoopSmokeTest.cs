@@ -648,8 +648,31 @@ public partial class CoopTestHost : CoopTestDriver
         }
 
         string calls3 = string.Join(", ", slow.Calls);
-        Check("UPNP-CLOSE-DURING-DISCOVERY", mapper3.State == PortMapper.MapState.Off && calls3 == $"discover, map 7777 {PortMapper.LeaseSeconds}, map 7777 0, unmap 7777",
-            $"state={mapper3.State}; router calls: {calls3} (permanent-only router: retried with no lease, then removed)");
+        Check("UPNP-CLOSE-DURING-DISCOVERY", mapper3.State == PortMapper.MapState.Off && calls3 == "discover",
+            $"state={mapper3.State}; router calls: {calls3} (closed while discovering: nothing mapped, so nothing to remove or wait for)");
+
+        // Permanent-only router, no close: the lease is retried as 0 and the lobby says so.
+        var permanent = new FakeGateway { PermanentOnly = true };
+        var mapper4 = new PortMapper(() => permanent);
+        mapper4.Open(7777);
+        await WaitFor(() => { mapper4.Poll(Time.GetTicksMsec()); return mapper4.State != PortMapper.MapState.Working; }, 5f);
+        bool permanentOpen = mapper4.State == PortMapper.MapState.Open && mapper4.Permanent;
+        mapper4.CloseAndWait(2000);
+        string calls4 = string.Join(", ", permanent.Calls);
+        Check("UPNP-PERMANENT-ONLY", permanentOpen && calls4 == $"discover, map 7777 {PortMapper.LeaseSeconds}, map 7777 0, unmap 7777",
+            $"open={permanentOpen}, permanent={mapper4.Permanent}; router calls: {calls4}");
+
+        // A router that stops renewing: the lobby falls back to the manual-forwarding advice.
+        var flaky = new FakeGateway();
+        var mapper5 = new PortMapper(() => flaky);
+        mapper5.Open(7777);
+        await WaitFor(() => { mapper5.Poll(Time.GetTicksMsec()); return mapper5.State != PortMapper.MapState.Working; }, 5f);
+        flaky.FailMaps = true;
+        mapper5.RenewSoon();
+        await WaitFor(() => { mapper5.Poll(Time.GetTicksMsec()); return mapper5.State != PortMapper.MapState.Open; }, 5f);
+        Check("UPNP-RENEW-FAILURE", mapper5.State == PortMapper.MapState.Failed && mapper5.Message.Contains("forward UDP 7777 manually"),
+            $"{mapper5.State}: {mapper5.Message}");
+        mapper5.CloseAndWait(2000);
 
         Check("PUBLIC-ADDRESS-CHECK", PortMapper.IsPublicAddress("203.0.113.7") && !PortMapper.IsPublicAddress("100.64.0.1") && !PortMapper.IsPublicAddress("192.168.1.1")
                 && !PortMapper.IsPublicAddress("10.0.0.1") && !PortMapper.IsPublicAddress("172.20.0.1") && !PortMapper.IsPublicAddress("") && PortMapper.IsPublicAddress("2001:db8::1") == true,
@@ -845,9 +868,16 @@ public sealed class FakeGateway : IPortGateway
 
     public string ExternalAddress() => External;
 
+    public bool FailMaps { get; set; }
+
     public MapResult Map(int port, string description, int leaseSeconds)
     {
         Calls.Enqueue($"map {port} {leaseSeconds}");
+        if (FailMaps)
+        {
+            return MapResult.Failed;
+        }
+
         return PermanentOnly && leaseSeconds != 0 ? MapResult.OnlyPermanent : MapResult.Ok;
     }
 

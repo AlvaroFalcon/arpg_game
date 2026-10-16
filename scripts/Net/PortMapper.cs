@@ -147,6 +147,11 @@ public sealed class PortMapper
     private int _generation;
     private ulong _renewAtMsec;
 
+    /// <summary>The generation the worker may still act for. Set by the main thread
+    /// on every Open/Close; an open whose discovery outlived a Close sees the
+    /// change and maps nothing (so quitting never has to wait for a discovery).</summary>
+    private volatile int _wanted;
+
     // Worker-only state (touched only inside the chain).
     private IPortGateway? _gateway;
     private int _mappedPort;
@@ -162,6 +167,7 @@ public sealed class PortMapper
     {
         Close();
         int generation = ++_generation;
+        _wanted = generation;
         Port = port;
         State = MapState.Working;
         Message = $"Opening UDP {port} on your router (UPnP)…";
@@ -170,7 +176,7 @@ public sealed class PortMapper
         Changed?.Invoke();
         Enqueue(() =>
         {
-            (bool ok, string external, bool permanent, string detail) = WorkOpen(port);
+            (bool ok, string external, bool permanent, string detail) = WorkOpen(port, generation);
             _results.Enqueue(() => Apply(generation, ok, external, permanent, detail));
         });
     }
@@ -183,7 +189,7 @@ public sealed class PortMapper
             return;
         }
 
-        _generation++;
+        _wanted = ++_generation;
         State = MapState.Off;
         Message = "";
         ExternalAddress = "";
@@ -224,7 +230,24 @@ public sealed class PortMapper
         {
             _renewAtMsec = nowMsec + (ulong)LeaseSeconds * 500UL; // every half lease
             int port = Port;
-            Enqueue(() => WorkRenew(port));
+            int generation = _generation;
+            Enqueue(() =>
+            {
+                if (!WorkRenew(port))
+                {
+                    _results.Enqueue(() =>
+                    {
+                        if (generation == _generation && State == MapState.Open)
+                        {
+                            State = MapState.Failed;
+                            ExternalAddress = "";
+                            Message = $"{FallbackMessage(Port)} (the router stopped renewing the mapping)";
+                            GD.Print($"Co-op UPnP: {Message}");
+                            Changed?.Invoke();
+                        }
+                    });
+                }
+            });
         }
     }
 
@@ -277,13 +300,18 @@ public sealed class PortMapper
 
     // --- worker -------------------------------------------------------------------------
 
-    private (bool Ok, string External, bool Permanent, string Detail) WorkOpen(int port)
+    private (bool Ok, string External, bool Permanent, string Detail) WorkOpen(int port, int generation)
     {
         _gateway ??= _factory();
         if (_gateway.Discover() is { } why)
         {
             _gateway = null;
             return (false, "", false, why);
+        }
+
+        if (_wanted != generation)
+        {
+            return (false, "", false, "closed before the router answered"); // nothing mapped, nothing to undo
         }
 
         string external = _gateway.ExternalAddress().Trim();
@@ -297,8 +325,10 @@ public sealed class PortMapper
 
         MapResult result = _gateway.Map(port, Description, LeaseSeconds);
         int lease = LeaseSeconds;
-        if (result == MapResult.OnlyPermanent)
+        if (result != MapResult.Ok && _wanted == generation)
         {
+            // Error 725 (OnlyPermanentLeaseSupported) asks for this outright; some
+            // routers answer a lease they dislike with another code, so retry any failure.
             lease = 0;
             result = _gateway.Map(port, Description, 0);
         }
@@ -313,12 +343,15 @@ public sealed class PortMapper
         return (true, external, lease == 0, "");
     }
 
-    private void WorkRenew(int port)
+    /// <summary>Renews the lease; false if the router refused (the port may be closed now).</summary>
+    private bool WorkRenew(int port)
     {
         if (_gateway is not null && _mappedPort == port)
         {
-            _gateway.Map(port, Description, _mappedLease);
+            return _gateway.Map(port, Description, _mappedLease) == MapResult.Ok;
         }
+
+        return true;
     }
 
     private void WorkClose()
