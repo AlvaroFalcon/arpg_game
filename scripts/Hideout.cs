@@ -366,10 +366,12 @@ public partial class Hideout : Node2D
 
         GetTree().Paused = false;
         Editor = new HideoutEditor { Hideout = this, Name = "HideoutEditor" };
+        _player.StopAutoWalk();
         Editor.Closed += () =>
         {
             Editor = null;
             SaveLayout();
+            InvalidatePaths();
         };
         AddChild(Editor);
     }
@@ -426,23 +428,186 @@ public partial class Hideout : Node2D
         _highlighted = uid;
     }
 
-    /// <summary>Walks the player to a station (the town directory, the guide's "Show me").</summary>
+    // --- walking to a station ---------------------------------------------------------
+
+    /// <summary>Walking into the portal (closer than this to its centre) enters the Survival Rift.</summary>
+    public const float PortalRadius = 42f;
+
+    /// <summary>A walk ends this close to a station: well inside the E prompt's range.</summary>
+    public const float WalkStopRadius = InteractRange - 20f;
+
+    private TownPaths? _paths;
+    private int _pathsIn = 3;
+    private string? _pendingWalk;
+    private int _walkBest;
+    private float _walkStuck;
+
+    /// <summary>The precomputed station walks (null until the town has settled).</summary>
+    public TownPaths? Paths => _paths;
+
+    /// <summary>The station the player is walking to, if any.</summary>
+    public string? WalkingTo { get; private set; }
+
+    /// <summary>
+    /// Walks the player to a station — the town directory, the guide's "Show me",
+    /// the altar shortcut and the big map (docs/design/hideout.md -> "Walking to a
+    /// station"). Starts on the next physics frame, once the fields are ready.
+    /// </summary>
     public void WalkTo(string uid)
     {
-        if (Data.Find(uid) is not { } prop || Editing)
+        if (Data.Find(uid) is null || Editing || _leaving)
         {
             return;
         }
 
-        Vector2 from = _player.GlobalPosition;
-        Vector2 stop = prop.Position + (from - prop.Position).Normalized() * 48f;
-        if (uid == "portal")
+        _pendingWalk = uid;
+    }
+
+    /// <summary>Props moved: rebuild the walks once physics has caught up.</summary>
+    public void InvalidatePaths() => _pathsIn = 2;
+
+    private float PlayerRadius =>
+        _player.GetNodeOrNull<CollisionShape2D>("CollisionShape2D")?.Shape is CircleShape2D c ? c.Radius : 12f;
+
+    /// <summary>The grid's blocked cells are wherever the player's circle (a pixel
+    /// larger) would touch something it collides with, plus the portal, which
+    /// walking into would enter the Rift. One field per station.</summary>
+    private void RebuildPaths()
+    {
+        PhysicsDirectSpaceState2D space = GetWorld2D().DirectSpaceState;
+        var query = new PhysicsShapeQueryParameters2D
         {
-            // Not into the rift itself.
-            stop = prop.Position + new Vector2(0f, 90f);
+            Shape = new CircleShape2D { Radius = PlayerRadius + 1f },
+            CollisionMask = _player.CollisionMask,
+            CollideWithAreas = false,
+            Exclude = new Godot.Collections.Array<Rid> { _player.GetRid() },
+        };
+        Vector2 portal = _portal.GlobalPosition;
+        float portalBlock = PortalRadius + PlayerRadius + 6f;
+        _paths = new TownPaths(HideoutTown.Bounds, at =>
+        {
+            if (at.DistanceTo(portal) < portalBlock)
+            {
+                return true;
+            }
+
+            query.Transform = new Transform2D(0f, at);
+            return space.IntersectShape(query, 1).Count > 0;
+        });
+
+        foreach (PlacedProp prop in Data.Props)
+        {
+            if (HideoutCatalog.Prop(prop.Kind) is not { Station: true } def)
+            {
+                continue;
+            }
+
+            Vector2 p = prop.Position;
+            _paths.AddField(prop.Uid, def.Id == "portal"
+                // In front of the gate, not into it.
+                ? at => at.Y > p.Y + 40f && at.DistanceTo(p) < 110f
+                : at => at.DistanceTo(p) <= WalkStopRadius);
+        }
+    }
+
+    private void UpdateWalks()
+    {
+        if (Editing)
+        {
+            _pendingWalk = null;
+            return;
         }
 
-        _player.GetNode<NavigationAgent2D>("NavigationAgent2D").TargetPosition = stop;
+        if (_pathsIn > 0 && --_pathsIn == 0)
+        {
+            RebuildPaths();
+        }
+
+        if (_pendingWalk is { } uid && _paths is not null && _pathsIn == 0)
+        {
+            _pendingWalk = null;
+            BeginWalk(uid);
+        }
+
+        if (WalkingTo is not null && _player.AutoWalk is null)
+        {
+            WalkingTo = null;
+        }
+    }
+
+    private void BeginWalk(string uid)
+    {
+        if (_paths is null || !_paths.HasField(uid))
+        {
+            return;
+        }
+
+        string name = HideoutCatalog.Prop(Data.Find(uid)?.Kind ?? "")?.Name ?? uid;
+        if (_paths.StartCell(uid, _player.GlobalPosition) is not { } start)
+        {
+            _hud.ShowBanner("No way there", $"Something in town blocks every way to {name}");
+            return;
+        }
+
+        if (_paths.DistanceAt(uid, start) == 0)
+        {
+            return;
+        }
+
+        WalkingTo = uid;
+        _walkBest = _paths.DistanceAt(uid, start);
+        _walkStuck = 0f;
+        _player.StartAutoWalk(() => Steer(uid, name));
+    }
+
+    /// <summary>The point to walk toward this physics frame (null: arrived or given up).</summary>
+    private Vector2? Steer(string uid, string name)
+    {
+        if (_paths is null || Editing || _leaving || WalkingTo != uid)
+        {
+            return null;
+        }
+
+        Vector2 from = _player.GlobalPosition;
+        if (_paths.Waypoint(uid, from, CircleClear) is not { } next)
+        {
+            WalkingTo = null;
+            return null;
+        }
+
+        // Safety net: no progress along the field for a second means something
+        // the grid doesn't know about is in the way; stop rather than push forever.
+        int d = _paths.StartCell(uid, from) is { } c ? _paths.DistanceAt(uid, c) : TownPaths.Unreachable;
+        if (d < _walkBest)
+        {
+            _walkBest = d;
+            _walkStuck = 0f;
+        }
+        else if ((_walkStuck += (float)GetPhysicsProcessDeltaTime()) > 1f)
+        {
+            _hud.ShowBanner("Blocked", $"Something is in the way to {name}");
+            WalkingTo = null;
+            return null;
+        }
+
+        return next;
+    }
+
+    /// <summary>Whether the player's circle can slide straight from a to b (a
+    /// shape cast in the physics world: exact, unlike the grid).</summary>
+    private bool CircleClear(Vector2 a, Vector2 b)
+    {
+        var query = new PhysicsShapeQueryParameters2D
+        {
+            Shape = new CircleShape2D { Radius = PlayerRadius - 1f },
+            CollisionMask = _player.CollisionMask,
+            CollideWithAreas = false,
+            Exclude = new Godot.Collections.Array<Rid> { _player.GetRid() },
+            Transform = new Transform2D(0f, a),
+            Motion = b - a,
+        };
+        float[] result = GetWorld2D().DirectSpaceState.CastMotion(query);
+        return result.Length == 0 || result[0] >= 1f;
     }
 
     public override void _Process(double delta)
@@ -491,7 +656,8 @@ public partial class Hideout : Node2D
 
     public override void _PhysicsProcess(double delta)
     {
-        if (!_leaving && !Editing && _player.GlobalPosition.DistanceTo(_portal.GlobalPosition) < 42f)
+        UpdateWalks();
+        if (!_leaving && !Editing && _player.GlobalPosition.DistanceTo(_portal.GlobalPosition) < PortalRadius)
         {
             Leave(Scenes.Run);
         }

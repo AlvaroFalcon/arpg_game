@@ -12,6 +12,12 @@ namespace ArpgGame.UI;
 /// (keystones every fifth level). Queued level-ups are offered back to back.
 /// Two rerolls per run. Also hosts the run-start skill pick, which is the same
 /// card row with every skill on it.
+///
+/// While open it owns the keyboard (owner feedback: a stray key closed the
+/// cards): every key is swallowed in <see cref="_Input"/>, before the GUI and
+/// gameplay see it, and only 1-9 (pick) and R (reroll) do anything — and only
+/// once the cards are armed, <see cref="ArmDelay"/> after they appear, so a key
+/// or click already on its way when they pop up is not taken as a choice.
 /// </summary>
 public partial class LevelUpScreen : CanvasLayer
 {
@@ -20,6 +26,11 @@ public partial class LevelUpScreen : CanvasLayer
 
     /// <summary>True while this screen owns the pause.</summary>
     public bool IsOpen { get; private set; }
+
+    /// <summary>True while a level-up screen is open anywhere: things that poll
+    /// keys directly (dodge, flasks, the inventory key) stand down. Matters in
+    /// co-op, where the run is not paused under the cards.</summary>
+    public static bool BlocksInput { get; private set; }
 
     /// <summary>
     /// Co-op (docs/design/multiplayer.md -> "Level-ups"): the run never pauses.
@@ -33,6 +44,9 @@ public partial class LevelUpScreen : CanvasLayer
 
     /// <summary>Raised after a card is applied (co-op client: tell the host).</summary>
     public event System.Action<UpgradeOffer>? Picked;
+
+    /// <summary>Seconds after the cards appear before keys or clicks pick one.</summary>
+    public const float ArmDelay = 0.45f;
 
     private float _timeLeft;
     private string _hintText = "";
@@ -99,8 +113,15 @@ public partial class LevelUpScreen : CanvasLayer
             Apply = () => Build.AddSkill(entry.Id),
         }).ToList();
         _cards.SetOffers(offers);
-        _cards.FocusFirst();
+        Arm();
         _root.Visible = true;
+    }
+
+    /// <summary>Starts the arming delay for a fresh set of cards.</summary>
+    private void Arm()
+    {
+        _cards.ArmedAtMsec = Time.GetTicksMsec() + (ulong)(ArmDelay * 1000f);
+        _cards.Modulate = new Color(1f, 1f, 1f, 0.55f);
     }
 
     private static string TagLine(Combat.SkillTags tags)
@@ -138,7 +159,7 @@ public partial class LevelUpScreen : CanvasLayer
         RefreshReroll();
         _buildSummary.Text = BuildSummary(Build);
         _cards.SetOffers(Build.RollOffers(_offeringLevel, _rng));
-        _cards.FocusFirst();
+        Arm();
         _root.Visible = true;
         Core.Sfx.Play(this, "levelup");
     }
@@ -162,15 +183,35 @@ public partial class LevelUpScreen : CanvasLayer
         Build.RerollsLeft--;
         RefreshReroll();
         _cards.SetOffers(Build.RollOffers(_offeringLevel, _rng));
-        _cards.FocusFirst();
+        Arm();
     }
 
-    public override void _UnhandledInput(InputEvent @event)
+    public override void _Input(InputEvent @event)
     {
-        if (IsOpen && @event is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.R })
+        if (!IsOpen || @event is not InputEventKey key)
         {
-            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        // Nothing else hears the keyboard while the cards are up: no dodge, no
+        // panels, no pause, and no Space/Enter "pressing" a button.
+        GetViewport().SetInputAsHandled();
+        if (!key.Pressed || key.Echo || !_cards.Armed)
+        {
+            return;
+        }
+
+        if (key.PhysicalKeycode == Key.R)
+        {
             Reroll();
+        }
+        else if (key.PhysicalKeycode is >= Key.Key1 and <= Key.Key9)
+        {
+            int index = (int)(key.PhysicalKeycode - Key.Key1);
+            if (index < _cards.OfferCount)
+            {
+                _cards.ChooseIndex(index);
+            }
         }
     }
 
@@ -205,6 +246,7 @@ public partial class LevelUpScreen : CanvasLayer
     private void SetOpen(bool open)
     {
         IsOpen = open;
+        BlocksInput = open;
         _timeLeft = Net.PartyRules.LevelUpTimeout;
         if (!Coop)
         {
@@ -214,6 +256,8 @@ public partial class LevelUpScreen : CanvasLayer
         OpenChanged?.Invoke(open);
     }
 
+    public override void _ExitTree() => BlocksInput = false;
+
     private void SetHint(string text)
     {
         _hintText = text;
@@ -222,6 +266,11 @@ public partial class LevelUpScreen : CanvasLayer
 
     public override void _Process(double delta)
     {
+        if (IsOpen && _cards.Modulate.A < 1f && _cards.Armed)
+        {
+            _cards.Modulate = Colors.White;
+        }
+
         if (!Coop || !IsOpen)
         {
             return;

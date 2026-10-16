@@ -426,3 +426,49 @@ The launcher used to install silently into `%LOCALAPPDATA%\ArpgGame`. Now on fir
 Three small owner requests. **Facing:** the character now faces the cursor while walking too, not just when standing (walking used to face the direction of travel). Dashes still face where they go, and co-op puppets face where they move because their aim isn't replicated. **Cursors:** four pixel-art cursors made with the EasyPixel pipeline (`tools/art/sprites/cursors.ts`) in the UI's bronze and gold: an arrow with a garnet, a white-hot arrow over buttons, a sword over monsters (reusing the target frame's "monster under the mouse" check) and a gauntlet hand over items on the ground. They are hardware cursors, scaled 2×/3×/4× with the window, so they cost nothing and never lag behind the mouse. **F to loot:** F picks up the nearest item as if clicked (it walks there if it's out of reach), and holding F empties a pile. Design: `menus.md` → "Cursor", `items.md` → "F picks up".
 
 ![The four cursors at 2× and 3×](screenshots/cursors.png)
+
+## 2026-10-16 — Level-up cards no longer vanish on a stray key
+
+Owner report: in the Survival Rift a stray key made the level-up cards disappear. The cause was that the first card had keyboard focus, so Space (dodge) or Enter "clicked" it and the run continued with an upgrade you never chose. Now the level-up screen owns the keyboard while it's open. It swallows every key in `_Input`, before the GUI or gameplay, and acts only on 1–9 and R. Cards no longer take focus, and the row is dimmed and unclickable for 0.45 s after it appears, so a press already in flight doesn't count. In co-op, where the run isn't paused, dodge, flasks and the inventory key also stand down. A side lesson for headless tests: `Input.ParseInputEvent` delivers nothing headless, so the first version of the test passed for nothing. `Viewport.PushInput` does deliver, and the test now also asserts that the screen saw every press.
+
+## 2026-10-16 — Town walks that don't get stuck, and a town map
+
+Owner report: clicking a station in the town directory walked you there, but the walk often pushed into something and got stuck. The navigation mesh was built from floor cells only, so the stalls, the forge and the decorations standing on those cells didn't exist for it, and its edges hugged the walls. The owner asked whether the path could be computed beforehand, and the answer was yes. The fix reuses the realities' monster technique: a distance field per station, built over a 16 px grid whose blocked cells come straight from physics queries with the player's own circle (plus the portal's mouth, since walking into it would send you to the Rift). The fields are rebuilt whenever the editor closes. The player follows the field downhill and straightens the line with a shape cast. The grid is offset half a cell so that one-tile doors have a free cell down their middle; without that offset every door in town is closed. Only station walks use this; normal click-to-move is untouched. A test walks from the plaza to all eight stations and around a well dropped in the way.
+
+Also new: a minimap on top of the town directory, showing the whole town with stations, you and the active route. M (or Tab) opens a full-screen town map. Each station has its own 16×16 pixel-art icon (mirror, coin purse, shard, plant, anvil, chest, orb, rift) in a badge ringed with its colour, and clicking one closes the map and starts the walk.
+
+![Minimap during a walk](screenshots/town-minimap-walk.png)
+![The big town map](screenshots/town-bigmap.png)
+![Hovering a station on the map](screenshots/town-bigmap-hover.png)
+
+## 2026-10-16 — Co-op you can actually join, and a pass over the menus
+
+Owner report: *"I tried to play with a friend: he typed the IP, pressed Connect, and absolutely nothing happened."* Plus two questions: could the lobby show the free slots, so it's obvious four people fit, and does the join code do anything, or would the IP be enough?
+
+The code is not optional: the host checks it before admitting anyone, so the IP finds the PC and the code lets you in. The old screen never said that. Walking through it as a first-time joiner found the likely culprits for "nothing happened". **Without a character, Join was simply disabled**, and the only hint was a dim line under the title, so a friend who had just installed the game could click as much as he liked. **A dead address** (no UPnP, CG-NAT, firewall) hid the form behind "Connecting…" for ENet's ~30 s, with no progress, no elapsed time and no Cancel, and then came back with a single orange line. On top of that, the address field came prefilled with `127.0.0.1:7777`.
+
+The redesign shows one state at a time. You start by picking *Host a game* or *Join a friend*. The join card says you need both the address and the code; mistakes appear under the field with an ember border, and Enter submits. The host's lobby shows the address and the code in big type, a **Copy invite** button (`203.0.113.7:7777 K7Q-29M`; pasting it into the address field fills both fields), the router state in green or ember, and **four party slots**, with the free ones reading "Free — waiting for a friend". While joining you see a spinner, the step you're on (reaching the PC → checking the code → joining), the seconds so far and Cancel. It now gives up after **12 s**: ENet gets a fixed deadline on the connect request, the session has its own watchdog, and once the host answers the timeouts go back to ENet's defaults. When a join fails, the card names the cause (*Couldn't reach the host*, *Wrong join code*, *The party is full*, *The run has already started*, *Different game versions*) with a checklist and Try again. No character? The screen says so and offers *Create a character*, which opens creation directly.
+
+To tell those cases apart, `NetSession` now exposes the join phase and why the last session ended. The host's refusal texts became constants that the client classifies. What the host checks, and how often, is unchanged.
+
+Menus pass: character select and create now take Esc (back one step) and Enter (create). The list scrolls past four characters, and the delete confirmation is red. Results asks before you leave without taking your item. The main menu backdrop is a little darker behind the title. `UiTheme` gained a primary button, themed text fields with an error state, and a drawn spinner.
+
+Tests: new `CoopUiSmokeTest` (14 suites, all green). It drives real co-op panels for the host and in-process friends and checks the inline errors, the invite round trip, four slots with three free, wrong code, full party, the host closing, a dead address failing in 12 s, and Cancel. Captures: `RunCapture --only=coop` and `--only=menus`.
+
+Before:
+
+![Old co-op screen](screenshots/coop-before-start.png)
+![Old: no character — both buttons disabled](screenshots/coop-before-no-character.png)
+![Old: connecting, no progress or cancel](screenshots/coop-before-connecting.png)
+![Old: lobby](screenshots/coop-before-lobby.png)
+
+After:
+
+![Host or join](screenshots/coop-start.png)
+![Inline errors](screenshots/coop-join-errors.png)
+![Host lobby: invite and four slots](screenshots/coop-host-lobby.png)
+![A friend's lobby](screenshots/coop-client-lobby.png)
+![Connecting](screenshots/coop-connecting.png)
+![Couldn't reach the host](screenshots/coop-failed.png)
+![Wrong join code](screenshots/coop-wrong-code.png)
+![No character yet](screenshots/coop-no-character.png)

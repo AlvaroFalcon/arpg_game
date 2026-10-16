@@ -26,6 +26,66 @@ public sealed class LobbyMember
     public Vector2 ViewSize => new(ViewWidth, ViewHeight);
 }
 
+/// <summary>Where a joining client is (the co-op screen shows it with the elapsed time).</summary>
+public enum JoinPhase
+{
+    None,
+
+    /// <summary>Reaching the host's address (the transport handshake).</summary>
+    Connecting,
+
+    /// <summary>Reached: the host is checking the join code.</summary>
+    CheckingCode,
+
+    /// <summary>Code accepted: the character is on its way to the lobby.</summary>
+    Joining,
+
+    /// <summary>Listed in the lobby (or hosting it).</summary>
+    InLobby,
+}
+
+/// <summary>Why the last session ended, so the co-op screen can say what to
+/// check (docs/design/menus.md -> "Co-op").</summary>
+public enum SessionEnd
+{
+    None,
+
+    /// <summary>Nobody answered at that address within <see cref="NetSession.ConnectTimeout"/>.</summary>
+    Unreachable,
+    WrongCode,
+    VersionMismatch,
+    PartyFull,
+    RunStarted,
+    CharacterRefused,
+
+    /// <summary>Dropped before the code was checked (an address blocked after
+    /// wrong codes, or the host's game closing at that moment).</summary>
+    NotAccepted,
+    HostClosed,
+    HostLeftRun,
+}
+
+/// <summary>The host's refusal reasons. The client reads them back to tell a
+/// wrong code from a full party (both ends run the same build: the protocol
+/// number is checked first).</summary>
+public static class JoinRefusal
+{
+    public const string WrongCode = "Wrong join code. Ask the host for the code shown in their lobby.";
+    public const string Version = "Your game version does not match the host's.";
+    public const string Full = "The party is full.";
+    public const string RunStarted = "The run has already started.";
+    public const string NotClient = "That is not an ARPG co-op client.";
+    public const string CharacterPrefix = "Your character";
+
+    public static SessionEnd Classify(string reason) =>
+        reason.StartsWith("Wrong join code") ? SessionEnd.WrongCode
+        : reason == Version ? SessionEnd.VersionMismatch
+        : reason == Full ? SessionEnd.PartyFull
+        : reason == RunStarted ? SessionEnd.RunStarted
+        : reason.StartsWith(CharacterPrefix) ? SessionEnd.CharacterRefused
+        : SessionEnd.NotAccepted;
+}
+
 /// <summary>What a run scene implements to receive the session's run traffic.</summary>
 public interface IRunLink
 {
@@ -86,6 +146,30 @@ public partial class NetSession : Node
     public List<LobbyMember> Members { get; } = new();
 
     public string Status { get; private set; } = "";
+
+    /// <summary>Client: how far the join has got (host: <see cref="JoinPhase.InLobby"/>).</summary>
+    public JoinPhase Phase { get; private set; }
+
+    /// <summary>Seconds (engine clock) when <see cref="Phase"/> last changed.</summary>
+    public double PhaseSince { get; private set; }
+
+    /// <summary>Seconds (engine clock) when the current join started.</summary>
+    public double JoinStarted { get; private set; }
+
+    /// <summary>Client: "address:port" being joined.</summary>
+    public string JoinTarget { get; private set; } = "";
+
+    /// <summary>Why the last session ended (None while one is active, or after
+    /// the player left on purpose).</summary>
+    public SessionEnd LastEnd { get; private set; }
+
+    /// <summary>Seconds a join may spend reaching the host before it gives up.
+    /// ENet alone waits ~30 s with no answer; the transport is told to give up
+    /// sooner too (<see cref="NetTransport.ShortenConnectTimeout"/>), and this is
+    /// the session's own deadline whatever the transport does.</summary>
+    public const double ConnectTimeout = 12.0;
+
+    public static double Clock => Time.GetTicksMsec() / 1000.0;
 
     /// <summary>The lobby changed (someone joined, left, or the list arrived).</summary>
     public event Action? LobbyChanged;
@@ -198,7 +282,26 @@ public partial class NetSession : Node
         Ports.CloseAndWait(1500);
     }
 
-    public override void _Process(double delta) => Ports.Poll(Time.GetTicksMsec());
+    public override void _Process(double delta)
+    {
+        Ports.Poll(Time.GetTicksMsec());
+        if (IsClient && Phase == JoinPhase.Connecting && Clock - PhaseSince > ConnectTimeout)
+        {
+            End(UnreachableMessage(), SessionEnd.Unreachable);
+        }
+    }
+
+    private void SetPhase(JoinPhase phase)
+    {
+        if (Phase != phase)
+        {
+            Phase = phase;
+            PhaseSince = Clock;
+        }
+    }
+
+    private string UnreachableMessage() =>
+        $"No answer from {JoinTarget} after {Clock - JoinStarted:0} s. The host's game may not be reachable from where you are.";
 
     private void OnPortsChanged() => LobbyChanged?.Invoke();
 
@@ -298,6 +401,9 @@ public partial class NetSession : Node
         _me.PeerId = 1;
         Members.Clear();
         Members.Add(_me);
+        LastEnd = SessionEnd.None;
+        JoinStarted = Clock;
+        SetPhase(JoinPhase.InLobby);
         Status = $"Hosting on port {port}.";
         if (openRouterPort)
         {
@@ -311,6 +417,7 @@ public partial class NetSession : Node
     public Error Join(string address, int port, CharacterData character, string code)
     {
         Leave();
+        LastEnd = SessionEnd.None;
         string normalised = JoinCode.Normalize(code);
         if (!JoinCode.IsWellFormed(normalised))
         {
@@ -333,7 +440,12 @@ public partial class NetSession : Node
         }
 
         _scene!.MultiplayerPeer = peer;
+        NetTransport.ShortenConnectTimeout(peer, (int)(ConnectTimeout * 1000));
         Role = SessionRole.Client;
+        LastEnd = SessionEnd.None;
+        JoinTarget = $"{address}:{port}";
+        JoinStarted = Clock;
+        SetPhase(JoinPhase.Connecting);
         Joined = false;
         InRun = false;
         _me = MemberFor(character, ViewSize());
@@ -356,6 +468,8 @@ public partial class NetSession : Node
         MultiplayerPeer? peer = _api.MultiplayerPeer;
         Ports.Close();
         Role = SessionRole.Offline;
+        Phase = JoinPhase.None;
+        LastEnd = SessionEnd.None;
         Joined = false;
         InRun = false;
         Members.Clear();
@@ -375,13 +489,14 @@ public partial class NetSession : Node
         NetMode.ClientSide = false;
     }
 
-    private void End(string reason)
+    private void End(string reason, SessionEnd why)
     {
         bool wasActive = Active;
         IRunLink? run = Run;
         Leave();
         if (wasActive)
         {
+            LastEnd = why;
             Status = reason;
             run?.OnHostLost(reason);
             Ended?.Invoke(reason);
@@ -454,6 +569,7 @@ public partial class NetSession : Node
         }
 
         Status = "Connected — joining the party…";
+        SetPhase(JoinPhase.Joining);
         if (TestSkipHello)
         {
             return;
@@ -463,9 +579,9 @@ public partial class NetSession : Node
         LobbyChanged?.Invoke();
     }
 
-    private void OnConnectionFailed() => End("Could not reach the host. Check the address, the port and the host's firewall or VPN.");
+    private void OnConnectionFailed() => End(UnreachableMessage(), SessionEnd.Unreachable);
 
-    private void OnServerDisconnected() => End(InRun ? "The host left — the run is over." : "The host closed the session.");
+    private void OnServerDisconnected() => End(InRun ? "The host left — the run is over." : "The host closed the session.", InRun ? SessionEnd.HostLeftRun : SessionEnd.HostClosed);
 
     // --- authentication: the join code (engine auth step, before any RPC) ------------
 
@@ -482,6 +598,9 @@ public partial class NetSession : Node
             message[5] = (byte)(Protocol >> 8);
             code.CopyTo(message, 6);
             _scene?.SendAuth(1, message);
+            // Reached the host: from here on a slow link may stall as long as ENet allows.
+            NetTransport.RestoreTimeout(_api.MultiplayerPeer);
+            SetPhase(JoinPhase.CheckingCode);
             Status = "Connected — checking the join code…";
             LobbyChanged?.Invoke();
             return;
@@ -518,7 +637,7 @@ public partial class NetSession : Node
         _pending[id] = address;
         if (InRun || Members.Count >= PartyRules.MaxPlayers)
         {
-            Refuse(id, InRun ? "The run has already started." : "The party is full.");
+            Refuse(id, InRun ? JoinRefusal.RunStarted : JoinRefusal.Full);
         }
     }
 
@@ -539,7 +658,7 @@ public partial class NetSession : Node
     {
         if (IsClient && id == 1 && Active)
         {
-            End("The host did not accept the connection (wrong join code, version, or the host's game closed).");
+            End("The host closed the connection before checking your code (too many wrong codes from your address lately, or the host's game closed).", SessionEnd.NotAccepted);
         }
         else if (IsHost)
         {
@@ -580,13 +699,14 @@ public partial class NetSession : Node
                 // Engine quirk (4.1.1): complete_auth sends its confirmation to the last
                 // target peer; on a client that's always the host.
                 _scene.CompleteAuth(1);
+                SetPhase(JoinPhase.Joining);
                 Status = "Join code accepted — joining the party…";
                 LobbyChanged?.Invoke();
             }
             else
             {
                 string refusal = data.Length > 1 ? System.Text.Encoding.UTF8.GetString(data, 1, Math.Min(data.Length - 1, 200)) : "The host turned you away.";
-                End(refusal);
+                End(refusal, JoinRefusal.Classify(refusal));
             }
 
             return;
@@ -616,11 +736,11 @@ public partial class NetSession : Node
         bool counts = true;
         if (data.Length > NetLimits.AuthBytes || data.Length < AuthMagic.Length + 2 || !data.AsSpan(0, AuthMagic.Length).SequenceEqual(AuthMagic))
         {
-            reason = "That is not an ARPG co-op client.";
+            reason = JoinRefusal.NotClient;
         }
         else if ((data[4] | (data[5] << 8)) != Protocol)
         {
-            reason = "Your game version does not match the host's.";
+            reason = JoinRefusal.Version;
             counts = false;
         }
         else
@@ -628,7 +748,7 @@ public partial class NetSession : Node
             string given = JoinCode.Normalize(System.Text.Encoding.ASCII.GetString(data, 6, data.Length - 6));
             if (!JoinCode.Matches(Code, given))
             {
-                reason = "Wrong join code. Ask the host for the code shown in their lobby.";
+                reason = JoinRefusal.WrongCode;
             }
         }
 
@@ -748,9 +868,9 @@ public partial class NetSession : Node
             return; // over a limit (kicked), or a repeated hello (ignored)
         }
 
-        string? reason = protocol != Protocol ? "Your game version does not match the host's."
-            : InRun ? "The run has already started."
-            : Members.Count >= PartyRules.MaxPlayers ? "The party is full."
+        string? reason = protocol != Protocol ? JoinRefusal.Version
+            : InRun ? JoinRefusal.RunStarted
+            : Members.Count >= PartyRules.MaxPlayers ? JoinRefusal.Full
             : null;
         LobbyMember? member = null;
         if (reason is null)
@@ -828,6 +948,11 @@ public partial class NetSession : Node
         Members.AddRange(members);
         Joined = Members.Any(m => m.PeerId == LocalPeerId);
         Status = Joined ? "In the party — waiting for the host to start." : Status;
+        if (Joined)
+        {
+            SetPhase(JoinPhase.InLobby);
+        }
+
         LobbyChanged?.Invoke();
     }
 
@@ -891,7 +1016,11 @@ public partial class NetSession : Node
     private static string Cut(string? text, int max) => text is null ? "" : text.Length > max ? text[..max] : text;
 
     [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
-    private void RpcRejected(string reason) => End(Cut(reason, 200));
+    private void RpcRejected(string reason)
+    {
+        string cut = Cut(reason, 200);
+        End(cut, JoinRefusal.Classify(cut));
+    }
 
     [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
     private void RpcStartRun()

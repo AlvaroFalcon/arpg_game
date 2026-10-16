@@ -73,6 +73,7 @@ public partial class RunSmokeTest : Node2D
         SupportChecks();
         await BuildChecks();
         ExperienceChecks();
+        await LevelUpInputChecks();
         await AreaAndChainChecks();
         await VolatileChecks();
         await ContactChecks();
@@ -215,6 +216,68 @@ public partial class RunSmokeTest : Node2D
         Check("EFFECTIVE-TAGS-FOLLOW-CONVERSION", (build.EffectiveTags(fireball) & SkillTags.Cold) != 0 && (build.EffectiveTags(fireball) & SkillTags.Fire) == 0, $"{build.EffectiveTags(fireball)}");
         player.QueueFree();
         await Frames(1);
+    }
+
+    /// <summary>Owner feedback: a stray key closed the level-up cards. While
+    /// they are open the keyboard belongs to them; only 1-9/R pick, and only
+    /// once armed (docs/design/menus.md -> "Level-up and results").</summary>
+    private async Task LevelUpInputChecks()
+    {
+        Player player = SpawnPlayer(new Vector2(900, 900));
+        var build = new RunBuild();
+        player.AddChild(build);
+        var state = new RunState { Player = player };
+        AddChild(state);
+        // Co-op mode keeps the tree running under the cards, which the test needs.
+        var screen = new UI.LevelUpScreen { State = state, Build = build, Coop = true };
+        AddChild(screen);
+        await Frames(1);
+        state.AddExperience(RunState.ExperienceToNext(1) + 0.1f);
+        await Frames(1);
+        bool opened = screen.IsOpen && UI.LevelUpScreen.BlocksInput;
+
+        Key[] stray = { Key.Space, Key.Enter, Key.Escape, Key.I, Key.Key1 };
+        foreach (Key k in stray)
+        {
+            PressKey(k);
+        }
+
+        await Frames(3);
+        Check("LEVELUP-IGNORES-STRAY-KEYS", opened && screen.IsOpen && state.PendingLevelUps == 1 && _keysSeen >= stray.Length,
+            $"opened={opened}, still open={screen.IsOpen}, pending={state.PendingLevelUps} after Space/Enter/Esc/I and an early 1 (screen saw {_keysSeen} presses)");
+
+        await ToSignal(GetTree().CreateTimer(UI.LevelUpScreen.ArmDelay + 0.15f, true, false, true), SceneTreeTimer.SignalName.Timeout);
+        PressKey(Key.Space);
+        PressKey(Key.Enter);
+        await Frames(2);
+        Check("LEVELUP-SPACE-ENTER-NEVER-PICK", screen.IsOpen && state.PendingLevelUps == 1,
+            $"armed cards still open after Space/Enter: {screen.IsOpen}");
+        PressKey(Key.Key2);
+        await Frames(3);
+        Check("LEVELUP-NUMBER-KEY-PICKS-WHEN-ARMED", !screen.IsOpen && state.PendingLevelUps == 0 && !UI.LevelUpScreen.BlocksInput,
+            $"open={screen.IsOpen}, pending={state.PendingLevelUps}");
+
+        screen.QueueFree();
+        state.QueueFree();
+        player.QueueFree();
+        await Frames(1);
+    }
+
+    private int _keysSeen;
+
+    /// <summary>A real key press through the viewport (Input.ParseInputEvent
+    /// delivers nothing in headless runs). Counts what the level-up screen saw.</summary>
+    private void PressKey(Key k)
+    {
+        foreach (bool down in new[] { true, false })
+        {
+            var e = new InputEventKey { Pressed = down, Keycode = k, PhysicalKeycode = k };
+            GetViewport().PushInput(e);
+            if (down && GetViewport().IsInputHandled())
+            {
+                _keysSeen++;
+            }
+        }
     }
 
     private void ExperienceChecks()

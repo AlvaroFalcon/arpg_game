@@ -117,7 +117,7 @@ public partial class Dodge : Node
                 TryDodge(command.DodgeDir);
             }
         }
-        else if (InputEnabled && _body is not Player { IsLocal: false } && Input.IsActionJustPressed("dodge"))
+        else if (InputEnabled && _body is not Player { IsLocal: false } && !UI.LevelUpScreen.BlocksInput && Input.IsActionJustPressed("dodge"))
         {
             Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
             Vector2 direction = input != Vector2.Zero

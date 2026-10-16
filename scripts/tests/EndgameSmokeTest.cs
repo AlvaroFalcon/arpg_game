@@ -1274,6 +1274,81 @@ public partial class EndgameSmokeTest : Node2D
 
     // --- the hideout town, its editor and shop (docs/design/hideout.md) ----------------
 
+    /// <summary>
+    /// docs/design/hideout.md -> "Walking to a station": a walk from the plaza
+    /// reaches every station (into E range; in front of the Rift gate without
+    /// entering it), and goes around a decoration put in its way.
+    /// </summary>
+    private async Task HideoutWalkChecks(Hideout hideout)
+    {
+        Vector2 spawn = HideoutTown.World(HideoutTown.SpawnCell);
+        Engine.TimeScale = 4.0;
+        var results = new List<string>();
+        bool all = true;
+        foreach (PlacedProp prop in hideout.Data.Props.Where(p => HideoutCatalog.Prop(p.Kind)?.Station == true).ToList())
+        {
+            hideout.Player.GlobalPosition = spawn;
+            await Frames(2);
+            (bool ok, string note) = await WalkAndArrive(hideout, prop);
+            all &= ok;
+            results.Add($"{prop.Kind}: {note}");
+        }
+
+        Check("HIDEOUT-WALKS-REACH-EVERY-STATION", all, string.Join("; ", results));
+
+        // A well dropped right in the path from the plaza to the forge: the walk goes around it.
+        PlacedProp forge = hideout.Data.Find("forge")!;
+        hideout.Player.GlobalPosition = spawn;
+        hideout.Data.AddStock("well", 1);
+        string? well = hideout.PlaceFromStock("well", spawn.Lerp(forge.Position, 0.35f));
+        hideout.InvalidatePaths();
+        await Frames(4);
+        (bool around, string aroundNote) = await WalkAndArrive(hideout, forge);
+        Check("HIDEOUT-WALK-AVOIDS-NEW-PROP", well is not null && around, $"well placed={well is not null}; {aroundNote}");
+        if (well is not null)
+        {
+            hideout.StoreProp(well);
+            hideout.Data.AddStock("well", -1);
+            hideout.InvalidatePaths();
+        }
+
+        // The big map (M): clicking a station closes it and starts the walk.
+        hideout.Player.GlobalPosition = spawn;
+        await Frames(2);
+        hideout.Hud.ToggleBigMap();
+        bool opened = hideout.Hud.BigMapOpen;
+        var big = hideout.Hud.FindChild("BigMap", true, false) as UI.TownMap;
+        big?.PickStation("stash");
+        await Frames(2);
+        bool closedAndWalking = !hideout.Hud.BigMapOpen && hideout.WalkingTo == "stash";
+        hideout.Player.StopAutoWalk();
+        Check("TOWN-MAP-CLICK-WALKS", big is not null && opened && closedAndWalking && InputMap.HasAction(UI.MapOverlay.Action),
+            $"big map found={big is not null}, opened={opened}, closed and walking to the stash={closedAndWalking}");
+
+        Engine.TimeScale = 1.0;
+        hideout.Player.GlobalPosition = spawn;
+        await Frames(4);
+    }
+
+    private async Task<(bool Ok, string Note)> WalkAndArrive(Hideout hideout, PlacedProp prop)
+    {
+        hideout.WalkTo(prop.Uid);
+        await Frames(2);
+        bool started = hideout.WalkingTo == prop.Uid;
+        int frames = 0;
+        while (hideout.WalkingTo is not null && frames < 60 * 40)
+        {
+            await Frames(1);
+            frames++;
+        }
+
+        float d = hideout.Player.GlobalPosition.DistanceTo(prop.Position);
+        bool arrived = prop.Kind == "portal"
+            ? d < 115f && d > Hideout.PortalRadius && hideout.IsInsideTree()
+            : hideout.NearestStation()?.Prop.Uid == prop.Uid;
+        return (started && arrived, $"started={started}, arrived={arrived} ({d:0} px, {frames} frames)");
+    }
+
     private async Task HideoutChecks()
     {
         // Never touch the real account: an empty town, nothing written to disk.
@@ -1311,16 +1386,19 @@ public partial class EndgameSmokeTest : Node2D
 
         string prompt = hud.PromptText;
         hideout.WalkTo("forge");
-        Vector2 target = hideout.Player.GetNode<NavigationAgent2D>("NavigationAgent2D").TargetPosition;
+        await Frames(2);
+        string walking = hideout.WalkingTo ?? "(none)";
+        hideout.Player.StopAutoWalk();
+        await Frames(1);
         hideout.OpenGuide();
         await Frames(1);
         var guide = hideout.GetNode<UI.TownGuidePanel>("TownGuide");
         bool guideOpen = guide.IsOpen;
         guide.Close();
         Check("HIDEOUT-HUD", hud.DirectoryEntries.Count == HideoutCatalog.Props.Count(p => p.Station) && prompt.StartsWith("Mirror of Realities")
-            && target.DistanceTo(hideout.Data.Find("forge")!.Position) < 60f && guideOpen && !guide.IsOpen && hideout.Data.GuideSeen,
-            $"directory: {string.Join(", ", hud.DirectoryEntries)}; prompt '{prompt}' (paused={GetTree().Paused}, panels open={UI.PanelStack.HasOpen}, near={hideout.NearestStation()?.Def.Id}, player at {hideout.Player.GlobalPosition}, mirror {mirror}); walk-to target {target.DistanceTo(hideout.Data.Find("forge")!.Position):0} px from the forge; guide opened={guideOpen}");
-        hideout.Player.GetNode<NavigationAgent2D>("NavigationAgent2D").TargetPosition = hideout.Player.GlobalPosition;
+            && walking == "forge" && guideOpen && !guide.IsOpen && hideout.Data.GuideSeen,
+            $"directory: {string.Join(", ", hud.DirectoryEntries)}; prompt '{prompt}' (paused={GetTree().Paused}, panels open={UI.PanelStack.HasOpen}, near={hideout.NearestStation()?.Def.Id}, player at {hideout.Player.GlobalPosition}, mirror {mirror}); walking to '{walking}' after a click on the forge; guide opened={guideOpen}");
+        await HideoutWalkChecks(hideout);
 
         // Opening the inventory never paints HUD over it: it draws above the HUD, the
         // town directory fades and the menu bar slides out from under it.

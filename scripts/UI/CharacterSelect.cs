@@ -21,13 +21,44 @@ public partial class CharacterSelect : PanelContainer
     private LineEdit? _name;
     private int _confirmDelete = -1;
 
+    /// <summary>Set before adding: open on "New character" (from the co-op screen).</summary>
+    public bool StartInCreate { get; set; }
+
+    private bool _creating;
+
     private Profile? Profile => Core.Profile.Get(this);
 
     public override void _Ready()
     {
         CustomMinimumSize = new Vector2(860f, 0f);
         _body = UiTheme.VBox(this, 10);
-        ShowList();
+        if (StartInCreate)
+        {
+            ShowCreate();
+        }
+        else
+        {
+            ShowList();
+        }
+    }
+
+    /// <summary>Esc goes back one step, like every other menu.</summary>
+    public override void _Input(InputEvent e)
+    {
+        if (!IsVisibleInTree() || !e.IsActionPressed("ui_cancel"))
+        {
+            return;
+        }
+
+        GetViewport().SetInputAsHandled();
+        if (_creating && !StartInCreate)
+        {
+            ShowList();
+        }
+        else
+        {
+            Back?.Invoke();
+        }
     }
 
     private void Clear()
@@ -42,6 +73,8 @@ public partial class CharacterSelect : PanelContainer
     private void ShowList()
     {
         Clear();
+        _creating = false;
+        StartInCreate = false;
         _body.AddChild(UiTheme.Label("Choose your hero", 34, UiTheme.Gold, HorizontalAlignment.Center));
         Profile? profile = Profile;
         if (profile is null || !profile.HasCharacters)
@@ -50,12 +83,21 @@ public partial class CharacterSelect : PanelContainer
         }
         else
         {
+            // More than four rows would push the buttons off a 720p screen: scroll.
+            var scroll = new ScrollContainer
+            {
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+                CustomMinimumSize = new Vector2(0f, Mathf.Min(profile.Characters.Count, 4) * 101f),
+            };
+            _body.AddChild(scroll);
+            VBoxContainer list = UiTheme.VBox(scroll, 10);
+            list.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             for (int i = 0; i < profile.Characters.Count; i++)
             {
                 int index = i;
                 CharacterData c = profile.Characters[i];
                 var row = new PanelContainer();
-                _body.AddChild(row);
+                list.AddChild(row);
                 HBoxContainer h = UiTheme.HBox(row, 12);
                 h.AddChild(UiTheme.Portrait(c.AscendancyDef?.Sprite ?? c.Class.Sprite, 72f));
                 VBoxContainer info = UiTheme.VBox(h, 2);
@@ -64,17 +106,29 @@ public partial class CharacterSelect : PanelContainer
                 info.AddChild(UiTheme.Label($"Level {c.Level} {c.AscendancyDef?.Name ?? c.Class.Name}  ·  best tier {c.HighestTierCleared}  ·  {c.RealitiesCleared} realities  ·  {c.Deaths} deaths", 15, UiTheme.TextDim));
                 Button play = UiTheme.Button("Play", () => Play(index), 18, 110f);
                 h.AddChild(play);
-                h.AddChild(UiTheme.Button(_confirmDelete == index ? "Confirm?" : "Delete", () => Delete(index), 15, 110f));
+                Button delete = UiTheme.Button(_confirmDelete == index ? "Delete — sure?" : "Delete", () => Delete(index), 15, _confirmDelete == index ? 150f : 110f);
+                if (_confirmDelete == index)
+                {
+                    delete.AddThemeColorOverride("font_color", UiTheme.Life);
+                    delete.AddThemeColorOverride("font_focus_color", UiTheme.Life);
+                    delete.AddThemeColorOverride("font_hover_color", UiTheme.Life);
+                }
+
+                h.AddChild(delete);
                 if (index == profile.ActiveIndex)
                 {
                     play.CallDeferred(Control.MethodName.GrabFocus);
+                    // Keep the last-played row in view when the list scrolls.
+                    scroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, row);
                 }
             }
         }
 
         HBoxContainer buttons = UiTheme.HBox(_body, 12);
         buttons.Alignment = BoxContainer.AlignmentMode.Center;
-        Button create = UiTheme.Button("New character", ShowCreate, 18, 240f);
+        Button create = profile is null || !profile.HasCharacters
+            ? UiTheme.PrimaryButton("New character", ShowCreate, 18, 240f)
+            : UiTheme.Button("New character", ShowCreate, 18, 240f);
         buttons.AddChild(create);
         buttons.AddChild(UiTheme.Button("Back", () => Back?.Invoke(), 18, 160f));
         if (profile is null || !profile.HasCharacters)
@@ -120,11 +174,14 @@ public partial class CharacterSelect : PanelContainer
     public void ShowCreate()
     {
         Clear();
+        _creating = true;
         _body.AddChild(UiTheme.Label("New character", 34, UiTheme.Gold, HorizontalAlignment.Center));
         HBoxContainer nameRow = UiTheme.HBox(_body, 10);
         nameRow.AddChild(UiTheme.Label("Name", 18, UiTheme.Text));
         _name = new LineEdit { Text = _name?.Text ?? "", PlaceholderText = "Hero", MaxLength = 20, CustomMinimumSize = new Vector2(320f, 40f) };
+        _name.TextSubmitted += _ => Create();
         nameRow.AddChild(_name);
+        nameRow.AddChild(UiTheme.Label("Enter creates · Esc goes back", 14, UiTheme.TextDim));
 
         HBoxContainer cards = UiTheme.HBox(_body, 10);
         foreach (ClassDefinition cls in ClassCatalog.Classes)
@@ -155,14 +212,24 @@ public partial class CharacterSelect : PanelContainer
 
         HBoxContainer buttons = UiTheme.HBox(_body, 12);
         buttons.Alignment = BoxContainer.AlignmentMode.Center;
-        Button create = UiTheme.Button("Create & play", Create, 20, 260f);
+        Button create = UiTheme.PrimaryButton("Create & play", Create, 20, 260f);
         buttons.AddChild(create);
         if (Core.GameSettings.Get(this) is { AdminMode: true })
         {
             buttons.AddChild(UiTheme.Button($"Test character (lv {CharacterData.MaxLevel})", CreateTest, 16, 240f));
         }
 
-        buttons.AddChild(UiTheme.Button("Back", ShowList, 18, 160f));
+        buttons.AddChild(UiTheme.Button("Back", () =>
+        {
+            if (StartInCreate)
+            {
+                Back?.Invoke();
+            }
+            else
+            {
+                ShowList();
+            }
+        }, 18, 160f));
         _name.CallDeferred(Control.MethodName.GrabFocus);
     }
 

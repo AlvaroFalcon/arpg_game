@@ -67,6 +67,7 @@ public partial class HideoutHud : CanvasLayer
         BuildVitals();
         BuildPrompt();
         BuildBanner();
+        BuildBigMap();
     }
 
     private static StyleBoxFlat Glass(Color accent, int top = 2)
@@ -202,6 +203,7 @@ public partial class HideoutHud : CanvasLayer
         panel.OffsetRight = -14f;
         panel.OffsetTop = 14f;
         VBoxContainer column = UiTheme.VBox(panel, 2);
+        column.AddChild(new TownMap { Hideout = Hideout, Name = "Minimap", CustomMinimumSize = new Vector2(250f, 184f) });
         HBoxContainer head = UiTheme.HBox(column, 6);
         Label title = UiTheme.Label("TOWN", 13, new Color(0.65f, 0.8f, 1f));
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -216,6 +218,57 @@ public partial class HideoutHud : CanvasLayer
         }
 
         HudLayout.Register(panel, "town", "Town directory", avoid: HudAvoid.Hide);
+    }
+
+    // --- big map (M / Tab) -----------------------------------------------------------
+
+    private TownMap? _bigMap;
+
+    /// <summary>Whether the big town map is showing.</summary>
+    public bool BigMapOpen => _bigMap is { Visible: true };
+
+    private void BuildBigMap()
+    {
+        _bigMap = new TownMap { Hideout = Hideout, Big = true, Name = "BigMap", Visible = false };
+        _root.AddChild(_bigMap);
+        _bigMap.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+    }
+
+    public void ToggleBigMap()
+    {
+        if (_bigMap is not null && !Hideout.Editing)
+        {
+            _bigMap.Visible = !_bigMap.Visible;
+        }
+    }
+
+    public void CloseBigMap()
+    {
+        if (_bigMap is not null)
+        {
+            _bigMap.Visible = false;
+        }
+    }
+
+    /// <summary>M or Tab toggles the big map; Esc closes it before anything else.</summary>
+    public override void _Input(InputEvent e)
+    {
+        if (GetTree().Paused || Hideout.Editing || e.IsEcho())
+        {
+            return;
+        }
+
+        if (InputMap.HasAction(MapOverlay.Action) && e.IsActionPressed(MapOverlay.Action) && !PanelStack.HasOpen)
+        {
+            ToggleBigMap();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (BigMapOpen && e.IsActionPressed("ui_cancel"))
+        {
+            _bigMap!.Visible = false;
+            PanelStack.MarkClosedThisFrame();
+            GetViewport().SetInputAsHandled();
+        }
     }
 
     // --- vitals and skills (bottom centre, as in realities) ------------------------

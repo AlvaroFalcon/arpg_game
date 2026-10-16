@@ -67,6 +67,13 @@ public static class UiTheme
         theme.SetStylebox("slider", "HSlider", Box(new Color(0.16f, 0.14f, 0.22f), new Color(0.3f, 0.26f, 0.42f), 1, 3, 2));
         theme.SetStylebox("grabber_area", "HSlider", Box(PanelBorder, PanelBorder, 1, 3, 2));
         theme.SetStylebox("grabber_area_highlight", "HSlider", Box(Gold, Gold, 1, 3, 2));
+        // Text fields: the same dark glass as the panels, gold when focused
+        // (docs/design/menus.md -> "Look"); an error turns the border ember (FieldError).
+        theme.SetStylebox("normal", "LineEdit", Box(new Color(0.06f, 0.05f, 0.09f), new Color(0.3f, 0.26f, 0.42f), 2, 4, 10));
+        theme.SetStylebox("focus", "LineEdit", Box(new Color(0f, 0f, 0f, 0f), Gold, 2, 4, 10));
+        theme.SetStylebox("read_only", "LineEdit", Box(new Color(0.08f, 0.07f, 0.1f), new Color(0.2f, 0.2f, 0.25f), 2, 4, 10));
+        theme.SetColor("font_placeholder_color", "LineEdit", new Color(0.62f, 0.6f, 0.66f, 0.7f));
+        theme.SetColor("caret_color", "LineEdit", Gold);
         theme.SetStylebox("background", "ProgressBar", Box(new Color(0.05f, 0.04f, 0.07f, 0.9f), new Color(0.25f, 0.22f, 0.32f), 1, 2, 0));
         return theme;
     }
@@ -96,6 +103,44 @@ public static class UiTheme
             onPressed();
         };
         return button;
+    }
+
+    /// <summary>The one dominant action of a screen: warm fill, gold border
+    /// (docs/design/menus.md -> "Look" -> one primary action per screen).</summary>
+    public static Button PrimaryButton(string text, Action onPressed, int size = 20, float minWidth = 260f)
+    {
+        Button button = Button(text, onPressed, size, minWidth);
+        button.AddThemeStyleboxOverride("normal", Box(new Color(0.36f, 0.24f, 0.1f), Gold, 2));
+        button.AddThemeStyleboxOverride("hover", Box(new Color(0.48f, 0.32f, 0.12f), new Color(1f, 0.86f, 0.5f), 2));
+        button.AddThemeStyleboxOverride("pressed", Box(new Color(0.6f, 0.42f, 0.16f), new Color(1f, 0.86f, 0.5f), 2));
+        button.AddThemeStyleboxOverride("focus", Box(new Color(0f, 0f, 0f, 0f), new Color(1f, 0.92f, 0.65f), 3));
+        button.AddThemeColorOverride("font_color", new Color(1f, 0.93f, 0.78f));
+        button.AddThemeColorOverride("font_hover_color", Colors.White);
+        button.AddThemeColorOverride("font_focus_color", Colors.White);
+        return button;
+    }
+
+    /// <summary>A text field with a placeholder, themed (see Build).</summary>
+    public static LineEdit Field(string placeholder, float minWidth, int size = 18)
+    {
+        var field = new LineEdit { PlaceholderText = placeholder, CustomMinimumSize = new Vector2(minWidth, 42f) };
+        field.AddThemeFontSizeOverride("font_size", size);
+        return field;
+    }
+
+    /// <summary>Marks a field wrong (ember border) or clears it.</summary>
+    public static void FieldError(LineEdit field, bool wrong)
+    {
+        if (wrong)
+        {
+            field.AddThemeStyleboxOverride("normal", Box(new Color(0.12f, 0.05f, 0.04f), Ember, 2, 4, 10));
+            field.AddThemeStyleboxOverride("focus", Box(new Color(0f, 0f, 0f, 0f), Ember, 2, 4, 10));
+        }
+        else
+        {
+            field.RemoveThemeStyleboxOverride("normal");
+            field.RemoveThemeStyleboxOverride("focus");
+        }
     }
 
     public static ProgressBar Bar(Color fill, float height = 18f)

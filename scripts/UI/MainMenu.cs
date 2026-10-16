@@ -1,4 +1,5 @@
 #nullable enable
+using System.Linq;
 using Godot;
 using ArpgGame.Core;
 using ArpgGame.Run;
@@ -26,7 +27,7 @@ public partial class MainMenu : Node2D
 		var layer = new CanvasLayer { Layer = 5 };
 		AddChild(layer);
 		_menuRoot = UiTheme.FullRect(layer);
-		var shade = new ColorRect { Color = new Color(0.03f, 0.02f, 0.05f, 0.45f), MouseFilter = Control.MouseFilterEnum.Ignore };
+		var shade = new ColorRect { Color = new Color(0.03f, 0.02f, 0.05f, 0.55f), MouseFilter = Control.MouseFilterEnum.Ignore };
 		_menuRoot.AddChild(shade);
 		shade.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
 
@@ -123,6 +124,11 @@ public partial class MainMenu : Node2D
 			_menu.Visible = true;
 			((Button)_menu.GetChild(5)).CallDeferred(Control.MethodName.GrabFocus);
 		};
+		panel.CreateCharacter += () =>
+		{
+			panel.QueueFree();
+			OpenCharacters(create: true);
+		};
 	}
 
 	private Button AddButton(string text, System.Action action)
@@ -133,10 +139,12 @@ public partial class MainMenu : Node2D
 		return b;
 	}
 
-	private void OpenCharacters()
+	private void OpenCharacters() => OpenCharacters(false);
+
+	private void OpenCharacters(bool create)
 	{
 		_menu.Visible = false;
-		var select = new CharacterSelect();
+		var select = new CharacterSelect { StartInCreate = create };
 		_center.AddChild(select);
 		select.Back += () =>
 		{
@@ -151,6 +159,34 @@ public partial class MainMenu : Node2D
 
 	/// <summary>Capture tool hook.</summary>
 	public void OpenSettingsForCapture() => OpenSettings();
+
+	/// <summary>Capture tool hook: opens the co-op screen and returns it.</summary>
+	public CoopPanel OpenCoopForCapture()
+	{
+		OpenCoop();
+		return _center.GetChildren().OfType<CoopPanel>().Last();
+	}
+
+	/// <summary>Capture tool hook: a fresh co-op screen in place of the open one,
+	/// optionally driving another session (a second player in the same process).</summary>
+	public CoopPanel ReopenCoopForCapture(Net.NetSession? session = null)
+	{
+		foreach (CoopPanel old in _center.GetChildren().OfType<CoopPanel>())
+		{
+			_center.RemoveChild(old);
+			old.QueueFree();
+		}
+
+		if (session is null)
+		{
+			return OpenCoopForCapture();
+		}
+
+		_menu.Visible = false;
+		var panel = new CoopPanel { Session = session };
+		_center.AddChild(panel);
+		return panel;
+	}
 
 	private void OpenSettings()
 	{

@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : _only == "settings" ? SettingsScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "townmap" ? TownMapScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : _only == "settings" ? SettingsScript() : _only == "coop" ? CoopScript() : _only == "menus" ? MenusScript() : Script();
     }
 
     /// <summary>`--only=settings`: the settings panel's three tabs (docs/design/menus.md -> "Settings").</summary>
@@ -497,6 +497,35 @@ public partial class RunCapture : Node
 
     /// <summary>The hideout town: views of its quarters, an overview, Ysolde's
     /// shop and the three edit-mode tools (docs/design/hideout.md).</summary>
+    /// <summary>The town minimap and big map (M) during a station walk.</summary>
+    private async Task TownMapScript()
+    {
+        SetupDemoProfile();
+        GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
+        await Wait(1.2f);
+        var hideout = (Hideout)GetTree().CurrentScene;
+        hideout.GetNodeOrNull<TownGuidePanel>("TownGuide")?.Close();
+        hideout.Player.Health!.IgnoreDamage = true;
+        hideout.Player.GlobalPosition = World.HideoutTown.World(World.HideoutTown.SpawnCell);
+        await Wait(0.5f);
+        hideout.WalkTo("stash");
+        await Wait(1.2f);
+        await Snap("town-minimap-walk.png");
+        hideout.Hud.ToggleBigMap();
+        await Wait(0.4f);
+        await Snap("town-bigmap.png");
+        // Hovering a station shows what it does.
+        if (hideout.Hud.FindChild("BigMap", true, false) is TownMap big)
+        {
+            GetViewport().WarpMouse(big.GetGlobalRect().Position + big.MapPointOf(hideout.Data.Find("forge")!.Position));
+            await Wait(0.3f);
+            await Snap("town-bigmap-hover.png");
+        }
+
+        hideout.Hud.ToggleBigMap();
+        GetTree().Quit();
+    }
+
     private async Task TownScript()
     {
         SetupDemoProfile();

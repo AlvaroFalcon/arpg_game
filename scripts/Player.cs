@@ -273,6 +273,7 @@ public partial class Player : CharacterBody2D
     /// </summary>
     public void RequestPickup(Items.EquipmentItem item)
     {
+        AutoWalk = null;
         _pendingPickup = item;
         _navigationAgent.TargetPosition = item.GlobalPosition;
     }
@@ -320,6 +321,24 @@ public partial class Player : CharacterBody2D
         // Stop where we are rather than continuing to the item's exact centre.
         _navigationAgent.TargetPosition = GlobalPosition;
     }
+
+    /// <summary>
+    /// Steering from outside — the town's walks to a station (docs/design/hideout.md
+    /// -> "Walking to a station"): called every physics frame for the point to walk
+    /// toward, null when arrived (which ends the walk). Any deliberate movement —
+    /// WASD, a click, a dodge, an item pickup — or a panel opening ends it.
+    /// </summary>
+    public System.Func<Vector2?>? AutoWalk { get; private set; }
+
+    /// <summary>Starts an automatic walk, dropping any click-to-move destination.</summary>
+    public void StartAutoWalk(System.Func<Vector2?> steer)
+    {
+        CancelPendingPickup();
+        _navigationAgent.TargetPosition = GlobalPosition;
+        AutoWalk = steer;
+    }
+
+    public void StopAutoWalk() => AutoWalk = null;
 
     /// <summary>Range in which F looks for an item to walk to when none is in reach.</summary>
     public const float PickupKeyRange = 360f;
@@ -553,6 +572,8 @@ public partial class Player : CharacterBody2D
 
         if (!ControlsEnabled || Warded || (Health?.IsDead ?? false))
         {
+            // A panel opening ends an automatic walk rather than resuming it later.
+            AutoWalk = null;
             Velocity = Vector2.Zero;
             return;
         }
@@ -563,6 +584,7 @@ public partial class Player : CharacterBody2D
         if (Dodge is { IsDashing: true })
         {
             CancelPendingPickup();
+            AutoWalk = null;
             Velocity = Dodge.DashVelocity;
             MoveAndSlide();
             return;
@@ -571,7 +593,7 @@ public partial class Player : CharacterBody2D
         Vector2 wasdDir = Command is { } command
             ? command.Move.LimitLength(1f)
             : Input.GetVector("move_left", "move_right", "move_up", "move_down");
-        speed *= UpdateSprint((float)delta, wasdDir != Vector2.Zero || !_navigationAgent.IsNavigationFinished());
+        speed *= UpdateSprint((float)delta, wasdDir != Vector2.Zero || !_navigationAgent.IsNavigationFinished() || AutoWalk is not null);
         if (wasdDir != Vector2.Zero)
         {
             // WASD cancels a pending click-to-move destination outright instead of
@@ -585,6 +607,7 @@ public partial class Player : CharacterBody2D
             }
 
             CancelPendingPickup();
+            AutoWalk = null;
 
             LastMoveDir = wasdDir;
             Velocity = wasdDir * speed;
@@ -601,6 +624,7 @@ public partial class Player : CharacterBody2D
         if (pathFollow)
         {
             CancelPendingPickup();
+            AutoWalk = null;
             _navigationAgent.TargetPosition = GetGlobalMousePosition();
         }
 
@@ -608,6 +632,23 @@ public partial class Player : CharacterBody2D
         // proximity, not of pathing, so a queued pickup on something already within
         // reach must resolve even on a frame where the navigation map is not ready.
         TryCompletePendingPickup();
+
+        if (AutoWalk is { } steer)
+        {
+            if (steer() is { } toward)
+            {
+                LastMoveDir = GlobalPosition.DirectionTo(toward);
+                Velocity = LastMoveDir * speed;
+            }
+            else
+            {
+                AutoWalk = null;
+                Velocity = Vector2.Zero;
+            }
+
+            MoveAndSlide();
+            return;
+        }
 
         // Navigation map may not be active yet (e.g. first physics frame(s) after
         // the scene loads, before the NavigationRegion2D registers with the
