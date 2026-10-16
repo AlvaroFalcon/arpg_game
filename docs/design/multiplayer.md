@@ -112,6 +112,8 @@ It judges by its RESULT line, mirrored to `user://test_results/CoopSmokeTest.txt
 
 ## Performance (measured 2026-10-15)
 
+> **Superseded 2026-10-16:** see `performance.md` -> "Co-op". The "physics step" below is Godot's worst-step-per-second monitor. The host was actually stuck at 8 physics steps per frame, running at about 45 % speed, so snapshots went at about 9 Hz. After the auto-aim and targeting fixes, the real-time figures are about 65 KB/s per client (0.52 Mbit/s) and about 1.6 Mbit/s host upload.
+
 Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. All four processes share the CPU, so times are pessimistic. Wire bytes come from ENet's own counters.
 
 | Late wave (Rift clock 350 s) | 4 players |

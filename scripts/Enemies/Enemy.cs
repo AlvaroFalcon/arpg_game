@@ -108,6 +108,7 @@ public partial class Enemy : CharacterBody2D
     public static event System.Action<Enemy>? SplitSpawned;
 
     public const string DecoyGroup = "decoys";
+    private static readonly StringName DecoyGroupName = DecoyGroup;
 
     protected Node2D? Target { get; private set; }
 
@@ -517,12 +518,17 @@ public partial class Enemy : CharacterBody2D
     /// </summary>
     private Node2D? FindTarget(float dt)
     {
-        // Decoys (Ninja shadow clones) taunt anything nearby.
-        foreach (Node node in GetTree().GetNodesInGroup(DecoyGroup))
+        // Decoys (Ninja shadow clones) taunt anything nearby. HasGroup first: an
+        // empty group doesn't exist, and listing it allocated per monster per frame.
+        SceneTree tree = GetTree();
+        if (tree.HasGroup(DecoyGroupName))
         {
-            if (node is Node2D decoy && decoy.GlobalPosition.DistanceSquaredTo(GlobalPosition) < 420f * 420f)
+            foreach (Node node in tree.GetNodesInGroup(DecoyGroupName))
             {
-                return decoy;
+                if (node is Node2D decoy && decoy.GlobalPosition.DistanceSquaredTo(GlobalPosition) < 420f * 420f)
+                {
+                    return decoy;
+                }
             }
         }
 
@@ -534,7 +540,7 @@ public partial class Enemy : CharacterBody2D
         }
 
         _retarget = 0.4f + _rng.Randf() * 0.3f;
-        return CombatQuery.NearestTargetablePlayer(GetTree(), GlobalPosition);
+        return CombatQuery.NearestTargetablePlayer(tree, GlobalPosition);
     }
 
     protected virtual void UpdateVisual(float delta)

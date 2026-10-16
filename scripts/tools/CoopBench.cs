@@ -113,14 +113,29 @@ public partial class CoopBenchHost : CoopTestDriver
         var enemies = new List<double>();
         var pickups = new List<double>();
         var nodes = new List<double>();
+        // TimePhysicsProcess/TimeProcess are the WORST step of the last second
+        // (Godot updates them once a second), so they read as per-second maxima.
+        // The probes time every physics step's scripts and every frame's wall time.
+        var probe = StepProbe.Install(this);
+        var wallMs = new List<double>();
+        var stepsPerFrame = new List<double>();
+        GcSample gc0 = GcSample.Now();
         NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
         (long snap0, long ev0) = Payload(host, session);
+        ulong lastFrame = Time.GetTicksUsec();
+        ulong lastSteps = Engine.GetPhysicsFrames();
+        probe.Recording = true;
         for (int s = 0; s < Measure; s++)
         {
             ulong until = Time.GetTicksMsec() + 1000;
             while (Time.GetTicksMsec() < until)
             {
                 await Frames(1);
+                ulong nowUs = Time.GetTicksUsec();
+                wallMs.Add((nowUs - lastFrame) / 1000.0);
+                lastFrame = nowUs;
+                stepsPerFrame.Add(Engine.GetPhysicsFrames() - lastSteps);
+                lastSteps = Engine.GetPhysicsFrames();
                 physicsMs.Add(Performance.GetMonitor(Performance.Monitor.TimePhysicsProcess) * 1000.0);
                 frameMs.Add(Performance.GetMonitor(Performance.Monitor.TimeProcess) * 1000.0);
                 stepUs.Add(host.LastStepMicros);
@@ -139,19 +154,30 @@ public partial class CoopBenchHost : CoopTestDriver
         Log($"steady ({Measure} s, {enemies.Average():0} monsters alive, max {enemies.Max():0}):");
         Log($"  wire upload per client: {CoopBench.Stats(kbPerClient, " KB/s")}");
         Log(string.Create(CultureInfo.InvariantCulture, $"  payload per client: snapshots {(snap1 - snap0) / 1024.0 / Clients / Measure:0.0} KB/s, events {(ev1 - ev0) / 1024.0 / Clients / Measure:0.0} KB/s"));
-        Log($"  host physics step: {CoopBench.Stats(physicsMs, " ms")}");
-        Log($"  host process step: {CoopBench.Stats(frameMs, " ms")}");
+        probe.Recording = false;
+        Log($"  host physics step (monitor = worst step of each second): {CoopBench.Stats(physicsMs, " ms")}");
+        Log($"  host process step (monitor = worst of each second): {CoopBench.Stats(frameMs, " ms")}");
+        Log($"  host frame wall time: {CoopBench.Stats(wallMs, " ms")}; physics steps per frame avg {stepsPerFrame.Average():0.00}");
+        Log($"  host physics scripts per step (probe): {CoopBench.Stats(probe.ScriptMs, " ms")}");
         Log($"  host replication (RiftHost) step: {CoopBench.Stats(stepUs.Select(u => u / 1000.0).ToList(), " ms")}");
+        Log($"  host managed {GcSample.Now().Since(gc0, Measure)}");
 
         // The spike: everything on the host's screen dies at once.
         var spikePhys = new List<double>();
         var spikeStep = new List<double>();
+        var spikeWall = new List<double>();
+        probe.ScriptMs.Clear();
+        probe.Recording = true;
         NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
+        ulong spikeLast = Time.GetTicksUsec();
         int killed = run.State.Nuke(run.Player);
         ulong spikeUntil = Time.GetTicksMsec() + 2000;
         while (Time.GetTicksMsec() < spikeUntil)
         {
             await Frames(1);
+            ulong nowUs = Time.GetTicksUsec();
+            spikeWall.Add((nowUs - spikeLast) / 1000.0);
+            spikeLast = nowUs;
             spikePhys.Add(Performance.GetMonitor(Performance.Monitor.TimePhysicsProcess) * 1000.0);
             spikeStep.Add(host.LastStepMicros / 1000.0);
         }
@@ -159,7 +185,9 @@ public partial class CoopBenchHost : CoopTestDriver
         (long spikeSent, _) = NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
         Log($"Cataclysm: {killed} killed at once");
         Log(string.Create(CultureInfo.InvariantCulture, $"  next 2 s wire upload per client: {spikeSent / 1024.0 / Clients / 2.0:0.0} KB/s"));
-        Log($"  host physics step: {CoopBench.Stats(spikePhys, " ms")}; replication step: {CoopBench.Stats(spikeStep, " ms")}");
+        probe.Recording = false;
+        Log($"  host physics step (monitor): {CoopBench.Stats(spikePhys, " ms")}; replication step: {CoopBench.Stats(spikeStep, " ms")}");
+        Log($"  host frame wall time: {CoopBench.Stats(spikeWall, " ms")}; physics scripts per step: {CoopBench.Stats(probe.ScriptMs, " ms")}");
 
         await Seconds(4f);
         foreach (string f in DirAccess.GetFilesAt("user://bench").Where(f => f.StartsWith("coop_bench_client_")).OrderBy(f => f))
@@ -221,6 +249,7 @@ public partial class CoopBenchClient : CoopTestDriver
         ulong end = Time.GetTicksMsec() + (ulong)(Measure * 1000 + 2500);
         ulong last = Time.GetTicksUsec();
         ulong nextSecond = Time.GetTicksMsec() + 1000;
+        GcSample gc0 = GcSample.Now();
         while (Time.GetTicksMsec() < end && !Run!.State.Ended)
         {
             angle += 0.01f;
@@ -243,5 +272,47 @@ public partial class CoopBenchClient : CoopTestDriver
         Log($"  frame time: {CoopBench.Stats(frames, " ms")}");
         Log($"  replica update (_Process): {CoopBench.Stats(replicaUs.Select(u => u / 1000.0).ToList(), " ms")}");
         Log($"  wire download: {CoopBench.Stats(received, " KB/s")}");
+        Log($"  managed {GcSample.Now().Since(gc0, Measure + 2.5f)}");
     }
+}
+
+/// <summary>Times the scripts of every physics step: one node runs first, one last.</summary>
+public partial class StepProbe : Node
+{
+    public bool Recording { get; set; }
+    public readonly List<double> ScriptMs = new();
+    private StepProbe? _end;
+    private ulong _start;
+
+    public static StepProbe Install(Node at)
+    {
+        var begin = new StepProbe { Name = "StepProbeBegin", ProcessPhysicsPriority = int.MinValue };
+        var end = new StepProbe { Name = "StepProbeEnd", ProcessPhysicsPriority = int.MaxValue };
+        begin._end = end;
+        end._end = begin;
+        at.GetTree().Root.AddChild(begin);
+        at.GetTree().Root.AddChild(end);
+        return end;
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        if (ProcessPhysicsPriority == int.MinValue)
+        {
+            _start = Time.GetTicksUsec();
+        }
+        else if (Recording && _end is not null)
+        {
+            ScriptMs.Add((Time.GetTicksUsec() - _end._start) / 1000.0);
+        }
+    }
+}
+
+/// <summary>Managed allocation and GC counts between two moments.</summary>
+public readonly record struct GcSample(long Allocated, int Gen0, int Gen1, int Gen2)
+{
+    public static GcSample Now() => new(GC.GetTotalAllocatedBytes(false), GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2));
+
+    public string Since(GcSample before, float seconds) => string.Create(CultureInfo.InvariantCulture,
+        $"allocations: {(Allocated - before.Allocated) / 1024.0 / seconds:0} KB/s; GCs gen0 {Gen0 - before.Gen0}, gen1 {Gen1 - before.Gen1}, gen2 {Gen2 - before.Gen2}");
 }

@@ -226,12 +226,11 @@ public partial class PlayerSkillInput : Node
 
     private void SurvivalCast()
     {
-        Vector2 target = AutoAimTarget()?.GlobalPosition ?? (_caster is Player p ? p.AimPoint : _caster.GetGlobalMousePosition());
-        Vector2 aim = _caster.GlobalPosition.DirectionTo(target);
-        if (aim == Vector2.Zero)
-        {
-            aim = Vector2.Right;
-        }
+        // The target is only needed when a skill fires: looking it up every frame
+        // (a scan of every monster, per player) was the host's biggest cost in co-op.
+        Vector2 target = Vector2.Zero;
+        Vector2 aim = Vector2.Zero;
+        bool aimed = false;
 
         float dt = (float)GetPhysicsProcessDeltaTime();
         int index = 0;
@@ -252,6 +251,17 @@ public partial class PlayerSkillInput : Node
 
             index++;
             left -= dt;
+            if (left <= 0f && !aimed)
+            {
+                aimed = true;
+                target = AutoAimTarget()?.GlobalPosition ?? (_caster is Player p ? p.AimPoint : _caster.GetGlobalMousePosition());
+                aim = _caster.GlobalPosition.DirectionTo(target);
+                if (aim == Vector2.Zero)
+                {
+                    aim = Vector2.Right;
+                }
+            }
+
             if (left <= 0f && _skillUser.TryCast(slot, aim, target) is null)
             {
                 left = interval;

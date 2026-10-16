@@ -115,14 +115,33 @@ public partial class TargetFrame : Control
         Vector2 mouse = Player.GetGlobalMousePosition();
         Enemy? under = null;
         float best = 40f;
-        IEnumerable<Enemy> enemies = GetTree().GetNodesInGroup(CombatQuery.EnemyGroup).OfType<Enemy>().Where(e => Alive(e));
-        foreach (Enemy e in enemies)
+        // One pass, no LINQ: this runs every frame over every monster.
+        Vector2 from = Player.GlobalPosition;
+        Enemy? rare = null;
+        float rareBest = RareRange;
+        foreach (Node node in GetTree().GetNodesInGroup(EnemyGroupName))
         {
-            float d = e.GlobalPosition.DistanceTo(mouse) - 10f * e.Scale.X;
+            if (node is not Enemy e || !Alive(e))
+            {
+                continue;
+            }
+
+            Vector2 at = e.GlobalPosition;
+            float d = at.DistanceTo(mouse) - 10f * e.Scale.X;
             if (d < best)
             {
                 best = d;
                 under = e;
+            }
+
+            if (e.Rarity >= MonsterRarity.Rare && !e.Dormant)
+            {
+                float r = at.DistanceTo(from);
+                if (r < rareBest)
+                {
+                    rareBest = r;
+                    rare = e;
+                }
             }
         }
 
@@ -142,11 +161,10 @@ public partial class TargetFrame : Control
         }
 
         // Otherwise the nearest awake rare or unique.
-        return enemies
-            .Where(e => e.Rarity >= MonsterRarity.Rare && !e.Dormant && e.GlobalPosition.DistanceTo(Player.GlobalPosition) < RareRange)
-            .OrderBy(e => e.GlobalPosition.DistanceTo(Player.GlobalPosition))
-            .FirstOrDefault();
+        return rare;
     }
+
+    private static readonly StringName EnemyGroupName = CombatQuery.EnemyGroup;
 
     // --- drawing ---------------------------------------------------------------------
 

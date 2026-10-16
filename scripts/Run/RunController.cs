@@ -265,7 +265,17 @@ public partial class RunController : Node2D
                 continue;
             }
 
-            Characters.CharacterData? character = Profile.DeserializeCharacter(member.Character);
+            // A character that can't be read still joins, with a fresh build (friends-only:
+            // characters are trusted, but malformed data must not crash the host).
+            Characters.CharacterData? character = null;
+            try
+            {
+                character = Profile.DeserializeCharacter(member.Character);
+            }
+            catch (System.Exception e)
+            {
+                GD.PushWarning($"Co-op: could not read {member.Name}'s character: {e.Message}");
+            }
             var p = scene.Instantiate<Player>();
             p.Name = $"Player_{member.PeerId}";
             p.IsLocal = false;

@@ -222,9 +222,25 @@ public partial class NetSession : Node
 
     // --- engine callbacks ----------------------------------------------------------
 
+    /// <summary>Seconds a newcomer has to send its hello before the host drops it
+    /// (a peer that never says hello would hold a party slot).</summary>
+    public const double HelloTimeout = 10.0;
+
     private void OnPeerConnected(long id)
     {
         // The host waits for the newcomer's hello (RpcHello) before listing them.
+        if (!IsHost)
+        {
+            return;
+        }
+
+        GetTree().CreateTimer(HelloTimeout).Timeout += () =>
+        {
+            if (IsInstanceValid(this) && IsHost && Member(id) is null)
+            {
+                Kick(id);
+            }
+        };
     }
 
     private void OnPeerDisconnected(long id)
