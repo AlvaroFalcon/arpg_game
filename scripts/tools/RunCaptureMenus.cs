@@ -41,6 +41,18 @@ public partial class RunCapture
         await Wait(0.3f);
         await Snap("coop-join-errors.png");
 
+        // A router that doesn't answer UPnP: the local address is labelled as local
+        // only and the public IP lookup is offered.
+        NetSession.GatewayFactory = () => new NoGateway();
+        panel.PressHost();
+        await WaitUntil(() => session.Ports.State == PortMapper.MapState.Failed, 4f);
+        await Wait(0.3f);
+        await Snap("coop-host-lobby-no-router.png");
+        session.Leave();
+        NetSession.GatewayFactory = () => new Tests.FakeGateway();
+        panel = menu.ReopenCoopForCapture();
+        await Wait(0.3f);
+
         // Host; a friend joins in-process: two filled slots, two free.
         panel.PressHost();
         await WaitUntil(() => session.Ports.State == PortMapper.MapState.Open, 4f);

@@ -78,6 +78,12 @@ public partial class CoopPanel : PanelContainer
     /// <summary>What the host's "Copy invite" puts on the clipboard.</summary>
     public string InviteText { get; private set; } = "";
 
+    /// <summary>The line under the host's address saying what kind of address it is (tests).</summary>
+    public string AddressKind { get; private set; } = "";
+
+    /// <summary>Whether the host lobby offers "Find my public IP" (tests).</summary>
+    public bool PublicIpOffered { get; private set; }
+
     // Kept across openings of the screen (a retry shouldn't make you type again).
     private static string _lastAddress = "";
     private static string _lastCode = "";
@@ -88,6 +94,16 @@ public partial class CoopPanel : PanelContainer
     private Label _notice = null!;
     private Button _back = null!;
     private string _signature = "";
+
+    /// <summary>The host's public IP, looked up on request when the router didn't
+    /// open the port (UPnP can't tell then); "" until asked.</summary>
+    private string _publicIp = "";
+    private string _publicIpState = "";
+    private HttpRequest? _ipLookup;
+
+    /// <summary>Where "Find my public IP" asks. Only contacted when the host presses
+    /// the button; it sees nothing but the request (docs/design/multiplayer.md -> "Security").</summary>
+    public const string PublicIpService = "https://api.ipify.org";
     private bool _attempted;
     private bool _lastWasHost;
     private readonly List<string> _slotTexts = new();
@@ -382,7 +398,7 @@ public partial class CoopPanel : PanelContainer
 
         string lobby = view == View.Lobby
             ? string.Join("|", _session.Members.Select(m => $"{m.PeerId}:{m.Name}:{m.Level}:{m.ClassName}"))
-              + $"#{_session.Code}#{_session.Ports.State}#{_session.Ports.Message}#{_session.Ports.ExternalAddress}#{_session.SecurityLog.Count}#{_session.InRun}"
+              + $"#{_session.Code}#{_session.Ports.State}#{_session.Ports.Message}#{_session.Ports.ExternalAddress}#{_session.SecurityLog.Count}#{_session.InRun}#{_publicIp}#{_publicIpState}"
             : "";
         string connecting = view == View.Connecting ? _session.Phase.ToString() : "";
         string failed = view == View.Failed ? $"{_session.LastEnd}:{_session.Status}" : "";
@@ -747,12 +763,13 @@ public partial class CoopPanel : PanelContainer
 
         int port = s.Port;
         string[] local = PortMapper.LocalAddresses();
-        (string address, string kind) = PrimaryAddress(s, local, port);
+        (string address, string kind, Color kindColour) = PrimaryAddress(s, local, port);
         string code = JoinCode.Format(s.Code);
         InviteText = NetTransport.Invite(address, s.Code);
+        AddressKind = kind;
 
         Value(invite, "Address", address, 24, UiTheme.Text, ("Copy", () => Copy(address, "Address copied.")));
-        invite.AddChild(UiTheme.Label(kind, 13, UiTheme.TextDim));
+        invite.AddChild(Wrapped(kind, 13, kindColour, 440f));
         Value(invite, "Join code", code, 34, UiTheme.Gold, ("Copy", () => Copy(code, "Join code copied.")), ("New code", () => _session?.NewCode()));
 
         Button copyInvite = UiTheme.PrimaryButton("Copy invite (address + code)", () => Copy(InviteText, "Invite copied — paste it to your friends; their address field fills both."), 18, 440f);
@@ -768,6 +785,19 @@ public partial class CoopPanel : PanelContainer
         };
         invite.AddChild(Wrapped(routerText, 13, routerColour, 440f));
 
+        // Without UPnP nobody here knows the public address: offer to look it up
+        // (on request only), for hosts who forward the port by hand.
+        bool needsPublic = ports.State is not (PortMapper.MapState.Open or PortMapper.MapState.Working) && !local.Any(IsVpn);
+        PublicIpOffered = needsPublic && _publicIp.Length == 0;
+        if (PublicIpOffered)
+        {
+            HBoxContainer row = UiTheme.HBox(invite, 10);
+            row.AddChild(UiTheme.Button(_publicIpState == "looking" ? "Looking up…" : "Find my public IP", LookUpPublicIp, 15, 200f));
+            row.AddChild(Wrapped(_publicIpState is "" or "looking"
+                ? "For friends on the internet once the port is forwarded (asks api.ipify.org)."
+                : _publicIpState, 12, _publicIpState is "" or "looking" ? UiTheme.TextDim : UiTheme.Ember, 230f));
+        }
+
         IEnumerable<string> others = local.Select(a => $"{a}:{port}").Where(a => a != address).Take(3);
         foreach (string other in others)
         {
@@ -776,32 +806,68 @@ public partial class CoopPanel : PanelContainer
         }
     }
 
-    /// <summary>The address to put in the invite: the router's public one when
-    /// UPnP opened the port, else a VPN address, else this PC on the LAN.</summary>
-    private static (string Address, string Kind) PrimaryAddress(NetSession s, string[] local, int port)
+    /// <summary>
+    /// The address for the invite, best first: the router's public one when UPnP
+    /// opened the port; a VPN address; the public IP the host looked up (works
+    /// once the port is forwarded); else this PC on the local network — which is
+    /// labelled as such, since it is useless to friends elsewhere (owner report:
+    /// the LAN address read like the address to send).
+    /// </summary>
+    private (string Address, string Kind, Color Colour) PrimaryAddress(NetSession s, string[] local, int port)
     {
         if (s.Ports.State == PortMapper.MapState.Open && s.Ports.ExternalAddress.Length > 0)
         {
-            return ($"{s.Ports.ExternalAddress}:{port}", "Internet address — works for friends anywhere.");
+            return ($"{s.Ports.ExternalAddress}:{port}", "Internet address — works for friends anywhere.", UiTheme.Experience);
         }
 
         string? vpn = local.FirstOrDefault(IsVpn);
         if (vpn is not null)
         {
-            return ($"{vpn}:{port}", "VPN address — friends need the same VPN running (Tailscale, Radmin VPN, ZeroTier).");
+            return ($"{vpn}:{port}", "VPN address — friends need the same VPN running (Tailscale, Radmin VPN, ZeroTier).", UiTheme.TextDim);
+        }
+
+        string lan = local.Length > 0 ? local[0] : "this PC";
+        if (_publicIp.Length > 0)
+        {
+            return ($"{_publicIp}:{port}", $"Your public IP. Friends on the internet reach it only once UDP {port} is forwarded in your router to this PC ({lan}).", UiTheme.Ember);
         }
 
         if (local.Length > 0)
         {
-            return ($"{local[0]}:{port}", "Same network only (your Wi-Fi). For the internet, see the line below.");
+            return ($"{lan}:{port}", "Local network only — friends on the same Wi-Fi. This is not your internet address: for friends elsewhere, see below.", UiTheme.Ember);
         }
 
-        return ($"127.0.0.1:{port}", "This PC only.");
+        return ($"127.0.0.1:{port}", "This PC only.", UiTheme.TextDim);
+    }
+
+    /// <summary>Asks <see cref="PublicIpService"/> for this connection's public IP (host's button).</summary>
+    private void LookUpPublicIp()
+    {
+        if (_publicIpState == "looking")
+        {
+            return;
+        }
+
+        _ipLookup?.QueueFree();
+        _ipLookup = new HttpRequest { Timeout = 8.0 };
+        AddChild(_ipLookup);
+        _ipLookup.RequestCompleted += (result, code, _, body) =>
+        {
+            string text = System.Text.Encoding.ASCII.GetString(body).Trim();
+            bool ok = result == (long)HttpRequest.Result.Success && code == 200
+                && System.Net.IPAddress.TryParse(text, out System.Net.IPAddress? ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork;
+            _publicIp = ok ? text : "";
+            _publicIpState = ok ? "" : "Couldn't look it up — search \"what is my IP\" in a browser.";
+            Refresh();
+        };
+        _publicIpState = _ipLookup.Request(PublicIpService) == Error.Ok ? "looking" : "Couldn't look it up — search \"what is my IP\" in a browser.";
+        Refresh();
     }
 
     private static bool IsVpn(string address) => address.StartsWith("100.") || address.StartsWith("26.") || address.StartsWith("25.");
 
-    private static string Kind(string address) => IsVpn(address) ? "VPN" : "same network";
+    private static string Kind(string address) =>
+        IsVpn(address) ? "VPN" : address.StartsWith("192.168.") ? "same Wi-Fi / LAN" : "local network or VPN";
 
     private Control Slot(LobbyMember? member, NetSession s)
     {
