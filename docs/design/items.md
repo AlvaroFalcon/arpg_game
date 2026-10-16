@@ -285,6 +285,26 @@ having done nothing. It resolves on *proximity* rather than on "navigation
 finished", since the path ends at the item's centre and reach is satisfied well
 before that.
 
+#### F picks up **[IMPLEMENTED 2026-10-16]**
+
+Owner request: **F** picks up the nearest item on the ground, as if it had been
+clicked. If it's in reach it goes straight to the bag; otherwise the character
+walks to it (within 360px, about a screen's half-height), and the same
+cancel-on-movement rule applies. **Holding F keeps going**, one item every 0.12 s,
+so a pile empties without mashing the key. Items the bag can't take are skipped
+while others fit. When nothing fits, F tries the nearest item anyway (every
+0.6 s), so the "inventory full" message explains why nothing happened.
+
+Gems, orbs, shards and gold are unaffected: they still fly to you on their own.
+Hidden (filtered) items are ignored, like they are for clicks. Code:
+`Player.PollPickupKey` / `NearestGroundItem`, and `EquipmentItem.PickUpOrWalkTo`
+(shared with the click).
+
+Considered: E, which is already interact (Mirror, stash, portal) and would fight
+with them when loot lands next to the portal; and a "pick up everything in
+reach" press, which takes trash too, whereas holding F leaves the choice to the
+player.
+
 
 #### How this interacts with filters
 

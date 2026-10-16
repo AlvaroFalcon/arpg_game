@@ -76,6 +76,8 @@ public partial class TargetFrame : Control
         QueueRedraw();
     }
 
+    public override void _ExitTree() => GameCursor.SetAttack(this, false);
+
     public override void _Process(double delta)
     {
         float dt = (float)delta;
@@ -101,14 +103,16 @@ public partial class TargetFrame : Control
 
     private Enemy? PickTarget(float dt)
     {
-        if (Boss() is { } boss && Alive(boss))
-        {
-            return boss;
-        }
-
         if (!IsInstanceValid(Player))
         {
+            GameCursor.SetAttack(this, false);
             return null;
+        }
+
+        if (Boss() is { } boss && Alive(boss))
+        {
+            GameCursor.SetAttack(this, boss.GlobalPosition.DistanceTo(Player.GetGlobalMousePosition()) < 40f * boss.Scale.X);
+            return boss;
         }
 
         // The monster under the mouse, kept a moment after the mouse moves on.
@@ -145,6 +149,7 @@ public partial class TargetFrame : Control
             }
         }
 
+        GameCursor.SetAttack(this, under is not null);
         if (under is not null)
         {
             _hovered = under;

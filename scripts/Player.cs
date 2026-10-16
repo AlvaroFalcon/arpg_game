@@ -321,6 +321,65 @@ public partial class Player : CharacterBody2D
         _navigationAgent.TargetPosition = GlobalPosition;
     }
 
+    /// <summary>Range in which F looks for an item to walk to when none is in reach.</summary>
+    public const float PickupKeyRange = 360f;
+
+    private const float PickupKeyRepeat = 0.12f;
+    private float _pickupKeyCooldown;
+
+    /// <summary>
+    /// docs/design/items.md -> "F picks up": the nearest item on the ground is
+    /// picked up as if clicked — in reach it goes straight to the bag, otherwise
+    /// the character walks to it (within <see cref="PickupKeyRange"/>). Holding F
+    /// keeps going, one item every <see cref="PickupKeyRepeat"/> s, so a pile
+    /// empties without mashing. Items the bag can't take are skipped while others
+    /// fit; when nothing fits, F tries the nearest anyway so the "inventory full"
+    /// message explains why nothing happened.
+    /// </summary>
+    private void PollPickupKey(float dt)
+    {
+        _pickupKeyCooldown -= dt;
+        if (!IsLocal || Command is not null || _pickupKeyCooldown > 0f || !Input.IsActionPressed("pickup"))
+        {
+            return;
+        }
+
+        if (NearestGroundItem(mustFit: true) is { } item)
+        {
+            _pickupKeyCooldown = PickupKeyRepeat;
+            item.PickUpOrWalkTo(this);
+        }
+        else if (NearestGroundItem(mustFit: false) is { } full)
+        {
+            _pickupKeyCooldown = 0.6f;
+            full.PickUpOrWalkTo(this);
+        }
+    }
+
+    /// <summary>The closest visible item on the ground (that fits the bag, if
+    /// <paramref name="mustFit"/>) within <see cref="PickupKeyRange"/>, or null.</summary>
+    public Items.EquipmentItem? NearestGroundItem(bool mustFit)
+    {
+        Items.EquipmentItem? best = null;
+        float bestDistance = PickupKeyRange;
+        foreach (Node node in GetTree().GetNodesInGroup(Items.EquipmentItem.GroundGroup))
+        {
+            if (node is not Items.EquipmentItem item || !item.IsVisibleInTree() || (mustFit && !Inventory.TryFindFirstFit(item, out _)))
+            {
+                continue;
+            }
+
+            float d = item.GlobalPosition.DistanceTo(GlobalPosition);
+            if (d < bestDistance)
+            {
+                bestDistance = d;
+                best = item;
+            }
+        }
+
+        return best;
+    }
+
     private void OnDamaged(float amount)
     {
         if (amount < 0.5f)
@@ -346,7 +405,7 @@ public partial class Player : CharacterBody2D
     private string _facing = "";
 
     /// <summary>
-    /// Faces where the character is going, or where it aims when standing still.
+    /// Faces where the character aims (the mouse, or the command's aim point).
     /// Sprites without directional views just flip left/right. A little
     /// hysteresis keeps diagonals from flickering between the side and the
     /// front/back views.
@@ -382,7 +441,10 @@ public partial class Player : CharacterBody2D
         }
 
         bool moving = Velocity.LengthSquared() > 25f;
-        UpdateFacing(moving ? Velocity : Puppet ? Vector2.Zero : AimPoint - GlobalPosition);
+        // Faces the cursor while walking too (owner feedback); a dash faces where it
+        // goes, and a co-op puppet (no aim replicated) faces where it moves.
+        bool facesMotion = Puppet || (Dodge?.IsDashing ?? false);
+        UpdateFacing(facesMotion ? (moving ? Velocity : Vector2.Zero) : AimPoint - GlobalPosition);
         string anim = (moving ? "walk" : "idle") + _facing;
         if (_sprite.SpriteFrames?.HasAnimation(anim) != true)
         {
@@ -494,6 +556,8 @@ public partial class Player : CharacterBody2D
             Velocity = Vector2.Zero;
             return;
         }
+
+        PollPickupKey((float)delta);
 
         // A dash owns movement for its whole duration (docs/design/dodge.md).
         if (Dodge is { IsDashing: true })
