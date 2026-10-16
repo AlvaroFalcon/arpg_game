@@ -138,6 +138,7 @@ public partial class GroundLabelPool : CanvasLayer
         slot.Label.MouseFilter = onClicked is null && onHoverChanged is null
             ? Control.MouseFilterEnum.Ignore
             : Control.MouseFilterEnum.Stop;
+        slot.Label.MouseDefaultCursorShape = onClicked is null ? Control.CursorShape.Arrow : UI.GameCursor.ItemShape;
 
         return _slots.IndexOf(slot);
     }

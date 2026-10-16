@@ -84,6 +84,7 @@ public partial class GameSettings : Node
         EnsureBus(SfxBus);
         Load();
         ApplyAll();
+        AddChild(new UI.GameCursor { Name = "GameCursor" });
     }
 
     private static void EnsureBus(string name)

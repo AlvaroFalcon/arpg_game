@@ -64,6 +64,7 @@ game, joins the panel stack, Escape or the button closes):
 | WASD | move (Shift sprint, Space dodge, Ctrl force-move) |
 | LMB, RMB, 1, 2, 3, 4 | the six loadout skills, aimed at the cursor (realities, hideout) |
 | E | interact: Mirror, Altar, Stash, the exit portal after a boss |
+| F | pick up the nearest item (hold to keep picking; walks to it if out of reach) |
 | I / C / K / P | inventory, character sheet, skills, passive tree |
 | Esc | close the top panel, else pause |
 
@@ -149,6 +150,32 @@ before leaving. Saved to `user://profile.json` on every capture: items are store
 as base id + rarity + item level + name + rolled base stats + affixes (id, tier,
 value) and rebuilt with `EquipmentItem.Restore` — nothing is re-rolled on load. The
 run build and run-only bonuses are stripped before capture.
+
+## Cursor **[IMPLEMENTED 2026-10-16]**
+
+The game draws its own cursors, pixel art from `tools/art/sprites/cursors.ts`
+in the bronze-and-gold of the UI (`UI/GameCursor.cs`, under the GameSettings
+autoload):
+
+- **Arrow**: the default; a bronze gauntlet arrow with a garnet set in it.
+- **Hover arrow**: the same arrow, white-hot with a blue gem, over every button
+  (any `BaseButton` added to the tree gets the shape automatically).
+- **Sword**: over a monster, driven by the target frame's "monster under the
+  mouse" check that already ran every frame (bosses included).
+- **Gauntlet hand**: over an item on the ground, its sprite or its ground label.
+  The hand wins over the sword, because an item lying among monsters is what a
+  click acts on.
+
+They are hardware cursors (`Input.SetCustomMouseCursor`): no per-frame cost and
+no lag behind the mouse, which a sprite drawn by the game would have. The art is
+tiny (13–16 px) and scaled up with nearest filtering to suit the window: 2× up to
+1080p, 3× at 1440p and 4× at 4K, re-applied when the window is resized. Custom
+cursors are mapped onto Godot shapes the UI doesn't otherwise use (Cross for the
+sword, Help for the hand). Headless runs skip all of this.
+
+Rejected: a software cursor (a sprite following the mouse), which lags a frame
+behind and disappears while the game hitches; a crosshair for aiming, since
+ARPGs keep a pointer and the target frame and telegraphs already show aim.
 
 ## Look
 

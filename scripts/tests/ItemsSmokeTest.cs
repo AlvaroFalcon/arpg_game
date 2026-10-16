@@ -385,9 +385,18 @@ public partial class ItemsSmokeTest : Node2D
             "a cancelled pickup must stay cancelled even once the player is standing on the item — " +
             "being yanked back to something you forgot about is worse than the click having done nothing");
 
+        // F picks up the nearest item (docs/design/items.md -> "F picks up"):
+        // it must find this one when standing next to it, and ignore it from afar.
+        _player.GlobalPosition = itemPos + new Vector2(Player.PickupKeyRange + 200f, 0f);
+        bool fIgnoresFar = !ReferenceEquals(_player.NearestGroundItem(mustFit: false), _equipmentForClick);
+        _player.GlobalPosition = itemPos + new Vector2(30f, 0f);
+        bool fFindsNear = ReferenceEquals(_player.NearestGroundItem(mustFit: true), _equipmentForClick);
+        Check("F-KEY-FINDS-NEAREST-ITEM", fIgnoresFar && fFindsNear,
+            $"F must target the item beside the player (found={fFindsNear}) and nothing beyond {Player.PickupKeyRange}px (ignored={fIgnoresFar})");
+
         _player.GlobalPosition = playerHome;
 
-        var tooltip = GetNode<UI.ItemTooltipControl>("ItemTooltip");
+        var tooltip =GetNode<UI.ItemTooltipControl>("ItemTooltip");
         tooltip.Show(_equipmentForClick, _equipmentForClick);
         bool tooltipShownBefore = tooltip.Visible;
 

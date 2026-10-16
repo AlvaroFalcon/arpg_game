@@ -11,5 +11,6 @@ import { animeCharacters, portraits } from './anime';
 import { endgame } from './endgame';
 import { realms } from './realms';
 import { tiles } from './tiles';
+import { cursors } from './cursors';
 
-export const all: SpriteSpec[] = [...animeCharacters, ...portraits, ...enemies, ...bosses, ...projectiles, ...pickups, ...icons, ...props, ...endgame, ...realms, ...tiles, ...town, ...items];
+export const all: SpriteSpec[] = [...animeCharacters, ...portraits, ...enemies, ...bosses, ...projectiles, ...pickups, ...icons, ...props, ...endgame, ...realms, ...tiles, ...town, ...items, ...cursors];

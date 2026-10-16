@@ -81,8 +81,10 @@ still works), the back (`idle_up`, `walk_up`, `attack_up`: hair or hood, cape ov
 the shoulders, the weapon behind the body; painted like the front and mirrored so
 the weapon hand lands on the correct side) and a profile facing right
 (`idle_side`, ...; the game mirrors it for left) with a real stride and the near
-arm swinging. `Player.UpdateFacing` faces the movement direction, or the aim when
-standing still, with a little hysteresis on diagonals. Sprites without the
+arm swinging. `Player.UpdateFacing` faces the aim (the cursor), walking or
+standing (owner feedback 2026-10-16: walking used to face the movement direction).
+A dash faces where it goes, and a co-op puppet faces where it moves since its aim
+isn't replicated. A little hysteresis keeps diagonals steady. Sprites without the
 directional animations (monsters) keep the old left/right flip.
 
 The voxel export now writes 16-bit indices; with 21 frames per character the

@@ -82,6 +82,9 @@ public partial class EquipmentItem : Area2D, IDroppable
     [Export]
     public float PickupRadiusPx = 110f;
 
+    /// <summary>Every equipment drop lying on the ground (the F key looks here).</summary>
+    public static readonly StringName GroundGroup = "ground_items";
+
     public ItemDescriptor Descriptor { get; private set; } = new();
 
     /// <summary>How many times this item has been sealed: every seal costs more
@@ -109,9 +112,18 @@ public partial class EquipmentItem : Area2D, IDroppable
         // true without extra per-scene wiring. Idempotent: harmless to set true
         // repeatedly as more items spawn.
         GetViewport().PhysicsObjectPicking = true;
+        AddToGroup(GroundGroup);
         InputEvent += OnAreaInputEvent;
-        MouseEntered += () => _tooltip?.Show(this, this);
-        MouseExited += () => _tooltip?.Clear(this);
+        MouseEntered += () =>
+        {
+            _tooltip?.Show(this, this);
+            UI.GameCursor.SetItemHover(this, true);
+        };
+        MouseExited += () =>
+        {
+            _tooltip?.Clear(this);
+            UI.GameCursor.SetItemHover(this, false);
+        };
 
         _tooltip = GetNodeOrNull<UI.ItemTooltipControl>(ItemTooltipPath)
             ?? GetTree().CurrentScene.GetNodeOrNull<UI.ItemTooltipControl>("ItemTooltip");
@@ -306,6 +318,12 @@ public partial class EquipmentItem : Area2D, IDroppable
         {
             _tooltip.Clear(this);
         }
+
+        // Same reason for the hand cursor.
+        if (IsInsideTree())
+        {
+            UI.GameCursor.SetItemHover(this, false);
+        }
     }
 
     /// <summary>
@@ -325,20 +343,24 @@ public partial class EquipmentItem : Area2D, IDroppable
 
     private void TryPickupByPlayer()
     {
-        if (GetTree().CurrentScene.GetNodeOrNull<Player>("Player") is not { } player)
+        if (GetTree().CurrentScene.GetNodeOrNull<Player>("Player") is { } player)
         {
-            return;
+            PickUpOrWalkTo(player);
         }
+    }
 
-        // Reach check, per docs/design/items.md -> "Pickup has a reach". Clicking a
-        // pile across the whole arena and having it teleport into the bag reads as
-        // a bug even when it is convenient — the character has to be standing over
-        // it. Gated here rather than in OnPickup because OnPickup is also the
-        // programmatic entry point tests and future systems use, and reach is a
-        // property of *clicking* something, not of acquiring it.
-        // Out of reach walks there instead of refusing the click, per
-        // docs/design/items.md -> "Pickup has a reach". Silently ignoring a click
-        // on a thing the player can plainly see is its own small annoyance.
+    /// <summary>
+    /// What a click on the item (or the F key, <see cref="Player"/>) does. Reach
+    /// check, per docs/design/items.md -> "Pickup has a reach": clicking a pile
+    /// across the whole arena and having it teleport into the bag reads as a bug
+    /// even when it is convenient — the character has to be standing over it.
+    /// Out of reach walks there instead of refusing (silently ignoring a click on
+    /// a thing the player can plainly see is its own small annoyance). Gated here
+    /// rather than in <see cref="OnPickup"/> because that is also the programmatic
+    /// entry point tests and other systems use.
+    /// </summary>
+    public void PickUpOrWalkTo(Player player)
+    {
         if (!IsWithinPickupReach(player))
         {
             player.RequestPickup(this);

@@ -232,7 +232,7 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 ## Known limitations
 
 - Survival Rift only. Realities, the hideout and the tutorial are single-player.
-- Not replicated: shadow clones and consecrated ground (the host's ascendancy effects still work there), boss cast bars (attack names and callouts are), dodge afterimages of other players, other players' facing while standing still, and the sound of hits that land on other players' monsters.
+- Not replicated: shadow clones and consecrated ground (the host's ascendancy effects still work there), boss cast bars (attack names and callouts are), dodge afterimages of other players, other players' aim-based facing (a puppet faces where it moves), and the sound of hits that land on other players' monsters.
 - No late join, no rejoin after a drop, and no lobby between runs: host again.
 - Remote characters are trusted beyond the host's sanity checks (friends only, by decision; see "Security").
 - Clients predict only their own movement. Monsters and projectiles show 100 ms in the past plus latency, so a projectile can look like it misses at high ping.

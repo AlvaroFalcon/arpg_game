@@ -420,3 +420,9 @@ The launcher used to install silently into `%LOCALAPPDATA%\ArpgGame`. Now on fir
 
 ![Choosing the folder](screenshots/launcher-choose-folder.png)
 ![A folder without write permission](screenshots/launcher-folder-error.png)
+
+## 2026-10-16 — Facing the cursor, our own cursors, and F to loot
+
+Three small owner requests. **Facing:** the character now faces the cursor while walking too, not just when standing (walking used to face the direction of travel). Dashes still face where they go, and co-op puppets face where they move because their aim isn't replicated. **Cursors:** four pixel-art cursors made with the EasyPixel pipeline (`tools/art/sprites/cursors.ts`) in the UI's bronze and gold: an arrow with a garnet, a white-hot arrow over buttons, a sword over monsters (reusing the target frame's "monster under the mouse" check) and a gauntlet hand over items on the ground. They are hardware cursors, scaled 2×/3×/4× with the window, so they cost nothing and never lag behind the mouse. **F to loot:** F picks up the nearest item as if clicked (it walks there if it's out of reach), and holding F empties a pile. Design: `menus.md` → "Cursor", `items.md` → "F picks up".
+
+![The four cursors at 2× and 3×](screenshots/cursors.png)
