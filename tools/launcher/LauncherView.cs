@@ -10,6 +10,9 @@ namespace ArpgGameLauncher
     public enum LauncherPhase
     {
         Checking,
+
+        /// <summary>Not installed: shows where it will go, with a Change… link, and INSTALL.</summary>
+        ChooseFolder,
         Downloading,
         Installing,
         Ready,
@@ -35,6 +38,9 @@ namespace ArpgGameLauncher
         public static readonly Rectangle CloseBounds = new Rectangle(Width - 46, 0, 46, 34);
         public static readonly Rectangle MinimizeBounds = new Rectangle(Width - 92, 0, 46, 34);
         public static readonly Rectangle FolderBounds = new Rectangle(Width - 214, 0, 122, 34);
+
+        /// <summary>"Change…" next to the install path (only while choosing a folder).</summary>
+        public static readonly Rectangle ChangeBounds = new Rectangle(560, 466, 98, 26);
 
         private static readonly Color Gold = Color.FromArgb(255, 207, 106);
         private static readonly Color Ember = Color.FromArgb(240, 128, 40);
@@ -77,15 +83,23 @@ namespace ArpgGameLauncher
         public bool HoverClose { get; set; }
         public bool HoverMinimize { get; set; }
         public bool HoverFolder { get; set; }
+        public bool HoverChange { get; set; }
         public bool PressPlay { get; set; }
 
         /// <summary>What the big button does right now.</summary>
-        public string PlayLabel => Phase == LauncherPhase.Failed && !CanPlay ? "RETRY"
+        public string PlayLabel => Phase == LauncherPhase.ChooseFolder ? "INSTALL"
+            : Phase == LauncherPhase.Failed && !CanPlay ? "RETRY"
             : CanPlay ? "PLAY"
             : Phase == LauncherPhase.Downloading || Phase == LauncherPhase.Installing ? "UPDATING"
             : "PLEASE WAIT";
 
-        public bool PlayClickable => CanPlay || Phase == LauncherPhase.Failed;
+        public bool PlayClickable => CanPlay || Phase == LauncherPhase.Failed || Phase == LauncherPhase.ChooseFolder;
+
+        /// <summary>The Change… link is live while choosing, and after a failure on a fresh install.</summary>
+        public bool ChangeVisible { get; set; }
+
+        /// <summary>Shows the status line in red without leaving the current phase (a folder that can't be used).</summary>
+        public bool StatusIsError { get; set; }
 
         // --- animation -----------------------------------------------------------------
 
@@ -251,7 +265,31 @@ namespace ArpgGameLauncher
 
             PaintTitle(g, 36, 426);
             PaintProgress(g, new Rectangle(38, 498, 620, 6));
+            if (ChangeVisible)
+            {
+                PaintChange(g);
+            }
+
             PaintPlay(g);
+        }
+
+        /// <summary>The "Change…" pill beside the install path.</summary>
+        private void PaintChange(Graphics g)
+        {
+            using (GraphicsPath pill = Rounded(ChangeBounds, 6))
+            using (var fill = new SolidBrush(Color.FromArgb(HoverChange ? 70 : 38, 255, 255, 255)))
+            using (var edge = new Pen(Color.FromArgb(HoverChange ? 200 : 110, Gold), 1f))
+            {
+                g.FillPath(fill, pill);
+                g.DrawPath(edge, pill);
+            }
+
+            using (var f = new Font(_family, 9.5f, FontStyle.Bold))
+            using (var b = new SolidBrush(HoverChange ? Gold : Ink))
+            using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            {
+                g.DrawString("Change…", f, b, ChangeBounds, sf);
+            }
         }
 
         private void PaintTitle(Graphics g, float x, float y)
@@ -285,11 +323,13 @@ namespace ArpgGameLauncher
 
         private void PaintProgress(Graphics g, Rectangle track)
         {
-            Color statusColor = Phase == LauncherPhase.Failed ? Danger : Ink;
+            Color statusColor = Phase == LauncherPhase.Failed || StatusIsError ? Danger : Ink;
             using (var f = new Font(_family, 10.5f, FontStyle.Bold))
             using (var b = new SolidBrush(statusColor))
             {
-                g.DrawString(Status, f, b, new RectangleF(track.X - 2, track.Y - 26, track.Width, 22), new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap });
+                // Leave room for the Change… pill when it shows (long paths end in an ellipsis).
+                float width = ChangeVisible ? ChangeBounds.X - track.X - 8 : track.Width;
+                g.DrawString(Status, f, b, new RectangleF(track.X - 2, track.Y - 26, width, 22), new StringFormat { Trimming = Phase == LauncherPhase.ChooseFolder && !StatusIsError ? StringTrimming.EllipsisPath : StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap });
             }
 
             using (GraphicsPath trackPath = Rounded(track, 3))

@@ -18,8 +18,9 @@
   `game/version.txt` it downloads the zip with a progress bar, extracts it to
   `game.new` and swaps folders (the old build survives a failed download), then
   PLAY starts `ArpgGame.exe`. Offline, it plays what is installed. The game lives
-  in `%LOCALAPPDATA%\ArpgGame\game`; saves stay in Godot's user folder
-  (`%APPDATA%\Godot\app_userdata\ARPG Game`), untouched by updates.
+  in `<install folder>\game` (see "Install folder"); saves stay in Godot's user
+  folder (`%APPDATA%\Godot\app_userdata\ARPG Game`), untouched by updates and by
+  where the game is installed.
 - **Look** (launcher 2.0): a borderless, custom-drawn 960×540 window
   (`LauncherView`, pure System.Drawing so it renders off-screen for previews;
   `LauncherForm` handles DPI, dragging and the Win11 rounded corners). The key art
@@ -57,6 +58,33 @@ no billing risk and no extra services. Alternatives considered:
 - **A separate public builds repo** — the owner preferred to make the game repo
   itself public instead.
 
+## Install folder
+
+The launcher used to install silently into `%LOCALAPPDATA%\ArpgGame`. Now, when
+the game isn't installed anywhere it knows of, it asks first
+(`InstallLocation.cs`, `LauncherPhase.ChooseFolder`):
+
+- **First run:** the bottom bar shows "Install to: <folder>" with the free space on
+  that drive, a **Change…** button (folder picker) and **INSTALL**. Nothing is
+  downloaded until INSTALL is pressed.
+- **The choice is remembered** in `%LOCALAPPDATA%\ArpgGame\launcher.cfg`
+  (`install_root=<path>`): that small file never moves, so the launcher finds the
+  game wherever it went. Older installs in the old default folder are adopted
+  without asking.
+- **Picking a folder:** a folder that already holds the game (its root, its
+  `game` folder, or an `ArpgGame` folder inside it) is adopted as is — useful after
+  moving the game or reinstalling Windows. Any other non-empty folder gets an
+  `ArpgGame` subfolder, so choosing `D:\Games` doesn't scatter files into it.
+- **Write check:** before downloading, the launcher writes and deletes a probe
+  file; a folder it can't write to (e.g. Program Files without admin) shows the
+  reason in red and stays on the choose step instead of failing mid-download.
+- If the very first download fails, Change… stays available so a different folder
+  can be tried. Saves never move: they live in Godot's user folder.
+
+Rejected: a full installer (MSI/Inno Setup) — overkill for a zip the launcher
+already swaps in place, and it would need admin rights; a plain "always ask"
+dialog — returning players shouldn't see it.
+
 ## The rename
 
 Before going public the project stopped using the "Path to Exile" name: the
@@ -72,3 +100,5 @@ profile.
   one can be downloaded from the release page).
 - Unsigned binaries: SmartScreen warns on first run ("More info" → "Run anyway").
 - macOS builds aren't published yet; the launcher is Windows-only.
+- Moving an existing install from the launcher (copying the files) isn't offered:
+  move the folder by hand and point Change… at it.
