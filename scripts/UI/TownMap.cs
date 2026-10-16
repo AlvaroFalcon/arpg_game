@@ -10,9 +10,9 @@ namespace ArpgGame.UI;
 /// it never scrolls: the ground drawn from <see cref="HideoutTown.Map"/>, every
 /// station as a dot in its colour, you, and the route while a station walk is
 /// on. Small, it sits on top of the town directory (click it to open the big
-/// one); big (<see cref="Big"/>, M or Tab) it is a see-through overlay with
-/// names and decorations, and clicking a station walks you there, like the
-/// directory does.
+/// one); big (<see cref="Big"/>, M or Tab) it covers the screen, each station
+/// an icon in a badge with its name and what it does, decorations as dots, and
+/// clicking a station closes the map and walks you there, like the directory.
 /// </summary>
 public partial class TownMap : Control
 {
@@ -77,6 +77,32 @@ public partial class TownMap : Control
         return _ground;
     }
 
+    private static readonly Dictionary<string, Texture2D?> Icons = new();
+
+    /// <summary>The station's map icon (tools/art/sprites/mapicons.ts), or null.</summary>
+    private static Texture2D? Icon(string id)
+    {
+        if (!Icons.TryGetValue(id, out Texture2D? tex))
+        {
+            string path = $"res://assets/ui/mapicons/map_{id}.png";
+            tex = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+            Icons[id] = tex;
+        }
+
+        return tex;
+    }
+
+    /// <summary>Centred text with a dark drop shadow.</summary>
+    private void Label(Font font, string text, Vector2 centre, int size, Color color)
+    {
+        Vector2 at = centre - new Vector2(font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X / 2f, 0f);
+        DrawString(font, at + Vector2.One, text, HorizontalAlignment.Left, -1, size, Colors.Black with { A = 0.85f });
+        DrawString(font, at, text, HorizontalAlignment.Left, -1, size, color);
+    }
+
+    /// <summary>Where a world point is drawn, in this control's coordinates (captures, tests).</summary>
+    public Vector2 MapPointOf(Vector2 world) => ToMap(world);
+
     private Vector2 ToMap(Vector2 world) => _area.Position + world / HideoutTown.CellPx * _px;
 
     public override void _Draw()
@@ -134,6 +160,7 @@ public partial class TownMap : Control
 
         // Stations.
         _hoveredNow = null;
+        var placed = new List<Rect2>();
         Vector2 mouse = GetLocalMousePosition();
         foreach (PlacedProp prop in Hideout.Data.Props)
         {
@@ -143,22 +170,52 @@ public partial class TownMap : Control
             }
 
             Vector2 at = ToMap(prop.Position);
-            bool hover = Big && at.DistanceTo(mouse) < 14f;
+            bool hover = Big && at.DistanceTo(mouse) < 24f;
             if (hover)
             {
                 _hoveredNow = prop.Uid;
             }
 
-            float r = Big ? (hover ? 8f : 6f) : 3.5f;
-            DrawCircle(at, r + 1.5f, Colors.Black with { A = 0.7f });
-            DrawCircle(at, r, def.Accent);
-            if (Big)
+            if (!Big)
             {
-                Color text = hover || Hideout.WalkingTo == prop.Uid ? Colors.White : UiTheme.Text;
-                Vector2 size = font.GetStringSize(def.Name, HorizontalAlignment.Left, -1, 14);
-                Vector2 label = at + new Vector2(-size.X / 2f, -12f);
-                DrawString(font, label + Vector2.One, def.Name, HorizontalAlignment.Left, -1, 14, Colors.Black with { A = 0.8f });
-                DrawString(font, label, def.Name, HorizontalAlignment.Left, -1, 14, text);
+                DrawCircle(at, 5f, Colors.Black with { A = 0.7f });
+                DrawCircle(at, 3.5f, def.Accent);
+                continue;
+            }
+
+            // Big: the station's icon in a badge ringed with its colour, its name
+            // above (or below) and, on hover, what it does in the header.
+            bool target = Hideout.WalkingTo == prop.Uid;
+            float r = hover ? 20f : 17f;
+            DrawCircle(at + new Vector2(0f, 2f), r + 2f, Colors.Black with { A = 0.5f });
+            DrawCircle(at, r + 2f, hover || target ? Colors.White : def.Accent);
+            DrawCircle(at, r, new Color(0.08f, 0.06f, 0.12f));
+            if (Icon(def.Id) is { } tex)
+            {
+                float side = hover ? 32f : 28f;
+                DrawTextureRect(tex, new Rect2(at - Vector2.One * side / 2f, Vector2.One * side), false);
+            }
+
+            // The name goes above the badge, or below when it would run into a
+            // name already placed (Ysolde and Odran stand side by side).
+            Color text = hover || target ? Colors.White : UiTheme.Text;
+            float width = font.GetStringSize(def.Name, HorizontalAlignment.Left, -1, 15).X;
+            Vector2 above = at + new Vector2(0f, -r - 8f);
+            var rect = new Rect2(above.X - width / 2f - 12f, above.Y - 15f, width + 24f, 19f);
+            bool below = placed.Exists(o => o.Intersects(rect));
+            if (below)
+            {
+                rect.Position += new Vector2(0f, 2f * r + 26f);
+            }
+
+            placed.Add(rect);
+            Label(font, def.Name, below ? at + new Vector2(0f, r + 19f) : above, 15, text);
+            if (hover)
+            {
+                // What it does, in the header (under the badge it would cover other names).
+                string info = $"{def.Name} — {def.Verb}  ·  click to walk there";
+                float w = font.GetStringSize(info, HorizontalAlignment.Left, -1, 15).X;
+                DrawString(font, new Vector2(_area.End.X - w, _area.Position.Y - 29f), info, HorizontalAlignment.Left, -1, 15, def.Accent);
             }
         }
 
@@ -202,7 +259,14 @@ public partial class TownMap : Control
         }
         else if (_hovered is { } uid)
         {
-            Hideout.WalkTo(uid);
+            PickStation(uid);
         }
+    }
+
+    /// <summary>A click on a station: close the map and walk there.</summary>
+    public void PickStation(string uid)
+    {
+        Hideout.Hud.CloseBigMap();
+        Hideout.WalkTo(uid);
     }
 }

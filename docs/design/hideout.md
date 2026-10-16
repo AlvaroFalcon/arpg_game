@@ -100,9 +100,14 @@ from the plaza, into E range, never into the portal) and
   (it fits, so it never scrolls): the ground by quarter, the canal, every station
   as a dot in its colour, you as an arrow, and the route of a station walk in
   progress. Clicking it opens the big map.
-- **Big map (M or Tab):** the same map full-screen over a dark veil, with station
-  names and decorations. Clicking a station walks there. M, Tab or Esc closes it,
-  and the town keeps going underneath.
+- **Big map (M or Tab):** the same map full-screen over a dark veil. Each station
+  is its own pixel-art icon (`tools/art/sprites/mapicons.ts`: the mirror, a coin
+  purse for Odran, a shard for Arehucaz, a potted plant for Ysolde, an anvil for
+  the forge, a chest, the altar's orb, the rift) in a badge ringed with its
+  colour, with its name above (below when it would collide with a neighbour's).
+  Decorations show as dots. Hovering a station puts what it does in the header,
+  and **clicking it closes the map and starts the walk**. M, Tab or Esc closes
+  it, and the town keeps going underneath.
 
 Code: `UI/TownMap.cs`. The ground is drawn as one texture, one pixel per tile.
 M was also added to the map key everywhere, so it opens the overlay map in

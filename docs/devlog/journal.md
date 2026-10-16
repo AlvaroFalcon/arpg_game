@@ -435,7 +435,8 @@ Owner report: in the Survival Rift a stray key made the level-up cards disappear
 
 Owner report: clicking a station in the town directory walked you there, but the walk often pushed into something and got stuck. The navigation mesh was built from floor cells only, so the stalls, the forge and the decorations standing on those cells didn't exist for it, and its edges hugged the walls. The owner asked whether the path could be computed beforehand, and the answer was yes. The fix reuses the realities' monster technique: a distance field per station, built over a 16 px grid whose blocked cells come straight from physics queries with the player's own circle (plus the portal's mouth, since walking into it would send you to the Rift). The fields are rebuilt whenever the editor closes. The player follows the field downhill and straightens the line with a shape cast. The grid is offset half a cell so that one-tile doors have a free cell down their middle; without that offset every door in town is closed. Only station walks use this; normal click-to-move is untouched. A test walks from the plaza to all eight stations and around a well dropped in the way.
 
-Also new: a minimap on top of the town directory, showing the whole town with stations, you and the active route. M (or Tab) opens a full-screen town map where clicking a station walks there.
+Also new: a minimap on top of the town directory, showing the whole town with stations, you and the active route. M (or Tab) opens a full-screen town map. Each station has its own 16×16 pixel-art icon (mirror, coin purse, shard, plant, anvil, chest, orb, rift) in a badge ringed with its colour, and clicking one closes the map and starts the walk.
 
 ![Minimap during a walk](screenshots/town-minimap-walk.png)
 ![The big town map](screenshots/town-bigmap.png)
+![Hovering a station on the map](screenshots/town-bigmap-hover.png)

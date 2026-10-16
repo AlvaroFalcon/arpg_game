@@ -1312,6 +1312,19 @@ public partial class EndgameSmokeTest : Node2D
             hideout.InvalidatePaths();
         }
 
+        // The big map (M): clicking a station closes it and starts the walk.
+        hideout.Player.GlobalPosition = spawn;
+        await Frames(2);
+        hideout.Hud.ToggleBigMap();
+        bool opened = hideout.Hud.BigMapOpen;
+        var big = hideout.Hud.FindChild("BigMap", true, false) as UI.TownMap;
+        big?.PickStation("stash");
+        await Frames(2);
+        bool closedAndWalking = !hideout.Hud.BigMapOpen && hideout.WalkingTo == "stash";
+        hideout.Player.StopAutoWalk();
+        Check("TOWN-MAP-CLICK-WALKS", big is not null && opened && closedAndWalking && InputMap.HasAction(UI.MapOverlay.Action),
+            $"big map found={big is not null}, opened={opened}, closed and walking to the stash={closedAndWalking}");
+
         Engine.TimeScale = 1.0;
         hideout.Player.GlobalPosition = spawn;
         await Frames(4);

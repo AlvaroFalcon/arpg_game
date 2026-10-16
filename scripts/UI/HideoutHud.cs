@@ -242,6 +242,14 @@ public partial class HideoutHud : CanvasLayer
         }
     }
 
+    public void CloseBigMap()
+    {
+        if (_bigMap is not null)
+        {
+            _bigMap.Visible = false;
+        }
+    }
+
     /// <summary>M or Tab toggles the big map; Esc closes it before anything else.</summary>
     public override void _Input(InputEvent e)
     {

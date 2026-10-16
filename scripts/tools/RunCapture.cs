@@ -514,6 +514,14 @@ public partial class RunCapture : Node
         hideout.Hud.ToggleBigMap();
         await Wait(0.4f);
         await Snap("town-bigmap.png");
+        // Hovering a station shows what it does.
+        if (hideout.Hud.FindChild("BigMap", true, false) is TownMap big)
+        {
+            GetViewport().WarpMouse(big.GetGlobalRect().Position + big.MapPointOf(hideout.Data.Find("forge")!.Position));
+            await Wait(0.3f);
+            await Snap("town-bigmap-hover.png");
+        }
+
         hideout.Hud.ToggleBigMap();
         GetTree().Quit();
     }
