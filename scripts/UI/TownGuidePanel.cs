@@ -43,7 +43,7 @@ public partial class TownGuidePanel : ModalPanel
         {
             ("Click", "walk there"), ("E", "use the station you're next to"), ("I", "inventory · Crafting tab for orbs"),
             ("C · K · P", "character · skills · passive tree"), ("H", "edit your town"), ("Q · R", "life and mana flasks"),
-            ("Space · Shift", "dodge · sprint"), ("Esc", "menu (settings, Edit HUD)"),
+            ("Space · Shift", "dodge · sprint"), ("M · Tab", "town map (click a place to walk there)"), ("Esc", "menu (settings, Edit HUD)"),
         })
         {
             HBoxContainer row = UiTheme.HBox(keys, 8);

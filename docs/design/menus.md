@@ -270,6 +270,8 @@ boss arena (or the exit portal once the boss is down), visible monsters (coloure
 by rarity, bosses bigger) and the player as an arrow pointing where they move.
 The corner minimap stays. `UI/MapOverlay.cs`; the key comes in through `_Input`
 (the overlay is hidden most of the time).
+**M** opens it too (2026-10-16), the same key as the hideout's big town map
+(docs/design/hideout.md -> "Town map").
 
 
 ## Target frame **[IMPLEMENTED 2026-10-12]**

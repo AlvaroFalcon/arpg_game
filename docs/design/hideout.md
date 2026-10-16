@@ -48,6 +48,66 @@ The hideout HUD (docs/design/menus.md -> "Hideout HUD") explains the town: a tow
 directory with arrows and click-to-walk, an E prompt card over the nearest station,
 and a town guide that opens on the first visit.
 
+### Walking to a station **[IMPLEMENTED 2026-10-16]**
+
+Clicking a station in the directory (also the guide's "Show me", the altar
+shortcut on the character plate, and a station on the big map) walks you there.
+That walk used Godot's navigation mesh, built from floor cells only. It knew
+nothing about the stalls, the forge or the decorations standing on those cells,
+and its edges ran flush against walls, so walks pushed into props and caught on
+corners (owner report). Now these walks use **precomputed distance fields**
+(`World/TownPaths.cs`), the technique the realities already use for monster
+pathing:
+
+- **Grid:** a 16 px grid (half a tile) offset so cell centres land on tile
+  centres, so a one-tile door has a free cell down its middle. A cell is blocked
+  if the player's own circle (one pixel larger) would touch anything the player
+  collides with: a physics query, so walls, the canal and every prop with a body
+  count without a list to maintain. The portal's mouth is blocked too, because
+  walking into it enters the Rift.
+- **One field per station:** Dijkstra over 8 neighbours (10/14, no corner
+  cutting) from every free cell within 60 px of the station, i.e. the spots it can
+  be used from, inside the E prompt's 80 px. For the Rift, the goal is the space
+  in front of the gate instead. All fields are built about three physics frames
+  after the town loads and again when the editor closes (the props may have
+  moved). The town is about 100×70 cells, so all eight take a few milliseconds.
+- **Walking:** the player steers each physics frame toward the farthest cell
+  down the field (up to 40 ahead) that a straight shape cast of its circle can
+  reach. That gives straight lines across open ground and turns only at corners
+  (`Player.AutoWalk`).
+- **Ending a walk:** WASD, a click on the ground, a dodge, an item pickup or a
+  panel opening ends it, as before.
+- **Safety nets:** with no progress along the field for a second, the walk stops
+  with a "Blocked" banner. A station walled in by decorations gets "No way there"
+  instead of a futile push.
+
+Only these station walks use the fields. Ordinary click-to-move, in town and
+everywhere else, keeps the navigation mesh (owner decision).
+
+Rejected: fixing the navigation mesh (carving props out, insetting it by the
+player's radius). That is standard, but Godot 4.1 has no agent radius for 2D
+baking, so it would mean a hand-built mesh that is harder to maintain than a
+grid. Hand-placed waypoints were also rejected, since they break as soon as the
+player rearranges the town.
+
+Tests: EndgameSmokeTest `HIDEOUT-WALKS-REACH-EVERY-STATION` (all eight stations
+from the plaza, into E range, never into the portal) and
+`HIDEOUT-WALK-AVOIDS-NEW-PROP` (a well dropped on the route to the forge).
+
+### Town map **[IMPLEMENTED 2026-10-16]**
+
+- **Minimap:** sits at the top of the town directory. It shows the whole town
+  (it fits, so it never scrolls): the ground by quarter, the canal, every station
+  as a dot in its colour, you as an arrow, and the route of a station walk in
+  progress. Clicking it opens the big map.
+- **Big map (M or Tab):** the same map full-screen over a dark veil, with station
+  names and decorations. Clicking a station walks there. M, Tab or Esc closes it,
+  and the town keeps going underneath.
+
+Code: `UI/TownMap.cs`. The ground is drawn as one texture, one pixel per tile.
+M was also added to the map key everywhere, so it opens the overlay map in
+realities too, alongside Tab.
+
 ## Props and stations
 
 Everything standing in town is a **prop** with an id, a kind and a position: eight
