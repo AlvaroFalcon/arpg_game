@@ -116,6 +116,10 @@ public partial class CoopUiTestDriver : CoopTestDriver
             $"'{invite}' → {parsed} {ia} {ic}; chat → {chat} {ca} {cc}; bare → {bare}");
 
         // --- the host's lobby: four slots, three free -----------------------------------------
+        form.SetHostPort(0);
+        form.PressHost();
+        await Frames(2);
+        Check("BAD-PORT-INLINE", form.PortError.Length > 0 && !session.Active, $"port='{form.PortError}'");
         form.NoUpnp = true;
         form.AutoCode = JoinCode.TestCode;
         int port = 0;

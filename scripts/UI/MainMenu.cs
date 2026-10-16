@@ -27,7 +27,7 @@ public partial class MainMenu : Node2D
 		var layer = new CanvasLayer { Layer = 5 };
 		AddChild(layer);
 		_menuRoot = UiTheme.FullRect(layer);
-		var shade = new ColorRect { Color = new Color(0.03f, 0.02f, 0.05f, 0.45f), MouseFilter = Control.MouseFilterEnum.Ignore };
+		var shade = new ColorRect { Color = new Color(0.03f, 0.02f, 0.05f, 0.55f), MouseFilter = Control.MouseFilterEnum.Ignore };
 		_menuRoot.AddChild(shade);
 		shade.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
 

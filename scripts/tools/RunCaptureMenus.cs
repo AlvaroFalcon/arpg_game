@@ -79,7 +79,9 @@ public partial class RunCapture
         await Wait(0.3f);
         join.SetJoinFields("127.0.0.1:7798", "TEST42");
         join.PressJoin();
-        await Wait(5.5f);
+        // Real seconds: under Xvfb frames are slow enough that timers lag behind the clock.
+        ulong until = Time.GetTicksMsec() + 5500;
+        await WaitUntil(() => Time.GetTicksMsec() >= until, 30f);
         await Snap("coop-connecting.png");
         await WaitUntil(() => join.Current == CoopPanel.View.Failed, 40f);
         await Wait(0.4f);

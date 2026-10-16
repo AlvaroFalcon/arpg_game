@@ -31,6 +31,13 @@ Delete (asks to confirm), New character. Creation: a name and one of three class
 cards (sprite, attributes, description, class mechanic, starting gems,
 ascendancies). Up to 6 characters.
 
+UX pass (2026-10-16): Esc goes back one step (create → list → main menu), Enter in
+the name field creates, "Create & play" is the screen's primary button (and "New
+character" when the list is empty), Delete's confirmation reads "Delete — sure?" in
+red, and the list scrolls past four characters so the buttons never leave a 720p
+screen. The co-op screen's "Create a character" opens this panel straight on
+creation; Back there returns to the main menu.
+
 ## Hideout
 
 PoE's hideout, minimal: your persistent character with its gear, the inventory and
@@ -148,6 +155,10 @@ a visible telegraph or flash.
   (`LevelUpScreen.BlocksInput`). Tests: RunSmokeTest `LEVELUP-*`.
 - Results: victory/defeat, time, level, kills, elites, bosses, gold, the build, and
   **three items — keep one**, shown with the normal item tooltip text.
+- Leaving the results before choosing forfeits the item, so the first press of
+  "Return to hideout" or "Main menu" turns it into "Leave without an item?" and says
+  so above the cards; the second press leaves (2026-10-16). Buttons are sentence
+  case like every other menu.
 
 ## Profile
 
@@ -193,11 +204,118 @@ than hand-laid `.tscn` files — consistent, resolution-independent, one place t
 tune. The window is 1280×720 with `canvas_items` stretch; the default texture
 filter is Nearest for the pixel art.
 
+Added 2026-10-16 (co-op UX pass):
+
+- **`UiTheme.PrimaryButton`**: warm bronze fill with a gold border, for the one
+  action a screen exists for (Host lobby, Join, Start run, Try again, Create &
+  play, Create a character). Everything else stays the plain button.
+- **Text fields** are themed (dark glass, gold when focused, dim placeholder) via
+  `UiTheme.Field`; `UiTheme.FieldError` turns the border ember for a field with a
+  mistake, and the message sits right under the field.
+- **`UI/Spinner`**: a drawn turning arc for anything that takes more than a moment
+  (no font glyphs needed).
+- Rules applied across the menus: every action shows feedback at once; anything
+  slow shows what is happening, the elapsed time and a way out; errors appear next
+  to where you acted and say what to do; Esc goes back one step (except out of a
+  co-op lobby, which would end it for everyone); Enter submits a form.
+
 ## Audio
 
 `Core/Sfx.cs` (autoload) synthesises every sound at startup (short envelopes over
 sine/square/noise) and three looping music beds (menu, run, boss). There are no
 audio assets yet; replacing any sound with a real file is a one-line change.
+
+## Co-op **[REDESIGNED 2026-10-16]**
+
+`UI/CoopPanel.cs`, from the main menu. Owner report: *"when my friend typed the IP
+and pressed Connect, absolutely nothing happened"*, and *"does the code do anything,
+or would the IP alone be enough?"*. The old screen was one long form (port, Host,
+address prefilled with `127.0.0.1:7777`, code, Join, a paragraph of advice, a status
+line, the party). Findings, from captures (`coop-before-*.png`):
+
+1. **Without a character both buttons were disabled** and the only hint was a dim
+   line under the title. A friend who just installed the game clicks Join and
+   nothing at all happens. Blocker.
+2. **A dead address said nothing useful for ~30 s.** The form vanished, "Connecting
+   to …" sat there with no progress, no elapsed time and no Cancel (only Leave/Back),
+   and then the form came back with one orange line. That is ENet's own timeout.
+3. **The address field was prefilled with 127.0.0.1:7777**, so a typo-free "it's
+   already filled" join went to your own PC.
+4. **Nothing explained that both the IP and the code are needed.** The code is
+   mandatory (the host checks it before admitting anyone, see multiplayer.md →
+   "Security"), the IP alone is never enough.
+5. A wrong code, a full party and a run already started all came back as one status
+   line in the middle of the panel; the lobby listed only the people present (no
+   sense that four fit); copy feedback replaced the status line.
+
+The screen now shows one state at a time:
+
+- **Choose:** two cards. *Host a game* (what you get, the port as a small advanced
+  field, **Host lobby**) and *Join a friend* ("you need both: the address finds
+  their PC, the code lets you in", **Host's address**, **Join code**, **Join**). The
+  address starts empty with an example placeholder. Mistakes are shown under the
+  field with an ember border, and focus jumps to the first wrong field. Enter in the
+  address moves to the code (or joins if it's filled), Enter in the code joins. A
+  one-line footer says which address to use where (same PC, same Wi-Fi, internet,
+  VPN).
+- **Invite:** the host's **Copy invite** puts `203.0.113.7:7777 K7Q-29M` on the
+  clipboard. Pasting it (or a chat line containing it, even with the code typed in
+  two halves) into the address field fills both fields and says so
+  (`NetTransport.TryParseInvite`).
+- **Connecting:** a spinner, "Joining <address>", the three steps (reaching the
+  host's PC → checking the join code → joining the party, done ones in green), the
+  elapsed seconds, "no answer yet, gives up after 12 s" after 4 s, and **Cancel**
+  (Esc). It gives up after `NetSession.ConnectTimeout` (12 s) instead of ~30.
+- **Failed:** a title that names the cause (*Couldn't reach the host*, *Wrong join
+  code*, *The party is full*, *The run has already started*, *Different game
+  versions*, *Your character was refused*, *The host turned the connection away*,
+  *The host closed the lobby*) and a "What to check" list for it. For an unreachable
+  host: the exact address with port, the host still in their lobby, the router line
+  in the host's lobby (UPnP) → forward UDP 7777 or a VPN, the firewall, same PC /
+  same Wi-Fi addresses. A wrong code says the address was right. **Try again**
+  (primary) and **Change address or code** (fields kept).
+- **Lobby (host):** left, *Invite friends*: the address (24 px) and the join code
+  (34 px, gold), each with Copy, New code, **Copy invite**, what kind of address it
+  is (internet when UPnP opened the port, else a VPN address, else LAN), the router
+  state in green/ember, and other LAN/VPN addresses with their own Copy invite.
+  Right, *Party n/4*: **four slots**: portrait, name, level and class, Host/You tags;
+  free slots read "Free — waiting for a friend · Send them the invite". **Start run
+  — n players** is the primary action; Close lobby ends it. The last two security
+  lines sit under the slots.
+- **Lobby (client):** the same four slots, "In the party — waiting for <host> to
+  start the run" with a spinner, Leave.
+- **No character:** "You need a character first", why, and **Create a character**,
+  which opens character creation directly.
+
+Copy confirmations and host errors appear under the title, not in the slot of the
+status line. Esc: Cancel while connecting, back to the form from a failure, Back
+from the choice; it does nothing in a lobby (leaving ends it for the host's
+friends).
+
+How the screen tells failures apart: `NetSession.Phase` (Connecting, CheckingCode,
+Joining, InLobby, with `PhaseSince`/`JoinStarted` for the elapsed time) and
+`NetSession.LastEnd` (`SessionEnd`), set where the session ends. The host's refusal
+texts are constants in `JoinRefusal` and the client classifies the reason it
+receives (both ends run the same build; the protocol number is checked first).
+
+Rejected:
+- **A single address field that accepts only `ip:port code`.** Two labelled fields
+  teach the model (address + code); the paste shortcut covers the fast path.
+- **Showing the failure as a modal.** The failure card replaces the form in place,
+  so Try again is where the Join button was.
+- **Auto-retry on failure.** It hides the cause and multiplies wrong-code attempts
+  against the host's limiter (5 a minute per address).
+
+Tests: `CoopUiSmokeTest` (see multiplayer.md → "Testing"). Captures: `RunCapture
+--only=coop` (start, inline errors, host lobby with free slots, friend's lobby,
+wrong code, connecting, unreachable) and `--only=menus` (every menu from the title
+screen, as a new player and with characters).
+
+Open questions:
+- An internet-reachability self-check for the host (would need an outside echo
+  service, which we don't run). Relays (multiplayer.md) make it moot.
+- Showing the host's own failed-join attempts more prominently than the last two
+  security lines.
 
 ## Open questions
 

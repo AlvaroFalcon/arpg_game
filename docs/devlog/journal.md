@@ -440,3 +440,35 @@ Also new: a minimap on top of the town directory, showing the whole town with st
 ![Minimap during a walk](screenshots/town-minimap-walk.png)
 ![The big town map](screenshots/town-bigmap.png)
 ![Hovering a station on the map](screenshots/town-bigmap-hover.png)
+
+## 2026-10-16 — Co-op you can actually join, and a pass over the menus
+
+Owner report: *"I tried to play with a friend: he typed the IP, pressed Connect, and absolutely nothing happened."* Plus two questions: could the lobby show the free slots, so it's obvious four people fit, and does the join code do anything, or would the IP be enough?
+
+The code is not optional: the host checks it before admitting anyone, so the IP finds the PC and the code lets you in. The old screen never said that. Walking through it as a first-time joiner found the likely culprits for "nothing happened". **Without a character, Join was simply disabled**, and the only hint was a dim line under the title, so a friend who had just installed the game could click as much as he liked. **A dead address** (no UPnP, CG-NAT, firewall) hid the form behind "Connecting…" for ENet's ~30 s, with no progress, no elapsed time and no Cancel, and then came back with a single orange line. On top of that, the address field came prefilled with `127.0.0.1:7777`.
+
+The redesign shows one state at a time. You start by picking *Host a game* or *Join a friend*. The join card says you need both the address and the code; mistakes appear under the field with an ember border, and Enter submits. The host's lobby shows the address and the code in big type, a **Copy invite** button (`203.0.113.7:7777 K7Q-29M`; pasting it into the address field fills both fields), the router state in green or ember, and **four party slots**, with the free ones reading "Free — waiting for a friend". While joining you see a spinner, the step you're on (reaching the PC → checking the code → joining), the seconds so far and Cancel. It now gives up after **12 s**: ENet gets a fixed deadline on the connect request, the session has its own watchdog, and once the host answers the timeouts go back to ENet's defaults. When a join fails, the card names the cause (*Couldn't reach the host*, *Wrong join code*, *The party is full*, *The run has already started*, *Different game versions*) with a checklist and Try again. No character? The screen says so and offers *Create a character*, which opens creation directly.
+
+To tell those cases apart, `NetSession` now exposes the join phase and why the last session ended. The host's refusal texts became constants that the client classifies. What the host checks, and how often, is unchanged.
+
+Menus pass: character select and create now take Esc (back one step) and Enter (create). The list scrolls past four characters, and the delete confirmation is red. Results asks before you leave without taking your item. The main menu backdrop is a little darker behind the title. `UiTheme` gained a primary button, themed text fields with an error state, and a drawn spinner.
+
+Tests: new `CoopUiSmokeTest` (14 suites, all green). It drives real co-op panels for the host and in-process friends and checks the inline errors, the invite round trip, four slots with three free, wrong code, full party, the host closing, a dead address failing in 12 s, and Cancel. Captures: `RunCapture --only=coop` and `--only=menus`.
+
+Before:
+
+![Old co-op screen](screenshots/coop-before-start.png)
+![Old: no character — both buttons disabled](screenshots/coop-before-no-character.png)
+![Old: connecting, no progress or cancel](screenshots/coop-before-connecting.png)
+![Old: lobby](screenshots/coop-before-lobby.png)
+
+After:
+
+![Host or join](screenshots/coop-start.png)
+![Inline errors](screenshots/coop-join-errors.png)
+![Host lobby: invite and four slots](screenshots/coop-host-lobby.png)
+![A friend's lobby](screenshots/coop-client-lobby.png)
+![Connecting](screenshots/coop-connecting.png)
+![Couldn't reach the host](screenshots/coop-failed.png)
+![Wrong join code](screenshots/coop-wrong-code.png)
+![No character yet](screenshots/coop-no-character.png)
