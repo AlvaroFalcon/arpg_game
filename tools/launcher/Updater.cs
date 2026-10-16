@@ -51,10 +51,15 @@ namespace ArpgGameLauncher
 
         public string ApiUrl { get; }
         public string BaseUrl { get; }
-        public string InstallRoot { get; }
-        public string GameDir => Path.Combine(InstallRoot, "game");
+        /// <summary>The install folder (the player's choice — <see cref="InstallLocation"/>); null until chosen.</summary>
+        public string InstallRoot { get; set; }
+        public string GameDir => Path.Combine(InstallRoot ?? InstallLocation.DefaultRoot, "game");
         public string GameExePath => Path.Combine(GameDir, GameExe);
-        public bool IsInstalled => File.Exists(GameExePath);
+        public bool IsInstalled => InstallRoot != null && File.Exists(GameExePath);
+
+        /// <summary>Whether an install root holds the game (its <c>game\ArpgGame.exe</c>).</summary>
+        public static bool HasGame(string root) =>
+            !string.IsNullOrEmpty(root) && File.Exists(Path.Combine(root, "game", GameExe));
 
         /// <summary>Version of the installed game, or null if none.</summary>
         public string InstalledVersion

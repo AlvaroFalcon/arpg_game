@@ -18,7 +18,9 @@ namespace ArpgGameLauncher
         {
             // .NET Framework defaults can predate TLS 1.2, which GitHub requires.
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-            string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ArpgGame");
+            // Where the game lives: the player's saved choice, an older install in the
+            // default folder, or null — then the launcher asks before installing.
+            string root = InstallLocation.Resolve();
             // A folder URL argument (tests against a local server) skips the API.
             string baseUrl = args.Length > 0 ? args[0] : ReleasesUrl;
             string apiUrl = args.Length > 0 ? null : ApiUrl;

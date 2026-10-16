@@ -25,6 +25,9 @@ namespace ArpgGameLauncher
         private float _scale = 1f;
         private bool _busy;
 
+        /// <summary>Where a fresh install will go (shown with Change… until INSTALL is pressed).</summary>
+        private string _pendingRoot;
+
         public LauncherForm(Updater updater, Image art, Icon icon)
         {
             _updater = updater;
@@ -49,7 +52,15 @@ namespace ArpgGameLauncher
             {
                 RoundCorners();
                 _timer.Start();
-                await CheckAsync();
+                if (_updater.InstallRoot == null)
+                {
+                    // Not installed anywhere we know: ask where before downloading anything.
+                    EnterChoose(InstallLocation.Load() ?? InstallLocation.DefaultRoot);
+                }
+                else
+                {
+                    await CheckAsync();
+                }
             };
             FormClosing += (s, e) =>
             {
@@ -94,13 +105,14 @@ namespace ArpgGameLauncher
             _view.HoverClose = LauncherView.CloseBounds.Contains(p);
             _view.HoverMinimize = LauncherView.MinimizeBounds.Contains(p);
             _view.HoverFolder = LauncherView.FolderBounds.Contains(p);
-            Cursor = _view.HoverPlay || _view.HoverClose || _view.HoverMinimize || _view.HoverFolder ? Cursors.Hand : Cursors.Default;
+            _view.HoverChange = _view.ChangeVisible && LauncherView.ChangeBounds.Contains(p);
+            Cursor = _view.HoverPlay || _view.HoverClose || _view.HoverMinimize || _view.HoverFolder || _view.HoverChange ? Cursors.Hand : Cursors.Default;
         }
 
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
-            _view.HoverPlay = _view.HoverClose = _view.HoverMinimize = _view.HoverFolder = false;
+            _view.HoverPlay = _view.HoverClose = _view.HoverMinimize = _view.HoverFolder = _view.HoverChange = false;
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -118,7 +130,8 @@ namespace ArpgGameLauncher
                 return;
             }
 
-            if (LauncherView.CloseBounds.Contains(p) || LauncherView.MinimizeBounds.Contains(p) || LauncherView.FolderBounds.Contains(p))
+            if (LauncherView.CloseBounds.Contains(p) || LauncherView.MinimizeBounds.Contains(p) || LauncherView.FolderBounds.Contains(p)
+                || (_view.ChangeVisible && LauncherView.ChangeBounds.Contains(p)))
             {
                 return;
             }
@@ -149,14 +162,28 @@ namespace ArpgGameLauncher
             }
             else if (LauncherView.FolderBounds.Contains(p))
             {
-                Directory.CreateDirectory(_updater.InstallRoot);
-                Process.Start(new ProcessStartInfo(_updater.InstallRoot) { UseShellExecute = true });
+                // The game's folder once installed; before that, the launcher's own folder.
+                string dir = _updater.InstallRoot ?? InstallLocation.SettingsDir;
+                Directory.CreateDirectory(dir);
+                Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
+            }
+            else if (_view.ChangeVisible && LauncherView.ChangeBounds.Contains(p))
+            {
+                await PickFolderAsync();
             }
             else if (pressed && LauncherView.PlayBounds.Contains(p))
             {
-                if (_view.CanPlay)
+                if (_view.Phase == LauncherPhase.ChooseFolder)
+                {
+                    await BeginInstallAsync();
+                }
+                else if (_view.CanPlay)
                 {
                     Launch();
+                }
+                else if (_view.Phase == LauncherPhase.Failed && _updater.InstallRoot == null)
+                {
+                    EnterChoose(_pendingRoot ?? InstallLocation.DefaultRoot);
                 }
                 else if (_view.Phase == LauncherPhase.Failed)
                 {
@@ -165,10 +192,14 @@ namespace ArpgGameLauncher
             }
         }
 
-        protected override void OnKeyDown(KeyEventArgs e)
+        protected override async void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            if (e.KeyCode == Keys.Enter && _view.CanPlay)
+            if (e.KeyCode == Keys.Enter && _view.Phase == LauncherPhase.ChooseFolder)
+            {
+                await BeginInstallAsync();
+            }
+            else if (e.KeyCode == Keys.Enter && _view.CanPlay)
             {
                 Launch();
             }
@@ -176,6 +207,71 @@ namespace ArpgGameLauncher
             {
                 Close();
             }
+        }
+
+        // --- install folder ------------------------------------------------------------
+
+        /// <summary>Shows where a fresh install will go, with Change… and INSTALL.</summary>
+        private void EnterChoose(string root)
+        {
+            _pendingRoot = root;
+            _view.ChangeVisible = true;
+            Set(LauncherPhase.ChooseFolder, $"Install to: {root}", 0, false);
+            string free = InstallLocation.FreeSpace(root);
+            _view.Detail = free.Length > 0 ? $"Not installed yet · {free}" : "Not installed yet";
+        }
+
+        /// <summary>
+        /// A folder picker. A folder that already holds the game is adopted on the
+        /// spot (no download); any other becomes the new install target.
+        /// </summary>
+        private async Task PickFolderAsync()
+        {
+            string start = _pendingRoot ?? _updater.InstallRoot ?? InstallLocation.DefaultRoot;
+            using (var dialog = new FolderBrowserDialog
+            {
+                Description = "Choose where to install ARPG Game (an \"ArpgGame\" folder is created inside unless the folder is empty). You can also pick a folder where the game is already installed.",
+                ShowNewFolderButton = true,
+                SelectedPath = Directory.Exists(start) ? start : (Path.GetDirectoryName(start) ?? ""),
+            })
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(dialog.SelectedPath))
+                {
+                    return;
+                }
+
+                string root = InstallLocation.FromPicked(dialog.SelectedPath);
+                if (Updater.HasGame(root))
+                {
+                    InstallLocation.Save(root);
+                    _updater.InstallRoot = root;
+                    _view.ChangeVisible = false;
+                    await CheckAsync();
+                    return;
+                }
+
+                _updater.InstallRoot = null;
+                EnterChoose(root);
+            }
+        }
+
+        /// <summary>INSTALL: checks the folder can be written, remembers it and downloads.</summary>
+        private async Task BeginInstallAsync()
+        {
+            string root = _pendingRoot ?? InstallLocation.DefaultRoot;
+            string problem = InstallLocation.CheckWritable(root);
+            if (problem != null)
+            {
+                EnterChoose(root);
+                _view.Status = problem;
+                _view.StatusIsError = true;
+                return;
+            }
+
+            InstallLocation.Save(root);
+            _updater.InstallRoot = root;
+            _view.ChangeVisible = false;
+            await CheckAsync();
         }
 
         // --- update flow ---------------------------------------------------------------
@@ -255,6 +351,9 @@ namespace ArpgGameLauncher
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
                 Set(LauncherPhase.Failed, $"Download failed: {Describe(ex)}", 0, _updater.IsInstalled);
+                // A first install that failed can still go somewhere else.
+                _view.ChangeVisible = !_updater.IsInstalled;
+                _pendingRoot = _updater.IsInstalled ? null : _updater.InstallRoot;
                 return;
             }
 
@@ -266,6 +365,7 @@ namespace ArpgGameLauncher
         {
             _view.Phase = phase;
             _view.Status = status;
+            _view.StatusIsError = false;
             _view.Progress = progress;
             _view.CanPlay = canPlay;
             Invalidate();
