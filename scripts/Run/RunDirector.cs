@@ -12,7 +12,8 @@ namespace ArpgGame.Run;
 /// A run is about seven and a half minutes:
 /// <list type="bullet">
 /// <item>0:00 – 3:00: escalating waves; new enemy types unlock every half minute
-/// or so; an elite every 45 s; a swarm event every minute.</item>
+/// or so; an elite every 45 s; a swarm every minute, then more often (every
+/// 30 s from about six minutes) and in two waves from four.</item>
 /// <item>3:00: <b>the Bone Herald</b> (mid boss). Normal spawns drop to a trickle
 /// while it lives.</item>
 /// <item>After the Herald: the pressure resumes, harder, until 7:00.</item>
@@ -104,7 +105,7 @@ public partial class RunDirector : Node
     {
         float t = State.Elapsed;
         _nextElite = Mathf.Max(FirstEliteTime, t + EliteIntervalAt(t));
-        _nextSwarm = Mathf.Ceil((t + 1f) / SwarmInterval) * SwarmInterval;
+        _nextSwarm = t + SwarmIntervalAt(t);
         _heraldSpawned = t > HeraldTime + 1f;
         _heraldReturned = t > HeraldReturnTime + 1f;
     }
@@ -228,7 +229,7 @@ public partial class RunDirector : Node
 
         if (t >= _nextSwarm && !HeraldAlive)
         {
-            _nextSwarm += SwarmInterval;
+            _nextSwarm = t + SwarmIntervalAt(t);
             SpawnSwarm(t);
         }
     }
@@ -420,12 +421,36 @@ public partial class RunDirector : Node
     /// Shown on the HUD; everything below scales with the same clock.</summary>
     public static int Danger(float t) => 1 + Mathf.FloorToInt(t / 60f);
 
-    /// <summary>Spawns per second: about 1.1/s at the start, ~9/s at six
-    /// minutes, and still climbing in the endless phase.</summary>
-    public static float SpawnRate(float t) => 1.1f + t / 60f * 1.35f;
+    /// <summary>Spawns per second: about 1.1/s at the start, a linear climb plus a
+    /// quadratic term so the crowd keeps thickening with time (owner request
+    /// 2026-10-17: more density as the run goes on): ~5.9/s at three minutes,
+    /// ~12/s at six, ~24/s at ten in the endless phase.</summary>
+    public static float SpawnRate(float t)
+    {
+        float m = t / 60f;
+        return 1.1f + m * 1.35f + m * m * DensityGrowth;
+    }
 
-    /// <summary>How many enemies may be alive at once.</summary>
-    public static int EnemyCap(float t) => Mathf.RoundToInt(115f + t / 60f * 24f);
+    /// <summary>The quadratic part of <see cref="SpawnRate"/> per minute².</summary>
+    public const float DensityGrowth = 0.09f;
+
+    /// <summary>How many enemies may be alive at once: 115 at the start, ~300 at
+    /// seven minutes, capped at <see cref="EnemyCapMax"/> so the crowd stays
+    /// within the frame budget (docs/design/performance.md).</summary>
+    public static int EnemyCap(float t)
+    {
+        float m = t / 60f;
+        return Mathf.Min(EnemyCapMax, Mathf.RoundToInt(115f + m * 24f + m * m * 1.4f));
+    }
+
+    public const int EnemyCapMax = 400;
+
+    /// <summary>Seconds between swarms: one a minute at first, every 30 s from
+    /// about six minutes on.</summary>
+    public static float SwarmIntervalAt(float t) => Mathf.Max(30f, 60f - t / 60f * 5f);
+
+    /// <summary>Enemies in a swarm ring (one player): 16 at first, +1 every 20 s.</summary>
+    public static int SwarmSize(float t) => 16 + Mathf.RoundToInt(t / 20f);
 
     /// <summary>Life and damage multipliers for an enemy spawned at time t: a
     /// linear ramp times a compounding one, so an endless run keeps outpacing
@@ -550,7 +575,12 @@ public partial class RunDirector : Node
         return enemy;
     }
 
-    /// <summary>A ring of fast enemies closing in from every side.</summary>
+    /// <summary>
+    /// A ring of fast enemies closing in from every side. Swarms grow and come more
+    /// often as the run goes on (<see cref="SwarmSize"/>, <see cref="SwarmIntervalAt"/>);
+    /// from four minutes a second, wider ring of a different kind follows the
+    /// first, so later swarms come in two waves.
+    /// </summary>
     private void SpawnSwarm(float t)
     {
         PackedScene? scene = t > 150f && _rng.Randf() < 0.4f ? Imp : t > 25f ? Bat : Slime;
@@ -559,22 +589,36 @@ public partial class RunDirector : Node
             return;
         }
 
+        PackedScene? second = t >= DoubleSwarmTime ? (scene == Imp ? Bat : Imp ?? Bat) : null;
+
         // Co-op: a ring around every living player, the party's total scaled like the spawn rate.
         List<Player> living = LivingPlayers();
-        int total = Mathf.RoundToInt((16 + Mathf.RoundToInt(t / 30f)) * Net.PartyRules.SpawnRate(State.PartySize));
+        int total = Mathf.RoundToInt(SwarmSize(t) * Net.PartyRules.SpawnRate(State.PartySize));
         int count = Mathf.Max(8, total / living.Count);
         foreach (Player player in living.ToArray())
         {
             Vector2 centre = player.GlobalPosition;
             float radius = State.ViewOf(player).Size.Length() / 2f + 40f;
-            for (int i = 0; i < count; i++)
+            Ring(scene, centre, radius, count, 0f);
+            if (second is not null)
             {
-                Vector2 p = Arena.Clamp(centre + Vector2.Right.Rotated(Mathf.Tau * i / count) * radius, 40f);
-                SpawnAt(scene, p);
+                Ring(second, centre, radius + 120f, count / 2, Mathf.Pi / Mathf.Max(1, count / 2));
             }
         }
 
-        EmitSignal(SignalName.Announced, "Swarm!", "They come from every side", new Color(1f, 0.5f, 0.4f));
+        EmitSignal(SignalName.Announced, second is null ? "Swarm!" : "Swarm — two waves!", "They come from every side", new Color(1f, 0.5f, 0.4f));
+    }
+
+    /// <summary>From this time on, swarms come in two rings.</summary>
+    public const float DoubleSwarmTime = 240f;
+
+    private void Ring(PackedScene scene, Vector2 centre, float radius, int count, float offset)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 p = Arena.Clamp(centre + Vector2.Right.Rotated(offset + Mathf.Tau * i / count) * radius, 40f);
+            SpawnAt(scene, p);
+        }
     }
 
     private Enemy? SpawnBoss(PackedScene? scene, string name, string subtitle)

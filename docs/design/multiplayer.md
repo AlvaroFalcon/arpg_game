@@ -204,17 +204,16 @@ Owner requests (2026-10-17): shared experience, so everyone levels up together; 
 
 **Disconnects.** A player who leaves mid-round drops out of the total. Their pick, if any, is forgotten (they have left), and the round closes at once if everyone left has chosen. The host leaving ends every client's run as before. The run's end closes any round and unpauses, then the results screen pauses the tree as it does offline.
 
-**The screen** (menus.md -> "Level-up and results"): the "1 / 3 chosen" line and the countdown sit in a panel at the top of the card screen. The countdown turns red at 5 s, with a tick every second (`Sfx` `tick`, and a brighter `tick_urgent` in the red). After choosing, the row gives way to "You chose X. Waiting for the others…" at the same height, so nothing jumps. The cards still own the keyboard. Esc doesn't reach the pause menu during a round.
+**The screen** (menus.md -> "Level-up and results"): the "1 / 3 chosen" line and the countdown sit in a panel at the top of the card screen. The countdown turns red at 5 s, with a tick every second (`Sfx` `tick`, and a brighter `tick_urgent` in the red) — only for a player still choosing; once you've picked, the countdown stays visible but silent (owner decision 2026-10-17). When the round closes every player gets `PartyRules.ResumeGraceSeconds` (1 s) of invulnerability, so nobody is hit in the frame the action restarts (owner chose this over a 3-2-1; solo gets the same after its cards). After choosing, the row gives way to "You chose X. Waiting for the others…" at the same height, so nothing jumps. The cards still own the keyboard. Esc doesn't reach the pause menu during a round.
 
 **Solo is unchanged:** no rounds, no timer, the screen pauses the tree, queued levels back to back. The co-op path only runs with a session. `LevelUpScreen.PauseTree` is a separate switch for tests that drive the cards over a running tree; they used to borrow the co-op flag for that.
 
 **Caveats.** A few ascendancy windows are measured in wall-clock time (a 2 s shadowstep, the leech-per-second window), so a pause can run them out. Solo pauses have the same behaviour. Snapshots keep their full rate during a round, about the same bandwidth as the moment the game paused (they could drop to a few per second; not needed so far). After a resume, a client's inputs reach the host one trip later, as always.
 
 **Open questions (for the owner).**
-- Pace: × party size keeps the solo pace. Co-op could level a little faster (× 0.8 per player, say) to make playing together feel generous. It's one number in `PartyRules.PartyExperience`.
+- Pace: × party size keeps the solo pace. Owner (2026-10-17): keep it as is until it has been playtested; co-op could level a little faster later (one number in `PartyRules.PartyExperience`). The 10 s limit also stays for keystone rounds (owner: picks should be quick).
 - Should keystone rounds (levels 5, 10, 15…) get longer than 10 s? A great keystone is a big decision to make under a timer.
 - A short grace after a resume (half a second of invulnerability, or a "3-2-1"), so a client whose resume arrives a trip later isn't hit before they can move?
-- Should players who have already chosen still hear the tick? It tells them the round is still on, but it's ten clicks per round.
 
 ## Testing
 

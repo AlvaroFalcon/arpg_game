@@ -87,6 +87,11 @@ public static class PartyRules
     /// <summary>The countdown turns red (and the tick sharper) from this many seconds.</summary>
     public const int LevelUpUrgentSeconds = 5;
 
+    /// <summary>Seconds of invulnerability for every player when the game resumes
+    /// after a card round (solo too): nobody is hit in the frame the action
+    /// restarts (owner decision 2026-10-17, instead of a 3-2-1).</summary>
+    public const float ResumeGraceSeconds = 1f;
+
     /// <summary>Host limit: how many times one player may report their row in one
     /// round (the first row, then one report per reroll — two per run — plus slack).</summary>
     public const int OfferReportsPerRound = 6;

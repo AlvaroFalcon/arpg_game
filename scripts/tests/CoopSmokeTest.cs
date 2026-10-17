@@ -527,13 +527,21 @@ public partial class CoopTestHost : CoopTestDriver
 
         // Beta never chooses: the countdown goes red from 5, ticks, and the host takes beta's first card.
         int betaHistory = betaRp.Build!.History.Count;
+        int hostTicksBefore = run.LevelUp.TicksPlayed;
         await WaitFor(() => run.LevelUp.PartySecondsShown is > 0 and <= 4 || !host.RoundOpen, 12f);
         bool hostRed = run.LevelUp.PartyClockUrgent;
         Dictionary<string, string> red = Fields(await Ask(beta.PeerId, "round") ?? "");
         bool closed = await WaitFor(() => !host.RoundOpen, 12f);
+        // Resuming grants everyone a moment of invulnerability (owner decision 2026-10-17).
+        bool graced = run.State.Players.All(rp => rp.Player?.Health is { InvulnerableTime: > 0f });
+        Check("RESUME-GRACE", closed && graced,
+            $"after the round closed every player invulnerable={graced} ({string.Join(", ", run.State.Players.Select(rp => $"{rp.PeerId}:{rp.Player?.Health?.InvulnerableTime:0.00}s"))})");
         Check("COUNTDOWN-RED-FROM-5", hostRed && F(red, "urgent") == 1f && F(red, "secs") <= 5f,
             $"host red={hostRed}; beta: secs={red.GetValueOrDefault("secs")} urgent={red.GetValueOrDefault("urgent")}");
-        Check("COUNTDOWN-TICKS", run.LevelUp.TicksPlayed >= 7, $"host played {run.LevelUp.TicksPlayed} ticks so far this run");
+        // Ticks only for a player still choosing (owner decision 2026-10-17): beta hears
+        // the countdown, the host — who already chose — doesn't.
+        Check("COUNTDOWN-TICKS", F(red, "ticks") >= 4f && run.LevelUp.TicksPlayed == hostTicksBefore,
+            $"beta (still choosing) heard {red.GetValueOrDefault("ticks")} ticks; the host (chosen) heard {run.LevelUp.TicksPlayed - hostTicksBefore} this round");
         Check("TIMEOUT-AUTO-PICKS", closed && host.LastRoundSeconds is >= 9.5f and <= 11.5f && betaRp.Build.History.Count == betaHistory + 1 && run.State.Players.All(rp => rp.PendingLevelUps == 0),
             $"round closed={closed} after {host.LastRoundSeconds:0.00} s (timeout {PartyRules.LevelUpTimeout} s); beta's build on the host {betaHistory}→{betaRp.Build.History.Count} ('{betaRp.Build.History.LastOrDefault()}')");
         await BuildsMatch("TIMEOUT-SAME-BUILD", run, beta);
@@ -946,7 +954,7 @@ public partial class CoopTestClient : CoopTestDriver
         LevelUpScreen lu = run.LevelUp;
         string count = lu.PartyRound != 0 ? lu.PartyCountText.Replace(" chosen", "").Replace(" ", "") : "-";
         return $"open={(lu.PartyRound != 0 ? 1 : 0)} round={lu.PartyRound} start={(lu.PartyRound != 0 && lu.PartyRoundIsStart ? 1 : 0)} "
-            + $"paused={(GetTree().Paused ? 1 : 0)} chosen={(lu.PartyChosenThisRound ? 1 : 0)} count={count} secs={lu.PartySecondsShown} urgent={(lu.PartyClockUrgent ? 1 : 0)} "
+            + $"paused={(GetTree().Paused ? 1 : 0)} chosen={(lu.PartyChosenThisRound ? 1 : 0)} count={count} secs={lu.PartySecondsShown} urgent={(lu.PartyClockUrgent ? 1 : 0)} ticks={lu.TicksPlayed} "
             + $"ticks={lu.TicksPlayed} level={run.State.Level} cards={lu.Offers.Count}";
     }
 

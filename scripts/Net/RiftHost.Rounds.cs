@@ -366,6 +366,11 @@ public partial class RiftHost
         }
 
         SetPaused(false);
+        foreach (RunPlayer rp in State.Players)
+        {
+            rp.Player?.Health?.GrantInvulnerability(PartyRules.ResumeGraceSeconds);
+        }
+
         SendRoundState();
     }
 

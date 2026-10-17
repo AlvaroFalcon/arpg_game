@@ -377,6 +377,10 @@ public partial class LevelUpScreen : CanvasLayer
         if (!Coop && PauseTree)
         {
             GetTree().Paused = open;
+            if (!open)
+            {
+                State.Player?.Health?.GrantInvulnerability(Net.PartyRules.ResumeGraceSeconds);
+            }
         }
 
         OpenChanged?.Invoke(open);
@@ -536,9 +540,13 @@ public partial class LevelUpScreen : CanvasLayer
         bool urgent = seconds >= 0 && seconds <= Net.PartyRules.LevelUpUrgentSeconds;
         if (_lastShownSecond >= 0 && seconds >= 0 && seconds < _lastShownSecond)
         {
-            // One tick per second of the countdown, sharper in the red.
-            TicksPlayed++;
-            Core.Sfx.Play(this, urgent ? "tick_urgent" : "tick");
+            // One tick per second of the countdown, sharper in the red — only for a
+            // player still choosing (owner decision: silent once you've picked).
+            if (!_partyChosen)
+            {
+                TicksPlayed++;
+                Core.Sfx.Play(this, urgent ? "tick_urgent" : "tick");
+            }
         }
 
         _lastShownSecond = seconds;

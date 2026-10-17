@@ -49,7 +49,7 @@ it brought — progression.md -> "The start pick") → survive → boss → resu
 | 2:30 | Volatile imps join (run in and explode). |
 | 1:30, then every 45 s → 14 s | An announced **elite** (bigger, tougher, glows gold, 6× XP, can drop gear). The gap shrinks by 4 s a minute. |
 | from 2:00 | Any ordinary spawn may come as an elite: 0.5 % per minute past two, up to 4 %. |
-| every 60 s | A **swarm**: a ring of fast enemies closing in from all sides. |
+| every 60 s → 30 s | A **swarm**: a ring of fast enemies closing in from all sides. Every 60 s at first, then more often (`60 − 5·m` s, never under 30 s); 16 enemies plus one every 20 s; from 4:00 a second, wider ring of another kind follows ("two waves"). |
 | 3:00 | **The Bone Herald** (mid boss). Normal spawns drop to 30 % while it lives. |
 | 5:30 | **The Bone Herald returns** (if the first one is dead). |
 | 7:00 | **The Ember Colossus**. All normal enemies burn away (no XP), gems on the floor fly to the player, and the fight is one-on-one plus what the boss summons. |
@@ -68,7 +68,7 @@ first minute, +1 every minute), shown on the HUD as the right-hand bar:
   grows faster than damage, because the player's damage scales with their build and
   their life mostly does not. Bosses scale with the square root of the life
   multiplier and not at all on damage ([bosses.md](bosses.md)).
-- **Spawn rate** `1.1 + 1.35·m` per second, **alive cap** `115 + 24·m`.
+- **Spawn rate** `1.1 + 1.35·m + 0.09·m²` per second, **alive cap** `115 + 24·m + 1.4·m²` (at most 400). The quadratic terms were added on 2026-10-17 (owner: "more enemy density as time goes on, and more swarms"): about the same in the first minutes (5.9/s vs 5.2/s at three minutes), noticeably thicker later (12.4/s vs 9.2/s at six, ~24/s at ten in the endless phase). The cap of 400 keeps the crowd within the frame budget (performance.md).
 - **Elites** as in the table: more often, and mixed into ordinary spawns.
 - **Monster level** `1 + 2·m` (persistent-character experience per kill).
 
