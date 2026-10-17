@@ -119,6 +119,22 @@ public partial class PlayerHudBar : Control
             Text(font, $"{Mathf.Min(Mathf.CeilToInt(life.Current), maxLife):N0} / {maxLife:N0}", new Vector2(CenterX - BarInner - 10f, BarTop + 16f), 15, Colors.White, HorizontalAlignment.Right);
         }
 
+        // Energy shield (docs/design/progression.md -> "Energy Shield"): a pale band
+        // along the top of the life bar, emptying towards the badge like life does.
+        // A co-op client never sees the host's shield numbers, so it shows none.
+        if (Player.Health is { MaxEnergyShield: > 0f } health && !Net.NetMode.ClientSide)
+        {
+            float frac = Mathf.Clamp(health.EnergyShield / health.MaxEnergyShield, 0f, 1f);
+            float inner = CenterX - BarInner;
+            DrawRect(new Rect2(inner - BarLen, BarTop - 9f, BarLen, 5f), Track);
+            if (frac > 0f)
+            {
+                DrawRect(new Rect2(inner - BarLen * frac, BarTop - 9f, BarLen * frac, 5f), new Color(0.62f, 0.86f, 1f));
+            }
+
+            Text(font, $"Energy Shield {Mathf.CeilToInt(health.EnergyShield)} / {Mathf.RoundToInt(health.MaxEnergyShield)}", new Vector2(inner - BarLen, BarTop - 12f), 12, new Color(0.7f, 0.9f, 1f), HorizontalAlignment.Left);
+        }
+
         if (ShowMana)
         {
             DrawBar(1, Fraction(Player.Stats.Mana), _manaTrail, ManaTop, ManaBottom);

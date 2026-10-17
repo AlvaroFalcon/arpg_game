@@ -68,8 +68,8 @@ public static class OfferRules
     /// nothing left to offer drops out and the others share its weight.</summary>
     public static float CategoryWeight(OfferCategory category) => category switch
     {
-        OfferCategory.Skill => 45f,
-        OfferCategory.PowerUp => 40f,
+        OfferCategory.Skill => 35f,
+        OfferCategory.PowerUp => 50f,
         OfferCategory.Support => 15f,
         _ => 0f,
     };

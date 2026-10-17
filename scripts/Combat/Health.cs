@@ -135,6 +135,7 @@ public partial class Health : Node
     public float MaxEnergyShield => _shieldStat is null ? 0f : Mathf.Max(0f, _shieldStat.Value);
 
     private float _shieldDelay;
+    private float _lastMaxShield;
     private Stat? _shieldStat;
 
     public override void _PhysicsProcess(double delta)
@@ -148,8 +149,17 @@ public partial class Health : Node
         float maxShield = MaxEnergyShield;
         if (maxShield <= 0f && EnergyShield <= 0f)
         {
+            _lastMaxShield = 0f;
             return;
         }
+
+        // New shield (a card, a keystone) arrives charged: the increase is added at once.
+        if (maxShield > _lastMaxShield)
+        {
+            EnergyShield += maxShield - _lastMaxShield;
+        }
+
+        _lastMaxShield = maxShield;
 
         if (_shieldDelay > 0f)
         {

@@ -128,9 +128,11 @@ public partial class RunBuild : Node, IBuildContext
             }
         }
 
-        if (ForcedElement != SkillTags.None)
+        // A keystone's forced element, from a card or from the character's tree.
+        SkillTags forced = ForcedElement != SkillTags.None ? ForcedElement : Characters.CharacterBuild.Of(Player)?.ForcedElement ?? SkillTags.None;
+        if (forced != SkillTags.None)
         {
-            tags = (tags & ~UpgradeCatalog.Elements) | ForcedElement;
+            tags = (tags & ~UpgradeCatalog.Elements) | forced;
         }
 
         return tags;

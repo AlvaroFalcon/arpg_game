@@ -195,6 +195,9 @@ public partial class LevelUpScreen : CanvasLayer
 
     private void Reroll(int index) => RerollCard(index);
 
+    /// <summary>True once the cards accept keys and clicks (<see cref="ArmDelay"/>).</summary>
+    public bool Armed => _cards.Armed;
+
     /// <summary>The offers on screen (tests, tools).</summary>
     public IReadOnlyList<UpgradeOffer> Offers => _cards.Offers;
 

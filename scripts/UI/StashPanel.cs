@@ -13,6 +13,10 @@ namespace ArpgGame.UI;
 /// 12×10 grid; the first is free and more are bought with gold, each costing
 /// double the last. Right-click moves an item between the stash tab and the
 /// inventory (PoE's ctrl-click); dragging rearranges within a grid.
+///
+/// The last tab is **Pending items** (docs/design/items.md -> "Pending items"):
+/// rewards that found a full inventory. It only gives: right-click sends an
+/// item to the inventory, "Move all to stash" empties it into the tabs.
 /// </summary>
 public partial class StashPanel : ModalPanel
 {
@@ -28,6 +32,17 @@ public partial class StashPanel : ModalPanel
     private Label _goldLabel = null!;
     private readonly List<Inventory> _tabs = new();
     private int _current;
+    private Inventory? _pending;
+    private Label _pendingNote = null!;
+
+    /// <summary>The tab index that shows Pending items.</summary>
+    public const int PendingTab = -1;
+
+    /// <summary>True while the Pending items tab is shown.</summary>
+    public bool ShowingPending => _current == PendingTab;
+
+    /// <summary>The live Pending items grid while the panel is built (tests, captures).</summary>
+    public Inventory? PendingGrid => _pending;
 
     private Profile? Profile => Core.Profile.Get(this);
 
@@ -39,6 +54,10 @@ public partial class StashPanel : ModalPanel
         _tabsRow = UiTheme.HBox(left, 4);
         _stashHolder = new Control { CustomMinimumSize = new Vector2(Core.Profile.StashColumns * InventoryGridControl.CellPx, Core.Profile.StashRows * InventoryGridControl.CellPx) };
         left.AddChild(_stashHolder);
+        _pendingNote = UiTheme.Label("", 14, UiTheme.TextDim);
+        _pendingNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _pendingNote.CustomMinimumSize = new Vector2(Core.Profile.StashColumns * InventoryGridControl.CellPx, 0f);
+        left.AddChild(_pendingNote);
 
         VBoxContainer right = UiTheme.VBox(columns, 8);
         right.AddChild(UiTheme.Label("Inventory", 18, UiTheme.Gold));
@@ -60,7 +79,7 @@ public partial class StashPanel : ModalPanel
         }
 
         // Live inventory nodes for every tab, built once per opening.
-        if (_tabs.Count != profile.StashTabs.Count)
+        if (_tabs.Count != profile.StashTabs.Count || _pending is null)
         {
             BuildTabs(profile);
         }
@@ -86,13 +105,43 @@ public partial class StashPanel : ModalPanel
             _tabsRow.AddChild(buy);
         }
 
+        int waiting = _pending!.Placements.Count;
+        Button pendingTab = UiTheme.Button($"Pending ({waiting}/{Core.Profile.OverflowCap})", () => { _current = PendingTab; Refresh(); }, 15, 120f);
+        pendingTab.Name = "PendingTab";
+        pendingTab.TooltipText = "Rewards that arrived while your inventory was full";
+        if (waiting > 0)
+        {
+            pendingTab.AddThemeColorOverride("font_color", UiTheme.Ember);
+        }
+
+        if (ShowingPending)
+        {
+            pendingTab.AddThemeStyleboxOverride("normal", UiTheme.Box(new Color(0.24f, 0.18f, 0.32f), UiTheme.Gold, 2));
+        }
+
+        _tabsRow.AddChild(pendingTab);
+
         ClearChildren(_stashHolder);
         _stashHolder.AddChild(new InventoryGridControl
         {
-            InventoryNode = _tabs[_current],
+            InventoryNode = ShowingPending ? _pending : _tabs[_current],
             EquipmentNode = Player.Equipment,
             RightClickOverride = MoveToInventory,
         });
+        _pendingNote.Visible = ShowingPending;
+        if (ShowingPending)
+        {
+            _pendingNote.Text = waiting == 0
+                ? "Pending items is empty. Rewards that find your inventory full wait here."
+                : $"Rewards that found your inventory full. Right-click one to take it, or move them all to the stash. Holds {Core.Profile.OverflowCap}: when a new reward arrives with it full, the oldest is sold for gold.";
+            if (waiting > 0)
+            {
+                Button all = UiTheme.Button("Move all to stash", () => MoveAllPendingToStash(), 14, 160f);
+                all.Name = "MoveAllPending";
+                _stashHolder.AddChild(all);
+                all.Position = new Vector2(Core.Profile.StashColumns * InventoryGridControl.CellPx - 164f, Core.Profile.StashRows * InventoryGridControl.CellPx - 40f);
+            }
+        }
 
         ClearChildren(_inventoryHolder);
         _inventoryHolder.AddChild(new InventoryGridControl
@@ -128,11 +177,81 @@ public partial class StashPanel : ModalPanel
             _tabs.Add(tab);
         }
 
-        _current = Mathf.Clamp(_current, 0, _tabs.Count - 1);
+        _pending?.QueueFree();
+        _pending = new Inventory { Columns = Core.Profile.OverflowColumns, Rows = Core.Profile.OverflowRows, Name = "PendingItems" };
+        AddChild(_pending);
+        foreach ((EquipmentItem item, Vector2I cell) in profile.Overflow)
+        {
+            if (!_pending.TryPlaceAt(item, cell))
+            {
+                _pending.TryAdd(item);
+            }
+        }
+
+        // Opens on Pending items when something is waiting there.
+        _current = profile.Overflow.Count > 0 && !_openedOnce ? PendingTab : _current == PendingTab ? PendingTab : Mathf.Clamp(_current, 0, _tabs.Count - 1);
+        _openedOnce = true;
     }
+
+    private bool _openedOnce;
+
+    /// <summary>Empties Pending items into the stash tabs (first tab with room for each).
+    /// Returns how many moved.</summary>
+    public int MoveAllPendingToStash()
+    {
+        if (_pending is null)
+        {
+            return 0;
+        }
+
+        int moved = 0;
+        foreach (EquipmentItem item in _pending.Placements.Keys.ToList())
+        {
+            foreach (Inventory tab in _tabs)
+            {
+                if (tab.TryFindFirstFit(item, out Vector2I at))
+                {
+                    _pending.Remove(item);
+                    tab.TryPlaceAt(item, at);
+                    moved++;
+                    break;
+                }
+            }
+        }
+
+        if (moved > 0)
+        {
+            Sfx.Play(this, "pickup", -6f);
+        }
+
+        if (_pending.Placements.Count > 0)
+        {
+            WorldMessage.Show(Player, "The stash is full", new Color(1f, 0.45f, 0.35f));
+        }
+
+        SaveBack();
+        Refresh();
+        return moved;
+    }
+
+    /// <summary>Shows a stash tab, or Pending items with <see cref="PendingTab"/> (tests, captures).</summary>
+    public void ShowTab(int index)
+    {
+        _current = index == PendingTab ? PendingTab : Mathf.Clamp(index, 0, Mathf.Max(0, _tabs.Count - 1));
+        Refresh();
+    }
+
+    /// <summary>Moves one Pending item to the inventory as a right-click would (tests).</summary>
+    public bool TakePending(EquipmentItem item) => ShowingPending && MoveToInventory(item);
 
     private bool MoveToStash(EquipmentItem item)
     {
+        if (ShowingPending)
+        {
+            WorldMessage.Show(Player, "Pending items only holds rewards — pick a stash tab", new Color(1f, 0.45f, 0.35f));
+            return false;
+        }
+
         Inventory tab = _tabs[_current];
         if (!tab.TryFindFirstFit(item, out Vector2I at))
         {
@@ -154,9 +273,15 @@ public partial class StashPanel : ModalPanel
             return false;
         }
 
-        _tabs[_current].Remove(item);
+        (ShowingPending ? _pending! : _tabs[_current]).Remove(item);
         Player.Inventory.TryPlaceAt(item, at);
         Sfx.Play(this, "pickup", -6f);
+        if (ShowingPending)
+        {
+            SaveBack();
+            CallDeferred(nameof(Refresh)); // the tab's count
+        }
+
         return true;
     }
 
@@ -186,6 +311,14 @@ public partial class StashPanel : ModalPanel
         for (int i = 0; i < _tabs.Count && i < profile.StashTabs.Count; i++)
         {
             profile.StashTabs[i] = _tabs[i].Placements.Select(kv => (kv.Key, kv.Value)).ToList();
+        }
+
+        if (_pending is not null)
+        {
+            // Keep arrival order (oldest first: the one sold at the cap).
+            var still = profile.Overflow.Where(e => _pending.Placements.ContainsKey(e.Item)).Select(e => (e.Item, _pending.Placements[e.Item])).ToList();
+            profile.Overflow.Clear();
+            profile.Overflow.AddRange(still);
         }
 
         profile.CaptureFrom(Player);
