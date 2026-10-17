@@ -135,6 +135,11 @@ public partial class CoopUiTestDriver : CoopTestDriver
                 && form.SlotTexts.Count(t => t.StartsWith("Free")) == 3 && form.SlotTexts[0].Contains("Host") && form.SlotTexts[0].Contains("You"),
             $"view={form.Current} port={port} slots=[{string.Join(" | ", form.SlotTexts)}]");
         Check("HOST-INVITE-HAS-CODE", form.InviteText.EndsWith(JoinCode.Format(JoinCode.TestCode)) && form.InviteText.Contains($":{port}"), $"invite='{form.InviteText}'");
+        // Owner report: with the router port not opened, the lobby put the LAN address
+        // up as "the" address. It must say it's local only and offer the public IP lookup.
+        bool vpnHere = PortMapper.LocalAddresses().Any(a => a.StartsWith("100.") || a.StartsWith("26.") || a.StartsWith("25."));
+        Check("HOST-LAN-ADDRESS-LABELLED", vpnHere || ((form.AddressKind.StartsWith("Local network only") || form.AddressKind == "This PC only.") && form.PublicIpOffered),
+            $"kind='{form.AddressKind}' offered public IP lookup={form.PublicIpOffered} (VPN on this machine={vpnHere})");
 
         // --- a friend joins through their own panel --------------------------------------------
         (NetSession f1, CoopPanel p1) = await Friend();

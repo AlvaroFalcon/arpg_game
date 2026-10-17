@@ -20,8 +20,10 @@ levels from 1 to ~20 and builds itself from level-up cards
 the whole design: *survivor-style power curve inside a run, ARPG-style persistent
 character across runs.*
 
-Flow: Main menu → Hideout → portal → **pick a first skill** → survive → boss →
-results (choose one of three items) → Hideout.
+Flow: Main menu → Hideout → portal → **start pick** (a skill card: the class's
+skills for a skill-less character, otherwise a new class skill or a level for one
+it brought — progression.md -> "The start pick") → survive → boss → results
+(choose one of three items, if the run earned one) → Hideout.
 
 ## The arena
 
@@ -47,7 +49,7 @@ results (choose one of three items) → Hideout.
 | 2:30 | Volatile imps join (run in and explode). |
 | 1:30, then every 45 s → 14 s | An announced **elite** (bigger, tougher, glows gold, 6× XP, can drop gear). The gap shrinks by 4 s a minute. |
 | from 2:00 | Any ordinary spawn may come as an elite: 0.5 % per minute past two, up to 4 %. |
-| every 60 s | A **swarm**: a ring of fast enemies closing in from all sides. |
+| every 60 s → 30 s | A **swarm**: a ring of fast enemies closing in from all sides. Every 60 s at first, then more often (`60 − 5·m` s, never under 30 s); 16 enemies plus one every 20 s; from 4:00 a second, wider ring of another kind follows ("two waves"). |
 | 3:00 | **The Bone Herald** (mid boss). Normal spawns drop to 30 % while it lives. |
 | 5:30 | **The Bone Herald returns** (if the first one is dead). |
 | 7:00 | **The Ember Colossus**. All normal enemies burn away (no XP), gems on the floor fly to the player, and the fight is one-on-one plus what the boss summons. |
@@ -66,7 +68,7 @@ first minute, +1 every minute), shown on the HUD as the right-hand bar:
   grows faster than damage, because the player's damage scales with their build and
   their life mostly does not. Bosses scale with the square root of the life
   multiplier and not at all on damage ([bosses.md](bosses.md)).
-- **Spawn rate** `1.1 + 1.35·m` per second, **alive cap** `115 + 24·m`.
+- **Spawn rate** `1.1 + 1.35·m + 0.09·m²` per second, **alive cap** `115 + 24·m + 1.4·m²` (at most 400). The quadratic terms were added on 2026-10-17 (owner: "more enemy density as time goes on, and more swarms"): about the same in the first minutes (5.9/s vs 5.2/s at three minutes), noticeably thicker later (12.4/s vs 9.2/s at six, ~24/s at ten in the endless phase). The cap of 400 keeps the crowd within the frame budget (performance.md).
 - **Elites** as in the table: more often, and mixed into ordinary spawns.
 - **Monster level** `1 + 2·m` (persistent-character experience per kill).
 
@@ -119,8 +121,13 @@ so balance numbers stay comparable with earlier passes.
 - **Gem cap:** above 300 gems on the floor, new experience merges into an existing
   gem instead of spawning another (Vampire Survivors does the same). Keeps the
   late floor readable and cheap.
-- Curve: `5 + 3·(L−1) + 0.45·(L−1)²` to go from level L to L+1 — about twenty levels
-  in a full run.
+- Curve: `5 + 3·(L−1) + 0.55·(L−1)²` to go from level L to L+1 — about twenty levels
+  in a full run. (This line said 0.45 until 2026-10-17; the code has been 0.55. The
+  doc now matches the code; no number changed.)
+- **Co-op (2026-10-17):** one party bar instead of one per player. Every player's
+  gems fill it, and it needs the curve × the party size, so the party levels at about
+  the solo pace. Each level is a round of picks for everyone, with the whole game
+  paused (multiplayer.md -> "Level-ups").
 - Rarer drops: **life orbs** (heal 25 % of max life; 1.2 % from normal enemies,
   50 % from elites) and **gold coins** (5 % / always from elites).
 - **Gear** drops on the ground through the existing item pipeline (label, filter,
@@ -159,14 +166,34 @@ cascade (items.md -> "Drop tables (cascade)") with a multiplier of
 bosses (≈ 40 % Rare per card), ×4.2 after sixteen endless minutes (≈ 63 %). Elites and
 bosses dropping gear mid-run use the `RiftElite` / `RiftBoss` tables, +5 % per minute. Gold and orbs go straight into the wallet
 before the character is saved. Everything picked up from the ground
-during the run is kept too. Dying is not a punishment beyond ending the run: in a
+during the run is kept too. A kept item that finds the bag full goes to **Pending
+items** in the hideout stash (items.md -> "Pending items") instead of being lost.
+
+### Minimum for an item (2026-10-17)
+
+Owner report: starting a Rift and leaving at once still paid an item. Item cards
+now need the run to have **lasted 60 s or killed 30 monsters**
+(`RunRewards.MinItemSeconds`, `MinItemKills` — either is enough; co-op counts the
+party's kills). Below that the results screen shows no cards and says why: "No item
+this time: a Rift pays an item after 60 s or 30 kills (this one: 10 s, 3 kills)".
+Gold and orbs keep their formulas, which already start from about zero (a 10-second
+run pays 1 gold and no orb). Confirmed by the owner (2026-10-17).
+
+Why these numbers: an ordinary first minute kills 50–80 monsters with auto-cast, so
+any real attempt clears both bars long before the first elite; dying in the first
+minute is rare enough that the kill bar covers it. An item at 1:00 rolls item level
+~8 at ×1.1 rarity, so standing still for a minute to farm it is not worth anyone's
+time. Alternatives: scaling the item count from zero (a fractional item has no
+good presentation), a time-only rule (punishes a fast death in a hot start), a
+kills-only rule (a stand-still player with auto-cast reaches it anyway). Dying is not a punishment beyond ending the run: in a
 game whose persistent progression is gear, taking the gear away on death would make
 every death a double loss.
 
 ## Run-only bonuses
 
 Every run character gets **+60 maximum life** and **+8 mana regeneration** on top of
-the persistent character. The base numbers (70 life, ~6 mana/s) were tuned for the
+the persistent character — whose class, passive tree and ascendancy apply in the
+Rift as well (progression.md -> "The character in the Rift"). The base numbers (70 life, ~6 mana/s) were tuned for the
 dummy sandbox; a survivor run is far denser. These modifiers have their own source
 and are stripped (with the whole run build) before the profile is saved.
 

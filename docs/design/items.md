@@ -752,6 +752,44 @@ Owner feedback after the first endgame build:
 - Tooltips only show while their grid is actually visible (they used to leak
   through a closed inventory).
 
+## Pending items (reward overflow) **[IMPLEMENTED 2026-10-17]**
+
+Owner report: a Survival Rift that ended with a full bag couldn't hand over its
+reward ("Your inventory is full — make room in the hideout first") and leaving
+forfeited it. Now a reward that doesn't fit goes to **Pending items**.
+
+- **What:** a receive-only area, account-wide (`Profile.Overflow`, saved next to the
+  stash tabs), shown as the last tab of the hideout stash: **Pending (n/20)**. The
+  stash opens on it when something is waiting, and the hideout's arrival banner says
+  "N rewards are waiting in the stash — the Pending tab".
+- **Out, never in:** right-click an item to move it to the inventory; **Move all to
+  stash** puts each one in the first stash tab with room. Right-clicking an inventory
+  item while the Pending tab is shown is refused with a message (it is not storage).
+- **The cap: 20 items.** A reward that arrives with Pending items full (or with no
+  room on its 12×10 grid) makes the **oldest** one be **sold to Odran** at his normal
+  price (`Crafting.SellPrice`), gold to the active character, and the results screen
+  says which. The newest reward always gets in; nothing vanishes for nothing.
+- **Where it is used:** the Survival Rift results screen (`Profile.ClaimReward`: the
+  bag first, Pending items second). The results line says "sent to Pending items
+  (your inventory is full) — take it from the stash in the hideout".
+
+Why account-wide: the stash already is, so moving a reward to another character
+costs nothing extra, and deleting a character can't strand its rewards. Why a cap
+that sells rather than one that refuses: refusing is the bug this fixes; deleting
+the oldest silently would punish forgetfulness harder than the value warrants.
+
+Alternatives considered: rewards straight into the stash (no tab of its own — but a
+full stash has the same problem, and the player loses track of what is new);
+mailing them to the character's bag next time it has room (invisible, surprising);
+no cap (an unbounded save and an inbox nobody empties).
+
+Not routed through it (yet): reality drops and boss chests land on the ground,
+where a full bag already just leaves them for later — but whatever is still on the
+floor when a reality closes is lost. Sending those to Pending items at the exit is
+cheap with `ClaimReward`, but the owner decided against it (2026-10-17: floor drops
+left behind don't matter). The cap of 20 and selling the oldest were confirmed by the
+owner the same day.
+
 ## Open questions
 
 1. **Majestic effect pool** — the 10 effects above are [PROPOSED]; confirm, cut, or

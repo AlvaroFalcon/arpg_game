@@ -92,6 +92,9 @@ public partial class CoopBenchHost : CoopTestDriver
 
         await WaitFor(() => session.Members.Count == Clients + 1, 90f);
         Log($"lobby: {session.Members.Count} players");
+        // Level-up rounds pause the whole party; the bench measures the fight, so every
+        // round (the start pick included) is decided at once with the first card.
+        RiftHost.AutoPickAll = true;
         session.StartRun();
         await WaitFor(() => Run?.NetHost is { } h && h.ReadyPeers == Clients && Run.State.ClockRunning, 90f);
         RunController run = Run!;

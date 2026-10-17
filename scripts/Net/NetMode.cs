@@ -30,7 +30,8 @@ public sealed class PlayerCommand
     public Vector2 Aim;
     public bool Sprint;
 
-    /// <summary>The player has the level-up cards open (warded while choosing).</summary>
+    /// <summary>The player has the level-up cards open (informational: a level-up
+    /// round pauses the whole game, docs/design/multiplayer.md -> "Level-ups").</summary>
     public bool Choosing;
 
     public ushort Seq;

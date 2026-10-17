@@ -29,6 +29,24 @@ public partial class ResultsScreen : CanvasLayer
     private int _claimed;
     private int _keep = 1;
 
+    /// <summary>The last reward claimed and where it went (tests, captures).</summary>
+    public Profile.RewardClaim? LastClaim { get; private set; }
+
+    /// <summary>The hint above the item cards (tests, captures).</summary>
+    public string RewardHint => _rewardHint?.Text ?? "";
+
+    /// <summary>Claims item card <paramref name="index"/> as if clicked (tests, captures).</summary>
+    public void ClaimIndex(int index)
+    {
+        if (index >= 0 && index < _rewards.GetChildCount() && _rewards.GetChild(index) is Button b)
+        {
+            b.EmitSignal(BaseButton.SignalName.Pressed);
+        }
+    }
+
+    /// <summary>Item cards on offer (tests).</summary>
+    public int RewardCount => _rewards?.GetChildCount() ?? 0;
+
     public override void _Ready()
     {
         Layer = 25;
@@ -67,12 +85,14 @@ public partial class ResultsScreen : CanvasLayer
             _box.AddChild(UiTheme.Label("Every minute survived adds gold, orbs, item cards and items to keep.", 13, UiTheme.TextDim, HorizontalAlignment.Center));
         }
 
-        _rewardHint = UiTheme.Label(KeepText(rewards.Keep), 24, UiTheme.Ember, HorizontalAlignment.Center);
+        _rewardHint = UiTheme.Label(rewards.ItemsEarned ? KeepText(rewards.Keep) : rewards.NoItemReason, rewards.ItemsEarned ? 24 : 18, rewards.ItemsEarned ? UiTheme.Ember : UiTheme.TextDim, HorizontalAlignment.Center);
+        _rewardHint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _rewardHint.CustomMinimumSize = new Vector2(900f, 0f);
         _box.AddChild(_rewardHint);
         _rewards = UiTheme.HBox(_box, 14);
         _rewards.Alignment = BoxContainer.AlignmentMode.Center;
         // Up to five cards: narrow them so they always fit the screen.
-        float cardWidth = Mathf.Min(280f, (1180f - 14f * (rewards.Choices - 1)) / rewards.Choices);
+        float cardWidth = Mathf.Min(280f, (1180f - 14f * (rewards.Choices - 1)) / Mathf.Max(1, rewards.Choices));
         foreach (EquipmentItem item in RollRewards(rewards))
         {
             _rewards.AddChild(RewardCard(item, cardWidth));
@@ -200,21 +220,40 @@ public partial class ResultsScreen : CanvasLayer
         }
 
         Profile? profile = Profile.Get(this);
-        if (profile is null || !profile.AddToStash(item))
+        if (profile is null)
         {
-            _rewardHint.Text = "Your inventory is full — make room in the hideout first.";
+            _rewardHint.Text = "No profile to keep the item in.";
+            return;
+        }
+
+        // A full inventory is no reason to lose a reward: it goes to Pending items
+        // (docs/design/items.md -> "Pending items"), opened from the hideout stash.
+        Profile.RewardClaim claim = profile.ClaimReward(item);
+        if (!claim.Stored)
+        {
+            _rewardHint.Text = "That item could not be stored.";
             return;
         }
 
         _claimed++;
-        profile.Save();
         Core.Sfx.Play(this, "pickup");
         card.Disabled = true;
         card.SetMeta("claimed", true);
         int left = _keep - _claimed;
-        _rewardHint.Text = left > 0
-            ? $"{item.Descriptor.DisplayName} added to your inventory — {left} more to choose."
+        string where = claim.ToOverflow
+            ? $"{item.Descriptor.DisplayName} sent to Pending items (your inventory is full) — take it from the stash in the hideout."
             : $"{item.Descriptor.DisplayName} added to your inventory.";
+        if (claim.SoldOldest is { } sold)
+        {
+            where += $"\nPending items was full: {sold.Descriptor.DisplayName}, the oldest, was sold for {claim.SoldFor} gold to make room.";
+            if (!sold.IsInsideTree())
+            {
+                sold.QueueFree();
+            }
+        }
+
+        _rewardHint.Text = left > 0 ? $"{where}  {left} more to choose." : where;
+        LastClaim = claim;
         if (left > 0)
         {
             return;

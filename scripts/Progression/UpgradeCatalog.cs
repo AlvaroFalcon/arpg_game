@@ -47,6 +47,13 @@ public sealed class KeystoneDefinition
     public string Name { get; init; } = "";
     public string Description { get; init; } = "";
     public Action<IBuildContext> Apply { get; init; } = _ => { };
+
+    /// <summary>Which keystone levels offer it (docs/design/progression.md -> "Keystone cadence").</summary>
+    public KeystoneTier Tier { get; init; } = KeystoneTier.Great;
+
+    /// <summary>False for a keystone whose trade means nothing in the Survival Rift
+    /// (Blood Magic: skills cost nothing there). It stays a passive-tree keystone.</summary>
+    public bool InRift { get; init; } = true;
 }
 
 /// <summary>
@@ -243,6 +250,12 @@ public static class UpgradeCatalog
         Apply = (s, m, src) => s.Damage.AddModifier(new StatModifier(ModifierType.Increased, pct * m, src, tag)),
     };
 
+    private static PassiveDefinition Gated(PassiveDefinition p, SkillTags tag) => new()
+    {
+        Id = p.Id, Name = p.Name, Weight = p.Weight, MaxRank = p.MaxRank, Describe = p.Describe, Apply = p.Apply, Scales = p.Scales,
+        Requires = b => b.HasTag(tag),
+    };
+
     private static PassiveDefinition StatPassive(string id, string name, StatId stat, ModifierType type, float value, Func<float, string> describe, float weight = 1f, int maxRank = 99) => new()
     {
         Id = id, Name = name, Weight = weight, MaxRank = maxRank, Describe = describe,
@@ -254,7 +267,14 @@ public static class UpgradeCatalog
         DamagePassive("fire_damage", "Fire Damage", SkillTags.Fire, 20f, b => b.HasTag(SkillTags.Fire)),
         DamagePassive("cold_damage", "Cold Damage", SkillTags.Cold, 20f, b => b.HasTag(SkillTags.Cold)),
         DamagePassive("lightning_damage", "Lightning Damage", SkillTags.Lightning, 20f, b => b.HasTag(SkillTags.Lightning)),
-        DamagePassive("spell_damage", "Spell Damage", SkillTags.Spell, 12f),
+        DamagePassive("spell_damage", "Spell Damage", SkillTags.Spell, 14f, b => b.HasTag(SkillTags.Spell)),
+        DamagePassive("melee_damage", "Melee Damage", SkillTags.Melee, 18f, b => b.HasTag(SkillTags.Melee)),
+        new PassiveDefinition
+        {
+            Id = "damage", Name = "Might", Weight = 1.6f,
+            Describe = m => $"{Pct(10 * m)} increased Damage",
+            Apply = (s, m, src) => s.Damage.AddModifier(new StatModifier(ModifierType.Increased, 10f * m, src)),
+        },
         DamagePassive("projectile_damage", "Projectile Damage", SkillTags.Projectile, 18f, b => b.HasTag(SkillTags.Projectile)),
         DamagePassive("area_damage", "Area Damage", SkillTags.Area, 18f, b => b.HasTag(SkillTags.Area)),
         new PassiveDefinition
@@ -271,17 +291,17 @@ public static class UpgradeCatalog
         StatPassive("life_regen", "Regeneration", StatId.LifeRegen, ModifierType.Flat, 1.5f, m => $"+{1.5f * m:0.#} Life regenerated per second"),
         StatPassive("armour", "Iron Skin", StatId.Armour, ModifierType.Flat, 40f, m => $"+{Mathf.RoundToInt(40 * m)} Armour"),
         StatPassive("move_speed", "Fleet Foot", StatId.MovementSpeed, ModifierType.Increased, 7f, m => $"{Pct(7 * m)} increased Movement Speed"),
-        StatPassive("cast_speed", "Quick Hands", StatId.CastSpeed, ModifierType.Increased, 8f, m => $"{Pct(8 * m)} increased Cast Speed"),
+        Gated(StatPassive("cast_speed", "Quick Hands", StatId.CastSpeed, ModifierType.Increased, 8f, m => $"{Pct(8 * m)} increased Cast Speed"), SkillTags.Spell),
+        Gated(StatPassive("attack_speed", "Ferocity", StatId.AttackSpeed, ModifierType.Increased, 8f, m => $"{Pct(8 * m)} increased Attack Speed"), SkillTags.Attack),
         StatPassive("autocast", "Quickening", StatId.AutoCastSpeed, ModifierType.Increased, 12f, m => $"Skills fire {Pct(12 * m)} more often", 1.4f),
         StatPassive("cooldown", "Momentum", StatId.CooldownRecovery, ModifierType.Increased, 8f, m => $"{Pct(8 * m)} increased Cooldown Recovery"),
         StatPassive("crit_chance", "Precision", StatId.CritChance, ModifierType.Increased, 40f, m => $"{Pct(40 * m)} increased Critical Strike Chance"),
         StatPassive("crit_multi", "Ruthlessness", StatId.CritMultiplier, ModifierType.Flat, 0.25f, m => $"+{Pct(25 * m)} Critical Strike Multiplier"),
-        StatPassive("mana_regen", "Clarity", StatId.ManaRegen, ModifierType.Flat, 2.5f, m => $"+{2.5f * m:0.#} Mana regenerated per second"),
-        StatPassive("max_mana", "Deep Well", StatId.MaxMana, ModifierType.Flat, 20f, m => $"+{Mathf.RoundToInt(20 * m)} maximum Mana"),
-        StatPassive("mana_cost", "Efficiency", StatId.ManaCostMultiplier, ModifierType.Increased, -8f, m => $"{Pct(8 * m)} reduced Mana Cost of Skills", maxRank: 5),
         StatPassive("area", "Expanse", StatId.AreaOfEffect, ModifierType.Increased, 10f, m => $"{Pct(10 * m)} increased Area of Effect"),
         StatPassive("projectile_speed", "Velocity", StatId.ProjectileSpeed, ModifierType.Increased, 12f, m => $"{Pct(12 * m)} increased Projectile Speed", 0.6f),
-        StatPassive("pickup", "Magnetism", StatId.PickupRadius, ModifierType.Increased, 25f, m => $"{Pct(25 * m)} increased Pickup Radius", 0.7f),
+        StatPassive("pickup", "Magnetism", StatId.PickupRadius, ModifierType.Increased, 25f, m => $"{Pct(25 * m)} increased Pickup Radius", 0.9f),
+        StatPassive("energy_shield", "Aegis", StatId.EnergyShield, ModifierType.Flat, 20f, m => $"+{Mathf.RoundToInt(20 * m)} Energy Shield\n(takes hits before Life, recharges after 2 s unhurt)"),
+        StatPassive("leech", "Bloodthirst", StatId.LifeLeech, ModifierType.Flat, 0.5f, m => $"{0.5f * m:0.##}% of Damage leeched as Life", 0.7f),
         StatPassive("experience", "Insight", StatId.ExperienceGain, ModifierType.Increased, 10f, m => $"{Pct(10 * m)} increased Experience gained", 0.6f, 5),
         StatPassive("ignite", "Kindling", StatId.IgniteChance, ModifierType.Flat, 0.08f, m => $"+{Pct(8 * m)} chance to Ignite with Fire hits", 0.8f),
         StatPassive("shock", "Static", StatId.ShockChance, ModifierType.Flat, 0.08f, m => $"+{Pct(8 * m)} chance to Shock with Lightning hits", 0.8f),
@@ -358,7 +378,7 @@ public static class UpgradeCatalog
         },
         new KeystoneDefinition
         {
-            Id = "ricochet", Name = "Ricochet",
+            Id = "ricochet", Tier = KeystoneTier.Lesser, Name = "Ricochet",
             Description = "Your projectiles bounce off walls up to 2 times.\n15% less projectile damage.",
             Apply = b => b.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(30, c =>
             {
@@ -369,7 +389,7 @@ public static class UpgradeCatalog
         },
         new KeystoneDefinition
         {
-            Id = "juggernaut", Name = "Juggernaut",
+            Id = "juggernaut", Tier = KeystoneTier.Lesser, Name = "Juggernaut",
             Description = "50% more Armour.\n10% less attack speed.",
             Apply = b =>
             {
@@ -379,7 +399,7 @@ public static class UpgradeCatalog
         },
         new KeystoneDefinition
         {
-            Id = "prismatic_bulwark", Name = "Prismatic Bulwark",
+            Id = "prismatic_bulwark", Tier = KeystoneTier.Lesser, Name = "Prismatic Bulwark",
             Description = "25% less Elemental damage taken.\n15% more Physical damage taken.",
             Apply = b =>
             {
@@ -407,7 +427,7 @@ public static class UpgradeCatalog
         },
         new KeystoneDefinition
         {
-            Id = "blood_magic", Name = "Blood Magic",
+            Id = "blood_magic", InRift = false, Name = "Blood Magic",
             Description = "Skills cost Life instead of Mana,\nbut never take you below 40% Life.\n30% more maximum Life, +3 Life regenerated per second.",
             Apply = b =>
             {
@@ -439,7 +459,7 @@ public static class UpgradeCatalog
         },
         new KeystoneDefinition
         {
-            Id = "iron_will", Name = "Iron Will",
+            Id = "iron_will", Tier = KeystoneTier.Lesser, Name = "Iron Will",
             Description = "20% less damage taken.\n15% less movement speed.",
             Apply = b =>
             {
@@ -456,6 +476,51 @@ public static class UpgradeCatalog
                 b.Stats.Get(StatId.LifeOnKill).AddModifier(new StatModifier(ModifierType.Flat, 5f, b.Source));
                 b.Stats.Get(StatId.LifeOnKill).AddModifier(new StatModifier(ModifierType.More, 200f, b.Source));
                 b.Stats.Get(StatId.LifeRegen).AddModifier(new StatModifier(ModifierType.More, -100f, b.Source));
+            },
+        },
+
+        // Lesser keystones made for the Rift's cards (docs/design/progression.md ->
+        // "Keystone cadence"): one stat bent, a modest cost. Not on the passive tree.
+        new KeystoneDefinition
+        {
+            Id = "scavenger", Tier = KeystoneTier.Lesser, Name = "Scavenger",
+            Description = "100% increased Pickup Radius.\n20% increased Experience gained.\n10% less damage.",
+            Apply = b =>
+            {
+                b.Stats.Get(StatId.PickupRadius).AddModifier(new StatModifier(ModifierType.Increased, 100f, b.Source));
+                b.Stats.Get(StatId.ExperienceGain).AddModifier(new StatModifier(ModifierType.Increased, 20f, b.Source));
+                b.Stats.Damage.AddModifier(new StatModifier(ModifierType.More, -10f, b.Source));
+            },
+        },
+        new KeystoneDefinition
+        {
+            Id = "overclock", Tier = KeystoneTier.Lesser, Name = "Overclock",
+            Description = "Skills fire 35% more often.\n20% less damage.",
+            Apply = b =>
+            {
+                b.Stats.Get(StatId.AutoCastSpeed).AddModifier(new StatModifier(ModifierType.More, 35f, b.Source));
+                b.Stats.Damage.AddModifier(new StatModifier(ModifierType.More, -20f, b.Source));
+            },
+        },
+        new KeystoneDefinition
+        {
+            Id = "shield_conduit", Tier = KeystoneTier.Lesser, Name = "Shield Conduit",
+            Description = "+60 Energy Shield.\n15% less maximum Life.",
+            Apply = b =>
+            {
+                b.Stats.Get(StatId.EnergyShield).AddModifier(new StatModifier(ModifierType.Flat, 60f, b.Source));
+                b.Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.More, -15f, b.Source));
+            },
+        },
+        new KeystoneDefinition
+        {
+            Id = "wind_runner", Tier = KeystoneTier.Lesser, Name = "Wind Runner",
+            Description = "20% more Movement Speed, +1 Dodge charge.\nYou take 10% more damage.",
+            Apply = b =>
+            {
+                b.Stats.MovementSpeed.AddModifier(new StatModifier(ModifierType.More, 20f, b.Source));
+                b.Stats.Get(StatId.DodgeCharges).AddModifier(new StatModifier(ModifierType.Flat, 1f, b.Source));
+                b.Stats.Get(StatId.DamageTaken).AddModifier(new StatModifier(ModifierType.More, 10f, b.Source));
             },
         },
     };

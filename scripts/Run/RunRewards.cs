@@ -13,6 +13,21 @@ namespace ArpgGame.Run;
 /// </summary>
 public sealed class RunRewards
 {
+    /// <summary>docs/design/run.md -> "Minimum for an item": a run earns item
+    /// cards once it lasted this long OR killed this many — leaving at once
+    /// (or standing still in the first seconds) earns gold and orbs by the
+    /// formula, which is about nothing, and no item.</summary>
+    public const float MinItemSeconds = 60f;
+    public const int MinItemKills = 30;
+
+    public static bool EarnsItems(float elapsed, int kills) => elapsed >= MinItemSeconds || kills >= MinItemKills;
+
+    /// <summary>False when the run was too short for an item (<see cref="EarnsItems"/>).</summary>
+    public bool ItemsEarned { get; init; } = true;
+
+    /// <summary>The results screen's explanation when <see cref="ItemsEarned"/> is false.</summary>
+    public string NoItemReason { get; init; } = "";
+
     public long Gold { get; init; }
 
     /// <summary>Crafting orbs by id (rolled with the normal drop weights).</summary>
@@ -38,12 +53,15 @@ public sealed class RunRewards
             orbs.Add(DropTables.RollOrb(rng, 1f + m * DropTables.PerRiftMinute).Id);
         }
 
+        bool earned = EarnsItems(elapsed, kills);
         return new RunRewards
         {
+            ItemsEarned = earned,
+            NoItemReason = earned ? "" : $"No item this time: a Rift pays an item after {Mathf.RoundToInt(MinItemSeconds)} s or {MinItemKills} kills (this one: {Mathf.FloorToInt(elapsed)} s, {kills} kills).",
             Gold = Mathf.RoundToInt(15f * Mathf.Pow(m, 1.6f) + kills * 0.05f + (victory ? 150f : 0f)),
             Orbs = orbs,
-            Choices = 3 + (m >= 7f ? 1 : 0) + (m >= 12f ? 1 : 0),
-            Keep = 1 + (m >= 10f ? 1 : 0) + (m >= 15f ? 1 : 0),
+            Choices = earned ? 3 + (m >= 7f ? 1 : 0) + (m >= 12f ? 1 : 0) : 0,
+            Keep = earned ? 1 + (m >= 10f ? 1 : 0) + (m >= 15f ? 1 : 0) : 0,
             // +12 % per minute, +15 % per boss, +30 % for the win: a 7:30 win with three
             // bosses ×2.65 (Rare 40 %), sixteen endless minutes ×4.2 (Rare 63 %).
             RarityMultiplier = 1f + 0.12f * m + 0.15f * bosses + (victory ? 0.3f : 0f),

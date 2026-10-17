@@ -175,6 +175,7 @@ public partial class ActorStats : Node
         StatId.FreezeChance => 0f,
         StatId.ElementalDamageTaken => 1f,
         StatId.PhysicalDamageTaken => 1f,
+        StatId.EnergyShield => 0f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 

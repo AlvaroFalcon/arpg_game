@@ -113,7 +113,10 @@ public partial class Hideout : Node2D
         }
         else
         {
-            _hud.ShowBanner("Hideout", "Your town between realities — ? opens the guide");
+            int pending = profile?.Overflow.Count ?? 0;
+            _hud.ShowBanner("Hideout", pending > 0
+                ? $"{pending} reward{(pending == 1 ? " is" : "s are")} waiting in the stash — the Pending tab"
+                : "Your town between realities — ? opens the guide");
         }
     }
 
