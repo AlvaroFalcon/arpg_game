@@ -540,3 +540,14 @@ Needs a real two-PC test: the feel of the pause and resume over real latency, an
 ![1 / 3 chosen, 7 s](screenshots/coop-levelup-counter.png)
 ![The last five seconds, in red](screenshots/coop-levelup-red.png)
 ![Waiting for the others](screenshots/coop-levelup-waiting.png)
+
+## 2026-10-17 — Owner answers: denser Rift, resume grace, quiet tick
+
+The owner's answers to last night's questions:
+- **Density.** The Rift already scaled with time (enemy life and damage per minute); the owner wanted the crowd and the swarms to grow with it too.
+  - The spawn rate and alive cap gain a quadratic term (cap at most 400): 5.9/s instead of 5.2/s at three minutes, 12.4/s instead of 9.2/s at six.
+  - Swarms come every 60 s, shrinking to 30 s, grow by one enemy every 20 s, and from 4:00 bring a second, wider ring of another kind.
+  - Bot, level-20 warrior, 3 runs: 3/3 wins, peak ~260 alive at 5:30, 1,770–2,840 kills, damage taken 362 / 1,523 / 453.
+- **Resume grace.** After a card round everyone gets 1 s of invulnerability, chosen over a 3-2-1. The host grants it in co-op, and solo gets it too.
+- **Quiet tick.** The countdown ticks only for players still choosing.
+- **Kept as is:** the co-op pace (to be playtested first), the 10 s limit for keystone rounds, no character supports in the Rift, and nothing for reality floor drops.
