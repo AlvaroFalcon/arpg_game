@@ -515,3 +515,28 @@ Tests: new `RiftProgressionTest` (15 suites, all green). Capture: `RunCapture --
 ![Results: left at once, no item](screenshots/rift-results-no-item.png)
 ![Hideout banner](screenshots/rift-hideout-pending.png)
 ![Stash: Pending tab](screenshots/rift-stash-pending.png)
+
+## 2026-10-17 — Co-op level-ups: one bar, everyone stops, everyone picks
+
+The owner's co-op requests for the Survival Rift, all in:
+
+- **One party bar.** Everyone's gems fill the same experience bar, so the whole party levels together. It needs the solo amount × the party size. Each player's gems are worth 1/spawn-rate of a solo gem, and a party kills about spawn-rate times as much, so without the scaling four players would level four times as fast, and pause four times as often. With it, a co-op run gets the same twenty-odd level-ups as a solo one.
+- **The whole game pauses for everyone.** A level is a *round*: the host pauses its scene tree, the same pause as offline, so monsters, projectiles, telegraphs, DoTs, spawns, cooldowns and the run clock all stop. Every client pauses its own tree when the round reaches it. `NetSession`, `RiftHost` and `RiftClient` run with `ProcessMode.Always`, so the network keeps talking through the pause. We kept one authoritative "round" state broadcast by the host rather than each machine pausing on its own.
+- **Individual picks, then resume.** Each player gets their own row, rolled on their own machine. A client's pick isn't applied locally. The host checks it, applies it to its copy of the build, and answers "applied X". Only then does the client apply it, so a pick and the timer crossing on the wire can't leave the two copies of a build disagreeing. The round closes when everyone still in the party has picked. A burst of levels is rounds back to back, still paused.
+- **"1 / 3 chosen"** and the **countdown** sit at the top of the card screen. The countdown turns red at 5 s, with a tick every second (two new procedural sounds, `tick` and `tick_urgent`). After choosing: "You chose X. Waiting for the others…".
+- **10 s on the host's clock.** The deadline travels as a host-clock time, and clients convert it with the offset they already keep for interpolation. At the deadline the host takes the first card of the row each missing player was shown (clients report their row on open and after each reroll).
+- **Start pick for everyone** in co-op, every run. It's round one, held before the director starts.
+- Disconnect mid-round: that player drops out of the total, and the round closes if everyone left has chosen. Downed players pick too. Solo is unchanged.
+
+Security: rows and picks are validated on the host (the open round only, once, the card must be on the reported row, a well-formed key, must apply to the build; at most 6 rows per round, 9 cards, 64-character keys). A client can't hold the game past the deadline. Protocol bumped to 3. The hostile-host test now also throws junk rounds and junk "applied" keys at a client.
+
+Tests: CoopSmokeTest grew from 43 to 68 checks, with real client processes over ENet. The host and the clients pause and show the start pick before anything acts. The counter replicates. On the host, an awake slime doesn't move, nobody takes damage, the clock stops and a telegraph waits for 1.5 s. Clients see the same freeze. The run waits for the last pick, the timer takes beta's first card after 10.0 s on both sides, a two-level burst is two rounds, five bad picks are refused, and a client leaving mid-round resumes the game. All 15 suites green. CoopBench now auto-picks rounds (32 KB/s per client, host replication 0.6 ms, as before).
+
+Found on the way: the passive card key has four parts (`p:id:rarity:scales`). The first key validator rejected it, so a rogue's rows were refused and the timer picked for them. The test caught it. `run.md` gave the XP curve's quadratic term as 0.45; the code has always been 0.55. The doc now matches the code.
+
+Needs a real two-PC test: the feel of the pause and resume over real latency, and the countdown against the host's.
+
+![Co-op start pick](screenshots/coop-start-pick.png)
+![1 / 3 chosen, 7 s](screenshots/coop-levelup-counter.png)
+![The last five seconds, in red](screenshots/coop-levelup-red.png)
+![Waiting for the others](screenshots/coop-levelup-waiting.png)

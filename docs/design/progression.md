@@ -114,9 +114,11 @@ character level-up mid-run rebuild stats, tree and ascendancy without re-equippi
 the loadout (it used to wipe the run's skills, levels and supports), and gem
 experience still goes to the gems without changing the live skill's level.
 
-**Co-op (for now):** only a skill-less character gets the start pick, as before; the
-host now accepts that one pick from a client (`RunPlayer.AwaitingStartPick`) — it
-used to ignore it. Extending the start pick to everyone is the co-op level-up pass.
+**Co-op (2026-10-17):** every player gets the start pick, every run, whether or not
+the character brought skills. It is the host's first level-up round: the whole party
+picks at once, the game is held (clock stopped, no monsters) until everyone has chosen
+or the 10 s timer takes the first card, then the run begins (multiplayer.md ->
+"Level-ups"). `RunPlayer.AwaitingStartPick` is gone.
 
 ## Rerolls (2026-10-17)
 
@@ -166,8 +168,8 @@ damage don't), it recharges at 50 % of its maximum per second after 2 s without
 damage (`Health.ShieldRechargeDelay`, `ShieldRechargePerSecond`), and newly gained
 shield arrives charged. The HUD draws it as a pale band over the life bar. Cards:
 **Aegis** (+20, scales with rarity) and the lesser keystone Shield Conduit. Named
-"energy shield" rather than "ward" because co-op already calls a choosing player
-"warded".
+"energy shield" rather than "ward" because co-op called a choosing player "warded"
+(until 2026-10-17, when co-op level-ups started pausing the game instead).
 
 ## Why it is shaped like this
 

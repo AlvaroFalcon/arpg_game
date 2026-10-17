@@ -593,7 +593,7 @@ public partial class RunBuild : Node, IBuildContext
                 }
 
                 return added;
-            case "l" when FindSkill(k[1]) is { } skill:
+            case "l" when FindSkill(k[1]) is { } skill && skill.Level < MaxSkillLevel:
                 skill.Level++;
                 Log($"{skill.Definition.DisplayName} → Lv {skill.Level}");
                 return true;

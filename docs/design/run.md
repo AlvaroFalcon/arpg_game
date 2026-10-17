@@ -121,8 +121,13 @@ so balance numbers stay comparable with earlier passes.
 - **Gem cap:** above 300 gems on the floor, new experience merges into an existing
   gem instead of spawning another (Vampire Survivors does the same). Keeps the
   late floor readable and cheap.
-- Curve: `5 + 3·(L−1) + 0.45·(L−1)²` to go from level L to L+1 — about twenty levels
-  in a full run.
+- Curve: `5 + 3·(L−1) + 0.55·(L−1)²` to go from level L to L+1 — about twenty levels
+  in a full run. (This line said 0.45 until 2026-10-17; the code has been 0.55. The
+  doc now matches the code; no number changed.)
+- **Co-op (2026-10-17):** one party bar instead of one per player. Every player's
+  gems fill it, and it needs the curve × the party size, so the party levels at about
+  the solo pace. Each level is a round of picks for everyone, with the whole game
+  paused (multiplayer.md -> "Level-ups").
 - Rarer drops: **life orbs** (heal 25 % of max life; 1.2 % from normal enemies,
   50 % from elites) and **gold coins** (5 % / always from elites).
 - **Gear** drops on the ground through the existing item pipeline (label, filter,

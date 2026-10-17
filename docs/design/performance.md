@@ -402,3 +402,5 @@ the replication code.
    list of up to 4 players). Holding "no target" until the 0.4–0.7 s retarget
    timer runs out would make it free, but monsters would then find a player
    that much later. That is a gameplay change, so it was not done.
+   (2026-10-17: co-op level-ups pause the whole game now, so the cards no longer
+   ward anyone and this case doesn't come up; `Player.Warded` stays for later uses.)

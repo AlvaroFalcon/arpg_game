@@ -169,9 +169,28 @@ a visible telegraph or flash.
   it; only 1–9 (pick) and Shift+1–9 (reroll that card) act. Cards and reroll
   buttons take no keyboard focus. For the first 0.45 s the row is shown dimmed and
   ignores keys and clicks, so a press already on its way when the cards pop up
-  doesn't count. In co-op, where the run keeps going, dodge, flasks and the
-  inventory key also stand down (`LevelUpScreen.BlocksInput`). Tests: RunSmokeTest
+  doesn't count. Dodge, flasks and the inventory key also stand down while it is
+  open (`LevelUpScreen.BlocksInput`; it mattered when co-op kept running under the
+  cards, and still does for tests that drive the cards over a running tree). Tests: RunSmokeTest
   `LEVELUP-*`, RiftProgressionTest `REROLL-UI-*`.
+- **Co-op (2026-10-17, multiplayer.md -> "Level-ups"):** the same screen, opened by
+  the host's round for every player at once, with the whole game paused. A panel at
+  the top shows **"1 / 3 chosen"** and the **countdown** ("7 s"). The countdown is gold,
+  turns **red at 5 s**, and ticks every second (a dry click, a brighter one in the
+  red). Under the row's hint: "When the time runs out, the first card is taken for
+  you." After choosing, the row gives way to "You chose Fireball. Waiting for the
+  others…" at the same height, and the hint becomes "The game resumes when everyone
+  has chosen." If the timer chose: "Time's up — Fireball was taken for you." Several
+  levels at once show "(1 more after this)" in the title, one round each. The start
+  pick in co-op is the same panel over the start row. Why the counter at the top: it
+  is the first thing a waiting player looks for, and the bottom of the screen already
+  holds the reroll line and the build summary.
+  Capture: `RunCapture --only=rift` (`coop-*.png`).
+
+  ![Co-op start pick](../devlog/screenshots/coop-start-pick.png)
+  ![1 / 3 chosen, 7 s](../devlog/screenshots/coop-levelup-counter.png)
+  ![The last five seconds](../devlog/screenshots/coop-levelup-red.png)
+  ![Waiting for the others](../devlog/screenshots/coop-levelup-waiting.png)
 - Results: victory/defeat, time, level, kills, elites, bosses, gold, the build, and
   **three items — keep one**, shown with the normal item tooltip text. A run too
   short for an item (run.md -> "Minimum for an item") shows no cards and a dim line
