@@ -48,7 +48,9 @@ public partial class AutoplayBot : Node
             if (kv.Length == 2 && kv[0] == "runs") _runs = kv[1].ToInt();
             if (kv.Length == 2 && kv[0] == "report") ReportEvery = kv[1].ToFloat();
             if (kv.Length == 2 && kv[0] == "mode") _mode = kv[1];
-            if (kv.Length == 2 && kv[0] == "class") _classId = kv[1];
+            if (kv.Length == 2 && kv[0] == "class") { _classId = kv[1]; _riftCharacter = true; }
+            if (kv.Length == 2 && kv[0] == "tree") _riftTree = kv[1] != "off";
+            if (kv.Length == 2 && kv[0] == "ascend") _riftAscend = kv[1] != "0" && kv[1] != "off";
             if (kv.Length == 2 && kv[0] == "tier") _startTier = kv[1].ToInt();
             if (kv.Length == 2 && kv[0] == "level") _startLevel = kv[1] == "auto" ? 0 : kv[1].ToInt();
             if (kv.Length == 2 && kv[0] == "gear") _gear = kv[1];
@@ -90,13 +92,62 @@ public partial class AutoplayBot : Node
 
     private RunController? Run() => GetTree().CurrentScene as RunController;
 
+    /// <summary>`--class=warrior` in survival mode: the Rift is played by an in-memory
+    /// character of that class (the real profile is never touched) at `--level=N`
+    /// with its passive points spent (`--tree=off` leaves them unspent) and, with
+    /// `--ascend=1`, its first ascendancy and four of its nodes — the character's
+    /// own skills start at level 1 and the start pick is a random card, like any
+    /// other (docs/design/progression.md -> "The character in the Rift").</summary>
+    private bool _riftCharacter;
+    private bool _riftTree = true;
+    private bool _riftAscend;
+
+    private void PrepareRiftCharacter()
+    {
+        if (Core.Profile.Get(this) is not { } profile)
+        {
+            return;
+        }
+
+        profile.Persist = false;
+        Characters.CharacterData c = profile.CreateCharacter($"Bot-{_classId}", _classId);
+        c.TutorialDone = true;
+        c.Level = Mathf.Clamp(_startLevel <= 0 ? 20 : _startLevel, 1, Characters.CharacterData.MaxLevel);
+        if (_riftTree)
+        {
+            SpendPassives(c);
+        }
+
+        if (_riftAscend && c.Class.Ascendancies.Count > 0)
+        {
+            c.Ascendancy = c.Class.Ascendancies[0];
+            c.AscendancyPoints = Characters.AscendancyCatalog.FirstPoints;
+            foreach (Characters.AscendancyNode node in Characters.AscendancyCatalog.For(c.Ascendancy).Take(c.AscendancyPoints))
+            {
+                c.AscendancyNodes.Add(node.Id);
+            }
+        }
+    }
+
     private async Task Loop()
     {
+        if (_riftCharacter)
+        {
+            PrepareRiftCharacter();
+        }
+
         for (_runIndex = 0; _runIndex < _runs; _runIndex++)
         {
             string skill = _skill.Length > 0 ? _skill : UpgradeCatalog.Skills[_rng.RandiRange(0, UpgradeCatalog.Skills.Count - 1)].Id;
             RunLaunchOptions.Reset();
-            RunLaunchOptions.StartSkill = skill;
+            if (_riftCharacter && _skill.Length == 0)
+            {
+                skill = $"{_classId} lv{Core.Profile.Get(this)?.Active.Level} tree={(_riftTree ? "on" : "off")} ascend={(_riftAscend ? "on" : "off")}";
+            }
+            else
+            {
+                RunLaunchOptions.StartSkill = skill;
+            }
             GetTree().Paused = false;
             GetTree().ChangeSceneToFile(Core.Scenes.Run);
             await ToSignal(GetTree().CreateTimer(0.5, processAlways: true), SceneTreeTimer.SignalName.Timeout);

@@ -20,8 +20,10 @@ levels from 1 to ~20 and builds itself from level-up cards
 the whole design: *survivor-style power curve inside a run, ARPG-style persistent
 character across runs.*
 
-Flow: Main menu → Hideout → portal → **pick a first skill** → survive → boss →
-results (choose one of three items) → Hideout.
+Flow: Main menu → Hideout → portal → **start pick** (a skill card: the class's
+skills for a skill-less character, otherwise a new class skill or a level for one
+it brought — progression.md -> "The start pick") → survive → boss → results
+(choose one of three items, if the run earned one) → Hideout.
 
 ## The arena
 
@@ -159,14 +161,34 @@ cascade (items.md -> "Drop tables (cascade)") with a multiplier of
 bosses (≈ 40 % Rare per card), ×4.2 after sixteen endless minutes (≈ 63 %). Elites and
 bosses dropping gear mid-run use the `RiftElite` / `RiftBoss` tables, +5 % per minute. Gold and orbs go straight into the wallet
 before the character is saved. Everything picked up from the ground
-during the run is kept too. Dying is not a punishment beyond ending the run: in a
+during the run is kept too. A kept item that finds the bag full goes to **Pending
+items** in the hideout stash (items.md -> "Pending items") instead of being lost.
+
+### Minimum for an item (2026-10-17)
+
+Owner report: starting a Rift and leaving at once still paid an item. Item cards
+now need the run to have **lasted 60 s or killed 30 monsters**
+(`RunRewards.MinItemSeconds`, `MinItemKills` — either is enough; co-op counts the
+party's kills). Below that the results screen shows no cards and says why: "No item
+this time: a Rift pays an item after 60 s or 30 kills (this one: 10 s, 3 kills)".
+Gold and orbs keep their formulas, which already start from about zero (a 10-second
+run pays 1 gold and no orb).
+
+Why these numbers: an ordinary first minute kills 50–80 monsters with auto-cast, so
+any real attempt clears both bars long before the first elite; dying in the first
+minute is rare enough that the kill bar covers it. An item at 1:00 rolls item level
+~8 at ×1.1 rarity, so standing still for a minute to farm it is not worth anyone's
+time. Alternatives: scaling the item count from zero (a fractional item has no
+good presentation), a time-only rule (punishes a fast death in a hot start), a
+kills-only rule (a stand-still player with auto-cast reaches it anyway). Dying is not a punishment beyond ending the run: in a
 game whose persistent progression is gear, taking the gear away on death would make
 every death a double loss.
 
 ## Run-only bonuses
 
 Every run character gets **+60 maximum life** and **+8 mana regeneration** on top of
-the persistent character. The base numbers (70 life, ~6 mana/s) were tuned for the
+the persistent character — whose class, passive tree and ascendancy apply in the
+Rift as well (progression.md -> "The character in the Rift"). The base numbers (70 life, ~6 mana/s) were tuned for the
 dummy sandbox; a survivor run is far denser. These modifiers have their own source
 and are stripped (with the whole run build) before the profile is saved.
 

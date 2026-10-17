@@ -147,19 +147,40 @@ a visible telegraph or flash.
 
 ## Level-up and results
 
-- Level-up: three cards (keys 1–3), reroll (R, two per run), the build so far
-  underneath. Queued level-ups are offered back to back. Card colour: gold keystone,
-  ember new skill, green support, rarity colour for passives.
+- Level-up: three cards (keys 1–3), the build so far underneath. Queued level-ups
+  are offered back to back. Card colour: gold great keystone, pale gold lesser
+  keystone, ember new skill, green support, rarity colour for power-ups. Keystone
+  rows say which tier ("Level 10 — choose a Great Keystone").
+- **Per-card reroll (2026-10-17):** a small "Reroll [Shift+N]" button under each
+  card replaces only that card; **Shift+1/2/3** does the same from the keyboard
+  (progression.md -> "Rerolls"). Two per run, shown under the row ("Rerolls: 1 left
+  this run — replaces one card"); with none left the buttons grey out. R (the old
+  reroll-everything key) only shows that hint now, so muscle memory doesn't spend a
+  charge on the wrong card. Shift+number was chosen over "R then a number" because
+  it is one chord with no hidden mode, and Shift is not otherwise used while the
+  cards own the keyboard (in co-op dodge/flasks stand down already).
+- **The start pick** is the same row: "Choose your first skill" for a skill-less
+  character (class skills), "Start of the run — choose a skill card" otherwise
+  (with the character's skills, now level 1, in the build line). Rerolls work there
+  too.
 - **The cards own the keyboard while open** (owner feedback 2026-10-16: a stray key
   made the window vanish — the first card had keyboard focus, so Space, the dodge
   key, or Enter picked it). Every key is swallowed before the GUI and gameplay see
-  it; only 1–9 (pick) and R (reroll) act. Cards take no keyboard focus. For the
-  first 0.45 s the row is shown dimmed and ignores keys and clicks, so a press
-  already on its way when the cards pop up doesn't count. In co-op, where the run
-  keeps going, dodge, flasks and the inventory key also stand down
-  (`LevelUpScreen.BlocksInput`). Tests: RunSmokeTest `LEVELUP-*`.
+  it; only 1–9 (pick) and Shift+1–9 (reroll that card) act. Cards and reroll
+  buttons take no keyboard focus. For the first 0.45 s the row is shown dimmed and
+  ignores keys and clicks, so a press already on its way when the cards pop up
+  doesn't count. In co-op, where the run keeps going, dodge, flasks and the
+  inventory key also stand down (`LevelUpScreen.BlocksInput`). Tests: RunSmokeTest
+  `LEVELUP-*`, RiftProgressionTest `REROLL-UI-*`.
 - Results: victory/defeat, time, level, kills, elites, bosses, gold, the build, and
-  **three items — keep one**, shown with the normal item tooltip text.
+  **three items — keep one**, shown with the normal item tooltip text. A run too
+  short for an item (run.md -> "Minimum for an item") shows no cards and a dim line
+  saying why and what it takes. A kept item that finds the bag full says "sent to
+  Pending items (your inventory is full) — take it from the stash in the hideout"
+  (and, at Pending items' cap, which old item was sold for how much).
+- Stash: the last tab is **Pending (n/20)**, ember while something waits; the stash
+  opens on it then, and the hideout's arrival banner points at it (items.md ->
+  "Pending items").
 - Leaving the results before choosing forfeits the item, so the first press of
   "Return to hideout" or "Main menu" turns it into "Leave without an item?" and says
   so above the cards; the second press leaves (2026-10-16). Buttons are sentence
