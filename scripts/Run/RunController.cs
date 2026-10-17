@@ -138,19 +138,23 @@ public partial class RunController : Node2D
 
         if (startSkill is { } skill)
         {
+            // Tools and the balance bot: a preset first skill, no pick.
             Build.AddSkill(skill);
             ApplyAutoLevels(autoLevels);
             StartWhenReady();
         }
-        else if (Build.Skills.Any())
+        else if (Coop && Build.Skills.Any())
         {
-            // The persistent character brings its own gems (docs/design/endgame.md
-            // -> "Survival Rift"); the card pick only exists for a character with none.
-            ApplyAutoLevels(autoLevels);
+            // Co-op keeps the old rule for now: only a skill-less character picks at
+            // the start (the co-op level-up pass extends the start pick to everyone).
             StartWhenReady();
         }
         else
         {
+            // docs/design/progression.md -> "The start pick": every solo run opens
+            // with a skill card pick — the character's class skills if it has none,
+            // otherwise a new class skill or a level for one it brought.
+            ApplyAutoLevels(autoLevels);
             if (Coop)
             {
                 StartWhenReady();
@@ -179,7 +183,7 @@ public partial class RunController : Node2D
         Player.GlobalPosition = SpawnPoint(Mathf.Max(0, slot), Session?.Members.Count ?? 1);
         Build = ConfigureRunCharacter(Player);
         Profile.Get(this)?.ApplyTo(Player);
-        FinishRunCharacter(Player);
+        FinishRunCharacter(Player, Build);
 
         if (NetSessionIsClient)
         {
@@ -230,12 +234,25 @@ public partial class RunController : Node2D
         return build;
     }
 
-    private static void FinishRunCharacter(Player player)
+    /// <summary>
+    /// After the persistent character is on the player: its passive tree and
+    /// ascendancy already apply (CharacterBuild, own modifier source, next to the
+    /// run build's — docs/design/progression.md -> "The character in the Rift");
+    /// its skills start at level 1 with no supports, and the run owns them from here.
+    /// </summary>
+    public static void FinishRunCharacter(Player player, RunBuild build)
     {
         if (player.SkillUser.SlotIsBuiltInMove(SkillSlotId.Lmb))
         {
             player.SkillUser.ClearSlot(SkillSlotId.Lmb);
         }
+
+        if (Characters.CharacterBuild.Of(player) is { } character)
+        {
+            character.RunOwnsSkills = true;
+        }
+
+        build.AdoptCharacterSkills();
 
         if (player.Stats.Life is { } life)
         {
@@ -295,7 +312,7 @@ public partial class RunController : Node2D
                 Profile.ApplyCharacterTo(p, character);
             }
 
-            FinishRunCharacter(p);
+            FinishRunCharacter(p, build);
             if (session.IsClient)
             {
                 p.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;
@@ -310,6 +327,8 @@ public partial class RunController : Node2D
 
             RunPlayer rp = State.AddPlayer(p, build);
             rp.ViewSize = member.ViewSize;
+            // A skill-less member picks a first skill on their machine; the host takes that one pick.
+            rp.AwaitingStartPick = session.IsHost && !build.Skills.Any();
         }
     }
 

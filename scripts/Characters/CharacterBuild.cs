@@ -45,6 +45,15 @@ public partial class CharacterBuild : Node, IBuildContext
     /// <summary>Ascendancy behaviours that need runtime hooks (see <see cref="Ascendancy"/>).</summary>
     public AscendancyEffects Ascendancy { get; private set; } = null!;
 
+    /// <summary>
+    /// Survival Rift (docs/design/progression.md -> "Starting skills"): the run
+    /// build owns the live skills once the run has started — a character level-up
+    /// mid-run rebuilds stats, tree and ascendancy but never re-equips the loadout
+    /// (which would wipe the run's skills, levels and supports), and gem experience
+    /// still goes to the gems without touching the live skill's level.
+    /// </summary>
+    public bool RunOwnsSkills { get; set; }
+
     private readonly List<CastModifier> _myGlobalModifiers = new();
     private readonly Dictionary<SkillSlotId, GemData> _slotGems = new();
     private bool _built;
@@ -104,7 +113,11 @@ public partial class CharacterBuild : Node, IBuildContext
         Stats.RecomputeAttributeDerivations();
         Stats.Life?.ClampToMax();
         Stats.Mana?.ClampToMax();
-        EquipLoadout();
+        if (!RunOwnsSkills)
+        {
+            EquipLoadout();
+        }
+
         ApplySprite();
         _built = true;
     }
@@ -194,7 +207,11 @@ public partial class CharacterBuild : Node, IBuildContext
         {
             if (gem.AddExperience(gain * 0.5f) && SkillUser.GetSkill(slot) is { } instance)
             {
-                instance.Level = gem.Level;
+                if (!RunOwnsSkills)
+                {
+                    instance.Level = gem.Level;
+                }
+
                 string name = UpgradeCatalog.FindSkill(gem.Id)?.Definition.DisplayName ?? gem.Id;
                 EmitSignal(SignalName.GemLevelled, name, gem.Level);
             }

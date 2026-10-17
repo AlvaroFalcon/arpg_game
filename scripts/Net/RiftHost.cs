@@ -1061,7 +1061,13 @@ public partial class RiftHost : Node, IRunLink
                 case RiftProtocol.ClientPick:
                     string key = r.Str();
                     // Only while the host owes this player a level-up (a stray or repeated pick is ignored).
-                    if (link.Player.PendingLevelUps > 0 && (link.Player.Build?.ApplyKey(key) == true || key.Length > 0))
+                    if (link.Player.AwaitingStartPick && key.StartsWith("s:"))
+                    {
+                        // The run-start skill pick (docs/design/progression.md -> "The start pick").
+                        link.Player.AwaitingStartPick = false;
+                        link.Player.Build?.ApplyKey(key);
+                    }
+                    else if (link.Player.PendingLevelUps > 0 && (link.Player.Build?.ApplyKey(key) == true || key.Length > 0))
                     {
                         State.ConsumeLevelUp(link.Player);
                     }

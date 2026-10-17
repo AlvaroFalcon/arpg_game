@@ -9,15 +9,17 @@ namespace ArpgGame.UI;
 
 /// <summary>
 /// docs/design/menus.md -> "Level-up": pauses the run and offers three cards
-/// (keystones every fifth level). Queued level-ups are offered back to back.
-/// Two rerolls per run. Also hosts the run-start skill pick, which is the same
-/// card row with every skill on it.
+/// (lesser keystones at 5, 15, 25…, great ones at 10, 20, 30… —
+/// <see cref="OfferRules"/>). Queued level-ups are offered back to back. Two
+/// rerolls per run, each replacing one card. Also hosts the run-start skill pick
+/// (<see cref="RunBuild.RollStartOffers"/>), the same card row.
 ///
 /// While open it owns the keyboard (owner feedback: a stray key closed the
 /// cards): every key is swallowed in <see cref="_Input"/>, before the GUI and
-/// gameplay see it, and only 1-9 (pick) and R (reroll) do anything — and only
-/// once the cards are armed, <see cref="ArmDelay"/> after they appear, so a key
-/// or click already on its way when they pop up is not taken as a choice.
+/// gameplay see it, and only 1-9 (pick) and Shift+1-9 (reroll that card) do
+/// anything — and only once the cards are armed, <see cref="ArmDelay"/> after
+/// they appear, so a key or click already on its way when they pop up is not
+/// taken as a choice. R alone only points at Shift+number.
 /// </summary>
 public partial class LevelUpScreen : CanvasLayer
 {
@@ -55,7 +57,7 @@ public partial class LevelUpScreen : CanvasLayer
     private Label _title = null!;
     private Label _hint = null!;
     private UpgradeCards _cards = null!;
-    private Button _reroll = null!;
+    private Label _rerollInfo = null!;
     private Label _buildSummary = null!;
     private readonly RandomNumberGenerator _rng = new();
     private int _offeringLevel;
@@ -78,10 +80,9 @@ public partial class LevelUpScreen : CanvasLayer
         _cards = new UpgradeCards();
         box.AddChild(_cards);
         _cards.Chosen += OnChosen;
-        HBoxContainer row = UiTheme.HBox(box, 16);
-        row.Alignment = BoxContainer.AlignmentMode.Center;
-        _reroll = UiTheme.Button("Reroll (R)", Reroll, 18, 200f);
-        row.AddChild(_reroll);
+        _cards.RerollRequested += Reroll;
+        _rerollInfo = UiTheme.Label("", 15, UiTheme.TextDim, HorizontalAlignment.Center);
+        box.AddChild(_rerollInfo);
         _buildSummary = UiTheme.Label("", 15, UiTheme.TextDim, HorizontalAlignment.Center);
         _buildSummary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _buildSummary.CustomMinimumSize = new Vector2(820f, 0f);
@@ -91,28 +92,23 @@ public partial class LevelUpScreen : CanvasLayer
         State.LevelUpReady += _ => TryOpen();
     }
 
-    /// <summary>The run-start pick: every skill, no reroll.</summary>
+    /// <summary>The run-start pick (docs/design/progression.md -> "The start pick"):
+    /// class skills for a skill-less character, otherwise skill cards for the
+    /// skills it brought. Rerolls work here too (same two charges).</summary>
     public void OpenStartPick(System.Action onPicked)
     {
         _startPick = true;
+        _offeringLevel = 0;
         _onStartPicked = onPicked;
         SetOpen(true);
-        _title.Text = "Choose your first skill";
-        SetHint("Your build grows from here: every level adds a skill, a support or a passive.");
-        _reroll.Visible = false;
-        _buildSummary.Text = "";
-        var offers = UpgradeCatalog.Skills.Select(entry => new UpgradeOffer
-        {
-            Kind = UpgradeKind.NewSkill,
-            Id = entry.Id,
-            Title = entry.Definition.DisplayName,
-            Subtitle = TagLine(entry.Definition.Tags),
-            Description = entry.Definition.Description,
-            Icon = entry.Definition.Icon,
-            Key = "s:" + entry.Id,
-            Apply = () => Build.AddSkill(entry.Id),
-        }).ToList();
-        _cards.SetOffers(offers);
+        bool skillLess = !Build.Skills.Any();
+        _title.Text = skillLess ? "Choose your first skill" : "Start of the run — choose a skill card";
+        SetHint(skillLess
+            ? "Your build grows from here: every level adds a skill, a support or a power-up."
+            : "Your skills start at level 1 here. Learn a new one or level one up.  (1 / 2 / 3)");
+        _buildSummary.Text = skillLess ? "" : BuildSummary(Build);
+        _cards.SetOffers(Build.RollStartOffers(_rng));
+        RefreshReroll();
         Arm();
         _root.Visible = true;
     }
@@ -122,20 +118,6 @@ public partial class LevelUpScreen : CanvasLayer
     {
         _cards.ArmedAtMsec = Time.GetTicksMsec() + (ulong)(ArmDelay * 1000f);
         _cards.Modulate = new Color(1f, 1f, 1f, 0.55f);
-    }
-
-    private static string TagLine(Combat.SkillTags tags)
-    {
-        var words = new List<string>();
-        foreach (Combat.SkillTags t in new[] { Combat.SkillTags.Spell, Combat.SkillTags.Projectile, Combat.SkillTags.Area, Combat.SkillTags.Duration, Combat.SkillTags.Fire, Combat.SkillTags.Cold, Combat.SkillTags.Lightning })
-        {
-            if ((tags & t) != 0)
-            {
-                words.Add(t.ToString());
-            }
-        }
-
-        return string.Join(" · ", words);
     }
 
     private void TryOpen()
@@ -152,13 +134,23 @@ public partial class LevelUpScreen : CanvasLayer
     private void ShowNext()
     {
         _offeringLevel = State.Level - State.PendingLevelUps + 1;
-        bool keystone = _offeringLevel % RunBuild.KeystoneEvery == 0;
-        _title.Text = keystone ? $"Level {_offeringLevel} — choose a Keystone" : $"Level {_offeringLevel}";
-        SetHint(keystone ? "Keystones change how your whole build works. Choose carefully." : "Choose an upgrade  (1 / 2 / 3)");
-        _reroll.Visible = true;
-        RefreshReroll();
+        List<UpgradeOffer> offers = Build.RollOffers(_offeringLevel, _rng);
+        KeystoneTier? tier = offers.Count > 0 && offers.All(o => o.Kind == UpgradeKind.Keystone) ? OfferRules.KeystoneTierAt(_offeringLevel) : null;
+        _title.Text = tier switch
+        {
+            KeystoneTier.Great => $"Level {_offeringLevel} — choose a Great Keystone",
+            KeystoneTier.Lesser => $"Level {_offeringLevel} — choose a Lesser Keystone",
+            _ => $"Level {_offeringLevel}",
+        };
+        SetHint(tier switch
+        {
+            KeystoneTier.Great => "Great keystones change how your whole build works. Choose carefully.",
+            KeystoneTier.Lesser => "A lesser keystone: a smaller trade that bends one part of your build.",
+            _ => "Choose an upgrade  (1 / 2 / 3)",
+        });
         _buildSummary.Text = BuildSummary(Build);
-        _cards.SetOffers(Build.RollOffers(_offeringLevel, _rng));
+        _cards.SetOffers(offers);
+        RefreshReroll();
         Arm();
         _root.Visible = true;
         Core.Sfx.Play(this, "levelup");
@@ -169,22 +161,42 @@ public partial class LevelUpScreen : CanvasLayer
 
     private void RefreshReroll()
     {
-        _reroll.Text = $"Reroll (R) — {Build.RerollsLeft} left";
-        _reroll.Disabled = Build.RerollsLeft <= 0;
+        int left = Build.RerollsLeft;
+        _rerollInfo.Text = left > 0
+            ? $"Rerolls: {left} left this run — replaces one card  (Shift + its number, or the button under it)"
+            : "No rerolls left this run";
+        _cards.SetRerollState(left > 0, left > 0 ? "Replace this card only" : "No rerolls left this run");
     }
 
-    private void Reroll()
+    /// <summary>Rerolls one card (docs/design/progression.md -> "Rerolls"). Public for
+    /// tools and tests; returns true if the card changed.</summary>
+    public bool RerollCard(int index)
     {
-        if (!IsOpen || _startPick || Build.RerollsLeft <= 0)
+        if (!IsOpen || index < 0 || index >= _cards.OfferCount)
         {
-            return;
+            return false;
         }
 
-        Build.RerollsLeft--;
+        if (Build.TryReroll(_offeringLevel, _cards.Offers, index, _rng) is not { } offer)
+        {
+            if (Build.RerollsLeft > 0)
+            {
+                _rerollInfo.Text = "Nothing else to offer for that card.";
+            }
+
+            return false;
+        }
+
+        _cards.ReplaceOffer(index, offer);
         RefreshReroll();
-        _cards.SetOffers(Build.RollOffers(_offeringLevel, _rng));
         Arm();
+        return true;
     }
+
+    private void Reroll(int index) => RerollCard(index);
+
+    /// <summary>The offers on screen (tests, tools).</summary>
+    public IReadOnlyList<UpgradeOffer> Offers => _cards.Offers;
 
     public override void _Input(InputEvent @event)
     {
@@ -203,12 +215,22 @@ public partial class LevelUpScreen : CanvasLayer
 
         if (key.PhysicalKeycode == Key.R)
         {
-            Reroll();
+            // The old "reroll everything" key: rerolls are per card now.
+            _rerollInfo.Text = Build.RerollsLeft > 0 ? "To reroll one card, press Shift + its number (or the button under it)." : "No rerolls left this run";
         }
         else if (key.PhysicalKeycode is >= Key.Key1 and <= Key.Key9)
         {
             int index = (int)(key.PhysicalKeycode - Key.Key1);
-            if (index < _cards.OfferCount)
+            if (index >= _cards.OfferCount)
+            {
+                return;
+            }
+
+            if (key.ShiftPressed)
+            {
+                RerollCard(index);
+            }
+            else
             {
                 _cards.ChooseIndex(index);
             }
@@ -224,6 +246,7 @@ public partial class LevelUpScreen : CanvasLayer
             _startPick = false;
             Close();
             _onStartPicked?.Invoke();
+            TryOpen(); // a level gained while the start pick was open (co-op) is next
             return;
         }
 

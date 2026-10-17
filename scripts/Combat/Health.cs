@@ -120,12 +120,47 @@ public partial class Health : Node
     /// effects such as Life on Kill. Null when the hit had no attribution.</summary>
     public Node2D? LastHitSource { get; private set; }
 
+    // --- energy shield (docs/design/progression.md -> "Energy Shield") ---------------
+
+    /// <summary>Seconds without taking damage before energy shield starts to recharge.</summary>
+    public const float ShieldRechargeDelay = 2f;
+
+    /// <summary>Recharge speed once it starts: this share of the maximum per second.</summary>
+    public const float ShieldRechargePerSecond = 0.5f;
+
+    /// <summary>Current energy shield: hits take it before Life (only hits, not
+    /// ignites or other already-resolved damage). Starts full.</summary>
+    public float EnergyShield { get; private set; }
+
+    public float MaxEnergyShield => _shieldStat is null ? 0f : Mathf.Max(0f, _shieldStat.Value);
+
+    private float _shieldDelay;
+    private Stat? _shieldStat;
+
     public override void _PhysicsProcess(double delta)
     {
+        float dt = (float)delta;
         if (InvulnerableTime > 0f)
         {
-            InvulnerableTime -= (float)delta;
+            InvulnerableTime -= dt;
         }
+
+        float maxShield = MaxEnergyShield;
+        if (maxShield <= 0f && EnergyShield <= 0f)
+        {
+            return;
+        }
+
+        if (_shieldDelay > 0f)
+        {
+            _shieldDelay -= dt;
+        }
+        else if (!IsDead)
+        {
+            EnergyShield = Mathf.Min(maxShield, EnergyShield + maxShield * ShieldRechargePerSecond * dt);
+        }
+
+        EnergyShield = Mathf.Min(EnergyShield, maxShield);
     }
 
     /// <summary>
@@ -192,6 +227,7 @@ public partial class Health : Node
     public override void _Ready()
     {
         _stats = GetParent().GetNode<ActorStats>("Stats");
+        _shieldStat = _stats.Get(StatId.EnergyShield);
         _critRng.Randomize();
     }
 
@@ -268,6 +304,18 @@ public partial class Health : Node
         if (payload.SourceActor is not null && IsInstanceValid(payload.SourceActor))
         {
             LastHitSource = payload.SourceActor;
+        }
+
+        if (EnergyShield > 0f && totalTaken > 0f)
+        {
+            float absorbed = Mathf.Min(EnergyShield, totalTaken);
+            EnergyShield -= absorbed;
+            totalTaken -= absorbed;
+        }
+
+        if (MaxEnergyShield > 0f)
+        {
+            _shieldDelay = ShieldRechargeDelay;
         }
 
         ResourcePool life = _stats.Life!;

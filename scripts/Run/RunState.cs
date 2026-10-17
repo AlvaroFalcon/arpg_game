@@ -33,6 +33,10 @@ public sealed class RunPlayer
     public int Level { get; set; } = 1;
     public float Experience { get; set; }
     public int PendingLevelUps { get; set; }
+
+    /// <summary>Co-op host: this remote player has the start pick open on their
+    /// machine and the host still owes them that one card (RiftHost, ClientPick).</summary>
+    public bool AwaitingStartPick { get; set; }
     public long GoldCollected { get; set; }
     public int OrbsCollected { get; set; }
 

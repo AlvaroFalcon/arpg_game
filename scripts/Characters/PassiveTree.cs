@@ -69,7 +69,7 @@ public static class PassiveText
         { StatId.Dexterity, "Dexterity" }, { StatId.Intelligence, "Intelligence" }, { StatId.FireResistance, "Fire Resistance" },
         { StatId.ColdResistance, "Cold Resistance" }, { StatId.LightningResistance, "Lightning Resistance" }, { StatId.DamageTaken, "Damage taken" },
         { StatId.LifeLeech, "of Damage leeched as Life" }, { StatId.ManaOnKill, "Mana gained on kill" }, { StatId.FreezeChance, "chance to Freeze" },
-        { StatId.ElementalDamageTaken, "Elemental Damage taken" }, { StatId.PhysicalDamageTaken, "Physical Damage taken" }, { StatId.ExtraPierce, "Pierce" },
+        { StatId.ElementalDamageTaken, "Elemental Damage taken" }, { StatId.PhysicalDamageTaken, "Physical Damage taken" }, { StatId.ExtraPierce, "Pierce" }, { StatId.EnergyShield, "Energy Shield" },
     };
 
     public static string StatName(StatId stat) => Names.TryGetValue(stat, out string? n) ? n : stat.ToString();

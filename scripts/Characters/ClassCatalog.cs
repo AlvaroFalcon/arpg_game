@@ -37,6 +37,12 @@ public sealed class ClassDefinition
 
     public string Sprite { get; init; } = "";
 
+    /// <summary>The Survival Rift skills that fit the class (docs/design/progression.md ->
+    /// "Starting skills"): a skill-less character's first pick comes from here, and
+    /// later new-skill cards favour them (<see cref="Progression.OfferRules.ClassSkillMultiplier"/>).
+    /// The first entry is the class's starting skill.</summary>
+    public IReadOnlyList<string> RiftSkills { get; init; } = new List<string>();
+
     /// <summary>Starting node id on the shared passive tree.</summary>
     public string TreeStart { get; init; } = "";
 
@@ -68,6 +74,7 @@ public static class ClassCatalog
             Mechanic = "Combo — consecutive hits build stacks (attack speed and critical chance). Stop hitting and they fall away.",
             Strength = 12, Dexterity = 22, Intelligence = 10, BonusLife = 10, BonusDodgeCharges = 1,
             StartingSkill = "double_strike", StartingSupport = "faster_casting", Sprite = "rogue", TreeStart = "start_rogue",
+            RiftSkills = new[] { "double_strike", "throwing_knives", "blades" },
             Resource = ClassResourceKind.Combo,
             Ascendancies = new[] { "assassin", "ninja" },
         },
@@ -78,6 +85,7 @@ public static class ClassCatalog
             Mechanic = "Rage — dealing and taking hits fills Rage, which grants damage and reduces damage taken. It fades out of combat.",
             Strength = 22, Dexterity = 10, Intelligence = 8, BonusLife = 35,
             StartingSkill = "cleave", StartingSupport = "increased_area", Sprite = "warrior", TreeStart = "start_warrior",
+            RiftSkills = new[] { "cleave", "ground_slam", "sunder", "double_strike" },
             Resource = ClassResourceKind.Rage,
             Ascendancies = new[] { "barbarian", "paladin", "samurai" },
         },
@@ -88,6 +96,7 @@ public static class ClassCatalog
             Mechanic = "Arcane Charges — every spell cast grants a charge (cast speed and spell damage). Charges drain slowly.",
             Strength = 8, Dexterity = 10, Intelligence = 22, BonusMana = 25,
             StartingSkill = "fireball", StartingSupport = "spell_echo", Sprite = "player", TreeStart = "start_arcanist",
+            RiftSkills = new[] { "fireball", "spark", "frost_nova", "meteor", "blades" },
             Resource = ClassResourceKind.ArcaneCharges,
             Ascendancies = new[] { "ascendant", "warlock", "sage" },
         },
