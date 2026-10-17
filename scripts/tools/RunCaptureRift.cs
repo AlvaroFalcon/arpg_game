@@ -15,7 +15,8 @@ namespace ArpgGame.Tools;
 /// bag is full — the start pick with the character's skills, a lesser and a great
 /// keystone row, an ordinary row after one per-card reroll, the results screen
 /// sending the reward to Pending items, a run left at once (no item, and why),
-/// then the hideout's banner and the stash's Pending tab.
+/// then the hideout's banner and the stash's Pending tab. Also the co-op card
+/// screen (<see cref="CoopCardShots"/>): counter, countdown, waiting.
 /// </summary>
 public partial class RunCapture
 {
@@ -72,7 +73,9 @@ public partial class RunCapture
         await LevelTo(10);
         await Snap("rift-levelup-great.png");
         PickFirstCard();
-        await Wait(3f);
+        await Wait(1f);
+        await CoopCardShots();
+        await Wait(2f);
 
         // The end: the bag is full, so the kept item goes to Pending items.
         if (Run() is { } ending)
@@ -115,6 +118,50 @@ public partial class RunCapture
 
         GD.Print("[CAPTURE] done");
         GetTree().Quit();
+    }
+
+    /// <summary>
+    /// The co-op card screen (docs/design/multiplayer.md -> "Level-ups", menus.md ->
+    /// "Level-up and results"): the same screen and the same calls a host's round
+    /// makes (<see cref="LevelUpScreen.OpenPartyRound"/>, <see cref="LevelUpScreen.SetPartyStatus"/>),
+    /// driven here with a party of three: the start pick, "1 / 3 chosen" with time
+    /// left, the last five seconds in red, and the waiting line after choosing.
+    /// </summary>
+    private async Task CoopCardShots()
+    {
+        if (Run() is not { } run)
+        {
+            return;
+        }
+
+        LevelUpScreen screen = run.LevelUp;
+        screen.Coop = true;
+        GetTree().Paused = true; // what the host's round does to every machine
+
+        // The status is set again right before each shot: captures run slowly under Xvfb.
+        screen.OpenPartyRound(1, true, 0, 1);
+        await Wait(LevelUpScreen.ArmDelay + 0.3f);
+        screen.SetPartyStatus(0, 3, Time.GetTicksMsec() + 9400, false);
+        await Wait(0.05f);
+        await Snap("coop-start-pick.png");
+        screen.ClosePartyRound();
+
+        screen.OpenPartyRound(2, false, run.State.Level + 1, 1);
+        await Wait(LevelUpScreen.ArmDelay + 0.3f);
+        screen.SetPartyStatus(1, 3, Time.GetTicksMsec() + 7400, false);
+        await Wait(0.05f);
+        await Snap("coop-levelup-counter.png");
+        screen.SetPartyStatus(1, 3, Time.GetTicksMsec() + 3400, false);
+        await Wait(0.05f);
+        await Snap("coop-levelup-red.png");
+        screen.ChooseIndex(0);
+        screen.SetPartyStatus(2, 3, Time.GetTicksMsec() + 2400, true);
+        await Wait(0.05f);
+        await Snap("coop-levelup-waiting.png");
+        screen.ClosePartyRound();
+
+        screen.Coop = false;
+        GetTree().Paused = false;
     }
 
     /// <summary>Gives the experience for the next level and waits until its cards are armed.</summary>

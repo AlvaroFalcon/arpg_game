@@ -499,7 +499,15 @@ public partial class LevelUpScreen : CanvasLayer
 
     private void ShowWaiting(string chosen)
     {
+        // The line takes the row's place at the row's height, so nothing jumps.
+        float rowHeight = _cards.Size.Y + (_rerollInfo.Visible ? _rerollInfo.Size.Y + 18f : 0f);
+        if (_cards.Visible && rowHeight > 0f)
+        {
+            _waiting.CustomMinimumSize = new Vector2(820f, rowHeight);
+        }
+
         ShowRow(false);
+        _hint.Text = "The game resumes when everyone has chosen.";
         _waiting.Text = $"{chosen}\nWaiting for the others…";
     }
 
