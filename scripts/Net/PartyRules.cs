@@ -9,11 +9,11 @@ namespace ArpgGame.Net;
 /// untouched. These are proposals for the owner to tune, not settled balance.
 ///
 /// <code>
-/// players  spawn rate  enemy cap  monster life  boss life  xp/loot share
-///    1        ×1.00      ×1.00       ×1.00        ×1.00       ×1.00
-///    2        ×1.50      ×1.15       ×1.50        ×1.70       ×0.67
-///    3        ×2.00      ×1.30       ×2.00        ×2.40       ×0.50
-///    4        ×2.50      ×1.45       ×2.50        ×3.10       ×0.40
+/// players  spawn rate  enemy cap  monster life  boss life  xp/loot share  party xp to level
+///    1        ×1.00      ×1.00       ×1.00        ×1.00       ×1.00            ×1
+///    2        ×1.50      ×1.15       ×1.50        ×1.70       ×0.67            ×2
+///    3        ×2.00      ×1.30       ×2.00        ×2.40       ×0.50            ×3
+///    4        ×2.50      ×1.45       ×2.50        ×3.10       ×0.40            ×4
 /// </code>
 ///
 /// More enemies and tougher enemies, because two to four builds kill much faster
@@ -67,10 +67,33 @@ public static class PartyRules
     /// <summary>Invulnerability after a revive (seconds).</summary>
     public const float ReviveGrace = 2f;
 
-    // --- level-ups ---------------------------------------------------------------
+    // --- level-ups (docs/design/multiplayer.md -> "Level-ups") ----------------------
 
-    /// <summary>Co-op never pauses: a player choosing a card is warded (cannot be
-    /// hurt, cannot act, monsters ignore them) for at most this long, then the
-    /// first card is taken for them.</summary>
-    public const float LevelUpTimeout = 20f;
+    /// <summary>
+    /// Co-op experience is one party bar: every player's gems fill it, and it needs
+    /// this many times the solo amount per level. Each player still collects their
+    /// own gems, worth <see cref="Share"/> of a solo gem, from a party that kills
+    /// about <see cref="SpawnRate"/> times as much, so the bar gains
+    /// players × share × spawn rate = players × the solo rate. Scaling the need by
+    /// the party size keeps levelling at about the solo pace (some twenty level-ups
+    /// in a full run), so the party does not pause more often than one player would.
+    /// </summary>
+    public static float PartyExperience(int players) => Mathf.Clamp(players, 1, MaxPlayers);
+
+    /// <summary>Co-op: seconds every player has to choose a card (the host's clock).
+    /// Then the first card of the row is taken for whoever has not chosen.</summary>
+    public const float LevelUpTimeout = 10f;
+
+    /// <summary>The countdown turns red (and the tick sharper) from this many seconds.</summary>
+    public const int LevelUpUrgentSeconds = 5;
+
+    /// <summary>Host limit: how many times one player may report their row in one
+    /// round (the first row, then one report per reroll — two per run — plus slack).</summary>
+    public const int OfferReportsPerRound = 6;
+
+    /// <summary>Host limit: cards in a reported row (the screen picks with keys 1-9).</summary>
+    public const int MaxOffersPerRow = 9;
+
+    /// <summary>Host limit: the longest card key accepted ("g:support_id:skill_id").</summary>
+    public const int MaxOfferKeyChars = 64;
 }

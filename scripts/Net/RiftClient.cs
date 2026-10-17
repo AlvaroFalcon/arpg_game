@@ -123,6 +123,8 @@ public partial class RiftClient : Node, IRunLink
     public override void _Ready()
     {
         ProcessPhysicsPriority = 1000;
+        // Keeps receiving, interpolating and talking while a level-up round pauses the game.
+        ProcessMode = ProcessModeEnum.Always;
         NetMode.ClientSide = true;
         _session = NetSession.Get(this)!;
         _session.Run = this;
@@ -181,13 +183,108 @@ public partial class RiftClient : Node, IRunLink
         }
     }
 
-    /// <summary>Tells the host which card this player took.</summary>
-    public void SendPick(string key)
+    /// <summary>Tells the host which card this player took in level-up round <paramref name="round"/>.</summary>
+    public void SendPick(int round, string key)
     {
         _events.Clear();
         _events.U8(RiftProtocol.ClientPick);
+        _events.U16((ushort)round);
         _events.Str(key);
         _session.SendClientEvents(_events.ToArray());
+    }
+
+    /// <summary>Tells the host the row on screen (opened, or one card rerolled), so its
+    /// timer takes a card this player was really shown.</summary>
+    public void SendOffers(int round, IReadOnlyList<Progression.UpgradeOffer> offers)
+    {
+        _events.Clear();
+        _events.U8(RiftProtocol.ClientOffers);
+        _events.U16((ushort)round);
+        int count = Math.Min(offers.Count, PartyRules.MaxOffersPerRow);
+        _events.U8((byte)count);
+        for (int i = 0; i < count; i++)
+        {
+            _events.Str(offers[i].Key);
+        }
+
+        _session.SendClientEvents(_events.ToArray());
+    }
+
+    /// <summary>The last round the host applied a card for this player (each is applied once).</summary>
+    private int _appliedRound = -1;
+
+    /// <summary>The host clock of the batch being applied.</summary>
+    private double _batchStamp;
+
+    /// <summary>
+    /// The party's level-up round from the host (docs/design/multiplayer.md ->
+    /// "Level-ups"): pause this machine's game and show this player's row, the
+    /// "chosen / total" line and the host's countdown; or close it and resume.
+    /// </summary>
+    private void ApplyRound(int id, byte kind, int level, int remaining, int picked, int total, double hostDeadline, bool mine)
+    {
+        if (id == 0 || kind == RiftProtocol.RoundNone)
+        {
+            Run.LevelUp.ClosePartyRound();
+            if (!State.Ended)
+            {
+                GetTree().Paused = false;
+            }
+
+            return;
+        }
+
+        if (State.Ended || (kind != RiftProtocol.RoundStart && kind != RiftProtocol.RoundLevel))
+        {
+            return;
+        }
+
+        GetTree().Paused = true;
+        if (Run.LevelUp.PartyRound != id)
+        {
+            Run.LevelUp.OpenPartyRound(id, kind == RiftProtocol.RoundStart, level, remaining);
+        }
+
+        // The host's deadline on this machine's clock: when a packet the host sends
+        // at its deadline would arrive here (the clock offset, else this batch's stamp).
+        double hostNow = _haveOffset ? Now + _offset : _batchStamp;
+        float left = Sane((float)(hostDeadline - hostNow), 0f, 60f);
+        ulong deadline = Time.GetTicksMsec() + (ulong)(left * 1000f);
+        Run.LevelUp.SetPartyStatus(picked, total, deadline, mine);
+    }
+
+    /// <summary>The host applied <paramref name="key"/> for this player in round <paramref name="id"/>: the same card here.</summary>
+    private void ApplyPick(int id, string key, bool forced)
+    {
+        if (id == _appliedRound)
+        {
+            return;
+        }
+
+        _appliedRound = id;
+        string title = "a card";
+        foreach (Progression.UpgradeOffer offer in Run.LevelUp.Offers)
+        {
+            if (offer.Key == key)
+            {
+                title = offer.Title;
+            }
+        }
+
+        if (key.Length > 0 && key.Length <= PartyRules.MaxOfferKeyChars)
+        {
+            Run.Build.ApplyKey(key);
+        }
+
+        if (forced && Run.LevelUp.PartyRound == id)
+        {
+            if (Run.LevelUp.FirstOffer is { } first && first.Key == key)
+            {
+                title = first.Title;
+            }
+
+            Run.LevelUp.ShowPartyApplied(title, forced: true);
+        }
     }
 
     /// <summary>Test hook: a text message to the host's <see cref="RiftHost.TestMessage"/>.</summary>
@@ -286,10 +383,12 @@ public partial class RiftClient : Node, IRunLink
         _history[_seq % _history.Length] = (_seq, Local.GlobalPosition);
         _input.Clear();
         _input.U16(_seq);
-        _input.Dir8(TestMove ?? Local.LastMoveDir);
+        // A level-up round holds everyone: no movement reaches the host meanwhile.
+        bool held = GetTree().Paused;
+        _input.Dir8(held ? Vector2.Zero : TestMove ?? Local.LastMoveDir);
         _input.Pos(Local.GetGlobalMousePosition());
         byte flags = 0;
-        if (Local.IsSprinting)
+        if (Local.IsSprinting && !held)
         {
             flags |= 1;
         }
@@ -554,7 +653,7 @@ public partial class RiftClient : Node, IRunLink
     private void ApplyEvents(byte[] data)
     {
         var r = new NetReader(data);
-        r.F32();
+        _batchStamp = r.F32();
         try
         {
             while (r.More)
@@ -948,6 +1047,29 @@ public partial class RiftClient : Node, IRunLink
                 string text = Text(r.Str());
                 Color color = r.Colour();
                 State.ShowToast(text, color);
+                return true;
+            }
+
+            case RiftProtocol.PartyRound:
+            {
+                int id = r.U16();
+                byte kind = r.U8();
+                int level = Math.Clamp((int)r.U16(), 0, 999);
+                int remaining = Math.Clamp((int)r.U8(), 0, 99);
+                int picked = Math.Clamp((int)r.U8(), 0, PartyRules.MaxPlayers);
+                int total = Math.Clamp((int)r.U8(), 1, PartyRules.MaxPlayers);
+                float deadline = r.F32();
+                bool mine = r.Bool();
+                ApplyRound(id, kind, level, remaining, picked, total, float.IsFinite(deadline) ? deadline : 0.0, mine);
+                return true;
+            }
+
+            case RiftProtocol.PickApplied:
+            {
+                int id = r.U16();
+                string key = r.Str();
+                bool forced = r.Bool();
+                ApplyPick(id, key, forced);
                 return true;
             }
 

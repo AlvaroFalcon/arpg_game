@@ -75,6 +75,10 @@ public partial class Sfx : Node
         _sounds["death"] = Build(0.18f, t => (Noise() * 0.6f + Sine(t, 140f)) * Env(t, 0.18f) * 0.35f);
         _sounds["boss_warn"] = Build(0.9f, t => Square(t, 110f) * (Mathf.Sin(t * 40f) > 0 ? 1f : 0.3f) * Env(t, 0.9f) * 0.35f);
         _sounds["slam"] = Build(0.5f, t => (Sine(t, 60f - 30f * t) + Noise() * Lowpass(0.3f) * 0.8f) * Env(t, 0.5f) * 0.7f);
+        // The co-op level-up countdown: a dry wood-block click each second, a
+        // higher, brighter one in the last five (docs/design/menus.md -> "Level-up and results").
+        _sounds["tick"] = Build(0.05f, t => (Sine(t, 1050f) * 0.7f + Sine(t, 2100f) * 0.3f) * Mathf.Exp(-t * 90f) * 0.45f);
+        _sounds["tick_urgent"] = Build(0.07f, t => (Sine(t, 1550f) * 0.6f + Square(t, 3100f) * 0.15f) * Mathf.Exp(-t * 70f) * 0.55f);
         _sounds["ui"] = Build(0.05f, t => Square(t, 880f) * Env(t, 0.05f) * 0.2f);
         _sounds["victory"] = Build(1.4f, t => Arp(t, new[] { 392f, 523f, 659f, 784f, 1047f, 1319f }, 0.16f) * Env(t, 1.4f) * 0.35f);
         _sounds["defeat"] = Build(1.2f, t => Arp(t, new[] { 392f, 330f, 262f, 196f }, 0.25f) * Env(t, 1.2f) * 0.35f);

@@ -21,7 +21,8 @@ namespace ArpgGame.Net;
 /// projectiles appearing and leaving, telegraphs, bullets and swings to replay,
 /// that player's own drops and progress, banners, bosses, the end.</item>
 /// </list>
-/// It also applies the clients' inputs to their players here, their card picks,
+/// It also applies the clients' inputs to their players here, runs the party's
+/// level-up rounds (RiftHost.Rounds.cs: one bar, everyone picks, the game paused),
 /// the revive rule and the begin-when-everyone-has-loaded handshake.
 /// Runs last in the physics frame (priority 1000), after everything it reports.
 /// </summary>
@@ -106,6 +107,8 @@ public partial class RiftHost : Node, IRunLink
     public override void _Ready()
     {
         ProcessPhysicsPriority = 1000;
+        // Runs while a level-up round pauses the game (docs/design/multiplayer.md -> "Level-ups").
+        ProcessMode = ProcessModeEnum.Always;
         _session = NetSession.Get(this)!;
         _session.Run = this;
         foreach (RunPlayer rp in State.Players)
@@ -128,6 +131,7 @@ public partial class RiftHost : Node, IRunLink
         Director.BossSpawned += OnBossSpawned;
         Director.PortalOpened += OnPortalOpened;
         Health.AnyHitResolved += OnAnyHit;
+        HookRounds();
     }
 
     public override void _ExitTree()
@@ -144,6 +148,7 @@ public partial class RiftHost : Node, IRunLink
         Director.BossSpawned -= OnBossSpawned;
         Director.PortalOpened -= OnPortalOpened;
         Health.AnyHitResolved -= OnAnyHit;
+        UnhookRounds();
         if (_session.Run == this)
         {
             _session.Run = null;
@@ -164,21 +169,32 @@ public partial class RiftHost : Node, IRunLink
     {
         _cpu.Restart();
         float dt = (float)delta;
-        if (!_begun && _onBegin is not null)
+        if (!_begun && _onBegin is not null && _round is null)
         {
             _waiting += dt;
             if (ReadyPeers == _links.Count || _waiting >= LoadTimeout)
             {
-                _begun = true;
-                State.ClockRunning = true;
-                _onBegin();
-                Broadcast(w => w.U8(RiftProtocol.RunBegin));
+                // Everyone is here: the run-start skill pick for the whole party
+                // (docs/design/progression.md -> "The start pick"), then the run.
+                if (SkipStartPick)
+                {
+                    Begin();
+                }
+                else
+                {
+                    OpenRound(start: true);
+                }
             }
         }
 
+        TickRounds();
         CapturePending();
         ApplyCommands();
-        Revives(dt);
+        if (_round is null)
+        {
+            Revives(dt);
+        }
+
         TrackBoss();
         Progress(dt);
         _snapshotClock += dt;
@@ -194,6 +210,20 @@ public partial class RiftHost : Node, IRunLink
         LastStepMicros = _cpu.Elapsed.TotalMilliseconds * 1000.0;
     }
 
+    /// <summary>The run starts: clock, director, and every client told.</summary>
+    private void Begin()
+    {
+        if (_begun)
+        {
+            return;
+        }
+
+        _begun = true;
+        State.ClockRunning = true;
+        _onBegin?.Invoke();
+        Broadcast(w => w.U8(RiftProtocol.RunBegin));
+    }
+
     private void ApplyCommands()
     {
         ulong now = Time.GetTicksMsec();
@@ -205,13 +235,11 @@ public partial class RiftHost : Node, IRunLink
             }
 
             // A player whose packets stopped stands still rather than walking on.
-            if (now - link.Command.ReceivedMsec > 300)
+            if (now - link.Command.ReceivedMsec > 300 || _round is not null)
             {
                 link.Command.Move = Vector2.Zero;
                 link.Command.Sprint = false;
             }
-
-            p.Warded = link.Command.Choosing && !State.Ended;
         }
     }
 
@@ -768,6 +796,7 @@ public partial class RiftHost : Node, IRunLink
 
     private void OnRunEnded(bool victory)
     {
+        RoundRunEnded();
         // Nobody can join a finished run: close the router port now, not when the
         // host finally leaves the results screen (docs/design/multiplayer.md -> "Security").
         _session.ReleasePortMapping();
@@ -1059,20 +1088,45 @@ public partial class RiftHost : Node, IRunLink
                     MarkReady(link);
                     break;
                 case RiftProtocol.ClientPick:
+                {
+                    // Checked against the open round (RiftHost.Rounds): a stray, repeated,
+                    // unoffered or malformed pick is ignored and the timer decides.
+                    ushort round = r.U16();
                     string key = r.Str();
-                    // Only while the host owes this player a level-up (a stray or repeated pick is ignored).
-                    if (link.Player.AwaitingStartPick && key.StartsWith("s:"))
+                    if (link.Ready)
                     {
-                        // The run-start skill pick (docs/design/progression.md -> "The start pick").
-                        link.Player.AwaitingStartPick = false;
-                        link.Player.Build?.ApplyKey(key);
-                    }
-                    else if (link.Player.PendingLevelUps > 0 && (link.Player.Build?.ApplyKey(key) == true || key.Length > 0))
-                    {
-                        State.ConsumeLevelUp(link.Player);
+                        ClientPick(link, round, key);
                     }
 
                     break;
+                }
+
+                case RiftProtocol.ClientOffers:
+                {
+                    ushort round = r.U16();
+                    int count = r.U8();
+                    var keys = new List<string>(Math.Min(count, PartyRules.MaxOffersPerRow + 1));
+                    for (int i = 0; i < count && r.More; i++)
+                    {
+                        string key = r.Str();
+                        if (keys.Count <= PartyRules.MaxOffersPerRow)
+                        {
+                            keys.Add(key);
+                        }
+                    }
+
+                    if (link.Ready && keys.Count == count)
+                    {
+                        ClientOffers(link, round, keys);
+                    }
+                    else
+                    {
+                        RefusedPicks++;
+                    }
+
+                    break;
+                }
+
                 case RiftProtocol.ClientTest:
                     TestMessage?.Invoke(peer, r.Str());
                     break;
@@ -1117,6 +1171,11 @@ public partial class RiftHost : Node, IRunLink
         {
             link.Events.U8(RiftProtocol.RunBegin);
         }
+
+        if (_round is not null)
+        {
+            WriteRound(link); // a round already open (the load timeout passed): it picks too
+        }
     }
 
     /// <summary>
@@ -1156,6 +1215,10 @@ public partial class RiftHost : Node, IRunLink
         if (!State.Ended && State.AllDown)
         {
             State.EndRun(Director.ColossusDefeated);
+        }
+        else
+        {
+            RoundPeerLeft(peer);
         }
     }
 

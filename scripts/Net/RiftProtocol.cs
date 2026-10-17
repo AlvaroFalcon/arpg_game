@@ -53,10 +53,28 @@ public static class RiftProtocol
     public const byte Callout = 28;
     public const byte TestPing = 29;
 
+    /// <summary>The party's level-up round (docs/design/multiplayer.md -> "Level-ups"):
+    /// round id (0 = none, the game runs), kind, level, rounds left, chosen / total,
+    /// the host-clock deadline, and whether the receiver has chosen. A full state,
+    /// sent whenever it changes, so a late or repeated one is harmless.</summary>
+    public const byte PartyRound = 30;
+
+    /// <summary>The card the host applied for the receiver in a round (its own pick, or the timer's).</summary>
+    public const byte PickApplied = 31;
+
+    // party round kinds
+    public const byte RoundNone = 0;
+    public const byte RoundStart = 1;
+    public const byte RoundLevel = 2;
+
     // client → host events
     public const byte ClientReady = 1;
+    /// <summary>A card chosen in a round: round id, key.</summary>
     public const byte ClientPick = 2;
     public const byte ClientTest = 3;
+
+    /// <summary>The row on the client's screen in a round: round id, count, keys (sent on open and per reroll).</summary>
+    public const byte ClientOffers = 4;
 
     // snapshot player flags
     public const byte PlayerDead = 1;

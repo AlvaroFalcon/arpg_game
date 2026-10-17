@@ -255,8 +255,8 @@ public partial class RunSmokeTest : Node2D
         player.AddChild(build);
         var state = new RunState { Player = player };
         AddChild(state);
-        // Co-op mode keeps the tree running under the cards, which the test needs.
-        var screen = new UI.LevelUpScreen { State = state, Build = build, Coop = true };
+        // The tree keeps running under the cards, which the test needs.
+        var screen = new UI.LevelUpScreen { State = state, Build = build, PauseTree = false };
         AddChild(screen);
         await Frames(1);
         state.AddExperience(RunState.ExperienceToNext(1) + 0.1f);

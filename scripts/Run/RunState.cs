@@ -34,9 +34,6 @@ public sealed class RunPlayer
     public float Experience { get; set; }
     public int PendingLevelUps { get; set; }
 
-    /// <summary>Co-op host: this remote player has the start pick open on their
-    /// machine and the host still owes them that one card (RiftHost, ClientPick).</summary>
-    public bool AwaitingStartPick { get; set; }
     public long GoldCollected { get; set; }
     public int OrbsCollected { get; set; }
 
@@ -63,8 +60,9 @@ public sealed class RunPlayer
 /// handed to whoever listens to <see cref="LevelUpReady"/> (the level-up
 /// screen), which pauses the run while the player chooses.
 ///
-/// Co-op (docs/design/multiplayer.md): kills, time and bosses are the party's;
-/// level, experience and loot are per <see cref="RunPlayer"/>. Every drop is
+/// Co-op (docs/design/multiplayer.md): kills, time, bosses, experience and level
+/// are the party's (one bar, <see cref="PartyRules.PartyExperience"/>); loot is per
+/// <see cref="RunPlayer"/>. Every drop is
 /// rolled for every player (instanced loot) and owned by them. The properties
 /// without a player (<see cref="Level"/>, <see cref="Experience"/>...) are the
 /// local player's, so single-player code reads exactly as before.
@@ -194,7 +192,7 @@ public partial class RunState : Node, IPickupHandler
     /// <summary>Adds a party member (co-op).</summary>
     public RunPlayer AddPlayer(Player player, RunBuild? build)
     {
-        var entry = new RunPlayer(player, player.PeerId) { Build = build };
+        var entry = new RunPlayer(player, player.PeerId) { Build = build, Level = Local.Level, Experience = Local.Experience };
         _players.Add(entry);
         return entry;
     }
@@ -274,7 +272,24 @@ public partial class RunState : Node, IPickupHandler
         return 5f + 3f * l + 0.55f * l * l;
     }
 
-    public float ExperienceFraction => Local.Experience / ExperienceToNext(Local.Level);
+    /// <summary>Experience to go from <paramref name="level"/> to the next: the solo
+    /// curve, times <see cref="Net.PartyRules.PartyExperience"/> for a co-op party's shared bar.</summary>
+    public float ExperienceNeeded(int level) =>
+        ExperienceToNext(level) * (Coop ? Net.PartyRules.PartyExperience(PartySize) : 1f);
+
+    public float ExperienceFraction => Mathf.Clamp(Local.Experience / ExperienceNeeded(Local.Level), 0f, 1f);
+
+    // --- co-op: one party bar (docs/design/multiplayer.md -> "Level-ups") ------------
+
+    /// <summary>Co-op: the party's level (every <see cref="RunPlayer.Level"/> mirrors it).</summary>
+    public int PartyLevel { get; private set; } = 1;
+
+    /// <summary>Co-op: experience in the party's bar towards the next level.</summary>
+    public float PartyExperience { get; private set; }
+
+    /// <summary>Co-op: party levels gained and not yet chosen. Each one is a round of
+    /// picks for everyone (RiftHost); every <see cref="RunPlayer.PendingLevelUps"/> mirrors it.</summary>
+    public int PartyPendingLevelUps { get; private set; }
 
     public void AddExperience(float amount) => AddExperience(Local, amount);
 
@@ -286,11 +301,19 @@ public partial class RunState : Node, IPickupHandler
         }
 
         float gain = who.Player?.Stats.Get(StatId.ExperienceGain).Value ?? 1f;
+        if (Coop)
+        {
+            // Whoever collects a gem fills the party's bar (with their own experience gain).
+            PartyExperience += amount * gain;
+            CheckPartyLevel();
+            return;
+        }
+
         who.Experience += amount * gain;
         int gained = 0;
-        while (who.Experience >= ExperienceToNext(who.Level))
+        while (who.Experience >= ExperienceNeeded(who.Level))
         {
-            who.Experience -= ExperienceToNext(who.Level);
+            who.Experience -= ExperienceNeeded(who.Level);
             who.Level++;
             who.PendingLevelUps++;
             gained++;
@@ -308,6 +331,61 @@ public partial class RunState : Node, IPickupHandler
         if (who.IsLocal && who.PendingLevelUps > 0)
         {
             EmitSignal(SignalName.LevelUpReady, who.Level - who.PendingLevelUps + 1);
+        }
+    }
+
+    /// <summary>
+    /// Co-op host: levels the party while its bar is full and mirrors level,
+    /// experience and pending picks into every player. Also called when the party
+    /// shrinks (a smaller party needs less per level).
+    /// </summary>
+    public void CheckPartyLevel()
+    {
+        if (!Coop || Mirror || Ended)
+        {
+            return;
+        }
+
+        int gained = 0;
+        while (PartyExperience >= ExperienceNeeded(PartyLevel) && gained < 100)
+        {
+            PartyExperience -= ExperienceNeeded(PartyLevel);
+            PartyLevel++;
+            gained++;
+        }
+
+        PartyPendingLevelUps += gained;
+        MirrorParty();
+        if (gained == 0)
+        {
+            return;
+        }
+
+        Core.Sfx.Play(this, "levelup");
+        foreach (RunPlayer rp in _players.ToArray())
+        {
+            Levelled?.Invoke(rp, gained);
+        }
+    }
+
+    /// <summary>Co-op host: one round of picks is over (everyone chose, or the timer did).</summary>
+    public void ConsumePartyLevelUp()
+    {
+        if (PartyPendingLevelUps > 0)
+        {
+            PartyPendingLevelUps--;
+        }
+
+        MirrorParty();
+    }
+
+    private void MirrorParty()
+    {
+        foreach (RunPlayer rp in _players)
+        {
+            rp.Level = PartyLevel;
+            rp.Experience = PartyExperience;
+            rp.PendingLevelUps = PartyPendingLevelUps;
         }
     }
 
@@ -349,7 +427,12 @@ public partial class RunState : Node, IPickupHandler
         RunPlayer me = Local;
         me.Level = level;
         me.Experience = experience;
-        if (newLevelUps > 0)
+        if (newLevelUps > 0 && Coop)
+        {
+            // The party's level: the host opens the rounds of picks (RiftClient -> PartyRound).
+            Core.Sfx.Play(this, "levelup");
+        }
+        else if (newLevelUps > 0)
         {
             me.PendingLevelUps += newLevelUps;
             Core.Sfx.Play(this, "levelup");

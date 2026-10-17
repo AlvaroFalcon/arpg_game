@@ -111,8 +111,9 @@ public interface IRunLink
 public partial class NetSession : Node
 {
     /// <summary>Bumped whenever the wire format changes: a mismatched build is turned away.
-    /// 2: the join code travels in the engine's authentication step.</summary>
-    public const int Protocol = 2;
+    /// 2: the join code travels in the engine's authentication step.
+    /// 3: co-op level-up rounds (PartyRound, PickApplied, ClientOffers; ClientPick carries the round).</summary>
+    public const int Protocol = 3;
 
     /// <summary>First bytes of the authentication message ("ARPG").</summary>
     private static readonly byte[] AuthMagic = { 0x41, 0x52, 0x50, 0x47 };

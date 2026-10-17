@@ -112,22 +112,20 @@ public partial class RunController : Node2D
         State.RunEnded += OnRunEnded;
         Sfx.Music(this, "music_run");
 
-        if (Coop)
-        {
-            // Never paused: whoever is choosing a card is warded (docs/design/multiplayer.md).
-            LevelUp.OpenChanged += open => Player.Warded = open && !State.Ended;
-        }
-
+        // Co-op level-ups (docs/design/multiplayer.md -> "Level-ups"): the host runs
+        // rounds of picks for the whole party and pauses everything meanwhile; a
+        // client's choice and row go to the host, which applies the choice.
         if (Session is { IsHost: true })
         {
-            NetHost = new RiftHost { Name = "RiftHost", Run = this };
+            NetHost = new RiftHost { Name = "RiftHost", Run = this, SkipStartPick = startSkill is not null };
             AddChild(NetHost);
         }
         else if (Session is { IsClient: true })
         {
             NetClient = new RiftClient { Name = "RiftClient", Run = this };
             AddChild(NetClient);
-            LevelUp.Picked += offer => NetClient.SendPick(offer.Key);
+            LevelUp.PartyChosen += (round, offer) => NetClient.SendPick(round, offer.Key);
+            LevelUp.PartyOffersChanged += (round, offers) => NetClient.SendOffers(round, offers);
         }
 
         if (startTime > 0f)
@@ -143,10 +141,10 @@ public partial class RunController : Node2D
             ApplyAutoLevels(autoLevels);
             StartWhenReady();
         }
-        else if (Coop && Build.Skills.Any())
+        else if (Coop)
         {
-            // Co-op keeps the old rule for now: only a skill-less character picks at
-            // the start (the co-op level-up pass extends the start pick to everyone).
+            // Co-op: the start pick is the host's first round, for everyone at once,
+            // once the whole party has loaded (RiftHost.Rounds).
             StartWhenReady();
         }
         else
@@ -155,12 +153,7 @@ public partial class RunController : Node2D
             // with a skill card pick — the character's class skills if it has none,
             // otherwise a new class skill or a level for one it brought.
             ApplyAutoLevels(autoLevels);
-            if (Coop)
-            {
-                StartWhenReady();
-            }
-
-            LevelUp.OpenStartPick(Coop ? () => { } : BeginRun);
+            LevelUp.OpenStartPick(BeginRun);
         }
     }
 
@@ -327,8 +320,6 @@ public partial class RunController : Node2D
 
             RunPlayer rp = State.AddPlayer(p, build);
             rp.ViewSize = member.ViewSize;
-            // A skill-less member picks a first skill on their machine; the host takes that one pick.
-            rp.AwaitingStartPick = session.IsHost && !build.Skills.Any();
         }
     }
 
@@ -482,6 +473,12 @@ public partial class RunController : Node2D
     private async void OnRunEnded(bool victory)
     {
         Director.Spawning = false;
+        if (Coop)
+        {
+            // A level-up round may have held the game: the results screen runs unpaused.
+            GetTree().Paused = false;
+        }
+
         Player.ControlsEnabled = false;
         Player.Warded = false;
         Player.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;

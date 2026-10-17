@@ -9,6 +9,7 @@ using Godot;
 using ArpgGame.Core;
 using ArpgGame.Net;
 using ArpgGame.Run;
+using ArpgGame.UI;
 
 namespace ArpgGame.Tests;
 
@@ -462,7 +463,7 @@ public partial class SecurityTestHost : CoopTestDriver
         log = session.SecurityLog.Count;
         for (int i = 0; i < 50; i++)
         {
-            spam.SendAuth(new byte[] { 0x41, 0x52, 0x50, 0x47, 2, 0, (byte)'Z', (byte)'Z', (byte)'Z', (byte)'Z', (byte)'Z', (byte)'Z' });
+            spam.SendAuth(new byte[] { 0x41, 0x52, 0x50, 0x47, (byte)NetSession.Protocol, (byte)(NetSession.Protocol >> 8), (byte)'Z', (byte)'Z', (byte)'Z', (byte)'Z', (byte)'Z', (byte)'Z' });
         }
 
         await WaitFor(() => spam.Gone, 6f);
@@ -660,6 +661,30 @@ public partial class SecurityTestHost : CoopTestDriver
         w.Str(new string('B', 60000));
         w.Str("sub");
         w.Colour(Colors.White);
+
+        // Level-up rounds: an unknown kind, then a round with absurd numbers and a NaN
+        // deadline (the client pauses, clamps and counts down from 0), junk card keys.
+        foreach ((byte kind, float deadline) in new[] { ((byte)200, 5f), (RiftProtocol.RoundLevel, float.NaN), (RiftProtocol.RoundLevel, float.PositiveInfinity) })
+        {
+            w.U8(RiftProtocol.PartyRound);
+            w.U16(7);
+            w.U8(kind);
+            w.U16(65535);
+            w.U8(255);
+            w.U8(255);
+            w.U8(0);
+            w.F32(deadline);
+            w.Bool(true);
+        }
+
+        foreach (string key in new[] { new string('k', 60000), "x", "s:../../profile", "p:might:999999" })
+        {
+            w.U8(RiftProtocol.PickApplied);
+            w.U16(7);
+            w.Str(key);
+            w.Bool(true);
+        }
+
         session.SendHostEvents(client, w.ToArray());
 
         // 20 000 effects that never end, stamped with a NaN clock.
@@ -784,9 +809,12 @@ public partial class SecurityTestClient : CoopTestDriver
         }
 
         RiftClient? net = run.NetClient;
-        bool ok = ended && localOk && children <= RiftClient.MaxSceneChildren + 200 && float.IsFinite(run.State.Elapsed) && saveOk
+        // The run's end lets a held level-up round go (the results screen then
+        // pauses the tree itself, as it does offline).
+        bool roundClosed = run.LevelUp.PartyRound == 0 && !run.LevelUp.IsOpen && !LevelUpScreen.BlocksInput;
+        bool ok = ended && roundClosed && localOk && children <= RiftClient.MaxSceneChildren + 200 && float.IsFinite(run.State.Elapsed) && saveOk
                   && session.Members.Count <= PartyRules.MaxPlayers && (net?.Refused ?? 0) > 0;
-        Log($"HOSTILE-HOST-CLIENT: {(ok ? "PASS" : "FAIL")} — run ended={ended}, own player intact={localOk}, scene children={children} (cap {RiftClient.MaxSceneChildren}), "
+        Log($"HOSTILE-HOST-CLIENT: {(ok ? "PASS" : "FAIL")} — run ended={ended}, held round closed={roundClosed}, own player intact={localOk}, scene children={children} (cap {RiftClient.MaxSceneChildren}), "
             + $"elapsed={run.State.Elapsed}, snapshots={net?.Snapshots}, lobby={session.Members.Count}, refused events={net?.Refused}, monsters={net?.EnemyCount}, saved profile: {saveInfo}");
         GetTree().Quit();
     }

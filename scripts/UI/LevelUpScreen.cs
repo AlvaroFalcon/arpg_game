@@ -20,6 +20,15 @@ namespace ArpgGame.UI;
 /// anything — and only once the cards are armed, <see cref="ArmDelay"/> after
 /// they appear, so a key or click already on its way when they pop up is not
 /// taken as a choice. R alone only points at Shift+number.
+///
+/// Co-op (docs/design/multiplayer.md -> "Level-ups") never opens on its own: the
+/// host runs <b>rounds</b> (the run-start skill pick, then one per party level) and
+/// tells every machine through <see cref="OpenPartyRound"/> / <see cref="SetPartyStatus"/>
+/// / <see cref="ClosePartyRound"/>. The whole game is paused by the host meanwhile
+/// (not by this screen). A choice is not applied here: it is raised as
+/// <see cref="PartyChosen"/>, the host applies it (and on a client tells it back),
+/// and the screen shows the party's "1/2 chosen" line and the host's countdown —
+/// red from <see cref="Net.PartyRules.LevelUpUrgentSeconds"/>, a tick every second.
 /// </summary>
 public partial class LevelUpScreen : CanvasLayer
 {
@@ -30,28 +39,69 @@ public partial class LevelUpScreen : CanvasLayer
     public bool IsOpen { get; private set; }
 
     /// <summary>True while a level-up screen is open anywhere: things that poll
-    /// keys directly (dodge, flasks, the inventory key) stand down. Matters in
-    /// co-op, where the run is not paused under the cards.</summary>
+    /// keys directly (dodge, flasks, the inventory key) stand down (tests run the
+    /// cards over an unpaused tree; co-op keeps the screen up while waiting).</summary>
     public static bool BlocksInput { get; private set; }
 
-    /// <summary>
-    /// Co-op (docs/design/multiplayer.md -> "Level-ups"): the run never pauses.
-    /// The chooser is warded while the cards are open (<see cref="OpenChanged"/>)
-    /// and the first card is taken for them after <see cref="Net.PartyRules.LevelUpTimeout"/>.
-    /// </summary>
+    /// <summary>Co-op: the screen is driven by the host's rounds (see the class summary).</summary>
     public bool Coop { get; set; }
 
-    /// <summary>Raised when the cards open or close (co-op: ward the player).</summary>
+    /// <summary>Offline the open screen pauses the scene tree. Tests that drive the
+    /// cards from a node that must keep running turn this off.</summary>
+    public bool PauseTree { get; set; } = true;
+
+    /// <summary>Raised when the cards open or close.</summary>
     public event System.Action<bool>? OpenChanged;
 
-    /// <summary>Raised after a card is applied (co-op client: tell the host).</summary>
+    /// <summary>Raised after a card is applied (offline).</summary>
     public event System.Action<UpgradeOffer>? Picked;
+
+    /// <summary>Co-op: the local player chose <c>offer</c> in round <c>round</c> (not applied yet).</summary>
+    public event System.Action<int, UpgradeOffer>? PartyChosen;
+
+    /// <summary>Co-op: the row on screen changed (opened or one card rerolled): the
+    /// host keeps it, so that its timeout takes a card this player was really shown.</summary>
+    public event System.Action<int, IReadOnlyList<UpgradeOffer>>? PartyOffersChanged;
 
     /// <summary>Seconds after the cards appear before keys or clicks pick one.</summary>
     public const float ArmDelay = 0.45f;
 
-    private float _timeLeft;
     private string _hintText = "";
+
+    // --- co-op round state ------------------------------------------------------------
+    private int _partyRound;
+    private bool _partyChosen;
+    private ulong _partyDeadlineMsec;
+    private int _partyTotal;
+    private int _lastShownSecond = -1;
+    private Control _partyBar = null!;
+    private Label _partyCount = null!;
+    private Label _partyClock = null!;
+    private Label _waiting = null!;
+
+    /// <summary>Co-op: the host round shown (0 = none).</summary>
+    public int PartyRound => _partyRound;
+
+    /// <summary>Co-op: the round shown is the run-start skill pick.</summary>
+    public bool PartyRoundIsStart { get; private set; }
+
+    /// <summary>Co-op: the local player has chosen in this round (waiting for the others).</summary>
+    public bool PartyChosenThisRound => _partyRound != 0 && _partyChosen;
+
+    /// <summary>Co-op: the "1/2 chosen" text on screen (tests, captures).</summary>
+    public string PartyCountText => _partyCount.Text;
+
+    /// <summary>Co-op: whole seconds left on the countdown shown (-1 when none).</summary>
+    public int PartySecondsShown => _partyRound == 0 ? -1 : _lastShownSecond;
+
+    /// <summary>Co-op: true while the countdown is drawn red.</summary>
+    public bool PartyClockUrgent => _partyRound != 0 && _lastShownSecond <= Net.PartyRules.LevelUpUrgentSeconds;
+
+    /// <summary>Co-op: countdown ticks played this run (tests).</summary>
+    public int TicksPlayed { get; private set; }
+
+    /// <summary>The red of the last seconds.</summary>
+    public static readonly Color Urgent = new(1f, 0.32f, 0.28f);
 
     private Control _root = null!;
     private Label _title = null!;
@@ -73,6 +123,7 @@ public partial class LevelUpScreen : CanvasLayer
         UiTheme.Dim(_root, 0.72f);
         CenterContainer center = UiTheme.Center(_root);
         VBoxContainer box = UiTheme.VBox(center, 18);
+        BuildPartyBar(box);
         _title = UiTheme.Label("", 40, UiTheme.Gold, HorizontalAlignment.Center);
         box.AddChild(_title);
         _hint = UiTheme.Label("", 18, UiTheme.TextDim, HorizontalAlignment.Center);
@@ -81,6 +132,12 @@ public partial class LevelUpScreen : CanvasLayer
         box.AddChild(_cards);
         _cards.Chosen += OnChosen;
         _cards.RerollRequested += Reroll;
+        _waiting = UiTheme.Label("", 22, UiTheme.Text, HorizontalAlignment.Center);
+        _waiting.CustomMinimumSize = new Vector2(820f, 120f);
+        _waiting.VerticalAlignment = VerticalAlignment.Center;
+        _waiting.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _waiting.Visible = false;
+        box.AddChild(_waiting);
         _rerollInfo = UiTheme.Label("", 15, UiTheme.TextDim, HorizontalAlignment.Center);
         box.AddChild(_rerollInfo);
         _buildSummary = UiTheme.Label("", 15, UiTheme.TextDim, HorizontalAlignment.Center);
@@ -90,6 +147,26 @@ public partial class LevelUpScreen : CanvasLayer
         _root.Visible = false;
 
         State.LevelUpReady += _ => TryOpen();
+        State.RunEnded += _ => ClosePartyRound();
+    }
+
+    /// <summary>Co-op: "1 / 2 chosen" and the countdown, at the top of the screen.</summary>
+    private void BuildPartyBar(VBoxContainer box)
+    {
+        var panel = new PanelContainer { SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter, Name = "PartyBar" };
+        panel.AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, UiTheme.PanelBorder, 2, 8, 12));
+        box.AddChild(panel);
+        HBoxContainer row = UiTheme.HBox(panel, 28);
+        row.Alignment = BoxContainer.AlignmentMode.Center;
+        _partyCount = UiTheme.Label("", 26, UiTheme.Text, HorizontalAlignment.Center);
+        _partyCount.Name = "PartyCount";
+        row.AddChild(_partyCount);
+        _partyClock = UiTheme.Label("", 30, UiTheme.Gold, HorizontalAlignment.Center);
+        _partyClock.Name = "PartyClock";
+        _partyClock.CustomMinimumSize = new Vector2(90f, 0f);
+        row.AddChild(_partyClock);
+        _partyBar = panel;
+        _partyBar.Visible = false;
     }
 
     /// <summary>The run-start pick (docs/design/progression.md -> "The start pick"):
@@ -98,15 +175,21 @@ public partial class LevelUpScreen : CanvasLayer
     public void OpenStartPick(System.Action onPicked)
     {
         _startPick = true;
-        _offeringLevel = 0;
         _onStartPicked = onPicked;
         SetOpen(true);
+        ShowStart();
+    }
+
+    private void ShowStart()
+    {
+        _offeringLevel = 0;
         bool skillLess = !Build.Skills.Any();
         _title.Text = skillLess ? "Choose your first skill" : "Start of the run — choose a skill card";
         SetHint(skillLess
             ? "Your build grows from here: every level adds a skill, a support or a power-up."
             : "Your skills start at level 1 here. Learn a new one or level one up.  (1 / 2 / 3)");
         _buildSummary.Text = skillLess ? "" : BuildSummary(Build);
+        ShowRow(true);
         _cards.SetOffers(Build.RollStartOffers(_rng));
         RefreshReroll();
         Arm();
@@ -122,7 +205,8 @@ public partial class LevelUpScreen : CanvasLayer
 
     private void TryOpen()
     {
-        if (IsOpen || State.PendingLevelUps <= 0 || State.Ended)
+        // Co-op: only the host's rounds open the cards.
+        if (Coop || IsOpen || State.PendingLevelUps <= 0 || State.Ended)
         {
             return;
         }
@@ -131,9 +215,11 @@ public partial class LevelUpScreen : CanvasLayer
         ShowNext();
     }
 
-    private void ShowNext()
+    private void ShowNext() => ShowLevel(State.Level - State.PendingLevelUps + 1);
+
+    private void ShowLevel(int level)
     {
-        _offeringLevel = State.Level - State.PendingLevelUps + 1;
+        _offeringLevel = level;
         List<UpgradeOffer> offers = Build.RollOffers(_offeringLevel, _rng);
         KeystoneTier? tier = offers.Count > 0 && offers.All(o => o.Kind == UpgradeKind.Keystone) ? OfferRules.KeystoneTierAt(_offeringLevel) : null;
         _title.Text = tier switch
@@ -149,6 +235,7 @@ public partial class LevelUpScreen : CanvasLayer
             _ => "Choose an upgrade  (1 / 2 / 3)",
         });
         _buildSummary.Text = BuildSummary(Build);
+        ShowRow(true);
         _cards.SetOffers(offers);
         RefreshReroll();
         Arm();
@@ -190,6 +277,11 @@ public partial class LevelUpScreen : CanvasLayer
         _cards.ReplaceOffer(index, offer);
         RefreshReroll();
         Arm();
+        if (_partyRound != 0)
+        {
+            PartyOffersChanged?.Invoke(_partyRound, _cards.Offers);
+        }
+
         return true;
     }
 
@@ -242,6 +334,15 @@ public partial class LevelUpScreen : CanvasLayer
 
     private void OnChosen(UpgradeOffer offer)
     {
+        if (_partyRound != 0)
+        {
+            // Co-op: the host applies it (and tells a client back); wait for the others.
+            _partyChosen = true;
+            ShowWaiting($"You chose {offer.Title}.");
+            PartyChosen?.Invoke(_partyRound, offer);
+            return;
+        }
+
         offer.Apply();
         Picked?.Invoke(offer);
         if (_startPick)
@@ -273,8 +374,7 @@ public partial class LevelUpScreen : CanvasLayer
     {
         IsOpen = open;
         BlocksInput = open;
-        _timeLeft = Net.PartyRules.LevelUpTimeout;
-        if (!Coop)
+        if (!Coop && PauseTree)
         {
             GetTree().Paused = open;
         }
@@ -297,19 +397,145 @@ public partial class LevelUpScreen : CanvasLayer
             _cards.Modulate = Colors.White;
         }
 
-        if (!Coop || !IsOpen)
+        if (_partyRound != 0)
+        {
+            UpdatePartyClock();
+        }
+    }
+
+    // --- co-op rounds ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Co-op: the host opened round <paramref name="round"/> — the run-start skill
+    /// pick (<paramref name="start"/>) or the cards for party level
+    /// <paramref name="level"/>. Rolls this player's own row (and reports it,
+    /// <see cref="PartyOffersChanged"/>). <paramref name="remaining"/> counts this
+    /// round and those queued behind it (a burst of levels: rounds back to back).
+    /// </summary>
+    public void OpenPartyRound(int round, bool start, int level, int remaining)
+    {
+        _partyRound = round;
+        PartyRoundIsStart = start;
+        _partyChosen = false;
+        _lastShownSecond = -1;
+        _partyDeadlineMsec = 0;
+        if (!IsOpen)
+        {
+            SetOpen(true);
+        }
+
+        if (start)
+        {
+            ShowStart();
+        }
+        else
+        {
+            ShowLevel(level);
+            if (remaining > 1)
+            {
+                _title.Text += $"   ({remaining - 1} more after this)";
+            }
+        }
+
+        SetHint(_hintText + "\nWhen the time runs out, the first card is taken for you.");
+        _partyBar.Visible = true;
+        if (start)
+        {
+            Core.Sfx.Play(this, "levelup");
+        }
+
+        PartyOffersChanged?.Invoke(round, _cards.Offers);
+    }
+
+    /// <summary>Co-op: who has chosen and when the host's time runs out (local msec).</summary>
+    public void SetPartyStatus(int picked, int total, ulong deadlineMsec, bool mineChosen)
+    {
+        if (_partyRound == 0)
         {
             return;
         }
 
-        // Co-op: the run goes on around a warded chooser — but not forever.
-        _timeLeft -= (float)delta;
-        _hint.Text = $"{_hintText}\nThe party fights on — {Mathf.CeilToInt(Mathf.Max(0f, _timeLeft))} s (you are warded while choosing)";
-        if (_timeLeft <= 0f && _cards.OfferCount > 0)
+        _partyTotal = Mathf.Max(1, total);
+        _partyDeadlineMsec = deadlineMsec;
+        _partyCount.Text = $"{Mathf.Clamp(picked, 0, _partyTotal)} / {_partyTotal} chosen";
+        if (mineChosen && !_partyChosen)
         {
-            _timeLeft = Net.PartyRules.LevelUpTimeout;
-            ChooseIndex(0);
+            // The host took a card for this player (the timer) before a choice reached it.
+            _partyChosen = true;
+            ShowWaiting("Time's up — a card was taken for you.");
         }
+
+        UpdatePartyClock();
+    }
+
+    /// <summary>Co-op: the host applied <paramref name="title"/> for this player.</summary>
+    public void ShowPartyApplied(string title, bool forced)
+    {
+        if (_partyRound == 0)
+        {
+            return;
+        }
+
+        _partyChosen = true;
+        ShowWaiting(forced ? $"Time's up — {title} was taken for you." : $"You chose {title}.");
+    }
+
+    /// <summary>Co-op: the round is over (everyone chose, the timer ran out, or the run ended).</summary>
+    public void ClosePartyRound()
+    {
+        if (_partyRound == 0)
+        {
+            return;
+        }
+
+        _partyRound = 0;
+        _partyChosen = false;
+        _partyBar.Visible = false;
+        Close();
+    }
+
+    /// <summary>Co-op timeout for this machine's player (the host's own): the first card.</summary>
+    public UpgradeOffer? FirstOffer => _cards.OfferCount > 0 ? _cards.Offers[0] : null;
+
+    private void ShowWaiting(string chosen)
+    {
+        ShowRow(false);
+        _waiting.Text = $"{chosen}\nWaiting for the others…";
+    }
+
+    /// <summary>The card row, or (co-op, after choosing) the waiting line.</summary>
+    private void ShowRow(bool cards)
+    {
+        _cards.Visible = cards;
+        _rerollInfo.Visible = cards;
+        _waiting.Visible = !cards;
+        if (cards)
+        {
+            _waiting.Text = "";
+        }
+    }
+
+    private void UpdatePartyClock()
+    {
+        ulong now = Time.GetTicksMsec();
+        float left = _partyDeadlineMsec > now ? (_partyDeadlineMsec - now) / 1000f : 0f;
+        int seconds = _partyDeadlineMsec == 0 ? -1 : Mathf.CeilToInt(left);
+        if (seconds == _lastShownSecond)
+        {
+            return;
+        }
+
+        bool urgent = seconds >= 0 && seconds <= Net.PartyRules.LevelUpUrgentSeconds;
+        if (_lastShownSecond >= 0 && seconds >= 0 && seconds < _lastShownSecond)
+        {
+            // One tick per second of the countdown, sharper in the red.
+            TicksPlayed++;
+            Core.Sfx.Play(this, urgent ? "tick_urgent" : "tick");
+        }
+
+        _lastShownSecond = seconds;
+        _partyClock.Text = seconds < 0 ? "" : $"{seconds} s";
+        _partyClock.AddThemeColorOverride("font_color", urgent ? Urgent : UiTheme.Gold);
     }
 
     /// <summary>One-paragraph description of the build so far.</summary>
