@@ -152,7 +152,11 @@ Double counting is prevented where it could happen:
   the run's skill levels.
 
 Balance, autoplay bot (`scripts/autoplay.sh --class=warrior --level=20 [--tree=off]
-[--ascend=1] --runs=3`): see the journal entry of 2026-10-17 for the numbers.
+[--ascend=1] --runs=3`, 2026-10-17): all nine level-20 warrior runs won. Damage
+taken: tree off 347–482, tree on 204–522, tree + four Barbarian nodes 55–162; the
+Colossus fell at 8:04–14:41 with no clear order (random cards dominate). The
+ascendancy is felt; a level-20 character finds the Rift easy because the Rift does
+not scale with character level (open question).
 
 ## Energy Shield (2026-10-17)
 
@@ -286,6 +290,9 @@ so gear affixes can roll them later with zero new plumbing.
 
 ## Open questions
 
+- The Rift ignores character level: a level-20 character with its tree wins every
+  bot run. Scale the Rift's monsters with character level, add difficulty tiers
+  (run.md open question), or accept it as the "relaxed" mode?
 - Should the character's **supports** come into the Rift with its skills (as cards
   already taken, or as a free first support)? Today only the skills do, at level 1.
 - The start pick for a character with four or more skills is skill levels only;

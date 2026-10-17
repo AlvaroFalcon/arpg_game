@@ -482,3 +482,36 @@ Owner report: the settings panel changed size every time you switched tabs. A Ta
 Owner report: with the router not answering UPnP, the lobby's big Address (and Copy invite) was the PC's 192.168 address, which only works on the same Wi-Fi. The fallback now says so in orange ("Local network only — not your internet address"), and the lobby offers **Find my public IP**. It asks api.ipify.org only when pressed, and the result is labelled as working once UDP 7777 is forwarded. A VPN address still wins when one is present. CoopUiSmokeTest `HOST-LAN-ADDRESS-LABELLED`; capture `coop-host-lobby-no-router.png`.
 
 ![Lobby when the router didn't open the port](screenshots/coop-host-lobby-no-router.png)
+
+## 2026-10-17 — Survival Rift: keystone cadence, per-card rerolls, the character in the Rift, Pending items
+
+Owner requests, everything except the co-op level-up flow:
+
+- **Start pick, always (solo).** A character with skills keeps them, but at **level 1 with no supports** (the gems keep their levels); the pick offers a new class skill or a level for one it brought. A skill-less character gets three skills **of its class** (`ClassDefinition.RiftSkills`), its starting skill always among them. Later new-skill cards favour the class ×3. Bug found on the way: a character level-up mid-Rift called `Rebuild()`, which re-equipped the loadout and wiped the run's skills, levels and supports — `CharacterBuild.RunOwnsSkills` stops that.
+- **Keystone cadence:** lesser keystones at 5, 15, 25…, great ones at 10, 20, 30…, nothing elsewhere. Eight lesser (Ricochet, Juggernaut, Prismatic Bulwark, Iron Will + new Scavenger, Overclock, Shield Conduit, Wind Runner), seven great. Blood Magic is tree-only (no costs in the Rift).
+- **Offer composition** in one table (`OfferRules`): ordinary levels roll a category per card — skill 35, power-up 50, support 15 — with at least one skill card guaranteed. Measured: 57 % skills, 32 % power-ups, 11 % supports. New power-ups: Might (+10 % damage), Melee Damage, Ferocity (attack speed), Aegis (**energy shield**, a new stat: takes hits before life, recharges after 2 s), Bloodthirst (leech). Mana cards removed — dead in the Rift.
+- **Per-card reroll:** a button under each card or Shift+1/2/3 replaces only that card; still two per run; never a card already on screen.
+- **Minimum for an item:** 60 s or 30 kills; the results screen says why there is none.
+- **Pending items:** a reward that finds the bag full goes to an account-wide overflow (20 max, oldest sold to Odran at the cap), shown as the stash's Pending tab and announced by the hideout banner.
+- **Tree and ascendancy in the Rift:** they already applied through `CharacterBuild` (own modifier source); what was missing was protection from double counting — tree keystones are no longer offered as cards, a tree Avatar's element counts for card gates.
+
+Autoplay (`--class=warrior --level=20`, 3 runs each, Colossus kill time / damage taken):
+
+| | Victories | Colossus down at | Damage taken |
+|---|---|---|---|
+| tree off | 3/3 | 9:23, 9:35, 8:31 | 360, 482, 347 |
+| tree on | 3/3 | 11:26, 10:07, 9:35 | 449, 204, 522 |
+| tree + Barbarian (4 nodes) | 3/3 | 8:40, 8:04, 14:41 | 55, 57, 162 |
+
+The ascendancy shows clearly (damage taken down ~5×); the bot's random tree (notables first, then random) is noise against random cards. A level-20 character wins every time: the Rift does not scale with character level — an open question for the owner.
+
+Tests: new `RiftProgressionTest` (15 suites, all green). Capture: `RunCapture --only=rift`.
+
+![Start pick with the character's skills](screenshots/rift-start-pick.png)
+![Lesser keystone row](screenshots/rift-levelup-lesser.png)
+![Great keystone row](screenshots/rift-levelup-great.png)
+![After one per-card reroll](screenshots/rift-levelup-reroll.png)
+![Results: reward sent to Pending items](screenshots/rift-results-pending.png)
+![Results: left at once, no item](screenshots/rift-results-no-item.png)
+![Hideout banner](screenshots/rift-hideout-pending.png)
+![Stash: Pending tab](screenshots/rift-stash-pending.png)
