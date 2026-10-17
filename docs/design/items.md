@@ -786,8 +786,9 @@ no cap (an unbounded save and an inbox nobody empties).
 Not routed through it (yet): reality drops and boss chests land on the ground,
 where a full bag already just leaves them for later — but whatever is still on the
 floor when a reality closes is lost. Sending those to Pending items at the exit is
-cheap with `ClaimReward` and is the obvious next use; not done to keep this pass
-scoped.
+cheap with `ClaimReward`, but the owner decided against it (2026-10-17: floor drops
+left behind don't matter). The cap of 20 and selling the oldest were confirmed by the
+owner the same day.
 
 ## Open questions
 

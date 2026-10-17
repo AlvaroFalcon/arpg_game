@@ -177,7 +177,7 @@ now need the run to have **lasted 60 s or killed 30 monsters**
 party's kills). Below that the results screen shows no cards and says why: "No item
 this time: a Rift pays an item after 60 s or 30 kills (this one: 10 s, 3 kills)".
 Gold and orbs keep their formulas, which already start from about zero (a 10-second
-run pays 1 gold and no orb).
+run pays 1 gold and no orb). Confirmed by the owner (2026-10-17).
 
 Why these numbers: an ordinary first minute kills 50–80 monsters with auto-cast, so
 any real attempt clears both bars long before the first elite; dying in the first
