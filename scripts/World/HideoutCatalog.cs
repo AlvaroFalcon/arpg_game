@@ -96,7 +96,7 @@ public static class HideoutCatalog
         new() { Id = "mirror", Name = "Mirror of Realities", Sprite = "props/mirror", Scale = 2.5f, Station = true, Radius = 18f, PickRadius = 40f,
             Verb = "Open realities", Blurb = "Spend Mirror Shards to step into an Altered Reality.", Accent = new Color(0.55f, 0.75f, 1f) },
         new() { Id = "merchant", Name = "Odran the Trader", Sprite = "props/market_stall", Station = true, PickRadius = 44f,
-            Verb = "Trade", Blurb = "Sell gear for gold, buy it back, buy crafting shards.", Accent = new Color(0.95f, 0.75f, 0.35f) },
+            Verb = "Trade", Blurb = "Sell gear, buy crafting shards and skill gems.", Accent = new Color(0.95f, 0.75f, 0.35f) },
         new() { Id = "arehucaz", Name = "Arehucaz", Sprite = "props/arehucaz", Station = true, Radius = 10f, PickRadius = 34f,
             Verb = "Deal", Blurb = "Sells Mirror Shards of tiers you have cleared. Five at a time.", Accent = new Color(0.68f, 0.45f, 1f) },
         new() { Id = "decorator", Name = "Ysolde's Furnishings", Sprite = "props/crate", Station = true, PickRadius = 36f,

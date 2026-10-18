@@ -42,7 +42,7 @@ public partial class TownGuidePanel : ModalPanel
         foreach ((string key, string what) in new[]
         {
             ("Click", "walk there"), ("E", "use the station you're next to"), ("I", "inventory · Crafting tab for orbs"),
-            ("C · K · P", "character · skills · passive tree"), ("H", "edit your town"), ("Q · R", "life and mana flasks"),
+            ("C · K · P", "character · skills · passive tree"), ("J", "quest log"), ("H", "edit your town"), ("Q · R", "life and mana flasks"),
             ("Space · Shift", "dodge · sprint"), ("M · Tab", "town map (click a place to walk there)"), ("Esc", "menu (settings, Edit HUD)"),
         })
         {

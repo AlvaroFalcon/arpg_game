@@ -25,6 +25,8 @@ public partial class MirrorPanel : ModalPanel
 
     protected override string Title => "Mirror of Realities";
 
+    public override string? StationUid => "mirror";
+
     protected override Vector2 FrameSize => new(1060f, 660f);
 
     private Button _realitiesTab = null!;
@@ -202,6 +204,11 @@ public partial class MirrorPanel : ModalPanel
         Profile.Get(this)?.Save();
         RefreshJewels();
         HoverJewel(node);
+        if (!remove)
+        {
+            GameEvents.Raise(GameEvents.JewelSocketed, 0, node.Id);
+        }
+
         return true;
     }
 

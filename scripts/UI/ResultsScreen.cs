@@ -70,6 +70,13 @@ public partial class ResultsScreen : CanvasLayer
         _box = UiTheme.VBox(panel, 10);
 
         _box.AddChild(UiTheme.Label(state.Victory ? "VICTORY" : "YOU HAVE FALLEN", 48, state.Victory ? UiTheme.Gold : UiTheme.Life, HorizontalAlignment.Center));
+        if (state.Victory && state.Fell)
+        {
+            // Falling in the endless phase is still a win: the Colossus was already down.
+            Label fell = UiTheme.Label($"You fell at {UiTheme.FormatTime(state.Elapsed)} in the endless phase. The reward is yours.", 18, UiTheme.Ember, HorizontalAlignment.Center);
+            fell.Name = "FellSubtitle";
+            _box.AddChild(fell);
+        }
         _box.AddChild(UiTheme.Label(
             $"Survived {UiTheme.FormatTime(state.Elapsed)}   ·   Level {state.Level}   ·   {state.Kills} kills   ·   {state.ElitesKilled} elites   ·   {state.BossesKilled} bosses   ·   +{state.GoldCollected} gold",
             18, UiTheme.Text, HorizontalAlignment.Center));
@@ -79,9 +86,9 @@ public partial class ResultsScreen : CanvasLayer
         _box.AddChild(summary);
 
         _box.AddChild(CurrencyRow(rewards));
-        if (state.Victory && state.Elapsed > 0f)
+        if (state.Victory && state.Elapsed > 0f && rewards.Choices < 5)
         {
-            // A hint at why staying in the endless phase pays.
+            // A hint at why staying in the endless phase pays (dropped at five cards: no room).
             _box.AddChild(UiTheme.Label("Every minute survived adds gold, orbs, item cards and items to keep.", 13, UiTheme.TextDim, HorizontalAlignment.Center));
         }
 
@@ -95,7 +102,7 @@ public partial class ResultsScreen : CanvasLayer
         float cardWidth = Mathf.Min(280f, (1180f - 14f * (rewards.Choices - 1)) / Mathf.Max(1, rewards.Choices));
         foreach (EquipmentItem item in RollRewards(rewards))
         {
-            _rewards.AddChild(RewardCard(item, cardWidth));
+            _rewards.AddChild(RewardCard(item, cardWidth, rewards.Choices >= 5));
         }
 
         HBoxContainer buttons = UiTheme.HBox(_box, 16);
@@ -170,6 +177,29 @@ public partial class ResultsScreen : CanvasLayer
             }
             while (!usedBases.Add(item.Base!.Id) && ++guard < 10);
 
+            // Tier V and up guarantee some cards Rare or better (docs/design/run.md -> "Reward tiers"):
+            // the first cards are re-rolled until they are, else made Rare outright.
+            if (i < rewards.GuaranteedRare && item.Rarity < Rarity.Rare)
+            {
+                EquipmentItem? better = null;
+                for (int tries = 0; tries < 40 && better is null; tries++)
+                {
+                    EquipmentItem candidate = ItemFactory.RollRandom(rewards.ItemLevel, DropSource.RiftReward, rewards.RarityMultiplier, rng);
+                    if (candidate.Rarity >= Rarity.Rare)
+                    {
+                        better = candidate;
+                    }
+                    else
+                    {
+                        candidate.Free();
+                    }
+                }
+
+                better ??= ItemFactory.Roll(item.Base!, Rarity.Rare, rewards.ItemLevel, rng);
+                item.Free();
+                item = better;
+            }
+
             items.Add(item);
         }
 
@@ -183,10 +213,12 @@ public partial class ResultsScreen : CanvasLayer
         _ => new Color(0.85f, 0.85f, 0.85f),
     };
 
-    private Control RewardCard(EquipmentItem item, float width)
+    private Control RewardCard(EquipmentItem item, float width, bool compact)
     {
         Color color = RarityColor(item.Rarity);
-        var card = new Button { CustomMinimumSize = new Vector2(width, 260f), FocusMode = Control.FocusModeEnum.All, ClipContents = true };
+        // Five cards: the "Hold Alt" hint goes (it does nothing on this screen anyway) and the
+        // text is a size smaller, so a rare with four modifiers is no longer clipped.
+        var card = new Button { CustomMinimumSize = new Vector2(width, compact ? 272f : 260f), FocusMode = Control.FocusModeEnum.All, ClipContents = true };
         card.AddThemeStyleboxOverride("normal", UiTheme.Box(UiTheme.Panel, color with { A = 0.5f }, 2, 8, 12));
         card.AddThemeStyleboxOverride("hover", UiTheme.Box(new Color(0.16f, 0.13f, 0.22f), color, 3, 8, 12));
         card.AddThemeStyleboxOverride("focus", UiTheme.Box(new Color(0.16f, 0.13f, 0.22f, 0f), color, 3, 8, 12));
@@ -195,12 +227,12 @@ public partial class ResultsScreen : CanvasLayer
         var text = new RichTextLabel
         {
             BbcodeEnabled = true,
-            Text = ItemTooltipText.Build(item),
+            Text = ItemTooltipText.Build(item, false, hint: false),
             FitContent = true,
             ScrollActive = false,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        text.AddThemeFontSizeOverride("normal_font_size", 15);
+        text.AddThemeFontSizeOverride("normal_font_size", compact ? 14 : 15);
         text.AddThemeColorOverride("default_color", color);
         card.AddChild(text);
         text.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);

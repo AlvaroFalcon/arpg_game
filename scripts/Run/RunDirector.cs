@@ -21,9 +21,12 @@ namespace ArpgGame.Run;
 /// <item>7:00: <b>the Ember Colossus</b>. The arena is cleared of normal enemies
 /// (they burn away, no experience) and the fight is one on one, plus whatever
 /// the boss summons. Killing it wins the run.</item>
-/// <item>After the Colossus: <b>the endless phase</b> — a portal home opens where
-/// it fell, spawning resumes and keeps getting harder, a boss comes every two
-/// minutes, and the reward keeps growing until the player steps through (or
+/// <item>After the Colossus: the director holds for a moment and <b>offers the
+/// reward</b> (<see cref="CashOutOffered"/>: take it and leave, or keep going —
+/// docs/design/run.md -> "Cash-out offer and the infinite Rift"). Keeping going
+/// starts <b>the endless phase</b> (<see cref="BeginEndless"/>): a portal home
+/// opens where it fell, spawning resumes and keeps getting harder, a boss comes
+/// every two minutes, and the reward keeps growing until the player leaves (or
 /// falls — the run still counts as a victory).</item>
 /// </list>
 ///
@@ -86,6 +89,28 @@ public partial class RunDirector : Node
     /// <summary>When the endless phase began (0 before).</summary>
     public float EndlessSince { get; private set; }
 
+    /// <summary>The player chose to keep going: the waves are back and the portal is open.</summary>
+    public bool EndlessStarted { get; private set; }
+
+    /// <summary>The Colossus is down and nobody has chosen yet: nothing spawns.</summary>
+    public bool AwaitingCashOut => ColossusDefeated && !EndlessStarted;
+
+    /// <summary>Seconds the director holds between the Colossus's death and the offer.</summary>
+    public const float CashOutHoldSeconds = 1.2f;
+
+    /// <summary>The offer is due (solo: the panel opens; co-op: the host opens a party round).</summary>
+    public event System.Action? CashOutOffered;
+
+    /// <summary>Take the reward at once when the Colossus falls, no offer (the balance bot,
+    /// so its numbers stay comparable with earlier passes).</summary>
+    public bool AutoCashOut { get; set; }
+
+    /// <summary>The player stepped into the portal (solo). The run does not end by itself:
+    /// the controller opens the panel in leave mode.</summary>
+    public event System.Action? PortalEntered;
+
+    private bool _portalInside;
+
     public Enemy? ActiveBoss => _colossus is not null && IsInstanceValid(_colossus) ? _colossus
         : _herald is not null && IsInstanceValid(_herald) ? _herald : null;
 
@@ -131,6 +156,11 @@ public partial class RunDirector : Node
         if (_colossusSpawned && !ColossusDefeated)
         {
             return;
+        }
+
+        if (AwaitingCashOut)
+        {
+            return; // held until the player chooses (CashOutOffered / BeginEndless)
         }
 
         if (ColossusDefeated)
@@ -671,9 +701,10 @@ public partial class RunDirector : Node
     }
 
     /// <summary>
-    /// The run is won. Instead of ending it, a portal home opens where the
-    /// Colossus fell and the endless phase starts: the waves come back
-    /// stronger, and every extra minute adds to the reward (ResultsScreen).
+    /// The run is won. Nothing spawns while the player decides: the director holds for
+    /// <see cref="CashOutHoldSeconds"/>, then raises <see cref="CashOutOffered"/>. The
+    /// victory banner, sound and the gems flying to the player happen now; the portal and
+    /// the endless waves wait for <see cref="BeginEndless"/> (the "Keep going" choice).
     /// </summary>
     private void OnColossusKilled()
     {
@@ -683,19 +714,53 @@ public partial class RunDirector : Node
         }
 
         ColossusDefeated = true;
+        _colossusDeathAt = _colossus is not null && IsInstanceValid(_colossus) ? _colossus.GlobalPosition : Arena.Center;
+        EmitSignal(SignalName.Announced, "Victory", "The Ember Colossus has fallen", new Color(1f, 0.85f, 0.4f));
+        Core.Sfx.Play(this, "victory");
+        Core.Sfx.Music(this, "music_run");
+        State.AttractAll();
+        if (AutoCashOut)
+        {
+            State.EndRun(true);
+            return;
+        }
+
+        // Co-op clients learn the victory from the host's flags; the host's offer is a party round.
+        GetTree().CreateTimer(CashOutHoldSeconds).Timeout += () =>
+        {
+            if (!State.Ended && !EndlessStarted && IsInsideTree())
+            {
+                CashOutOffered?.Invoke();
+            }
+        };
+    }
+
+    private Vector2 _colossusDeathAt;
+
+    /// <summary>
+    /// "Keep going": the endless phase starts as the owner asked for it (docs/design/run.md ->
+    /// "Cash-out offer and the infinite Rift"): the waves come back stronger, a portal home
+    /// opens where the Colossus fell, a boss comes every two minutes and every extra minute
+    /// raises the reward.
+    /// </summary>
+    public void BeginEndless()
+    {
+        if (!ColossusDefeated || EndlessStarted || State.Ended)
+        {
+            return;
+        }
+
+        EndlessStarted = true;
         EndlessSince = State.Elapsed;
         _nextEndlessBoss = State.Elapsed + EndlessBossInterval;
         _nextElite = State.Elapsed + EliteIntervalAt(State.Elapsed);
         _nextSwarm = State.Elapsed + SwarmInterval / 2f;
-        Vector2 at = _colossus is not null && IsInstanceValid(_colossus) ? _colossus.GlobalPosition : Arena.Center;
-        EmitSignal(SignalName.Announced, "Victory", "A portal home opens — or stay for greater rewards", new Color(1f, 0.85f, 0.4f));
-        Core.Sfx.Play(this, "victory");
-        Core.Sfx.Music(this, "music_run");
-        State.AttractAll();
+        EmitSignal(SignalName.Announced, "The Rift deepens", "A portal home opens where the Colossus fell. Leave whenever you want.", new Color(1f, 0.5f, 0.2f));
+        Core.Sfx.Play(this, "boss_warn", -8f);
 
-        ExitPortal = new Portal { Name = "ExitPortal", ZIndex = -1 };
+        ExitPortal = new Portal { Name = "ExitPortal", ZIndex = -1, Caption = Net.PartyRules.PortalCaption(State.PartySize) };
         GetTree().CurrentScene.AddChild(ExitPortal);
-        ExitPortal.GlobalPosition = Arena.Clamp(at, 80f);
+        ExitPortal.GlobalPosition = Arena.Clamp(_colossusDeathAt, 80f);
         PortalOpened?.Invoke(ExitPortal.GlobalPosition);
     }
 
@@ -737,12 +802,12 @@ public partial class RunDirector : Node
             return;
         }
 
-        ExitPortal = new Portal { Name = "ExitPortal", ZIndex = -1 };
+        ExitPortal = new Portal { Name = "ExitPortal", ZIndex = -1, Caption = Net.PartyRules.PortalCaption(State.PartySize) };
         GetTree().CurrentScene.AddChild(ExitPortal);
         ExitPortal.GlobalPosition = at;
     }
 
-    /// <summary>Leaves through the portal: the run ends as a victory.</summary>
+    /// <summary>Takes the reward: the run ends as a victory (the cash-out panel's "Take it and leave").</summary>
     public void TakeExitPortal()
     {
         if (ColossusDefeated && !State.Ended)
@@ -771,6 +836,29 @@ public partial class RunDirector : Node
         }
 
         float radius = living.Count > 1 ? 60f : 34f;
+        if (!Net.PartyRules.IsParty(State.PartySize) && living.Count == 1)
+        {
+            // Solo: walking in opens the panel in leave mode; it never ends the run by
+            // itself, and re-arms once the player steps out of the portal.
+            float d = living[0].GlobalPosition.DistanceTo(ExitPortal.GlobalPosition);
+            if (d > 110f)
+            {
+                _portalArmed.Add(living[0]);
+            }
+
+            if (d >= radius + 12f)
+            {
+                _portalInside = false;
+            }
+            else if (d < radius && _portalArmed.Contains(living[0]) && !_portalInside)
+            {
+                _portalInside = true;
+                PortalEntered?.Invoke();
+            }
+
+            return;
+        }
+
         bool allIn = true;
         foreach (Player p in living)
         {

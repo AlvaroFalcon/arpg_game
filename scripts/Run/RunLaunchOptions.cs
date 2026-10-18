@@ -20,6 +20,10 @@ public static class RunLaunchOptions
     /// <summary>Apply this many random level-ups immediately (preview builds).</summary>
     public static int AutoLevels;
 
+    /// <summary>Take the reward the moment the Colossus falls: no offer, no endless phase. The
+    /// autoplay bot sets it so balance numbers stay comparable with earlier passes.</summary>
+    public static bool AutoCashOut;
+
     public static void ReadCommandLine()
     {
         foreach (string arg in OS.GetCmdlineUserArgs())
@@ -41,6 +45,9 @@ public static class RunLaunchOptions
                 case "auto-levels":
                     AutoLevels = kv[1].ToInt();
                     break;
+                case "auto-cash-out":
+                    AutoCashOut = kv[1] != "0";
+                    break;
             }
         }
     }
@@ -50,5 +57,6 @@ public static class RunLaunchOptions
         StartTime = 0f;
         StartSkill = null;
         AutoLevels = 0;
+        AutoCashOut = false;
     }
 }

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ProjectileSkillDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/ProjectileSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="SpriteFrames" path="res://assets/sprites/projectiles/frost_shard.tres" id="f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_frost_shards.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 4.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Frost Shards"
+Description = "Hurls a fan of ice shards. Cold hits chill enemies."
+BaseDamage = 9.0
+AddedDamageEffectiveness = 0.5
+BaseUseTime = 0.45
+Tags = 1030
+Speed = 620.0
+Range = 480.0
+SpawnOffset = 20.0
+Count = 3
+SpreadDegrees = 24.0
+Size = 1.0
+Costs = [SubResource("Cost")]
+Frames = ExtResource("f")
+Icon = ExtResource("i")

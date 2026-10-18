@@ -22,6 +22,8 @@ public partial class ShardVendorPanel : ModalPanel
 
     protected override string Title => "Arehucaz";
 
+    public override string? StationUid => "arehucaz";
+
     protected override Vector2 FrameSize => new(900f, 560f);
 
     private static readonly Color Violet = new(0.68f, 0.45f, 1f);
@@ -134,7 +136,8 @@ public partial class ShardVendorPanel : ModalPanel
         int t = tier;
         Button buy = UiTheme.Button("Buy", () => Buy(t), 14, 80f);
         buy.Disabled = ShardVendor.CannotBuy(c, Player.Wallet, tier) is not null;
-        buy.TooltipText = ShardVendor.CannotBuy(c, Player.Wallet, tier) ?? "";
+        string? why = ShardVendor.CannotBuy(c, Player.Wallet, tier);
+        UiTheme.InstantTooltip(buy, () => why is null ? "" : "Can't buy yet\n" + why);
         line.AddChild(buy);
         return row;
     }
@@ -152,6 +155,7 @@ public partial class ShardVendorPanel : ModalPanel
         {
             Sfx.Play(this, "pickup");
             Save();
+            GameEvents.Raise(GameEvents.ShardBought, tier);
         }
 
         Refresh();

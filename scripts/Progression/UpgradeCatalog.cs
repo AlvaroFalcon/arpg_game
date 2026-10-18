@@ -78,6 +78,10 @@ public static class UpgradeCatalog
         new SkillEntry { Id = "sunder", ResourcePath = "res://resources/skills/run/sunder.tres" },
         new SkillEntry { Id = "double_strike", ResourcePath = "res://resources/skills/run/double_strike.tres" },
         new SkillEntry { Id = "throwing_knives", ResourcePath = "res://resources/skills/run/throwing_knives.tres" },
+        // docs/design/hideout.md -> "Three new skills": fill the gaps in cold, lightning melee and the Rogue's list.
+        new SkillEntry { Id = "frost_shards", ResourcePath = "res://resources/skills/run/frost_shards.tres" },
+        new SkillEntry { Id = "storm_strike", ResourcePath = "res://resources/skills/run/storm_strike.tres" },
+        new SkillEntry { Id = "glacial_hammer", ResourcePath = "res://resources/skills/run/glacial_hammer.tres" },
     };
 
     public static SkillEntry? FindSkill(string id)

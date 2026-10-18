@@ -28,6 +28,8 @@ public partial class ArtificerPanel : ModalPanel
 
     protected override string Title => "Artificer's Bench";
 
+    public override string? StationUid => "forge";
+
     protected override Vector2 FrameSize => new(1040f, 600f);
 
     public Tab Current { get; private set; } = Tab.Disenchant;
@@ -158,12 +160,14 @@ public partial class ArtificerPanel : ModalPanel
         Player.Wallet.Add(dust.Id, amount);
         Say($"{item.Descriptor.DisplayName} → {amount} {dust.Name}", dust.Color);
         Sfx.Play(this, "hit", -6f);
+        string rarity = item.Rarity.ToString();
         if (!item.IsInsideTree())
         {
             item.Free();
         }
 
         UpdateDust();
+        GameEvents.Raise(GameEvents.Disenchanted, amount, rarity);
         return true;
     }
 
@@ -306,6 +310,7 @@ public partial class ArtificerPanel : ModalPanel
         Say($"Forged {item.Descriptor.DisplayName}", grade.Result == Rarity.Rare ? new Color(1f, 0.85f, 0.35f) : new Color(0.55f, 0.65f, 1f));
         UpdateDust();
         BuildGrades(ilvl);
+        GameEvents.Raise(GameEvents.Forged, 0, grade.Result.ToString());
         return item;
     }
 

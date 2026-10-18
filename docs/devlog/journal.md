@@ -551,3 +551,73 @@ The owner's answers to last night's questions:
 - **Resume grace.** After a card round everyone gets 1 s of invulnerability, chosen over a 3-2-1. The host grants it in co-op, and solo gets it too.
 - **Quiet tick.** The countdown ticks only for players still choosing.
 - **Kept as is:** the co-op pace (to be playtested first), the 10 s limit for keystone rounds, no character supports in the Rift, and nothing for reality floor drops.
+
+## 2026-10-18 — UX review and plan: quests, Odran's gems, the Rift's cash-out, orb tooltips
+
+A planning session, no game code. The owner asked for four things, and a UI/UX pass turned them into buildable plans for the implementer, from fresh captures of the current build (`RunCapture --only=crafting`, `town`, `update`, `endgame`).
+
+- **Orb tooltips** (crafting.md -> "Orb tooltips"). The delay is Godot's built-in tooltip: the orb buttons set `TooltipText`, which waits `gui/timers/tooltip_delay_sec` (0.5 s, starting over when the mouse moves) and isn't themed. Item tooltips are ours and show on the first hover frame. Plan: `UiTheme.InstantTooltip` on the existing `HoverTooltip`, applied to every `TooltipText` in the UI, plus a test that no native tooltip is left.
+- **Odran's Skill gems tab** (hideout.md). Every skill and support, unlocked by character level (skills 50 gold × level, supports 20 + 40 × level), locked rows shown greyed with their level, filters for tags, class and "fits my skills". One copy per skill, up to six per support, gems at level 1 into the skills collection (gems aren't bag items here). Three new skills on existing archetypes fill gaps: Frost Shards (cold projectile), Storm Strike (lightning attack for the Rogue), Glacial Hammer (cold slam for the Warrior).
+- **The Rift's cash-out** (run.md). The Colossus kill now asks: two equal cards, take the reward now or keep going, with the reward spelled out. The portal and Esc open the same panel later instead of ending the run outright. A reward panel on the HUD shows the tier and the next one. Tiers I–IV are today's steps, named; V and up add guaranteed Rare cards, then Ascendant Orbs. Dying keeps today's rule (you keep what you had); a riskier "last tier only" rule is ready as an owner question. Co-op: a 15 s party round on the level-up machinery, and the party leaves only if everyone votes to.
+- **Quests and a quest log on J** (quests.md, new). Six tutorial quests (Odran, two at the forge, Arehucaz, the first jewel, ascendancy), "!" / grey "?" / gold "?" markers in the world, the E prompt, the directory row, the minimap and the big map, an explanation dialogue before the station opens, auto turn-in when the panel closes, a tracker under the character plate, and a log with a town map and a Walk there button. The data model is a pure `QuestBook` over per-character and per-account progress, fed by events from ten existing hook points.
+
+Found on the way: the altar's "Become a…" is permanent and takes one click with no confirmation. A quest that sends everyone there makes it urgent, so the plan adds a two-click confirm. Also, Arehucaz only sells tiers 2 up to your best cleared tier, so his quest unlocks on clearing tier 2 rather than on the first shard (a tier-1 boss drops tier-1 shards he doesn't sell). And endgame.md says supports stack to 4, but the code's cap is 6.
+
+![Odran today](screenshots/review-odran-trade.png)
+![The Crafting tab](screenshots/review-crafting-tab.png)
+![Hideout HUD](screenshots/review-hideout-hud.png)
+![The altar](screenshots/review-altar.png)
+![The Mirror's jewels](screenshots/review-mirror-jewels.png)
+![Arehucaz](screenshots/review-arehucaz.png)
+![Rift endless phase](screenshots/review-rift-endless.png)
+![Rift results at 16:12](screenshots/review-rift-results.png)
+
+## 2026-10-18 — Built: instant orb tooltips, Odran's Skill gems, the Rift's cash-out
+
+The three plans from the UX review are in the game (the quests are not: they come next, and the hooks are ready).
+
+- **Orb tooltips.** `UiTheme.InstantTooltip` shows a themed tooltip on the very frame the mouse enters a control, one per canvas layer; the orbs, the Seal, the dust icons, the hideout HUD, the minimap, the stash tab, Arehucaz's Buy buttons and the reroll buttons use it, and the built-in tooltip is themed (and 0.15 s) as a safety net. Disabled buttons keep their mouse filter, so an orb you have none of explains where to get it. A headless window has no pointer, so the real-pointer proof is the capture `craft-orb-tooltip-none.png`.
+- **Odran's Skill gems.** A second tab on his panel sells all 13 skills and 20 supports by character level (50 gold × level, 20 + 40 × level), with kind toggle, filter chips, "Only what I can buy", locked rows greyed, NEW tags and an ember dot on the tab. A bought gem joins the collection (K) at level 1; skills once, supports up to 6. Three new skills fill the gaps: Frost Shards, Storm Strike, Glacial Hammer (resources, catalog, class lists, icons from the art pipeline). The introduction's boss drops 70 gold, enough for any level-1 gem.
+- **The altar** asks twice now ("Become a Sage: this is permanent. Click again."), the blocker from the review.
+- **The Rift's cash-out.** The Colossus kill holds the director for 1.2 s and opens a panel: [1] take the reward now (gold, orbs, cards, item level, rarity, exactly what the results will pay) or [2] keep going (the endless phase, portal and "The Rift deepens"). The portal and Esc → Leave with reward open the same panel later ("Not yet" instead of Keep going). Reward tiers I to IV are today's steps; V and up guarantee Rare cards and then Ascendant Orbs. A reward panel on the HUD shows the tier and the way to the next, with a toast and a flash on a new tier. In co-op the offer is a 15 s party round: anyone staying keeps the party in, silence counts as leave (protocol 4). The bot takes the reward at the kill, so balance numbers stay comparable. Five item cards on the results screen are no longer clipped.
+- **Hooks for the quests:** `GameEvents.Raised(eventId, value, key)` fires `gem_bought`, `disenchanted`, `forged`, `shard_bought`, `ascendancy_chosen`, `jewel_socketed` and `item_sold` (quests.md lists where).
+- **Tests:** `TOOLTIP-*`, `GEMSHOP-*`, `ALTAR-CONFIRM`, `SKILLS-NEW-RESOURCES`, `CASHOUT-*` (solo, in the real Rift scene) and `CASHOUT-COOP-*` (two real clients). Lesson: a scene added under a test node that never pauses never pauses either; the Rift checks use a pausable holder.
+
+![Orb tooltip](screenshots/craft-orb-tooltip.png)
+![A disabled orb](screenshots/craft-orb-tooltip-none.png)
+![Odran's Skill gems](screenshots/odran-gems-skills.png)
+![Supports](screenshots/odran-gems-supports.png)
+![After buying](screenshots/odran-gems-bought.png)
+![The Colossus offer](screenshots/rift-cashout-offer.png)
+![The reward panel](screenshots/rift-reward-panel.png)
+![Leaving later](screenshots/rift-cashout-leave.png)
+![Results, five cards](screenshots/rift-results.png)
+![Co-op vote](screenshots/coop-cashout.png)
+
+## 2026-10-18 — Built: quests and the quest log (J)
+
+The six tutorial quests from `docs/design/quests.md` are in the game. Each teaches one station the moment it opens up: Odran's wares (after the introduction), Breaking it down and A modifier of your choosing at the Artificer's Forge (the second a visit later, the third at once), The shard dealer (a tier-2 clear), A jewel for the Mirror (the first jewel) and Choose an ascendancy (the tier-5 boss: 1,000 gold, 2 Crown, 2 Tempest, 1 Tuning).
+
+- **How it reads in play.** A quest unlocks by itself, with a toast and a chime (`quest_new`). Its station gets a gold "!" in the world, on its directory row (the arrow turns gold), on the minimap and the big map, and on the E prompt; the tracker under the character plate lists it and the J chip carries a badge. E at the station opens the explanation first and the panel second (its primary button opens the right tab: Skill gems, Disenchant, Forge, Jewels), with a one-line quest strip under the panel's title. Doing the thing turns the strip green (`quest_done`); closing the panel opens the turn-in, and Claim pays through `Player.Wallet` and saves. J opens the log: Ready, Active, Completed, the objective as a drawn checkbox, the rewards as icons and the town map with the turn-in ringed, plus "Walk there".
+- **Rules.** `QuestBook` is plain C# over two progress maps (character and account); `QuestService` feeds it the `GameEvents` the Profile autoload hears and announces what changed (save, sound, `Profile.QuestChanged`). Veterans get the quest skipped (no reward) when the save shows they already did the thing. Account quests leave a Done mark on the character that finished them, so another character never sees them listed. Saves are additive (version stays 2); the join payload carries quests and the host caps them (32 entries, 64-character ids, status 0-5, count 0-999).
+- **Events added to the bus:** `boss_killed` (tier), `jewel_found`, `shard_found`, `hideout_entered`. The old "Ascendancy trial complete!" toast is gone; the quest toast replaces it.
+- **Things that bit.** A class named `Quests` would have hidden the `ArpgGame.Quests` namespace, so the facade is `QuestService`. The first-visit guide opened a frame after the unlock toast and covered it for its whole six seconds: the arrival event is now queued behind the guide. A "complete" card queued while a card was showing outlived the panel it was about: cards are dropped when stale, and when the objective was met inside the station's own panel. The big map's "— New quest" suffix ran into the neighbouring badge: it is a second line above the name now.
+- **Tests:** `QuestSmokeTest` (24 checks: the rules, saves, the co-op caps, then the real hideout, altar, forge, log, toast, a tier-5 boss kill, the introduction's gold and the Rift scene), `CHARACTER-QUEST-CAPS` in SecuritySmokeTest and `CHARACTER-QUESTS-JOIN` in CoopSmokeTest. Capture: `RunCapture --only=quests`.
+
+![Toast after the tier-5 boss](screenshots/quests-toast-reality.png)
+![Arrival toast and markers](screenshots/quests-toast-hideout.png)
+![Every kind of marker](screenshots/quests-town-overview.png)
+![The altar's marker](screenshots/quests-marker-altar.png)
+![The E prompt](screenshots/quests-prompt-altar.png)
+![The big map](screenshots/quests-bigmap.png)
+![Odran's explanation](screenshots/quests-dialog-odran.png)
+![The altar's explanation](screenshots/quests-dialog-altar.png)
+![The altar's quest strip](screenshots/quests-altar-strip.png)
+![Quest complete](screenshots/quests-altar-ready.png)
+![The turn-in](screenshots/quests-turnin.png)
+![Reward claimed](screenshots/quests-claimed.png)
+![The forge's strip](screenshots/quests-forge-ready.png)
+![The quest log](screenshots/quests-log.png)
+![A ready quest in the log](screenshots/quests-log-ready.png)
+![The log in a reality](screenshots/quests-log-reality.png)
+![An empty log](screenshots/quests-log-empty.png)

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using ArpgGame.Items;
+using ArpgGame.Quests;
 
 namespace ArpgGame.Characters;
 
@@ -101,12 +102,19 @@ public sealed class CharacterData
     /// <summary><see cref="RealitiesCleared"/> at Arehucaz's last restock.</summary>
     public int ShardVendorSince { get; set; }
 
+    /// <summary>The character level at which the player last opened Odran's Skill gems
+    /// tab; gems unlocked since then are "new" (<see cref="GemShop.NewCount"/>).</summary>
+    public int GemShopSeenLevel { get; set; }
+
     /// <summary>False for a freshly created character until they finish (or
     /// skip) the introduction reality — docs/design/tutorial.md.</summary>
     public bool TutorialDone { get; set; } = true;
     public int TotalKills { get; set; }
     public int SurvivalRuns { get; set; }
     public float BestSurvivalTime { get; set; }
+
+    /// <summary>Progress of the character-scope quests (docs/design/quests.md); the account's are in <c>Profile.Quests</c>.</summary>
+    public Dictionary<string, QuestProgress> Quests { get; set; } = new();
 
     // Runtime gear (see class doc).
     public List<(EquipmentItem Item, Vector2I Cell)> Inventory { get; } = new();

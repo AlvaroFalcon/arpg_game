@@ -35,6 +35,10 @@ public partial class SkillsSmokeTest : Node2D
     private SkillInstance _cooldownTestSkill = null!;
 
     private bool _dummyDied;
+    private bool _newDummyHit;
+    private bool _newLoaded;
+    private TargetDummy? _newDummy;
+    private CastFailure? _newCast;
     private int _frame;
     private bool _failed;
 
@@ -188,7 +192,49 @@ public partial class SkillsSmokeTest : Node2D
             Check("PROJECTILE-KILLS-DUMMY", _dummyDied, $"Health.Died fired={_dummyDied}");
         }
 
-        if (_frame >= 170)
+        // docs/design/hideout.md -> "Three new skills": each loads, casts from a slot and
+        // damages a fresh dummy (melee ones stand in arc range, the shards a few hundred px away).
+        string[] newSkills = { "frost_shards", "storm_strike", "glacial_hammer" };
+        int phase = (_frame - 175) / 80;
+        int step = (_frame - 175) % 80;
+        if (_frame >= 175 && phase < newSkills.Length)
+        {
+            string id = newSkills[phase];
+            if (step == 0)
+            {
+                var entry = Progression.UpgradeCatalog.FindSkill(id);
+                var definition = entry?.Definition;
+                _stats.Mana!.Current = _stats.Mana.Max;
+                _newDummyHit = false;
+                _newLoaded = definition is not null;
+                if (definition is null)
+                {
+                    Check($"SKILLS-NEW-RESOURCES {id}", false, "the resource did not load");
+                }
+                else
+                {
+                    _skillUser.EquipSkill(SkillSlotId.Slot3, new SkillInstance(definition));
+                    var dummy = GD.Load<PackedScene>("res://scenes/combat/TargetDummy.tscn").Instantiate<TargetDummy>();
+                    AddChild(dummy);
+                    bool projectile = definition is ProjectileSkillDefinition;
+                    dummy.GlobalPosition = _player.GlobalPosition + new Vector2(projectile ? 300f : 55f, 0f);
+                    dummy.GetNode<Health>("Health").Damaged += _ => _newDummyHit = true;
+                    _newDummy = dummy;
+                    _newCast = _skillUser.TryCast(SkillSlotId.Slot3, Vector2.Right);
+                }
+            }
+            else if (step == 70 && _newLoaded)
+            {
+                Check($"SKILLS-NEW-RESOURCES {id}", _newCast is null && _newDummyHit,
+                    $"cast failure={_newCast?.ToString() ?? "none"}, dummy damaged={_newDummyHit}");
+                if (IsInstanceValid(_newDummy))
+                {
+                    _newDummy!.QueueFree();
+                }
+            }
+        }
+
+        if (_frame >= 175 + newSkills.Length * 80)
         {
             GD.Print(_failed ? "[SKILLTEST] === RESULT: FAIL ===" : "[SKILLTEST] === RESULT: PASS ===");
             GetTree().Quit();

@@ -148,6 +148,7 @@ public partial class AutoplayBot : Node
             {
                 RunLaunchOptions.StartSkill = skill;
             }
+            RunLaunchOptions.AutoCashOut = true;
             GetTree().Paused = false;
             GetTree().ChangeSceneToFile(Core.Scenes.Run);
             await ToSignal(GetTree().CreateTimer(0.5, processAlways: true), SceneTreeTimer.SignalName.Timeout);
@@ -160,8 +161,9 @@ public partial class AutoplayBot : Node
             Log($"[BOT] run {_runIndex + 1}/{_runs} start: {skill}");
             while (Run() is { State.Ended: false } current)
             {
-                // The Colossus is down: the bot takes the portal home rather than
-                // playing the endless phase (balance targets the 7:00 victory).
+                // The Colossus is down: the bot takes the reward at once (AutoCashOut ends
+                // the run on the kill) rather than playing the endless phase (balance
+                // targets the 7:00 victory); this is the backstop.
                 if (current.Director.ColossusDefeated)
                 {
                     current.Director.TakeExitPortal();

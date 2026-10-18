@@ -173,6 +173,9 @@ public partial class RealityHud : CanvasLayer
         _bannerTime = 3.2f;
     }
 
+    /// <summary>Where the quest toast's card goes: under the loot toasts' lines, wherever Edit HUD put them.</summary>
+    public Vector2 QuestToastAnchor() => _toasts.GlobalPosition + new Vector2(0f, 158f);
+
     public void ShowToast(string text, Color color)
     {
         Label label = UiTheme.Label(text, 17, color);

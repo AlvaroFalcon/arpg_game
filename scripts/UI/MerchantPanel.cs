@@ -2,10 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ArpgGame.Characters;
 using ArpgGame.Core;
 using ArpgGame.Items;
 
 namespace ArpgGame.UI;
+
+public enum MerchantTab
+{
+    Trade,
+    SkillGems,
+}
 
 /// <summary>
 /// The hideout merchant — docs/design/crafting.md -> "Merchant". Right-click an
@@ -19,8 +26,27 @@ public partial class MerchantPanel : ModalPanel
 
     protected override string Title => "Odran the Trader";
 
+    public override string? StationUid => "merchant";
+
     protected override Vector2 FrameSize => new(1010f, 560f);
 
+    /// <summary>The character the Skill gems tab sells to; defaults to the active one (tests set it).</summary>
+    public CharacterData? Character { get; set; }
+
+    public MerchantTab Tab { get; private set; }
+
+    public GemShopView Gems { get; private set; } = null!;
+
+    /// <summary>The ember dot on the Skill gems tab: gems unlocked since it was last opened.</summary>
+    public bool GemsTabDot => _gemsDot.Visible;
+
+    private CharacterData? Customer => Character ?? CharacterBuild.Of(Player)?.Data ?? Core.Profile.Get(this)?.Active;
+
+    private Button _tradeTab = null!;
+    private Button _gemsTab = null!;
+    private Panel _gemsDot = null!;
+    private HBoxContainer _tradePage = null!;
+    private bool _gemsSeenThisVisit;
     private Control _inventoryHolder = null!;
     private Control _buybackHolder = null!;
     private VBoxContainer _wares = null!;
@@ -36,7 +62,27 @@ public partial class MerchantPanel : ModalPanel
         _buyback = new Inventory { Columns = Inventory.Width, Rows = 2, Name = "Buyback" };
         AddChild(_buyback);
 
+        HBoxContainer tabs = UiTheme.HBox(body, 6);
+        _tradeTab = UiTheme.Button("Trade", () => ShowTab(MerchantTab.Trade), 16, 160f);
+        _gemsTab = UiTheme.Button("Skill gems", () => ShowTab(MerchantTab.SkillGems), 16, 160f);
+        foreach (Button t in new[] { _tradeTab, _gemsTab })
+        {
+            t.CustomMinimumSize = new Vector2(160f, 40f);
+            tabs.AddChild(t);
+        }
+
+        _gemsDot = new Panel { MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false, Position = new Vector2(144f, 6f), Size = new Vector2(10f, 10f) };
+        var dot = new StyleBoxFlat { BgColor = UiTheme.Ember };
+        dot.SetCornerRadiusAll(5);
+        _gemsDot.AddThemeStyleboxOverride("panel", dot);
+        _gemsTab.AddChild(_gemsDot);
+
+        Gems = new GemShopView { Player = Player, CharacterSource = () => Customer, OpenSkills = OpenSkillsPanel, SizeFlagsVertical = Control.SizeFlags.ExpandFill, Name = "GemShopView" };
+        body.AddChild(Gems);
+        Gems.Visible = false;
+
         HBoxContainer columns = UiTheme.HBox(body, 28);
+        _tradePage = columns;
         VBoxContainer left = UiTheme.VBox(columns, 6);
         left.AddChild(UiTheme.Label("Your inventory — right-click an item to sell it", 16, UiTheme.Gold));
         _inventoryHolder = new Control { CustomMinimumSize = new Vector2(Inventory.Width, Inventory.Height) * InventoryGridControl.CellPx };
@@ -53,11 +99,57 @@ public partial class MerchantPanel : ModalPanel
         right.CustomMinimumSize = new Vector2(380f, 0f);
         right.AddChild(UiTheme.Label("Wares", 18, UiTheme.Gold));
         _wares = UiTheme.VBox(right, 6);
+        StyleTabs();
+    }
+
+    /// <summary>Shows a tab (the quest dialogue's "Open the Skill gems tab" uses this too).</summary>
+    public void ShowTab(MerchantTab tab)
+    {
+        Tab = tab;
+        _tradePage.Visible = tab == MerchantTab.Trade;
+        Gems.Visible = tab == MerchantTab.SkillGems;
+        StyleTabs();
+        if (tab == MerchantTab.SkillGems)
+        {
+            Gems.Player = Player;
+            Gems.OnShown(!_gemsSeenThisVisit);
+            _gemsSeenThisVisit = true;
+            UpdateDot();
+        }
+        else
+        {
+            RefreshWares();
+        }
+    }
+
+    private void StyleTabs()
+    {
+        foreach ((Button b, bool on) in new[] { (_tradeTab, Tab == MerchantTab.Trade), (_gemsTab, Tab == MerchantTab.SkillGems) })
+        {
+            b.AddThemeStyleboxOverride("normal", UiTheme.Box(on ? new Color(0.2f, 0.15f, 0.3f) : new Color(0.08f, 0.07f, 0.11f), on ? UiTheme.Gold : UiTheme.PanelBorder, on ? 2 : 1));
+            b.AddThemeColorOverride("font_color", on ? UiTheme.Gold : UiTheme.TextDim);
+        }
+    }
+
+    private void UpdateDot() => _gemsDot.Visible = Tab != MerchantTab.SkillGems && Customer is { } c && GemShop.NewCount(c) > 0;
+
+    private void OpenSkillsPanel()
+    {
+        CharacterPanels? panels = GetParent()?.GetNodeOrNull<CharacterPanels>("CharacterPanels");
+        Close();
+        panels?.Skills.Open();
     }
 
     public override void Refresh()
     {
         ItemTooltipControl.Footer = FooterFor;
+        Gems.Player = Player;
+        UpdateDot();
+        if (Tab == MerchantTab.SkillGems)
+        {
+            Gems.Rebuild();
+        }
+
         ClearChildren(_inventoryHolder);
         _inventoryHolder.AddChild(new InventoryGridControl
         {
@@ -126,6 +218,7 @@ public partial class MerchantPanel : ModalPanel
         _message.Text = $"Sold {item.Descriptor.DisplayName} for {price} gold";
         Sfx.Play(this, "pickup", -4f);
         RefreshWares();
+        GameEvents.Raise(GameEvents.ItemSold, (int)price);
         return true;
     }
 
@@ -182,6 +275,11 @@ public partial class MerchantPanel : ModalPanel
     protected override void OnClosed()
     {
         ItemTooltipControl.Footer = null;
+        _gemsSeenThisVisit = false;
+        Tab = MerchantTab.Trade;
+        _tradePage.Visible = true;
+        Gems.Visible = false;
+        StyleTabs();
         // Unclaimed buybacks are gone once you walk away, as in every ARPG.
         foreach (EquipmentItem sold in _soldFor.Keys)
         {

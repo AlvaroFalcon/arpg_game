@@ -155,6 +155,11 @@ public partial class RunState : Node, IPickupHandler
     public long GoldCollected => Local.GoldCollected;
     public bool Ended { get; private set; }
     public bool Victory { get; private set; }
+
+    /// <summary>The run ended because the player (or, in co-op, everyone) fell, as
+    /// opposed to leaving. After the Colossus a fall is still a victory.</summary>
+    public bool Fell { get; private set; }
+
     public int OrbsCollected => Local.OrbsCollected;
     public int NukesUsed { get; private set; }
 
@@ -853,7 +858,7 @@ public partial class RunState : Node, IPickupHandler
         PickupCollected?.Invoke(pickup, player, detail);
     }
 
-    public void EndRun(bool victory)
+    public void EndRun(bool victory, bool fell = false)
     {
         if (Ended)
         {
@@ -862,6 +867,7 @@ public partial class RunState : Node, IPickupHandler
 
         Ended = true;
         Victory = victory;
+        Fell = fell;
         EmitSignal(SignalName.RunEnded, victory);
     }
 }

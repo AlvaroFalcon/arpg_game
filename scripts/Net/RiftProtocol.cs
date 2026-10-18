@@ -67,6 +67,10 @@ public static class RiftProtocol
     public const byte RoundStart = 1;
     public const byte RoundLevel = 2;
 
+    /// <summary>The Colossus offer (docs/design/run.md -> "Cash-out offer and the infinite Rift"):
+    /// the row is fixed, ["leave", "stay"]; a client's <see cref="ClientPick"/> carries one of those keys.</summary>
+    public const byte RoundCashOut = 3;
+
     // client → host events
     public const byte ClientReady = 1;
     /// <summary>A card chosen in a round: round id, key.</summary>

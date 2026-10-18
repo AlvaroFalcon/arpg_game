@@ -41,6 +41,26 @@ public partial class RunHud : CanvasLayer
     private BossEnemy? _boss;
     private TargetFrame _target = null!;
     private readonly List<SkillSlotView> _slots = new();
+
+    // The reward panel of the endless phase (docs/design/run.md -> "Cash-out offer and the infinite Rift").
+    private PanelContainer _rewardPanel = null!;
+    private Label _rwTitle = null!;
+    private Label _rwLine1 = null!;
+    private Label _rwLine2 = null!;
+    private ProgressBar _rwBar = null!;
+    private Label _rwNext = null!;
+    private StyleBoxFlat _rwStyle = null!;
+    private float _rwRefresh;
+    private float _rwFlash;
+    private int _rwTier;
+
+    /// <summary>The reward panel's lines, for tests and captures.</summary>
+    public bool RewardPanelVisible => _rewardPanel.Visible;
+    public string ToastText => _toast.Text;
+    public string RewardTitle => _rwTitle.Text;
+    public string RewardNextText => _rwNext.Text;
+    public string RewardLine1 => _rwLine1.Text;
+    public string RewardLine2 => _rwLine2.Text;
     private string _skillSignature = "";
 
     public override void _Ready()
@@ -72,6 +92,8 @@ public partial class RunHud : CanvasLayer
         _killsLabel.OffsetRight = -16f;
         _killsLabel.OffsetTop = 16f;
 
+        BuildRewardPanel(root);
+
         // --- boss bar ---
         _target = new TargetFrame { Player = Player, Boss = () => _boss, Name = "TargetFrame" };
         root.AddChild(_target);
@@ -87,6 +109,7 @@ public partial class RunHud : CanvasLayer
         HudLayout.Register(_levelLabel, "run_level", "Level");
         HudLayout.Register(_timerLabel, "timer", "Timer");
         HudLayout.Register(_killsLabel, "kills", "Kills");
+        HudLayout.Register(_rewardPanel, "rift_reward", "Rift reward", PreviewReward);
         HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview, HudAvoid.Slide);
         HudLayout.Register(bar, "vitals", "Life & flask");
         HudLayout.Register(_skillRow, "skills", "Skills");
@@ -135,6 +158,90 @@ public partial class RunHud : CanvasLayer
     }
 
 
+    private void BuildRewardPanel(Control root)
+    {
+        _rewardPanel = new PanelContainer { Name = "RewardPanel", Position = new Vector2(1006f, 56f), CustomMinimumSize = new Vector2(260f, 92f), Visible = false, MouseFilter = Control.MouseFilterEnum.Ignore };
+        _rwStyle = UiTheme.Box(new Color(0.06f, 0.05f, 0.09f, 0.9f), UiTheme.PanelBorder with { A = 0.6f }, 1, 4, 8);
+        _rwStyle.BorderWidthTop = 3;
+        _rwStyle.BorderColor = UiTheme.Gold;
+        _rewardPanel.AddThemeStyleboxOverride("panel", _rwStyle);
+        root.AddChild(_rewardPanel);
+        VBoxContainer box = UiTheme.VBox(_rewardPanel, 1);
+        _rwTitle = UiTheme.Label("", 13, UiTheme.Gold);
+        _rwLine1 = UiTheme.Label("", 15, UiTheme.Text);
+        _rwLine2 = UiTheme.Label("", 13, UiTheme.TextDim);
+        _rwBar = UiTheme.Bar(UiTheme.Gold, 6f);
+        _rwBar.CustomMinimumSize = new Vector2(240f, 6f);
+        _rwNext = UiTheme.Label("", 12, UiTheme.TextDim);
+        foreach (Control c in new Control[] { _rwTitle, _rwLine1, _rwLine2, _rwBar, _rwNext, UiTheme.Label("Leave: walk into the portal, or Esc", 11, UiTheme.TextDim) })
+        {
+            c.MouseFilter = Control.MouseFilterEnum.Ignore;
+            box.AddChild(c);
+        }
+    }
+
+    private bool _rewardPreview;
+
+    /// <summary>HUD edit mode: the panel shows a sample so it can be placed before the Colossus falls.</summary>
+    private void PreviewReward(bool on)
+    {
+        _rewardPreview = on;
+        if (on)
+        {
+            RunRewards sample = RunRewards.Preview(600f, 3, 300, true);
+            _rwTitle.Text = $"REWARD · TIER {RunRewards.Roman(sample.Tier)}";
+            _rwLine1.Text = $"{sample.Gold:N0} gold · {sample.OrbCount} orbs";
+            _rwLine2.Text = $"{sample.Choices} cards · keep {sample.Keep} · item level {sample.ItemLevel}";
+            _rwNext.Text = sample.NextTierText;
+            _rwBar.Value = 0.6f;
+        }
+
+        _rewardPanel.Visible = on || Director.ColossusDefeated;
+    }
+
+    private string GaugeRewardLine()
+    {
+        RunRewards r = CurrentReward();
+        return $"Reward tier {RunRewards.Roman(Mathf.Max(1, r.Tier))} · next at {UiTheme.FormatTime(r.NextTierAt)}";
+    }
+
+    private RunRewards CurrentReward() => RunRewards.Preview(State.Elapsed, State.BossesKilled, State.Kills, Director.ColossusDefeated);
+
+    /// <summary>Four times a second: the reward as it stands, the bar to the next tier, a toast and a flash on a new tier.</summary>
+    private void UpdateReward(float dt)
+    {
+        _rewardPanel.Visible = Director.ColossusDefeated || _rewardPreview;
+        if (_rwFlash > 0f)
+        {
+            _rwFlash -= dt;
+            _rwStyle.BorderColor = _rwFlash > 0f ? new Color(1f, 0.95f, 0.6f) : UiTheme.Gold;
+            _rwStyle.BorderWidthTop = _rwFlash > 0f ? 4 : 3;
+        }
+
+        _rwRefresh -= dt;
+        if (!Director.ColossusDefeated || _rwRefresh > 0f)
+        {
+            return;
+        }
+
+        _rwRefresh = 0.25f;
+        RunRewards r = CurrentReward();
+        _rwTitle.Text = $"REWARD · TIER {RunRewards.Roman(Mathf.Max(1, r.Tier))}";
+        _rwLine1.Text = $"{r.Gold:N0} gold · {r.OrbCount} orbs";
+        _rwLine2.Text = r.ItemsEarned ? $"{r.Choices} cards · keep {r.Keep} · item level {r.ItemLevel}" : $"no item yet · item level {r.ItemLevel}";
+        float from = Mathf.Max(RunRewards.TierStart(Mathf.Max(1, r.Tier)), r.Tier <= 1 ? Director.ColossusTime : 0f);
+        _rwBar.Value = Mathf.Clamp((State.Elapsed - from) / Mathf.Max(1f, r.NextTierAt - from), 0f, 1f);
+        _rwNext.Text = r.NextTierText;
+        if (_rwTier > 0 && r.Tier > _rwTier)
+        {
+            ShowToast(RunRewards.TierToast(r.Tier), UiTheme.Gold);
+            Core.Sfx.Play(this, "levelup", -8f);
+            _rwFlash = 0.6f;
+        }
+
+        _rwTier = r.Tier;
+    }
+
     public void ShowBanner(string title, string subtitle, Color color)
     {
         _banner.Text = title;
@@ -158,7 +265,7 @@ public partial class RunHud : CanvasLayer
         int danger = RunDirector.Danger(t);
         float frac = t / 60f - Mathf.Floor(t / 60f);
         string next = Director.Surging ? "Surge! The horde presses in"
-            : Director.ColossusDefeated ? "Portal open · stay for more rewards"
+            : Director.ColossusDefeated ? GaugeRewardLine()
             : t < Director.HeraldTime ? $"Bone Herald in {UiTheme.FormatTime(Director.HeraldTime - t)}"
             : t < Director.ColossusTime ? $"Ember Colossus in {UiTheme.FormatTime(Director.ColossusTime - t)}"
             : "The Ember Colossus";
@@ -200,6 +307,7 @@ public partial class RunHud : CanvasLayer
         _controlsHint.Modulate = new Color(1f, 1f, 1f, hintAlpha);
 
         UpdateSkills();
+        UpdateReward(dt);
 
         if (_toastTime > 0f)
         {

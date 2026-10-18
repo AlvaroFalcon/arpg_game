@@ -32,6 +32,9 @@ public partial class RiftHost
     {
         public ushort Id;
         public bool Start;
+
+        /// <summary>The Colossus offer: picks are "leave" or "stay" (a missing answer counts as leave).</summary>
+        public bool CashOut;
         public int Level;
         public int Remaining;
         public ulong DeadlineMsec;
@@ -82,12 +85,40 @@ public partial class RiftHost
     {
         _roundRng.Randomize();
         Run.LevelUp.PartyChosen += OnLocalChosen;
+        Run.CashOut.PartyChosen += OnLocalCashOut;
+        Director.CashOutOffered += OnCashOutOffered;
     }
 
     private void UnhookRounds()
     {
         Run.LevelUp.PartyChosen -= OnLocalChosen;
+        Run.CashOut.PartyChosen -= OnLocalCashOut;
+        Director.CashOutOffered -= OnCashOutOffered;
     }
+
+    /// <summary>The Colossus fell and the director's hold is over: a round opens as soon as no
+    /// other round holds the game.</summary>
+    private bool _cashOutPending;
+
+    private void OnCashOutOffered() => _cashOutPending = true;
+
+    /// <summary>Tests: a shorter time for the cash-out round (null = <see cref="PartyRules.CashOutTimeout"/>).</summary>
+    public static float? CashOutTimeoutOverride { get; set; }
+
+    /// <summary>True while the Colossus offer holds the game (tests, diagnostics).</summary>
+    public bool CashOutRoundOpen => _round is { CashOut: true };
+
+    /// <summary>Each player's answer in the last cash-out round, "name=leave,name=stay" (tests).</summary>
+    public string LastCashOutPicks { get; private set; } = "";
+
+    /// <summary>Test hook: the Colossus offer, as the director raises it, without a Colossus.</summary>
+    public void OpenCashOutRoundForTest() => _cashOutPending = true;
+
+    /// <summary>What the last cash-out round decided (tests): true = the party left.</summary>
+    public bool? LastCashOutLeft { get; private set; }
+
+    /// <summary>Who kept the party in the last cash-out round, if anyone (tests).</summary>
+    public string LastCashOutStayer { get; private set; } = "";
 
     /// <summary>Every physics frame (also while paused): opens a round when the party
     /// has a level to spend, and runs the deadline.</summary>
@@ -101,6 +132,10 @@ public partial class RiftHost
         if (_round is null && _begun && State.PartyPendingLevelUps > 0)
         {
             OpenRound(start: false);
+        }
+        else if (_round is null && _cashOutPending)
+        {
+            OpenCashOutRound();
         }
 
         if (_round is { } r && Time.GetTicksMsec() >= r.DeadlineMsec)
@@ -137,6 +172,55 @@ public partial class RiftHost
         }
     }
 
+    /// <summary>
+    /// The Colossus offer as a party round (docs/design/run.md -> "Co-op"): everyone answers
+    /// "leave" or "stay" on the same panel, the game paused for all, with the same countdown as
+    /// the cards, except the time is <see cref="PartyRules.CashOutTimeout"/>. The party leaves
+    /// only if everyone says leave; nobody answering counts as leave.
+    /// </summary>
+    private void OpenCashOutRound()
+    {
+        _cashOutPending = false;
+        if (State.Ended)
+        {
+            return;
+        }
+
+        _roundId++;
+        if (_roundId == 0)
+        {
+            _roundId = 1;
+        }
+
+        ulong now = Time.GetTicksMsec();
+        _round = new Round
+        {
+            Id = _roundId,
+            CashOut = true,
+            OpenedMsec = now,
+            DeadlineMsec = now + (ulong)((CashOutTimeoutOverride ?? PartyRules.CashOutTimeout) * 1000f),
+        };
+        SetPaused(true);
+        Run.CashOut.OpenPartyOffer(_round.Id);
+        RoundChanged();
+        if (AutoPickAll && _round is { } auto)
+        {
+            TimeOut(auto);
+        }
+    }
+
+    /// <summary>The host's own answer (its panel): the host is the authority.</summary>
+    private void OnLocalCashOut(int round, bool leave)
+    {
+        if (_round is not { CashOut: true } r || r.Id != round || r.Picks.ContainsKey(State.Local.PeerId))
+        {
+            return;
+        }
+
+        r.Picks[State.Local.PeerId] = leave ? "leave" : "stay";
+        RoundChanged();
+    }
+
     /// <summary>The whole simulation stops on the host: its scene tree, exactly the
     /// offline level-up pause. This node, the session and the screens keep running.</summary>
     private void SetPaused(bool paused)
@@ -170,6 +254,12 @@ public partial class RiftHost
             return;
         }
 
+        if (r.CashOut)
+        {
+            Refuse(peer, "a row for the cash-out round, which has a fixed one");
+            return;
+        }
+
         if (keys.Count == 0 || keys.Count > PartyRules.MaxOffersPerRow || !keys.TrueForAll(k => WellFormedKey(k, r.Start)))
         {
             Refuse(peer, $"malformed row of {keys.Count}: {string.Join(",", keys.Take(4))}");
@@ -195,6 +285,20 @@ public partial class RiftHost
         if (_round is not { } r || r.Id != round || r.Picks.ContainsKey(peer))
         {
             Refuse(peer, $"pick for round {round}, not open for them");
+            return;
+        }
+
+        if (r.CashOut)
+        {
+            // The row is fixed: only "leave" or "stay", once, in the open round.
+            if (key is not ("leave" or "stay"))
+            {
+                Refuse(peer, $"'{(key.Length > 16 ? key[..16] : key)}' is not an answer to the cash-out offer");
+                return;
+            }
+
+            r.Picks[peer] = key;
+            RoundChanged();
             return;
         }
 
@@ -245,6 +349,23 @@ public partial class RiftHost
         {
             if (_round != r || r.Picks.ContainsKey(rp.PeerId))
             {
+                continue;
+            }
+
+            if (r.CashOut)
+            {
+                // Nobody answering counts as "leave": if they are away, going home is what is
+                // safe for them, and it can't drag the others along (the others still decide).
+                if (rp.IsLocal)
+                {
+                    Run.CashOut.AnswerLeaveForTimeout();
+                }
+
+                if (_round == r && !r.Picks.ContainsKey(rp.PeerId))
+                {
+                    r.Picks[rp.PeerId] = "leave";
+                }
+
                 continue;
             }
 
@@ -349,6 +470,12 @@ public partial class RiftHost
     {
         LastRoundSeconds = (Time.GetTicksMsec() - r.OpenedMsec) / 1000f;
         _round = null;
+        if (r.CashOut)
+        {
+            FinishCashOut(r);
+            return;
+        }
+
         Run.LevelUp.ClosePartyRound();
         if (r.Start)
         {
@@ -365,6 +492,18 @@ public partial class RiftHost
             return;
         }
 
+        if (_cashOutPending && !State.Ended)
+        {
+            OpenCashOutRound(); // the Colossus fell while the cards were up: now the offer, still paused
+            return;
+        }
+
+        Resume();
+    }
+
+    /// <summary>The game runs again on every machine, with a second of grace for everyone.</summary>
+    private void Resume()
+    {
         SetPaused(false);
         foreach (RunPlayer rp in State.Players)
         {
@@ -372,6 +511,25 @@ public partial class RiftHost
         }
 
         SendRoundState();
+    }
+
+    /// <summary>Everyone answered (or timed out): the party leaves only if everyone chose leave.</summary>
+    private void FinishCashOut(Round r)
+    {
+        Run.CashOut.ClosePartyRound();
+        RunPlayer? stayer = State.Players.FirstOrDefault(p => r.Picks.GetValueOrDefault(p.PeerId) == "stay");
+        LastCashOutPicks = string.Join(",", State.Players.Select(p => $"{NameOf(p)}={r.Picks.GetValueOrDefault(p.PeerId, "leave")}"));
+        LastCashOutLeft = stayer is null;
+        LastCashOutStayer = stayer is null ? "" : NameOf(stayer);
+        if (stayer is null)
+        {
+            State.EndRun(true); // victory for all; RoundRunEnded and the broadcast follow
+            return;
+        }
+
+        Director.BeginEndless();
+        ToastAll($"The party stays ({LastCashOutStayer} chose to keep going). You can still leave alone: Esc → Leave the party, with your reward.", new Color(1f, 0.7f, 0.4f));
+        Resume();
     }
 
     /// <summary>The round as it stands, to every loaded client and to the host's own screen.</summary>
@@ -387,7 +545,14 @@ public partial class RiftHost
 
         if (_round is { } r)
         {
-            Run.LevelUp.SetPartyStatus(r.Picks.Count, State.Players.Count, r.DeadlineMsec, r.Picks.ContainsKey(State.Local.PeerId));
+            if (r.CashOut)
+            {
+                Run.CashOut.SetPartyStatus(r.Picks.Count, State.Players.Count, r.DeadlineMsec, r.Picks.ContainsKey(State.Local.PeerId));
+            }
+            else
+            {
+                Run.LevelUp.SetPartyStatus(r.Picks.Count, State.Players.Count, r.DeadlineMsec, r.Picks.ContainsKey(State.Local.PeerId));
+            }
         }
     }
 
@@ -409,7 +574,7 @@ public partial class RiftHost
         }
 
         w.U16(r.Id);
-        w.U8(r.Start ? RiftProtocol.RoundStart : RiftProtocol.RoundLevel);
+        w.U8(r.CashOut ? RiftProtocol.RoundCashOut : r.Start ? RiftProtocol.RoundStart : RiftProtocol.RoundLevel);
         w.U16((ushort)Mathf.Clamp(r.Level, 0, ushort.MaxValue));
         w.U8((byte)Mathf.Clamp(r.Remaining, 0, 255));
         w.U8((byte)Mathf.Min(r.Picks.Count, 255));
@@ -439,7 +604,9 @@ public partial class RiftHost
     private void RoundRunEnded()
     {
         _round = null;
+        _cashOutPending = false;
         SetPaused(false);
         Run.LevelUp.ClosePartyRound();
+        Run.CashOut.ClosePartyRound();
     }
 }

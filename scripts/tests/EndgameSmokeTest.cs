@@ -1099,6 +1099,12 @@ public partial class EndgameSmokeTest : Node2D
 
         Check("TUTORIAL-STEPS", guide.StepIndex == guide.StepCount - 1 && steps.Distinct().Count() == guide.StepCount,
             $"reached step {guide.StepIndex + 1}/{guide.StepCount}: {string.Join(" → ", steps.Distinct())}");
+        // The Odran quest and the Skill gems tab need a new character to afford a level-1 gem
+        // right after the introduction: the boss's gold alone pays for one.
+        await Frames(2);
+        float floorGold = reality.GetChildren().OfType<Pickup>().Where(k => k.Kind == PickupKind.Gold).Sum(k => k.Value) + reality.Player.Wallet.GetBalance(Profile.GoldId);
+        long cheapest = GemShop.Offers.Where(o => o.Level == 1).Min(o => o.Price);
+        Check("GEMSHOP-AFFORDABLE-AFTER-INTRO", floorGold >= cheapest, $"gold the introduction pays ≥ the cheapest level-1 gem ({floorGold} vs {cheapest})");
         reality.QueueFree();
         await Frames(2);
     }
@@ -1424,6 +1430,9 @@ public partial class EndgameSmokeTest : Node2D
         bool restored = town is not null && town.Target.Visible && menuBar is not null && menuBar.AvoidShift == Vector2.Zero;
         Check("HUD-AVOIDS-INVENTORY", inv.Layer > 10 && townHidden && menuClear && restored,
             $"inventory layer {inv.Layer}, town directory hidden={townHidden}, menu bar clear of the panel={menuClear}, back in place after closing={restored} (town visible={town?.Target.Visible}, menu shift={menuBar?.AvoidShift}, blockers open={UI.HudLayout.OpenBlockers().Count})");
+
+        await TooltipChecks(hideout);
+        await GemShopChecks(hideout);
 
         // Walls block, and click-to-move can path from the plaza into the smithy.
         Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);

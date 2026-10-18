@@ -7,6 +7,7 @@ using Godot;
 using ArpgGame.Characters;
 using ArpgGame.Combat;
 using ArpgGame.Items;
+using ArpgGame.Quests;
 using ArpgGame.Stats;
 
 namespace ArpgGame.Core;
@@ -54,6 +55,29 @@ public partial class Profile : Node
 
     /// <summary>The Mirror's jewels, account-wide (docs/design/endgame.md -> "Mirror jewels").</summary>
     public World.JewelData Jewels { get; set; } = new();
+
+    /// <summary>Progress of the account-scope quests (docs/design/quests.md); a character's own live in
+    /// <see cref="CharacterData.Quests"/>.</summary>
+    public Dictionary<string, QuestProgress> Quests { get; } = new();
+
+    /// <summary>A quest changed status (docs/design/quests.md -> "The Godot facade"). HUDs, the
+    /// toast, the tracker and the panels connect in <c>_EnterTree</c> and disconnect in <c>_ExitTree</c>:
+    /// this autoload outlives every scene. <paramref name="status"/> is a <see cref="QuestStatus"/>.</summary>
+    [Signal]
+    public delegate void QuestChangedEventHandler(string id, int status);
+
+    public override void _EnterTree() => GameEvents.Raised += OnGameEvent;
+
+    public override void _ExitTree() => GameEvents.Raised -= OnGameEvent;
+
+    /// <summary>The event bus feeds the quest book, but only for the account the game runs on.</summary>
+    private void OnGameEvent(string eventId, int value, string key)
+    {
+        if (Get(this) == this)
+        {
+            QuestService.Raise(this, eventId, value, key);
+        }
+    }
 
     // --- Pending items (docs/design/items.md -> "Pending items"): reward overflow ---------
 
@@ -519,6 +543,7 @@ public partial class Profile : Node
         public int RealitiesCleared { get; set; }
         public int? ShardVendorStock { get; set; }
         public int ShardVendorSince { get; set; }
+        public int GemShopSeenLevel { get; set; }
         public int Deaths { get; set; }
 
         /// <summary>Null in saves from before the tutorial existed: those characters skip it.</summary>
@@ -526,6 +551,9 @@ public partial class Profile : Node
         public int TotalKills { get; set; }
         public int SurvivalRuns { get; set; }
         public float BestSurvivalTime { get; set; }
+
+        /// <summary>Character-scope quest progress; absent in older saves (docs/design/quests.md -> "Persistence").</summary>
+        public Dictionary<string, SaveQuest>? Quests { get; set; }
         public List<SaveItem> Items { get; set; } = new();
     }
 
@@ -542,6 +570,9 @@ public partial class Profile : Node
         public World.HideoutData? Hideout { get; set; }
 
         public World.JewelData? Jewels { get; set; }
+
+        /// <summary>Account-scope quest progress; absent in older saves.</summary>
+        public Dictionary<string, SaveQuest>? Quests { get; set; }
 
         /// <summary>Pending items (reward overflow), oldest first.</summary>
         public List<SaveItem>? Overflow { get; set; }
@@ -610,11 +641,13 @@ public partial class Profile : Node
             RealitiesCleared = c.RealitiesCleared,
             ShardVendorStock = c.ShardVendorStock,
             ShardVendorSince = c.ShardVendorSince,
+            GemShopSeenLevel = c.GemShopSeenLevel,
             Deaths = c.Deaths,
             TutorialDone = c.TutorialDone,
             TotalKills = c.TotalKills,
             SurvivalRuns = c.SurvivalRuns,
             BestSurvivalTime = c.BestSurvivalTime,
+            Quests = SaveQuests(c.Quests),
         };
         foreach ((EquipmentSlot slot, EquipmentItem item) in c.Equipped)
         {
@@ -655,11 +688,13 @@ public partial class Profile : Node
             RealitiesCleared = s.RealitiesCleared,
             ShardVendorStock = Mathf.Clamp(s.ShardVendorStock ?? World.ShardVendor.StockSize, 0, World.ShardVendor.StockSize),
             ShardVendorSince = s.ShardVendorSince,
+            GemShopSeenLevel = Mathf.Clamp(s.GemShopSeenLevel, 0, CharacterData.MaxLevel),
             Deaths = s.Deaths,
             TutorialDone = s.TutorialDone ?? true,
             TotalKills = s.TotalKills,
             SurvivalRuns = s.SurvivalRuns,
             BestSurvivalTime = s.BestSurvivalTime,
+            Quests = LoadQuests(s.Quests),
         };
         for (int i = 0; i < CharacterData.LoadoutSlots && i < s.Loadout.Count; i++)
         {
@@ -777,6 +812,7 @@ public partial class Profile : Node
             Currency = new Dictionary<string, long>(Currency),
             Hideout = Hideout,
             Jewels = Jewels,
+            Quests = SaveQuests(Quests),
             Overflow = Overflow.Select(e => { SaveItem si = ToSave(e.Item); si.X = e.Cell.X; si.Y = e.Cell.Y; return si; }).ToList(),
         };
         return JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true });
@@ -853,6 +889,11 @@ public partial class Profile : Node
         Jewels = file.Jewels ?? new World.JewelData();
         // Sockets that no longer exist (a reshaped tree) give their jewel back.
         Jewels.Socketed.RemoveWhere(id => World.JewelTree.Get(id) is null);
+        Quests.Clear();
+        foreach ((string id, QuestProgress progress) in LoadQuests(file.Quests))
+        {
+            Quests[id] = progress;
+        }
 
         if (file.Characters.Count > 0)
         {
@@ -890,6 +931,7 @@ public partial class Profile : Node
         Currency.Clear();
         Hideout = new World.HideoutData();
         Jewels = new World.JewelData();
+        Quests.Clear();
         StashTabs.Clear();
         StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
         Overflow.Clear();

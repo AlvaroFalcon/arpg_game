@@ -88,6 +88,9 @@ public static class PanelStack
     /// crafting orb): nothing else should treat it as a close request.</summary>
     public static void MarkClosedThisFrame() => _lastClosedFrame = Godot.Engine.GetProcessFrames();
 
+    /// <summary>The most recently opened panel still open, if any.</summary>
+    public static IClosablePanel? Topmost => Open.Count > 0 ? Open[^1] : null;
+
     /// <summary>Whether any panel is currently open.</summary>
     public static bool HasOpen => Open.Count > 0;
 

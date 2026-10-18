@@ -70,7 +70,7 @@ public partial class SettingsPanel : PanelContainer
         AddToggle(gameplay, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
         AddToggle(gameplay, "Admin mode (testing: max-level test characters)", settings?.AdminMode ?? false, v => settings?.SetAdminMode(v));
         Label controls = UiTheme.Label(
-            "WASD move · Mouse aim · LMB/RMB/1-4 skills · Space dodge · Shift sprint · Q/R flasks\nI inventory · C character · K skills · P passive tree · Esc menu",
+            "WASD move · Mouse aim · LMB/RMB/1-4 skills · Space dodge · Shift sprint · Q/R flasks\nI inventory · C character · K skills · P passive tree · J quests · Esc menu",
             15, UiTheme.TextDim, HorizontalAlignment.Center);
         controls.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         gameplay.AddChild(controls);

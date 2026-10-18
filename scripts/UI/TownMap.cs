@@ -1,6 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 using Godot;
+using ArpgGame.Quests;
 using ArpgGame.World;
 
 namespace ArpgGame.UI;
@@ -21,6 +22,15 @@ public partial class TownMap : Control
     /// <summary>The overlay version: names, decorations, clickable stations.</summary>
     public bool Big;
 
+    /// <summary>The quest log's version (docs/design/quests.md -> "The quest log"): the small map with
+    /// this station ringed in gold and pulsing, the others dimmed to 40 %. Not clickable.</summary>
+    public string? Highlight;
+
+    /// <summary>False for the quest log's map: it neither opens the big map nor shows its tooltip.</summary>
+    public bool Interactive = true;
+
+    private float _t;
+
     private static ImageTexture? _ground;
     private string? _hovered;
     private string? _hoveredNow;
@@ -31,9 +41,13 @@ public partial class TownMap : Control
     {
         MouseFilter = MouseFilterEnum.Stop;
         TextureFilter = TextureFilterEnum.Nearest;
-        if (!Big)
+        if (!Interactive)
         {
-            TooltipText = "Town map — click or press M for the big map";
+            MouseFilter = MouseFilterEnum.Ignore;
+        }
+        else if (!Big)
+        {
+            UiTheme.InstantTooltip(this, "Town map\nClick or press M for the big map");
             MouseDefaultCursorShape = CursorShape.PointingHand;
         }
     }
@@ -42,9 +56,13 @@ public partial class TownMap : Control
     {
         if (IsVisibleInTree())
         {
+            _t += (float)delta;
             QueueRedraw();
         }
     }
+
+    /// <summary>The quest marker of a station, as drawn on the map (tests).</summary>
+    public QuestMarker QuestMarkerOf(string uid) => Hideout is not null && IsInstanceValid(Hideout) ? QuestService.MarkerAt(Hideout, uid) : QuestMarker.None;
 
     /// <summary>One pixel per town tile, coloured by its base ground.</summary>
     private static ImageTexture Ground()
@@ -176,10 +194,24 @@ public partial class TownMap : Control
                 _hoveredNow = prop.Uid;
             }
 
+            QuestMarker quest = QuestService.MarkerAt(Hideout, prop.Uid);
             if (!Big)
             {
-                DrawCircle(at, 5f, Colors.Black with { A = 0.7f });
-                DrawCircle(at, 3.5f, def.Accent);
+                bool dim = Highlight is not null && Highlight != prop.Uid;
+                float a = dim ? 0.4f : 1f;
+                DrawCircle(at, 5f, Colors.Black with { A = 0.7f * a });
+                DrawCircle(at, 3.5f, def.Accent with { A = a });
+                if (Highlight == prop.Uid)
+                {
+                    float pulse = 0.5f + 0.5f * Mathf.Sin(_t * 5f);
+                    DrawArc(at, 8f + 2.5f * pulse, 0f, Mathf.Tau, 28, UiTheme.Gold with { A = 0.55f + 0.45f * pulse }, 2.5f, true);
+                    DrawArc(at, 6.5f, 0f, Mathf.Tau, 24, UiTheme.Gold, 1.5f, true);
+                }
+                else if (Highlight is null && quest != QuestMarker.None)
+                {
+                    QuestGlyphs.DrawMarker(this, at + new Vector2(0f, -16f), 7f, quest, 10f);
+                }
+
                 continue;
             }
 
@@ -199,9 +231,12 @@ public partial class TownMap : Control
             // The name goes above the badge, or below when it would run into a
             // name already placed (Ysolde and Odran stand side by side).
             Color text = hover || target ? Colors.White : UiTheme.Text;
-            float width = font.GetStringSize(def.Name, HorizontalAlignment.Left, -1, 15).X;
+            // A quest adds a small gold line to the name (above it, or below when the name goes below).
+            string tail = quest switch { QuestMarker.New => "New quest", QuestMarker.Ready => "Turn in", _ => "" };
+            float extra = tail.Length > 0 ? 14f : 0f;
+            float width = Mathf.Max(font.GetStringSize(def.Name, HorizontalAlignment.Left, -1, 15).X, tail.Length > 0 ? 60f : 0f);
             Vector2 above = at + new Vector2(0f, -r - 8f);
-            var rect = new Rect2(above.X - width / 2f - 12f, above.Y - 15f, width + 24f, 19f);
+            var rect = new Rect2(above.X - width / 2f - 12f, above.Y - 15f - extra, width + 24f, 19f + extra);
             bool below = placed.Exists(o => o.Intersects(rect));
             if (below)
             {
@@ -209,11 +244,23 @@ public partial class TownMap : Control
             }
 
             placed.Add(rect);
-            Label(font, def.Name, below ? at + new Vector2(0f, r + 19f) : above, 15, text);
+            Vector2 nameAt = below ? at + new Vector2(0f, r + 19f) : above;
+            Label(font, def.Name, nameAt, 15, text);
+            if (tail.Length > 0)
+            {
+                Label(font, tail, nameAt + new Vector2(0f, below ? 14f : -15f), 12, UiTheme.Gold);
+            }
+
+            if (quest != QuestMarker.None)
+            {
+                QuestGlyphs.DrawMarker(this, at + new Vector2(0.7f * r, -0.7f * r), 9f, quest, 12f);
+            }
+
             if (hover)
             {
                 // What it does, in the header (under the badge it would cover other names).
-                string info = $"{def.Name} — {def.Verb}  ·  click to walk there";
+                string questTitle = quest != QuestMarker.None && QuestService.FirstAt(Hideout, prop.Uid) is { } q ? $"  ·  Quest: {q.Title}" : "";
+                string info = $"{def.Name} — {def.Verb}{questTitle}  ·  click to walk there";
                 float w = font.GetStringSize(info, HorizontalAlignment.Left, -1, 15).X;
                 DrawString(font, new Vector2(_area.End.X - w, _area.Position.Y - 29f), info, HorizontalAlignment.Left, -1, 15, def.Accent);
             }
@@ -238,8 +285,11 @@ public partial class TownMap : Control
         if (Big)
         {
             DrawString(font, new Vector2(_area.Position.X, _area.Position.Y - 26f), "TOWN MAP", HorizontalAlignment.Left, -1, 22, UiTheme.Gold);
-            DrawString(font, new Vector2(_area.Position.X + 130f, _area.Position.Y - 29f), "click a station to walk there  ·  M or Esc to close",
-                HorizontalAlignment.Left, -1, 14, UiTheme.TextDim);
+            if (_hovered is null)
+            {
+                DrawString(font, new Vector2(_area.Position.X + 130f, _area.Position.Y - 29f), "click a station to walk there  ·  M or Esc to close",
+                    HorizontalAlignment.Left, -1, 14, UiTheme.TextDim);
+            }
         }
 
         DrawRect(Big ? _area.Grow(2f) : new Rect2(Vector2.Zero, Size), new Color(0.35f, 0.5f, 0.8f, Big ? 0.8f : 0.5f), false, Big ? 2f : 1.5f);

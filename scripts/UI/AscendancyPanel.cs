@@ -18,7 +18,18 @@ public partial class AscendancyPanel : ModalPanel
 
     protected override string Title => "Altar of Ascension";
 
+    public override string? StationUid => "altar";
+
     private VBoxContainer _content = null!;
+
+    /// <summary>How long the first click on "Become a ..." stays armed.</summary>
+    public const double ConfirmSeconds = 3.0;
+
+    private string? _pending;
+    private ulong _pendingUntilMs;
+
+    /// <summary>The ascendancy whose button is waiting for its second click, if any.</summary>
+    public string? PendingChoice => _pending;
 
     private CharacterData? Character => CharacterBuild.Of(Player)?.Data ?? Profile.Get(this)?.Active;
 
@@ -113,22 +124,65 @@ public partial class AscendancyPanel : ModalPanel
             v.AddChild(Wrap(UiTheme.Label($"Notables: {notables}", 14, UiTheme.TextDim)));
             if (selectable)
             {
-                v.AddChild(UiTheme.Button($"Become a {def.Name}", () => Choose(id), 17, 300f));
+                bool armed = _pending == id;
+                Button become = UiTheme.Button(armed ? $"Become a {def.Name}: this is permanent. Click again." : $"Become a {def.Name}", () => Choose(id), 17, armed ? 560f : 300f);
+                if (armed)
+                {
+                    // Like deleting a character: the first click arms, the second commits.
+                    become.AddThemeColorOverride("font_color", UiTheme.Ember);
+                    become.AddThemeColorOverride("font_hover_color", UiTheme.Ember.Lightened(0.3f));
+                    become.AddThemeStyleboxOverride("normal", UiTheme.Box(new Color(0.2f, 0.09f, 0.04f), UiTheme.Ember, 2));
+                }
+
+                v.AddChild(become);
             }
         }
     }
 
-    private void Choose(string id)
+    /// <summary>
+    /// A click on a "Become a ..." button (docs/design/quests.md -> "The altar's
+    /// confirmation"): the first arms it for <see cref="ConfirmSeconds"/>, the second
+    /// within that window chooses for good. Waiting, or clicking another card, resets.
+    /// Returns true when the ascendancy was chosen.
+    /// </summary>
+    public bool Choose(string id)
     {
         if (Character is not { } c || c.Ascendancy is not null)
         {
-            return;
+            return false;
         }
 
+        if (_pending != id || Time.GetTicksMsec() > _pendingUntilMs)
+        {
+            _pending = id;
+            _pendingUntilMs = Time.GetTicksMsec() + (ulong)(ConfirmSeconds * 1000.0);
+            Sfx.Play(this, "ui");
+            Refresh();
+            return false;
+        }
+
+        _pending = null;
         c.Ascendancy = id;
         Sfx.Play(this, "victory", -6f);
+        GameEvents.Raise(GameEvents.AscendancyChosen, 0, id);
         Changed();
+        return true;
     }
+
+    public override void _Process(double delta)
+    {
+        base._Process(delta);
+        if (_pending is not null && Time.GetTicksMsec() > _pendingUntilMs)
+        {
+            _pending = null;
+            if (IsOpen)
+            {
+                Refresh();
+            }
+        }
+    }
+
+    protected override void OnClosed() => _pending = null;
 
     private void Allocate(string id)
     {

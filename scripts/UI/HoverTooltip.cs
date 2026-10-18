@@ -1,4 +1,5 @@
 #nullable enable
+using System.Linq;
 using Godot;
 
 namespace ArpgGame.UI;
@@ -13,6 +14,9 @@ public partial class HoverTooltip : PanelContainer
 {
     private const float MaxWidth = 360f;
     private VBoxContainer _lines = null!;
+
+    /// <summary>The control this tooltip is currently showing for (UiTheme.InstantTooltip).</summary>
+    public Control? Source { get; set; }
 
     public override void _Ready()
     {
@@ -29,14 +33,24 @@ public partial class HoverTooltip : PanelContainer
     /// <summary>Clears and starts a new tooltip with a coloured title.</summary>
     public void Begin(string title, Color color)
     {
+        Clear();
+        AddLine(title, color, 18);
+    }
+
+    /// <summary>Removes every line (the caller adds its own, title included).</summary>
+    public void Clear()
+    {
         foreach (Node child in _lines.GetChildren())
         {
             _lines.RemoveChild(child);
             child.QueueFree();
         }
-
-        AddLine(title, color, 18);
     }
+
+    public bool HasContent => _lines.GetChildCount() > 0;
+
+    /// <summary>The text of every line, top to bottom (tests).</summary>
+    public string AllText => string.Join("\n", _lines.GetChildren().OfType<Label>().Select(l => l.Text));
 
     public void AddLine(string text, Color color, int size = 15)
     {

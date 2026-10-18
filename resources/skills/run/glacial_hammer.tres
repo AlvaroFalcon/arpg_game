@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="MeleeSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/MeleeSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_glacial_hammer.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 3.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Glacial Hammer"
+Description = "A heavy overhead blow that shatters frost over a wide arc. Cold hits chill enemies."
+BaseDamage = 30.0
+AddedDamageEffectiveness = 1.0
+BaseUseTime = 0.7
+Tags = 1049
+Range = 95.0
+ArcDegrees = 110.0
+Knockback = 120.0
+Tint = Color(0.6, 0.85, 1, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

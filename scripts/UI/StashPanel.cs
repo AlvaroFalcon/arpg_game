@@ -108,7 +108,7 @@ public partial class StashPanel : ModalPanel
         int waiting = _pending!.Placements.Count;
         Button pendingTab = UiTheme.Button($"Pending ({waiting}/{Core.Profile.OverflowCap})", () => { _current = PendingTab; Refresh(); }, 15, 120f);
         pendingTab.Name = "PendingTab";
-        pendingTab.TooltipText = "Rewards that arrived while your inventory was full";
+        UiTheme.InstantTooltip(pendingTab, "Pending items\nRewards that arrived while your inventory was full");
         if (waiting > 0)
         {
             pendingTab.AddThemeColorOverride("font_color", UiTheme.Ember);

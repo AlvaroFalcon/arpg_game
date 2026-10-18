@@ -44,6 +44,7 @@ public partial class SkillsPanel : ModalPanel
         _gems.AddThemeConstantOverride("h_separation", 6);
         _gems.AddThemeConstantOverride("v_separation", 6);
         scroll.AddChild(_gems);
+        body.AddChild(UiTheme.Label("More gems: reality bosses drop them, and Odran sells every one (Skill gems tab).", 13, UiTheme.TextDim));
         _detail = UiTheme.Label("", 15, UiTheme.Text);
         _detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _detail.CustomMinimumSize = new Vector2(940f, 44f);

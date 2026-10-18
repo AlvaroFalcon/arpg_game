@@ -61,7 +61,7 @@ public partial class CraftingBoard : Control
             b.AddThemeColorOverride("font_color", orb.Color);
             b.AddThemeColorOverride("font_hover_color", orb.Color.Lightened(0.3f));
             b.AddThemeColorOverride("font_disabled_color", orb.Color with { A = 0.35f });
-            b.TooltipText = $"{orb.Name}\n{orb.Effect}";
+            UiTheme.InstantTooltip(b, tip => OrbTooltip(tip, picked));
             grid.AddChild(b);
             _orbButtons.Add((orb, b));
         }
@@ -70,18 +70,26 @@ public partial class CraftingBoard : Control
         _sealButton.CustomMinimumSize = new Vector2(WidthPx, 30f);
         _sealButton.AddThemeColorOverride("font_color", UiTheme.Gold);
         _sealButton.Icon = ItemArt.Fit(ItemArt.ForCurrency("artificer_seal"), 24);
+        UiTheme.InstantTooltip(_sealButton, tip =>
+        {
+            tip.Begin("Artificer's Seal", UiTheme.Gold);
+            tip.AddLine("Protects one modifier of an item from the next orb. Each seal on the same item costs more (40 gold doubling, plus dust).", UiTheme.Text);
+            tip.AddLine("Click to pick it up, then click an item · Shift keeps it in hand · right-click puts it away", UiTheme.TextDim, 13);
+        });
         column.AddChild(_sealButton);
         // Dust and gold: an icon and a count each.
         HBoxContainer dustRow = UiTheme.HBox(column, 4);
         foreach (string id in Crafting.Dusts.Select(d => d.Id).Append("gold"))
         {
-            dustRow.AddChild(new TextureRect
+            var icon = new TextureRect
             {
                 Texture = ItemArt.Fit(ItemArt.ForCurrency(id), 16),
                 StretchMode = TextureRect.StretchModeEnum.KeepCentered,
                 CustomMinimumSize = new Vector2(18f, 18f),
-                TooltipText = Crafting.Find(id)?.Name ?? "Gold",
-            });
+            };
+            string dustId = id;
+            UiTheme.InstantTooltip(icon, tip => DustTooltip(tip, dustId));
+            dustRow.AddChild(icon);
             Label count = UiTheme.Label("", 13, Crafting.Find(id)?.Color ?? UiTheme.Gold);
             count.CustomMinimumSize = new Vector2(id == "gold" ? 60f : 44f, 0f);
             dustRow.AddChild(count);
@@ -108,6 +116,47 @@ public partial class CraftingBoard : Control
         AddChild(_cursor);
         Refresh();
     }
+
+    /// <summary>Title, effect, how many you have (and where to get more), how to use it.</summary>
+    private void OrbTooltip(HoverTooltip tip, CraftingCurrency orb)
+    {
+        long n = Player?.Wallet?.GetBalance(orb.Id) ?? 0;
+        tip.Begin(orb.Name, orb.Color);
+        tip.AddLine(orb.Effect, UiTheme.Text, 15);
+        if (n > 0)
+        {
+            tip.AddLine($"You have ×{n}", UiTheme.TextDim, 13);
+        }
+        else
+        {
+            string none = "You have none. Orbs drop in realities and the Survival Rift";
+            tip.AddLine(orb.BuyPrice > 0 ? $"{none} · Odran sells it for {orb.BuyPrice} gold" : none, UiTheme.TextDim, 13);
+        }
+
+        tip.AddLine("Click to pick it up, then click an item · Shift keeps it in hand · right-click puts it away", UiTheme.TextDim, 13);
+    }
+
+    private void DustTooltip(HoverTooltip tip, string id)
+    {
+        if (id == "gold")
+        {
+            tip.Begin("Gold", UiTheme.Gold);
+            tip.AddLine("Sold items and rewards pay it. Odran, Ysolde and the Artificer take it.", UiTheme.Text);
+            return;
+        }
+
+        CraftingCurrency? dust = Crafting.Find(id);
+        tip.Begin(dust?.Name ?? id, dust?.Color ?? UiTheme.Gold);
+        if (dust is not null)
+        {
+            tip.AddLine(dust.Effect, UiTheme.Text);
+        }
+    }
+
+    /// <summary>The button of one orb (tests, tooltips).</summary>
+    public Button? OrbButton(string id) => _orbButtons.FirstOrDefault(o => o.Orb.Id == id).Button;
+
+    public Button SealButton => _sealButton;
 
     /// <summary>Takes over the grid's clicks while the tab is shown.</summary>
     public void Activate()

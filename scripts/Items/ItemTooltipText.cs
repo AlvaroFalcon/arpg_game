@@ -37,7 +37,7 @@ public static class ItemTooltipText
     /// reaches an <see cref="EquipmentItem"/> that is already sitting on the
     /// ground or in the grid, both of which require initialization first.
     /// </summary>
-    public static string Build(EquipmentItem item, bool detailed = false)
+    public static string Build(EquipmentItem item, bool detailed = false, bool hint = true)
     {
         DisplayStyle style = FilterChain.Default.Evaluate(item.Descriptor);
         Color nameColor = style.TextColor ?? Colors.White;
@@ -70,7 +70,7 @@ public static class ItemTooltipText
                 sb.Append('\n').Append(FormatAffix(affix, detailed));
             }
 
-            if (!detailed)
+            if (!detailed && hint)
             {
                 sb.Append("\n[font_size=12][color=#").Append(Hint).Append("]Hold Alt for modifier tiers[/color][/font_size]");
             }

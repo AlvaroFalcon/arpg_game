@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MeleeSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/MeleeSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_storm_strike.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 2.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Storm Strike"
+Description = "A lightning-charged thrust in a narrow arc. Lightning hits can shock."
+BaseDamage = 20.0
+AddedDamageEffectiveness = 0.9
+BaseUseTime = 0.4
+Tags = 4105
+Range = 85.0
+ArcDegrees = 60.0
+Strikes = 1
+Knockback = 80.0
+Tint = Color(1, 0.95, 0.5, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

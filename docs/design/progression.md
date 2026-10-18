@@ -100,9 +100,9 @@ Every solo run opens with a skill card pick (`RunBuild.RollStartOffers`):
 
 | Class | Rift skills (first = always offered) |
 |---|---|
-| Warrior | Cleave, Ground Slam, Sunder, Double Strike |
-| Rogue | Double Strike, Throwing Knives, Ethereal Blades |
-| Arcanist | Fireball, Spark, Frost Nova, Meteor, Ethereal Blades |
+| Warrior | Cleave, Ground Slam, Sunder, Double Strike, Glacial Hammer |
+| Rogue | Double Strike, Throwing Knives, Ethereal Blades, Storm Strike |
+| Arcanist | Fireball, Spark, Frost Nova, Meteor, Ethereal Blades, Frost Shards |
 
 Later new-skill cards favour the class pool ×3 but never lock others out: a warrior
 can still pick up Spark. Supports are not carried over because the run is about
@@ -202,6 +202,12 @@ fire passive applies to it. None of this needed a special case: it falls out of 
 | Frost Nova | Area (self) | Spell, Area, Cold | Cooldown 2.2 s, knockback, always chills. |
 | Ethereal Blades | Orbit | Spell, Area, Duration | Physical. Protects your space. |
 | Meteor | Area (targeted, 0.7 s delay) | Spell, Area, Fire | Huge hit, small area, cooldown 2.8 s. |
+| Frost Shards | Projectile | Spell, Projectile, Cold | 3 shards in a 24° fan, 9 damage each, 0.45 s. Cold always chills. (2026-10-18, Odran sells it from level 6.) |
+| Storm Strike | Melee (arc) | Attack, Melee, Lightning | 85 range, 60° arc, 20 damage, 0.40 s. Shocks like any Lightning hit. (Level 10.) |
+| Glacial Hammer | Melee (arc) | Attack, Melee, Area, Cold | 95 range, 110° arc, 30 damage, 0.70 s, knockback. Cold always chills. (Level 14.) |
+
+(The three added on 2026-10-18 are in `UpgradeCatalog.Skills`, so the Rift offers them
+too; each is in its class's `RiftSkills`: hideout.md -> "Odran's Skill gems tab".)
 
 Two archetypes were added: `AreaSkillDefinition` (instant or delayed circle,
 centred on the caster or a target point — the same archetype boss slams use) and
