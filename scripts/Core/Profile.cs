@@ -55,6 +55,118 @@ public partial class Profile : Node
     /// <summary>The Mirror's jewels, account-wide (docs/design/endgame.md -> "Mirror jewels").</summary>
     public World.JewelData Jewels { get; set; } = new();
 
+    // --- Pending items (docs/design/items.md -> "Pending items"): reward overflow ---------
+
+    /// <summary>Most rewards Pending items holds; past it the oldest is sold.</summary>
+    public const int OverflowCap = 20;
+
+    /// <summary>Pending items is shown like a stash tab: a 12×10 grid (anything fits).</summary>
+    public const int OverflowColumns = StashColumns;
+    public const int OverflowRows = StashRows;
+
+    /// <summary>Rewards that found a full inventory, oldest first, account-wide.
+    /// Receive-only: the player moves items out (stash panel → Pending), never in.</summary>
+    public List<(EquipmentItem Item, Vector2I Cell)> Overflow { get; } = new();
+
+    /// <summary>Where a claimed reward went.</summary>
+    public readonly record struct RewardClaim(bool Stored, bool ToOverflow, EquipmentItem? SoldOldest, long SoldFor);
+
+    /// <summary>
+    /// A reward for the active character: its inventory if it fits, otherwise
+    /// Pending items (<see cref="AddToOverflow"/>). Saves. Never fails while a
+    /// profile exists — a reward is never lost to a full bag.
+    /// </summary>
+    public RewardClaim ClaimReward(EquipmentItem item)
+    {
+        if (AddToStash(item))
+        {
+            Save();
+            return new RewardClaim(true, false, null, 0);
+        }
+
+        RewardClaim claim = AddToOverflow(item);
+        Save();
+        return claim;
+    }
+
+    /// <summary>
+    /// Puts <paramref name="item"/> in Pending items. At <see cref="OverflowCap"/>
+    /// (or when the grid has no room for it) the oldest item is sold to Odran at
+    /// his price (<see cref="Crafting.SellPrice"/>) and the gold goes to the active
+    /// character — the newest reward always gets in, and nothing vanishes for nothing.
+    /// Does not save.
+    /// </summary>
+    public RewardClaim AddToOverflow(EquipmentItem item)
+    {
+        EquipmentItem? sold = null;
+        long gold = 0;
+        while (true)
+        {
+            if (Overflow.Count < OverflowCap && FirstFit(Overflow, OverflowColumns, OverflowRows, item) is { } cell)
+            {
+                Overflow.Add((item, cell));
+                if (sold is not null)
+                {
+                    Active.Gold += gold;
+                }
+
+                return new RewardClaim(true, true, sold, gold);
+            }
+
+            if (Overflow.Count == 0)
+            {
+                return new RewardClaim(false, false, null, 0); // cannot happen: an empty 12×10 grid fits any item
+            }
+
+            (EquipmentItem oldest, Vector2I _) = Overflow[0];
+            Overflow.RemoveAt(0);
+            gold += Crafting.SellPrice(oldest);
+            sold ??= oldest;
+        }
+    }
+
+    private static Vector2I? FirstFit(List<(EquipmentItem Item, Vector2I Cell)> placed, int columns, int rows, EquipmentItem item)
+    {
+        var occupancy = new bool[columns, rows];
+        foreach ((EquipmentItem it, Vector2I cell) in placed)
+        {
+            for (int y = 0; y < it.Descriptor.Height; y++)
+            {
+                for (int x = 0; x < it.Descriptor.Width; x++)
+                {
+                    if (cell.X + x < columns && cell.Y + y < rows && cell.X + x >= 0 && cell.Y + y >= 0)
+                    {
+                        occupancy[cell.X + x, cell.Y + y] = true;
+                    }
+                }
+            }
+        }
+
+        int w = item.Descriptor.Width;
+        int h = item.Descriptor.Height;
+        for (int y = 0; y + h <= rows; y++)
+        {
+            for (int x = 0; x + w <= columns; x++)
+            {
+                bool free = true;
+                for (int dy = 0; dy < h && free; dy++)
+                {
+                    for (int dx = 0; dx < w && free; dx++)
+                    {
+                        free = !occupancy[x + dx, y + dy];
+                    }
+                }
+
+                if (free)
+                {
+                    return new Vector2I(x, y);
+                }
+            }
+        }
+
+        return null;
+    }
+
     public long NextStashTabCost => StashTabs.Count >= MaxStashTabs ? -1 : 150L << (StashTabs.Count - 1);
 
     public int ActiveIndex { get; private set; }
@@ -431,6 +543,9 @@ public partial class Profile : Node
 
         public World.JewelData? Jewels { get; set; }
 
+        /// <summary>Pending items (reward overflow), oldest first.</summary>
+        public List<SaveItem>? Overflow { get; set; }
+
         // Version 1 fields (single character), read for migration only.
         public long Gold { get; set; }
         public List<SaveItem>? Items { get; set; }
@@ -662,6 +777,7 @@ public partial class Profile : Node
             Currency = new Dictionary<string, long>(Currency),
             Hideout = Hideout,
             Jewels = Jewels,
+            Overflow = Overflow.Select(e => { SaveItem si = ToSave(e.Item); si.X = e.Cell.X; si.Y = e.Cell.Y; return si; }).ToList(),
         };
         return JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true });
     }
@@ -718,6 +834,15 @@ public partial class Profile : Node
             StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
         }
 
+        Overflow.Clear();
+        foreach (SaveItem si in file.Overflow ?? new List<SaveItem>())
+        {
+            if (Overflow.Count < OverflowCap && FromSave(si) is { } item)
+            {
+                Overflow.Add((item, new Vector2I(Mathf.Clamp(si.X, 0, OverflowColumns - 1), Mathf.Clamp(si.Y, 0, OverflowRows - 1))));
+            }
+        }
+
         Currency.Clear();
         foreach ((string id, long n) in file.Currency ?? new Dictionary<string, long>())
         {
@@ -767,6 +892,7 @@ public partial class Profile : Node
         Jewels = new World.JewelData();
         StashTabs.Clear();
         StashTabs.Add(new List<(EquipmentItem, Vector2I)>());
+        Overflow.Clear();
         ActiveIndex = 0;
         Save();
     }

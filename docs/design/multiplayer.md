@@ -1,6 +1,6 @@
 # Multiplayer (co-op)
 
-Status: **Survival Rift co-op implemented** (phases 1–2 of the owner's plan, 2026-10-15). Realities are next.
+Status: **Survival Rift co-op implemented** (phases 1–2 of the owner's plan, 2026-10-15). Co-op level-ups (one party bar, rounds that pause everyone, a 10 s timer) 2026-10-17. Realities are next.
 
 ## What it is
 
@@ -14,7 +14,7 @@ Owner decision (2026-10-16, "option 3"): direct-IP hosting should work without a
 
 **Host-authoritative.** The host runs the game exactly as it runs offline: director, monsters, damage, deaths, drops, experience. Two nodes are added to the run scene, and the game code doesn't know they exist.
 
-- `scripts/Net/RiftHost.cs` (host) watches the game and tells clients what they need. It also applies their inputs and card picks, runs the revive rule, waits for everyone to load, and handles disconnects.
+- `scripts/Net/RiftHost.cs` (host) watches the game and tells clients what they need. It also applies their inputs, runs the party's level-up rounds (`RiftHost.Rounds.cs`, see "Level-ups"), runs the revive rule, waits for everyone to load, and handles disconnects.
 - `scripts/Net/RiftClient.cs` (client) shows the host's game. Nothing simulated on a client can deal damage: `NetMode.ClientSide` makes `Health` ignore every hit. Every number the player sees comes from the host.
 
 Offline play doesn't change. Without an active session, no net node is added, `Coop` is false, and every single-player rule applies. All 11 pre-existing suites still pass.
@@ -38,11 +38,13 @@ Offline play doesn't change. Without an active session, no net node is added, `C
 | Projectiles: spawn (position, heading, speed, range, scale, sprite), turn (chain/ricochet), end | event + local flight | reliable |
 | Telegraphs and hits: `AreaBurst`, `LineStrike`, `BossBullet`, `SlashEffect`, `OrbitBlades` | event + local playback (no damage) | reliable, within 1800 px |
 | The client's own drops (instanced): spawn, gone, what was collected | event, to that client only | reliable |
-| Level / experience / new level-ups, character experience, gear found | event, to that client only | reliable, throttled |
+| Party level / experience (the shared bar) / new levels, character experience, gear found | event, to that client only | reliable, throttled |
+| Level-up round: id, start pick or level, level, rounds left, chosen / total, deadline (host clock), "you have chosen" | event (full state, sent on every change) | reliable |
+| The card the host applied for this player (their pick, or the timer's) | event, to that client only | reliable |
 | Banners, toasts, boss spawned / phase / attack name / callouts, exit portal, run begin/end | event | reliable |
 | Damage numbers for the client's own hits | event, to that client only | reliable |
 | Client → host: input (move, aim, sprint, choosing, dodge/flask counters, sequence) | input packet | every physics frame, unreliable |
-| Client → host: ready, card pick (`UpgradeOffer.Key`) | event | reliable |
+| Client → host: ready; the row on screen in a round (keys, on open and per reroll); the card picked (round id + `UpgradeOffer.Key`) | event | reliable |
 
 Notes:
 - **Snapshots** are quantised: half-pixel 16-bit positions, life as a byte (monsters) or 16 bits (players). They are split into chunks of at most 1100 bytes, so no unreliable packet is fragmented (one lost fragment loses the whole packet).
@@ -57,6 +59,7 @@ Notes:
 - **Every RPC uses transfer channel 0.** In 4.1.1, `ENetMultiplayerPeer.put_packet` only applies the transfer mode on channel 0. On any higher channel it sends with no ENet flags, which means *unreliable*, whatever the `[Rpc]` attribute says. ENet's throttle then drops those packets when the round trip spikes. The test caught this: "reliable" ready messages, test answers and card picks were silently lost while a client was loading. Channel 0 still keeps reliable traffic (ENet system channel 0) apart from unreliable traffic (channel 1).
 - Headless processes are uncapped. `--quit-after N` counts frames, so the co-op test sets `Engine.MaxFps = 60`.
 - `GetPacketMode()`/`GetPacketChannel()` called inside an RPC describe the *next* queued packet, not the current one. Don't debug with them.
+- **Pausing the tree in co-op.** A level-up round sets `SceneTree.Paused` on every machine. `NetSession` (autoload), `RiftHost` and `RiftClient` set `ProcessMode = Always`, so they keep receiving, sending snapshots and events, interpolating and running the round's clock. The level-up and results screens were `Always` already. `SceneMultiplayer` polls and delivers RPCs while the tree is paused.
 
 ## Session and lobby
 
@@ -64,6 +67,7 @@ Notes:
 
 - `NetTransport` is **the one place that creates the peer** (`ENetMultiplayerPeer`, default port 7777). A Steam or EOS relay only has to return its own `MultiplayerPeer` from `Host`/`Join`.
 - Main menu → **Co-op (Survival Rift)** (`UI/CoopPanel`, redesigned 2026-10-16, see `menus.md` → "Co-op"): *Host a game* or *Join a friend*. Joining needs **both** the host's address (it finds their PC) and the **join code** (it lets you in; the address alone is never enough). The host's lobby shows the address and the code in large type with Copy, **Copy invite** (`203.0.113.7:7777 K7Q-29M`, which a friend pastes into the address field to fill both), the router (UPnP) state, other LAN/VPN addresses, and **four party slots** with the free ones marked. The host gets Start run; everyone gets Leave. Each player plays their *active* character; without one, the screen offers to create one.
+  - **Which address goes in the invite** (best first): the router's public address when UPnP opened the port; a VPN address (Tailscale 100.x, Radmin 26.x, Hamachi 25.x); the public IP the host looked up; otherwise this PC's local address. The local address is labelled in orange as *local network only — not your internet address*, because the owner tried inviting with a 192.168 address (2026-10-16). When the router didn't open the port and no VPN is running, the lobby offers **Find my public IP**. It asks `api.ipify.org`, only when pressed, and the result is labelled as reachable only once UDP 7777 is forwarded to this PC. CG-NAT connections have a public IP no forwarding can reach; for those the VPN is the way.
 - **Join progress and failures.** `NetSession.Phase` tells the screen where a join is (`Connecting` → `CheckingCode` → `Joining` → `InLobby`) and `LastEnd` (`SessionEnd`) why the last session ended: unreachable, wrong code, version, party full, run started, character refused, not accepted (dropped before the code was read, e.g. a blocked address), host closed, host left the run. The host's refusal texts are the constants in `JoinRefusal`; the client classifies the reason it receives (the protocol number is checked first, so both ends run the same build). Nothing about what the host checks or how often changed.
 - **Connect timeout: 12 s** (`NetSession.ConnectTimeout`). ENet alone keeps trying a dead address for ~30 s. The client now gives ENet a fixed 12 s maximum on the server peer right after `CreateClient` (`NetTransport.ShortenConnectTimeout`: `ENetPacketPeer.SetTimeout(32, 12000, 12000)`, which applies to the connect request because ENet computes its retry limit when the request is first sent, on the next poll), and the session has its own 12 s watchdog whatever the transport does. As soon as the host answers (the auth step starts) the peer goes back to ENet's defaults (32, 5 s, 30 s), so a stall mid-run doesn't drop a player sooner than before. Measured on loopback to an unused port: the failure card appears after 12.0 s.
 - On connect, the client first sends the join code in the engine's authentication step (see "Security"). Once it is accepted, the client sends its hello: its character (save-file JSON), its window size and a protocol number. The host turns away a wrong code, a mismatched build, a full party, a run already in progress (no late join), or a character that fails the sanity checks.
@@ -104,6 +108,9 @@ Hosting by IP over the open internet means anyone who finds the address and port
 | Input packet | 64 bytes | 14 |
 | Client event batch | 4096 bytes | under 100 |
 | Messages per peer | token bucket: 150/s, burst 300 | about 60/s (input every physics frame) |
+| Rows reported per player per level-up round | 6 (`PartyRules.OfferReportsPerRound`) | 1, plus 1 per reroll (2 per run) |
+| Cards in a reported row | 9 (`PartyRules.MaxOffersPerRow`) | 3 |
+| Card key | 64 characters, shape checked (`RiftHost.WellFormedKey`) | under 30 |
 | Wrong codes per address | 5 a minute, then ignored for 60 s | — |
 
 | Auth wait | 5 s, then dropped and counted as a failure | under one round trip |
@@ -112,6 +119,7 @@ Hosting by IP over the open internet means anyone who finds the address and port
 
 - Over a size or rate limit, the peer is **kicked** (disconnected) and the lobby's security lines say who and why (`NetSession.SecurityLog`, the last three lines shown).
 - `RpcInput` and `RpcClientEvents` are **ignored until the sender has a valid hello** (it is in the lobby). A second hello is ignored. Kicked peers' leftover messages are ignored.
+- **Level-up messages (2026-10-17)** are checked against the open round, on the host. A row (`ClientOffers`) is taken only from a loaded player, for the round open now, before they have chosen: 1–9 well-formed keys, at most 6 rows per round. A pick (`ClientPick`) is taken only for the round open now, once, if its key is well-formed (the start pick takes only skill cards: `s:`/`l:`), is on the row that player reported, and applies to the host's copy of their build (`RunBuild.ApplyKey`, which now also refuses a level for a skill already at its maximum). Anything else is ignored and counted (`RiftHost.RefusedPicks`, `LastRefusal`), and the host's timer decides for that player. A client can't choose for anyone else (the sender id is the engine's), can't hold the game past the deadline, and can't end a round early.
 - **What the host checks in a character** (`Profile.ValidateCharacterJson`, plain data, no item nodes): name 1–32 characters; level 1–70; known class; experience finite and ≥ 0; at most 600 passives, 64 ascendancy nodes, 200 gems (levels 1–20), 6 loadout slots, 160 items (16 affixes and 16 base stats each, values finite and within ±1 000 000, item level 0–200, valid rarity); every id at most 64 characters; base stats and modifier types must be known enum values, and an item's slot a real slot name; wallet values ≥ 0. NaN and infinity can't even be written in the JSON (`System.Text.Json` refuses the literals), and nesting deeper than 64 is refused by the parser. The lobby entry's name and level are taken from the character itself, and the window size must be finite (then clamped as before). Failing any check refuses the player with the reason ("Your character was refused (level 999 is out of range)").
 - `ServerRelay` is off: clients only talk to the host and don't learn each other's peer ids. `AllowObjectDecoding` stays off (Godot's default), so no RPC can make the host build an arbitrary object.
 - `NetWriter.Str` no longer overruns on strings over 65 535 bytes. It cuts at the last whole UTF-8 character that fits. The old version wrote the whole string after a clamped length.
@@ -127,6 +135,7 @@ Clients trust the host's *game*, not its bytes. A friend's host may be modified 
 - **Scenes:** a monster spawn may only instantiate a `.tscn` under `res://scenes/enemies/` whose root really is an `Enemy`. Sprite frames must be `res://` resources that are `SpriteFrames`. Before, any scene of the game could be instantiated by path (a cast failure after instantiation, or a non-monster scene).
 - **Node budget:** nothing new is spawned from host events once the run scene has 6 000 children (a late wave is under 2 000). 20 000 never-ending effects in one batch are tested: 14 000 are refused.
 - The host can't remove the client's own player (`PlayerLeft` with the client's id is ignored). A malformed batch costs the rest of that batch, never the run. Strings are kept up to 512 characters, banner and toast texts up to 200.
+- **Level-up rounds:** an unknown round kind is ignored; chosen/total are clamped to the party size, the level to 0–999, the deadline must be finite (0–60 s from now, else the countdown shows 0). A card the host applies is applied once per round and only if its key is at most 64 characters. The run's end always closes a round, and the client's own results screen follows. Accepted: a host can hold the pause for as long as it likes (as it could stop sending anything at all); the client can still close the game. Tested in `SecuritySmokeTest` (hostile host).
 - **Accepted:** a host can still give a client rewards (gold, orbs, gear, experience within the bounds above). Friends could already edit their own saves, and loot is the host's to decide; the bounds only keep the numbers valid. A host can also send as much data as its bandwidth allows (memory grows with what is received, not faster).
 
 ### Still trusted, still exposed
@@ -147,16 +156,26 @@ UPnP fails on many networks: CG-NAT is common on mobile and fibre ISPs, and some
 
 ## Party rules (`scripts/Net/PartyRules.cs`, one table, proposals)
 
-| players | spawn rate | enemy cap | monster life | boss life | xp / drop share |
-|---|---|---|---|---|---|
-| 1 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1.00 |
-| 2 | ×1.50 | ×1.15 | ×1.50 | ×1.70 | ×0.67 |
-| 3 | ×2.00 | ×1.30 | ×2.00 | ×2.40 | ×0.50 |
-| 4 | ×2.50 | ×1.45 | ×2.50 | ×3.10 | ×0.40 |
+| players | spawn rate | enemy cap | monster life | boss life | xp / drop share | party xp to level |
+|---|---|---|---|---|---|---|
+| 1 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1 |
+| 2 | ×1.50 | ×1.15 | ×1.50 | ×1.70 | ×0.67 | ×2 |
+| 3 | ×2.00 | ×1.30 | ×2.00 | ×2.40 | ×0.50 | ×3 |
+| 4 | ×2.50 | ×1.45 | ×2.50 | ×3.10 | ×0.40 | ×4 |
+
+Level-up numbers (same file):
+
+| What | Value | Why |
+|---|---|---|
+| Party bar, experience to the next level | solo curve × players (`PartyExperience`) | keeps levelling at about the solo pace (below) |
+| Time to choose in co-op | 10 s (`LevelUpTimeout`), host clock | owner request |
+| Countdown turns red | at 5 s (`LevelUpUrgentSeconds`) | owner request |
+| On timeout | the first card of the row that player was shown | predictable and said on screen |
+| Rows reported per round / cards per row / key length | 6 / 9 / 64 | host limits (see "Security") |
 
 - **Loot is instanced.** Every kill rolls drops separately for every player, owned by them: experience gems, life orbs, gold, orbs and gear. On the host, a remote player's drops are invisible but simulated there. The client shows cosmetic copies and receives what was collected into its own wallet. Gear goes to the client as an item and lands in their game only. The share brings each player's experience and drop rate back near solo. Elite and boss drops are not shared down. Power-ups (Cataclysm, Lodestone) are rolled once per kill and go to the killer. The gem cap (300) is per player. **Shared loot later:** `PartyRules.InstancedLoot` is the switch to build it behind. Rolling once per kill and making drops visible to everyone is not implemented.
 - **Character experience:** every player-credited kill gives every party member character and gem experience, × share.
-- **Level-ups:** each player picks their own cards, rolled on their own machine from their own build. The pick's key is replayed on the host's copy (`RunBuild.ApplyKey`). Co-op never pauses. A player with the cards open is **warded**: they can't be hurt or act, and monsters ignore them. After 20 s the first card is taken for them. The pause menu doesn't pause either.
+- **Level-ups:** one party bar, everyone levels together, the whole game pauses while the cards are up, picks are individual, 10 s to choose. See "Level-ups" below. (Until 2026-10-17 each player had their own level, the run never paused, and a chooser was warded for up to 20 s; that is gone.) The pause menu still doesn't pause the game in co-op.
 - **Deaths:** a player at 0 life is **downed**. Monsters ignore them, and after 1.5 s their camera follows a standing ally (spectating). A living ally standing within 70 px for 3 s revives them at 40 % life with 2 s of invulnerability. Progress drains while nobody stands there. **The run is lost when everyone is down.** Offline, death still ends the run at once.
 - **Aggro:** each monster goes for the nearest living, non-warded player and re-checks every 0.4–0.7 s.
 - **Spawning:** an edge spawn borders a random living player's screen and is rerolled if it would land in another player's view. A remote player's view is a rectangle of the window size their client reported. Swarms ring every living player. Bosses appear above the party's centre. The leash pulls back only monsters far from *every* living player.
@@ -164,9 +183,41 @@ UPnP fails on many networks: CG-NAT is common on mobile and fibre ISPs, and some
 - **Disconnects:** if a client drops or leaves, their player and drops go, everyone gets a toast, and spawns from then on scale to the smaller party. A leaving client gets their own results and rewards. If the host leaves, every client's run ends there with a banner, and each gets results and rewards for what they did. All of it is saved to each player's own profile.
 - **Results and rewards** are computed per player on their own machine from the shared numbers (time, kills, bosses, outcome). They are saved to that player's local profile only.
 
+### Level-ups (2026-10-17)
+
+Owner requests (2026-10-17): shared experience, so everyone levels up together; the cards pause the whole game for everyone; picks are individual and the game resumes when everyone has picked; show "chosen / total"; a 10 s limit with a countdown that turns red from 5, a tick every second, and an automatic pick; a skill pick for everyone at the start of the run.
+
+**One party bar.** `RunState` keeps `PartyLevel`, `PartyExperience` and `PartyPendingLevelUps` in co-op, and mirrors them into every `RunPlayer`, so everything that reads "the player's level" still works. Experience gems stay instanced (you collect your own, as before), but every gem goes into the same bar, with the collector's own experience gain. The bar needs the solo amount **× the party size** (`PartyRules.PartyExperience`). Why: each player's gems are worth `Share` = 1 / spawn rate of a solo gem, and the party kills about spawn rate × as much, so the bar fills at players × share × spawn rate = **players ×** the solo rate. Scaling the need by the party size keeps the pace of a solo run: about twenty level-ups, so the party doesn't stop more often than one player would. A player who never collects slows the bar; that seemed fairer than levelling the party on one player's pickups. When someone leaves, the need shrinks with the party and the bar is checked again (it may level at once). Monster scaling per player is unchanged. Alternatives considered: XP needed unscaled (four players would level four times as fast, so twice as many pauses as a long solo run's twenty); gems shared by everyone (one gem pickup for all; it drops instanced loot's "your own drops" rule for one kind of drop).
+
+**Rounds** (`RiftHost.Rounds.cs`). When the bar fills, the host opens a round:
+
+1. The host pauses its scene tree (`SceneTree.Paused`), exactly the offline level-up pause. The director, monsters, projectiles, telegraphs, ailments (DoTs), cooldowns, the run clock, loot spawning and every player stop. The revive rule is held too, and a remote player's movement command is zeroed. The host still sends snapshots (positions don't change) and events.
+2. Every client gets a `PartyRound` event, a full state: round id, start pick or level, the level, how many rounds are queued, chosen / total, the deadline, and whether that client has chosen. The client pauses its own tree and opens the cards. Like every event, it plays when the client's view reaches that moment (about 100 ms behind the host), so the world stops where it stopped on the host. A client's own player, predicted ahead, is pulled back to the host's position by reconciliation under the dimmed screen. While paused, a client sends no movement.
+3. Each player's row is rolled on their own machine from their own build (composition table, keystone tiers, rerolls: progression.md). The client reports its row to the host when the round opens and after every reroll. Rerolls stay local; only the row is reported.
+4. A choice is not applied on the client. It goes to the host, which checks it (see "Security"), applies it to its copy of that player's build, and answers with `PickApplied`. Only then does the client apply the same key. So the host and the client can never apply different cards, even when a pick and the timer cross on the wire. The host's own choice is applied at once.
+5. Everyone in the party picks, **downed players included**. The round closes when every player still in the party has chosen. **Several levels at once** (a big burst of experience) are rounds back to back: the next round opens at once, still paused, with its own 10 s and its own counter, and the title says how many more come after. Why not queue the picks per player within one pause: the counter and the timer would mean different things for different players. With rounds, "1/3 chosen, 7 s" means the same on every screen.
+6. The game resumes when the last round closes (`PartyRound` with id 0, and the host unpauses).
+
+**The timer.** 10 s per round on **the host's clock**. The host sends the deadline as a host-clock time. A client converts it with the clock offset it already keeps for interpolation, so its countdown reaches 0 when a message sent at the host's deadline would arrive. Clients never decide on their own. At the deadline the host takes, for every player who hasn't chosen, **the first card of the row that player was shown** (it has the reported row). If a client never reported one, the host rolls a row from its copy of that build and takes the first card. The host's own player gets the first card of the host's screen. The client is told which card was taken ("Time's up — Fireball was taken for you"). Why the first card: it's predictable, the screen says so ("When the time runs out, the first card is taken for you"), and it's what the old 20 s timeout did. A random card was the alternative: no better for the player, and harder to anticipate.
+
+**The start pick** is round one, for everyone, every co-op run, whether or not the character brought skills (progression.md -> "The start pick"). The host opens it once every client has loaded, or after the 20 s load timeout. Until it closes, the clock doesn't run and the director doesn't spawn. A client that loads late gets the open round on arrival (its `MarkReady` writes the state) and picks too. Tool runs with a preset first skill skip it (`RiftHost.SkipStartPick`). Every machine still starts the character's skills at level 1 the same way (`RunBuild.AdoptCharacterSkills`).
+
+**Disconnects.** A player who leaves mid-round drops out of the total. Their pick, if any, is forgotten (they have left), and the round closes at once if everyone left has chosen. The host leaving ends every client's run as before. The run's end closes any round and unpauses, then the results screen pauses the tree as it does offline.
+
+**The screen** (menus.md -> "Level-up and results"): the "1 / 3 chosen" line and the countdown sit in a panel at the top of the card screen. The countdown turns red at 5 s, with a tick every second (`Sfx` `tick`, and a brighter `tick_urgent` in the red) — only for a player still choosing; once you've picked, the countdown stays visible but silent (owner decision 2026-10-17). When the round closes every player gets `PartyRules.ResumeGraceSeconds` (1 s) of invulnerability, so nobody is hit in the frame the action restarts (owner chose this over a 3-2-1; solo gets the same after its cards). After choosing, the row gives way to "You chose X. Waiting for the others…" at the same height, so nothing jumps. The cards still own the keyboard. Esc doesn't reach the pause menu during a round.
+
+**Solo is unchanged:** no rounds, no timer, the screen pauses the tree, queued levels back to back. The co-op path only runs with a session. `LevelUpScreen.PauseTree` is a separate switch for tests that drive the cards over a running tree; they used to borrow the co-op flag for that.
+
+**Caveats.** A few ascendancy windows are measured in wall-clock time (a 2 s shadowstep, the leech-per-second window), so a pause can run them out. Solo pauses have the same behaviour. Snapshots keep their full rate during a round, about the same bandwidth as the moment the game paused (they could drop to a few per second; not needed so far). After a resume, a client's inputs reach the host one trip later, as always.
+
+**Open questions (for the owner).**
+- Pace: × party size keeps the solo pace. Owner (2026-10-17): keep it as is until it has been playtested; co-op could level a little faster later (one number in `PartyRules.PartyExperience`). The 10 s limit also stays for keystone rounds (owner: picks should be quick).
+- Should keystone rounds (levels 5, 10, 15…) get longer than 10 s? A great keystone is a big decision to make under a timer.
+- A short grace after a resume (half a second of invulnerability, or a "3-2-1"), so a client whose resume arrives a trip later isn't hit before they can move?
+
 ## Testing
 
-**Automated:** `./scripts/run_all_tests.sh CoopSmokeTest` (about 35 s). The test process hosts and starts two more Godot processes as clients on 127.0.0.1. It then drives a real Rift over ENet and asserts 43 checks.
+**Automated:** `./scripts/run_all_tests.sh CoopSmokeTest` (about 60 s). The test process hosts and starts two more Godot processes as clients on 127.0.0.1. It then drives a real Rift over ENet and asserts 68 checks.
 
 Security (2026-10-16). The attacks come from extra sessions in the same process, each on its own `SceneMultiplayer` branch (`SceneTree.SetMultiplayer(api, "/root/IntruderN")`), so the host sees them as separate machines:
 - logic: join code format and matching, the attempt limiter, the message budget, `NetWriter.Str` past 65 535 bytes, character validation, public/CG-NAT address detection
@@ -192,7 +243,18 @@ The game itself:
 - a host monster appears on both clients at the right spot
 - client input moves its player on the host, and the prediction agrees with the host
 - a kill seen on the clients, with drops instanced (the host's own visible, remote ones hidden, each client sees exactly its own)
-- a level-up wards the chooser, and the pick is applied on the host with the same build history on both sides
+- level-ups (2026-10-17):
+  - the start pick opens for all three before anything acts: the host is paused with the clock stopped, the director off and no monsters; each client is paused and shows its own row with "0/3" and about 10 s
+  - the counter replicates ("1/3" on a client after the host picks), and the run waits for the last pick, then begins with the same start card on both sides of every build
+  - the party bar needs 3× the solo amount; half of it from alpha's gems opens nothing, the rest from beta's levels all three players together
+  - during a round: on the host an awake slime doesn't move, the host takes no damage, the run clock is frozen and a 0.4 s telegraph stays pending for 1.5 s; on each client the round is open at the new level, the tree is paused, and the monster replica and the clock don't move
+  - "2/3" shows on beta while beta hasn't chosen, and the game stays paused
+  - beta never chooses: the countdown is red on the host and on beta at ≤ 5 s, ticks are played, and the round closes after 10.0 s (9.5–11.5 accepted) with beta's first card applied on the host and on beta alike
+  - after the resume, the clock runs, the slime walks and the telegraph lands
+  - 5 bad messages from alpha are refused (wrong round, a card not on its row, a malformed key, a 50-card row, a malformed row), and nothing is applied
+  - a burst of two levels is two rounds back to back, paused between them
+  - build histories match on both sides after all of it
+  - a client leaving mid-round (host and beta have chosen) closes the round and resumes the game; beta is not left paused
 - a client leaving: handled on the host and on the client, and the party carries on
 - the host leaving: handled on the client
 
@@ -200,7 +262,7 @@ It judges by its RESULT line, mirrored to `user://test_results/CoopSmokeTest.txt
 
 **Co-op screen:** `./scripts/run_all_tests.sh CoopUiSmokeTest` (about 25 s). Real `CoopPanel`s on the autoload session (host) and on in-process friend sessions, each with its own panel: the no-character state; empty fields, a malformed code and a bad port show inline errors and start nothing; the invite pastes back into address + code (also from a chat line with the code in two halves); the host lobby lists 4 slots with 3 free and the invite holds the code; a friend's panel goes Connecting → Lobby and both sides show 2 free slots; a wrong code ends on the *Wrong join code* card (`SessionEnd.WrongCode`); a fifth player ends on *The party is full*; the run-started and version reasons classify to their cards; closing the lobby shows *The host closed the lobby* on the friend's side; a join to an unused local port shows Connecting and fails within 12 ± 3 s on *Couldn't reach the host*; Cancel while connecting stops the session.
 
-**Load bench:** `./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350]` runs a full party of four at a late wave, then a Cataclysm. Output goes to `user://bench/coop_bench.txt`.
+**Load bench:** `./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350]` runs a full party of four at a late wave, then a Cataclysm. Output goes to `user://bench/coop_bench.txt`. It sets `RiftHost.AutoPickAll`: every round, the start pick included, is decided at once with the first cards, so the bench measures the fight and not the pauses.
 
 ### Testing it yourself
 
@@ -242,6 +304,7 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 - Clients predict only their own movement. Monsters and projectiles show 100 ms in the past plus latency, so a projectile can look like it misses at high ping.
 - `--profile-readonly` windows on one PC share the same active character.
 - Not yet measured: real internet latency and packet loss, and a host on real desktop hardware.
+- Level-up rounds are only tested on loopback. Over the internet, a client sees the round a little after the host (about 100 ms plus the trip), and its countdown is set to arrive with the host's deadline.
 
 ## Next steps
 

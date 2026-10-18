@@ -90,4 +90,7 @@ public enum StatId
     FreezeChance = 42,          // Flat 0..1, rolled by Cold hits
     ElementalDamageTaken = 43,  // More/Less on Fire/Cold/Lightning damage taken (base 1)
     PhysicalDamageTaken = 44,   // More/Less on Physical damage taken (base 1)
+
+    // Survival Rift power-ups (docs/design/progression.md -> "Energy Shield").
+    EnergyShield = 45,          // Flat: a shield that takes hits before Life and recharges after a pause
 }

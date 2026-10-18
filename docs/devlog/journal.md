@@ -472,3 +472,82 @@ After:
 ![Couldn't reach the host](screenshots/coop-failed.png)
 ![Wrong join code](screenshots/coop-wrong-code.png)
 ![No character yet](screenshots/coop-no-character.png)
+
+## 2026-10-16 — Settings panel keeps its size across tabs
+
+Owner report: the settings panel changed size every time you switched tabs. A TabContainer sizes itself to the open tab only, and the Display tab's long toggle ("Use the whole screen on ultrawide…") is wider than anything on Audio or Gameplay, so the centred panel went 600 → 728 → 600 px. Now `UseHiddenTabsForMinSize` measures every tab and the panel is 720 px wide. RunSmokeTest `SETTINGS-TABS-KEEP-SIZE` reproduces the old jump when the fix is reverted.
+
+## 2026-10-16 — The lobby stops offering the LAN address as "the" address
+
+Owner report: with the router not answering UPnP, the lobby's big Address (and Copy invite) was the PC's 192.168 address, which only works on the same Wi-Fi. The fallback now says so in orange ("Local network only — not your internet address"), and the lobby offers **Find my public IP**. It asks api.ipify.org only when pressed, and the result is labelled as working once UDP 7777 is forwarded. A VPN address still wins when one is present. CoopUiSmokeTest `HOST-LAN-ADDRESS-LABELLED`; capture `coop-host-lobby-no-router.png`.
+
+![Lobby when the router didn't open the port](screenshots/coop-host-lobby-no-router.png)
+
+## 2026-10-17 — Survival Rift: keystone cadence, per-card rerolls, the character in the Rift, Pending items
+
+Owner requests, everything except the co-op level-up flow:
+
+- **Start pick, always (solo).** A character with skills keeps them, but at **level 1 with no supports** (the gems keep their levels); the pick offers a new class skill or a level for one it brought. A skill-less character gets three skills **of its class** (`ClassDefinition.RiftSkills`), its starting skill always among them. Later new-skill cards favour the class ×3. Bug found on the way: a character level-up mid-Rift called `Rebuild()`, which re-equipped the loadout and wiped the run's skills, levels and supports — `CharacterBuild.RunOwnsSkills` stops that.
+- **Keystone cadence:** lesser keystones at 5, 15, 25…, great ones at 10, 20, 30…, nothing elsewhere. Eight lesser (Ricochet, Juggernaut, Prismatic Bulwark, Iron Will + new Scavenger, Overclock, Shield Conduit, Wind Runner), seven great. Blood Magic is tree-only (no costs in the Rift).
+- **Offer composition** in one table (`OfferRules`): ordinary levels roll a category per card — skill 35, power-up 50, support 15 — with at least one skill card guaranteed. Measured: 57 % skills, 32 % power-ups, 11 % supports. New power-ups: Might (+10 % damage), Melee Damage, Ferocity (attack speed), Aegis (**energy shield**, a new stat: takes hits before life, recharges after 2 s), Bloodthirst (leech). Mana cards removed — dead in the Rift.
+- **Per-card reroll:** a button under each card or Shift+1/2/3 replaces only that card; still two per run; never a card already on screen.
+- **Minimum for an item:** 60 s or 30 kills; the results screen says why there is none.
+- **Pending items:** a reward that finds the bag full goes to an account-wide overflow (20 max, oldest sold to Odran at the cap), shown as the stash's Pending tab and announced by the hideout banner.
+- **Tree and ascendancy in the Rift:** they already applied through `CharacterBuild` (own modifier source); what was missing was protection from double counting — tree keystones are no longer offered as cards, a tree Avatar's element counts for card gates.
+
+Autoplay (`--class=warrior --level=20`, 3 runs each, Colossus kill time / damage taken):
+
+| | Victories | Colossus down at | Damage taken |
+|---|---|---|---|
+| tree off | 3/3 | 9:23, 9:35, 8:31 | 360, 482, 347 |
+| tree on | 3/3 | 11:26, 10:07, 9:35 | 449, 204, 522 |
+| tree + Barbarian (4 nodes) | 3/3 | 8:40, 8:04, 14:41 | 55, 57, 162 |
+
+The ascendancy shows clearly (damage taken down ~5×); the bot's random tree (notables first, then random) is noise against random cards. A level-20 character wins every time: the Rift does not scale with character level — an open question for the owner.
+
+Tests: new `RiftProgressionTest` (15 suites, all green). Capture: `RunCapture --only=rift`.
+
+![Start pick with the character's skills](screenshots/rift-start-pick.png)
+![Lesser keystone row](screenshots/rift-levelup-lesser.png)
+![Great keystone row](screenshots/rift-levelup-great.png)
+![After one per-card reroll](screenshots/rift-levelup-reroll.png)
+![Results: reward sent to Pending items](screenshots/rift-results-pending.png)
+![Results: left at once, no item](screenshots/rift-results-no-item.png)
+![Hideout banner](screenshots/rift-hideout-pending.png)
+![Stash: Pending tab](screenshots/rift-stash-pending.png)
+
+## 2026-10-17 — Co-op level-ups: one bar, everyone stops, everyone picks
+
+The owner's co-op requests for the Survival Rift, all in:
+
+- **One party bar.** Everyone's gems fill the same experience bar, so the whole party levels together. It needs the solo amount × the party size. Each player's gems are worth 1/spawn-rate of a solo gem, and a party kills about spawn-rate times as much, so without the scaling four players would level four times as fast, and pause four times as often. With it, a co-op run gets the same twenty-odd level-ups as a solo one.
+- **The whole game pauses for everyone.** A level is a *round*: the host pauses its scene tree, the same pause as offline, so monsters, projectiles, telegraphs, DoTs, spawns, cooldowns and the run clock all stop. Every client pauses its own tree when the round reaches it. `NetSession`, `RiftHost` and `RiftClient` run with `ProcessMode.Always`, so the network keeps talking through the pause. We kept one authoritative "round" state broadcast by the host rather than each machine pausing on its own.
+- **Individual picks, then resume.** Each player gets their own row, rolled on their own machine. A client's pick isn't applied locally. The host checks it, applies it to its copy of the build, and answers "applied X". Only then does the client apply it, so a pick and the timer crossing on the wire can't leave the two copies of a build disagreeing. The round closes when everyone still in the party has picked. A burst of levels is rounds back to back, still paused.
+- **"1 / 3 chosen"** and the **countdown** sit at the top of the card screen. The countdown turns red at 5 s, with a tick every second (two new procedural sounds, `tick` and `tick_urgent`). After choosing: "You chose X. Waiting for the others…".
+- **10 s on the host's clock.** The deadline travels as a host-clock time, and clients convert it with the offset they already keep for interpolation. At the deadline the host takes the first card of the row each missing player was shown (clients report their row on open and after each reroll).
+- **Start pick for everyone** in co-op, every run. It's round one, held before the director starts.
+- Disconnect mid-round: that player drops out of the total, and the round closes if everyone left has chosen. Downed players pick too. Solo is unchanged.
+
+Security: rows and picks are validated on the host (the open round only, once, the card must be on the reported row, a well-formed key, must apply to the build; at most 6 rows per round, 9 cards, 64-character keys). A client can't hold the game past the deadline. Protocol bumped to 3. The hostile-host test now also throws junk rounds and junk "applied" keys at a client.
+
+Tests: CoopSmokeTest grew from 43 to 68 checks, with real client processes over ENet. The host and the clients pause and show the start pick before anything acts. The counter replicates. On the host, an awake slime doesn't move, nobody takes damage, the clock stops and a telegraph waits for 1.5 s. Clients see the same freeze. The run waits for the last pick, the timer takes beta's first card after 10.0 s on both sides, a two-level burst is two rounds, five bad picks are refused, and a client leaving mid-round resumes the game. All 15 suites green. CoopBench now auto-picks rounds (32 KB/s per client, host replication 0.6 ms, as before).
+
+Found on the way: the passive card key has four parts (`p:id:rarity:scales`). The first key validator rejected it, so a rogue's rows were refused and the timer picked for them. The test caught it. `run.md` gave the XP curve's quadratic term as 0.45; the code has always been 0.55. The doc now matches the code.
+
+Needs a real two-PC test: the feel of the pause and resume over real latency, and the countdown against the host's.
+
+![Co-op start pick](screenshots/coop-start-pick.png)
+![1 / 3 chosen, 7 s](screenshots/coop-levelup-counter.png)
+![The last five seconds, in red](screenshots/coop-levelup-red.png)
+![Waiting for the others](screenshots/coop-levelup-waiting.png)
+
+## 2026-10-17 — Owner answers: denser Rift, resume grace, quiet tick
+
+The owner's answers to last night's questions:
+- **Density.** The Rift already scaled with time (enemy life and damage per minute); the owner wanted the crowd and the swarms to grow with it too.
+  - The spawn rate and alive cap gain a quadratic term (cap at most 400): 5.9/s instead of 5.2/s at three minutes, 12.4/s instead of 9.2/s at six.
+  - Swarms come every 60 s, shrinking to 30 s, grow by one enemy every 20 s, and from 4:00 bring a second, wider ring of another kind.
+  - Bot, level-20 warrior, 3 runs: 3/3 wins, peak ~260 alive at 5:30, 1,770–2,840 kills, damage taken 362 / 1,523 / 453.
+- **Resume grace.** After a card round everyone gets 1 s of invulnerability, chosen over a 3-2-1. The host grants it in co-op, and solo gets it too.
+- **Quiet tick.** The countdown ticks only for players still choosing.
+- **Kept as is:** the co-op pace (to be playtested first), the 10 s limit for keystone rounds, no character supports in the Rift, and nothing for reality floor drops.

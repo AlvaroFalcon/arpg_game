@@ -104,6 +104,11 @@ change live and saves on close.
 Three tabs (2026-10-15 — the single column had grown taller than the screen,
 hiding the Gameplay section and Back); each tab scrolls on its own and Back is
 always visible.
+The panel keeps **one size on every tab** (2026-10-16, owner report: it resized on
+each switch). A TabContainer measures only the open tab by default, and the
+Display tab's rows are the widest; `UseHiddenTabsForMinSize` makes it measure them
+all, and the panel is 720 px wide. RunSmokeTest `SETTINGS-TABS-KEEP-SIZE` switches
+through the tabs and compares sizes (it read 600 → 728 → 600 px before the fix).
 
 - **Audio**: master, music, effects volume (Music/SFX buses are created at startup).
 - **Display**: **window mode** — Windowed, **Borderless** (a window covering the
@@ -142,19 +147,59 @@ a visible telegraph or flash.
 
 ## Level-up and results
 
-- Level-up: three cards (keys 1–3), reroll (R, two per run), the build so far
-  underneath. Queued level-ups are offered back to back. Card colour: gold keystone,
-  ember new skill, green support, rarity colour for passives.
+- Level-up: three cards (keys 1–3), the build so far underneath. Queued level-ups
+  are offered back to back. Card colour: gold great keystone, pale gold lesser
+  keystone, ember new skill, green support, rarity colour for power-ups. Keystone
+  rows say which tier ("Level 10 — choose a Great Keystone").
+- **Per-card reroll (2026-10-17):** a small "Reroll [Shift+N]" button under each
+  card replaces only that card; **Shift+1/2/3** does the same from the keyboard
+  (progression.md -> "Rerolls"). Two per run, shown under the row ("Rerolls: 1 left
+  this run — replaces one card"); with none left the buttons grey out. R (the old
+  reroll-everything key) only shows that hint now, so muscle memory doesn't spend a
+  charge on the wrong card. Shift+number was chosen over "R then a number" because
+  it is one chord with no hidden mode, and Shift is not otherwise used while the
+  cards own the keyboard (in co-op dodge/flasks stand down already).
+- **The start pick** is the same row: "Choose your first skill" for a skill-less
+  character (class skills), "Start of the run — choose a skill card" otherwise
+  (with the character's skills, now level 1, in the build line). Rerolls work there
+  too.
 - **The cards own the keyboard while open** (owner feedback 2026-10-16: a stray key
   made the window vanish — the first card had keyboard focus, so Space, the dodge
   key, or Enter picked it). Every key is swallowed before the GUI and gameplay see
-  it; only 1–9 (pick) and R (reroll) act. Cards take no keyboard focus. For the
-  first 0.45 s the row is shown dimmed and ignores keys and clicks, so a press
-  already on its way when the cards pop up doesn't count. In co-op, where the run
-  keeps going, dodge, flasks and the inventory key also stand down
-  (`LevelUpScreen.BlocksInput`). Tests: RunSmokeTest `LEVELUP-*`.
+  it; only 1–9 (pick) and Shift+1–9 (reroll that card) act. Cards and reroll
+  buttons take no keyboard focus. For the first 0.45 s the row is shown dimmed and
+  ignores keys and clicks, so a press already on its way when the cards pop up
+  doesn't count. Dodge, flasks and the inventory key also stand down while it is
+  open (`LevelUpScreen.BlocksInput`; it mattered when co-op kept running under the
+  cards, and still does for tests that drive the cards over a running tree). Tests: RunSmokeTest
+  `LEVELUP-*`, RiftProgressionTest `REROLL-UI-*`.
+- **Co-op (2026-10-17, multiplayer.md -> "Level-ups"):** the same screen, opened by
+  the host's round for every player at once, with the whole game paused. A panel at
+  the top shows **"1 / 3 chosen"** and the **countdown** ("7 s"). The countdown is gold,
+  turns **red at 5 s**, and ticks every second (a dry click, a brighter one in the
+  red). Under the row's hint: "When the time runs out, the first card is taken for
+  you." After choosing, the row gives way to "You chose Fireball. Waiting for the
+  others…" at the same height, and the hint becomes "The game resumes when everyone
+  has chosen." If the timer chose: "Time's up — Fireball was taken for you." Several
+  levels at once show "(1 more after this)" in the title, one round each. The start
+  pick in co-op is the same panel over the start row. Why the counter at the top: it
+  is the first thing a waiting player looks for, and the bottom of the screen already
+  holds the reroll line and the build summary.
+  Capture: `RunCapture --only=rift` (`coop-*.png`).
+
+  ![Co-op start pick](../devlog/screenshots/coop-start-pick.png)
+  ![1 / 3 chosen, 7 s](../devlog/screenshots/coop-levelup-counter.png)
+  ![The last five seconds](../devlog/screenshots/coop-levelup-red.png)
+  ![Waiting for the others](../devlog/screenshots/coop-levelup-waiting.png)
 - Results: victory/defeat, time, level, kills, elites, bosses, gold, the build, and
-  **three items — keep one**, shown with the normal item tooltip text.
+  **three items — keep one**, shown with the normal item tooltip text. A run too
+  short for an item (run.md -> "Minimum for an item") shows no cards and a dim line
+  saying why and what it takes. A kept item that finds the bag full says "sent to
+  Pending items (your inventory is full) — take it from the stash in the hideout"
+  (and, at Pending items' cap, which old item was sold for how much).
+- Stash: the last tab is **Pending (n/20)**, ember while something waits; the stash
+  opens on it then, and the hideout's arrival banner points at it (items.md ->
+  "Pending items").
 - Leaving the results before choosing forfeits the item, so the first press of
   "Return to hideout" or "Main menu" turns it into "Leave without an item?" and says
   so above the cards; the second press leaves (2026-10-16). Buttons are sentence

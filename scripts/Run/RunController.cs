@@ -112,22 +112,20 @@ public partial class RunController : Node2D
         State.RunEnded += OnRunEnded;
         Sfx.Music(this, "music_run");
 
-        if (Coop)
-        {
-            // Never paused: whoever is choosing a card is warded (docs/design/multiplayer.md).
-            LevelUp.OpenChanged += open => Player.Warded = open && !State.Ended;
-        }
-
+        // Co-op level-ups (docs/design/multiplayer.md -> "Level-ups"): the host runs
+        // rounds of picks for the whole party and pauses everything meanwhile; a
+        // client's choice and row go to the host, which applies the choice.
         if (Session is { IsHost: true })
         {
-            NetHost = new RiftHost { Name = "RiftHost", Run = this };
+            NetHost = new RiftHost { Name = "RiftHost", Run = this, SkipStartPick = startSkill is not null };
             AddChild(NetHost);
         }
         else if (Session is { IsClient: true })
         {
             NetClient = new RiftClient { Name = "RiftClient", Run = this };
             AddChild(NetClient);
-            LevelUp.Picked += offer => NetClient.SendPick(offer.Key);
+            LevelUp.PartyChosen += (round, offer) => NetClient.SendPick(round, offer.Key);
+            LevelUp.PartyOffersChanged += (round, offers) => NetClient.SendOffers(round, offers);
         }
 
         if (startTime > 0f)
@@ -138,25 +136,24 @@ public partial class RunController : Node2D
 
         if (startSkill is { } skill)
         {
+            // Tools and the balance bot: a preset first skill, no pick.
             Build.AddSkill(skill);
             ApplyAutoLevels(autoLevels);
             StartWhenReady();
         }
-        else if (Build.Skills.Any())
+        else if (Coop)
         {
-            // The persistent character brings its own gems (docs/design/endgame.md
-            // -> "Survival Rift"); the card pick only exists for a character with none.
-            ApplyAutoLevels(autoLevels);
+            // Co-op: the start pick is the host's first round, for everyone at once,
+            // once the whole party has loaded (RiftHost.Rounds).
             StartWhenReady();
         }
         else
         {
-            if (Coop)
-            {
-                StartWhenReady();
-            }
-
-            LevelUp.OpenStartPick(Coop ? () => { } : BeginRun);
+            // docs/design/progression.md -> "The start pick": every solo run opens
+            // with a skill card pick — the character's class skills if it has none,
+            // otherwise a new class skill or a level for one it brought.
+            ApplyAutoLevels(autoLevels);
+            LevelUp.OpenStartPick(BeginRun);
         }
     }
 
@@ -179,7 +176,7 @@ public partial class RunController : Node2D
         Player.GlobalPosition = SpawnPoint(Mathf.Max(0, slot), Session?.Members.Count ?? 1);
         Build = ConfigureRunCharacter(Player);
         Profile.Get(this)?.ApplyTo(Player);
-        FinishRunCharacter(Player);
+        FinishRunCharacter(Player, Build);
 
         if (NetSessionIsClient)
         {
@@ -230,12 +227,25 @@ public partial class RunController : Node2D
         return build;
     }
 
-    private static void FinishRunCharacter(Player player)
+    /// <summary>
+    /// After the persistent character is on the player: its passive tree and
+    /// ascendancy already apply (CharacterBuild, own modifier source, next to the
+    /// run build's — docs/design/progression.md -> "The character in the Rift");
+    /// its skills start at level 1 with no supports, and the run owns them from here.
+    /// </summary>
+    public static void FinishRunCharacter(Player player, RunBuild build)
     {
         if (player.SkillUser.SlotIsBuiltInMove(SkillSlotId.Lmb))
         {
             player.SkillUser.ClearSlot(SkillSlotId.Lmb);
         }
+
+        if (Characters.CharacterBuild.Of(player) is { } character)
+        {
+            character.RunOwnsSkills = true;
+        }
+
+        build.AdoptCharacterSkills();
 
         if (player.Stats.Life is { } life)
         {
@@ -295,7 +305,7 @@ public partial class RunController : Node2D
                 Profile.ApplyCharacterTo(p, character);
             }
 
-            FinishRunCharacter(p);
+            FinishRunCharacter(p, build);
             if (session.IsClient)
             {
                 p.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;
@@ -463,6 +473,12 @@ public partial class RunController : Node2D
     private async void OnRunEnded(bool victory)
     {
         Director.Spawning = false;
+        if (Coop)
+        {
+            // A level-up round may have held the game: the results screen runs unpaused.
+            GetTree().Paused = false;
+        }
+
         Player.ControlsEnabled = false;
         Player.Warded = false;
         Player.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;

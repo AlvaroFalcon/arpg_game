@@ -74,6 +74,7 @@ public partial class RunSmokeTest : Node2D
         await BuildChecks();
         ExperienceChecks();
         await LevelUpInputChecks();
+        await SettingsTabsChecks();
         await AreaAndChainChecks();
         await VolatileChecks();
         await ContactChecks();
@@ -221,6 +222,32 @@ public partial class RunSmokeTest : Node2D
     /// <summary>Owner feedback: a stray key closed the level-up cards. While
     /// they are open the keyboard belongs to them; only 1-9/R pick, and only
     /// once armed (docs/design/menus.md -> "Level-up and results").</summary>
+    /// <summary>Owner report: the settings panel resized on every tab switch. Its
+    /// size must be the same on all three tabs (docs/design/menus.md -> "Settings").</summary>
+    private async Task SettingsTabsChecks()
+    {
+        var layer = new CanvasLayer();
+        AddChild(layer);
+        var center = new CenterContainer();
+        layer.AddChild(center);
+        center.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        UI.SettingsPanel panel = UI.SettingsPanel.Create(center);
+        await Frames(3);
+        var tabs = (TabContainer)panel.FindChild("Tabs", true, false);
+        var sizes = new System.Collections.Generic.List<Vector2>();
+        for (int i = 0; i < tabs.GetTabCount(); i++)
+        {
+            tabs.CurrentTab = i;
+            await Frames(3);
+            sizes.Add(panel.Size);
+        }
+
+        Check("SETTINGS-TABS-KEEP-SIZE", sizes.Count == 3 && sizes.All(v => v.IsEqualApprox(sizes[0])),
+            string.Join(", ", sizes.Select(v => $"{v.X:0}×{v.Y:0}")));
+        layer.QueueFree();
+        await Frames(1);
+    }
+
     private async Task LevelUpInputChecks()
     {
         Player player = SpawnPlayer(new Vector2(900, 900));
@@ -228,8 +255,8 @@ public partial class RunSmokeTest : Node2D
         player.AddChild(build);
         var state = new RunState { Player = player };
         AddChild(state);
-        // Co-op mode keeps the tree running under the cards, which the test needs.
-        var screen = new UI.LevelUpScreen { State = state, Build = build, Coop = true };
+        // The tree keeps running under the cards, which the test needs.
+        var screen = new UI.LevelUpScreen { State = state, Build = build, PauseTree = false };
         AddChild(screen);
         await Frames(1);
         state.AddExperience(RunState.ExperienceToNext(1) + 0.1f);

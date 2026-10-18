@@ -11,6 +11,7 @@ using ArpgGame.Core;
 using ArpgGame.Enemies;
 using ArpgGame.Net;
 using ArpgGame.Run;
+using ArpgGame.UI;
 
 namespace ArpgGame.Tests;
 
@@ -291,7 +292,7 @@ public partial class CoopTestHost : CoopTestDriver
         // Give the clients a moment to receive the final lobby before the start.
         await Seconds(0.5f);
 
-        // --- into the run --------------------------------------------------------------
+        // --- into the run: the start pick, for everyone, before anything acts ----------
         session.StartRun();
         bool created = await WaitFor(() => Run?.NetHost is not null, 30f);
         if (created)
@@ -299,15 +300,44 @@ public partial class CoopTestHost : CoopTestDriver
             Run!.NetHost!.TestMessage += OnTestMessage;
         }
 
-        bool loaded = created && await WaitFor(() => Run?.NetHost is { } h && h.ReadyPeers == 2 && Run.State.ClockRunning, 60f);
-        Check("RUN-STARTS-WHEN-ALL-LOADED", loaded, $"ready peers={Run?.NetHost?.ReadyPeers}, clock running={Run?.State.ClockRunning}");
-        if (!loaded)
+        bool startOpen = created && await WaitFor(() => Run?.NetHost is { } h && h.ReadyPeers == 2 && h.RoundOpen, 60f);
+        Check("RUN-WAITS-FOR-ALL-LOADED", startOpen, $"ready peers={Run?.NetHost?.ReadyPeers}, start round open={Run?.NetHost?.RoundOpen}");
+        if (!startOpen)
         {
             return;
         }
 
         RunController run = Run!;
         RiftHost host = run.NetHost!;
+        int enemiesAtStart = GetTree().GetNodesInGroup(CombatQuery.EnemyGroup).Count;
+        Check("START-PICK-HOLDS-THE-RUN", host.RoundInfo.Start && GetTree().Paused && !run.State.ClockRunning && !run.Director.Spawning
+                && run.State.Elapsed == 0f && enemiesAtStart == 0 && run.LevelUp.PartyRound == host.RoundInfo.Id && run.LevelUp.Offers.Count > 0,
+            $"start round={host.RoundInfo.Start}, host paused={GetTree().Paused}, clock running={run.State.ClockRunning}, director spawning={run.Director.Spawning}, "
+            + $"elapsed={run.State.Elapsed}, monsters={enemiesAtStart}, host cards={run.LevelUp.Offers.Count}");
+        foreach (LobbyMember m in new[] { alpha, beta })
+        {
+            Dictionary<string, string> f = Fields(await Ask(m.PeerId, "round") ?? "");
+            Check($"START-PICK-ON-CLIENT-{m.Name.ToUpperInvariant()}", F(f, "open") == 1f && F(f, "start") == 1f && F(f, "paused") == 1f && F(f, "cards") >= 1f
+                    && f.GetValueOrDefault("count") == "0/3" && F(f, "secs") is >= 6f and <= 10f,
+                string.Join(" ", f.Select(kv => $"{kv.Key}={kv.Value}")));
+        }
+
+        run.LevelUp.ChooseIndex(0);
+        Dictionary<string, string> afterHost = Fields(await Ask(beta.PeerId, "round") ?? "");
+        Check("PICK-COUNTER-REPLICATES", host.RoundInfo.Picked == 1 && afterHost.GetValueOrDefault("count") == "1/3",
+            $"host picked → host counts {host.RoundInfo.Picked}/{host.RoundInfo.Total}, beta shows '{afterHost.GetValueOrDefault("count")}'");
+        await Ask(alpha.PeerId, "pick");
+        bool twoPicked = await WaitFor(() => host.RoundInfo.Picked == 2, 5f);
+        await Seconds(0.5f);
+        Check("START-PICK-WAITS-FOR-EVERYONE", twoPicked && host.RoundOpen && GetTree().Paused && !run.State.ClockRunning,
+            $"2 of 3 chose: round open={host.RoundOpen}, paused={GetTree().Paused}, clock running={run.State.ClockRunning}");
+        await Ask(beta.PeerId, "pick");
+        bool begun = await WaitFor(() => !host.RoundOpen && run.State.ClockRunning && !GetTree().Paused, 5f);
+        RunPlayer alphaRp = run.State.PlayerByPeer(alpha.PeerId)!;
+        RunPlayer betaRp = run.State.PlayerByPeer(beta.PeerId)!;
+        Check("START-PICK-DONE-RUN-BEGINS", begun && run.Build.History.Count == 1 && alphaRp.Build!.History.Count == 1 && betaRp.Build!.History.Count == 1,
+            $"run began={begun} after {host.LastRoundSeconds:0.0} s; picks on the host: host '{string.Join(",", run.Build.History)}', alpha '{string.Join(",", alphaRp.Build!.History)}', beta '{string.Join(",", betaRp.Build!.History)}'");
+        await BuildsMatch("START-PICK-SAME-BUILD", run, alpha, beta);
 
         // A quiet arena: no director, nobody casting, nobody dying by accident.
         run.Director.Spawning = false;
@@ -353,7 +383,6 @@ public partial class CoopTestHost : CoopTestDriver
         }
 
         // --- client input moves its player on the host -----------------------------------
-        RunPlayer alphaRp = run.State.PlayerByPeer(alpha.PeerId)!;
         Vector2 before = alphaRp.Player!.GlobalPosition;
         string? moved = await Ask(alpha.PeerId, "move_right");
         await Seconds(0.4f);
@@ -386,32 +415,31 @@ public partial class CoopTestHost : CoopTestDriver
                 $"host dropped {expected} for {m.Name} (and {hostOwn} for itself); client shows {F(f, "pickups")}");
         }
 
-        // --- a level-up chosen on a client -----------------------------------------------
-        int levelBefore = alphaRp.Level;
-        int ranksBefore = alphaRp.Build!.PassiveRanks.Values.Sum() + alphaRp.Build.Skills.Sum(s => s.Level + s.Attached.Count) + alphaRp.Build.Keystones.Count + alphaRp.Build.Skills.Count();
-        run.State.AddExperience(alphaRp, RunState.ExperienceToNext(alphaRp.Level) + 0.1f);
-        bool warded = await WaitFor(() => alphaRp.Player.Warded, 5f);
-        Check("LEVEL-UP-WARDS-THE-CHOOSER", warded && alphaRp.PendingLevelUps == 1 && alphaRp.Level == levelBefore + 1,
-            $"warded={warded}, level {levelBefore}→{alphaRp.Level}, pending={alphaRp.PendingLevelUps}");
-        string? picked = await Ask(alpha.PeerId, "pick");
-        bool consumed = await WaitFor(() => alphaRp.PendingLevelUps == 0 && !alphaRp.Player.Warded, 5f);
-        int ranksAfter = alphaRp.Build.PassiveRanks.Values.Sum() + alphaRp.Build.Skills.Sum(s => s.Level + s.Attached.Count) + alphaRp.Build.Keystones.Count + alphaRp.Build.Skills.Count();
-        Check("LEVEL-UP-PICK-APPLIED-ON-HOST", consumed && ranksAfter > ranksBefore, $"client: {picked ?? "no answer"}; pending={alphaRp.PendingLevelUps}, build {ranksBefore}→{ranksAfter}");
-        string? hostBuilds = string.Join(" ", alphaRp.Build.History);
-        string? buildAnswer = await Ask(alpha.PeerId, "history");
-        Check("LEVEL-UP-SAME-BUILD-BOTH-SIDES", buildAnswer is not null && buildAnswer.EndsWith(hostBuilds), $"host: '{hostBuilds}' client: '{buildAnswer}'");
+        await LevelUpChecks(run, host, alpha, beta);
 
-        // --- a client leaves mid-run ---------------------------------------------------------
+        // --- a client leaves mid-pick: the round closes without them ------------------------
+        float missing = run.State.ExperienceNeeded(run.State.PartyLevel) - run.State.PartyExperience;
+        run.State.AddExperience(betaRp, missing + 0.1f);
+        bool leaveRound = await WaitFor(() => host.RoundOpen, 3f);
+        run.LevelUp.ChooseIndex(0);
+        await Ask(beta.PeerId, "pick");
+        bool othersChose = await WaitFor(() => host.RoundInfo.Picked == 2, 5f);
+        bool stillHeld = host.RoundOpen && GetTree().Paused;
         string? leaving = await Ask(alpha.PeerId, "leave");
         bool gone = await WaitFor(() => host.Peers == 1 && run.State.Players.Count == 2 && run.State.PlayerByPeer(alpha.PeerId) is null, 10f);
+        bool resumed = await WaitFor(() => !host.RoundOpen && !GetTree().Paused, 5f);
+        Check("CLIENT-LEAVE-MID-PICK-RESUMES", leaveRound && othersChose && stillHeld && gone && resumed && !run.State.Ended,
+            $"round open={leaveRound}, host+beta chose={othersChose}, held while alpha chose nothing={stillHeld}; alpha gone={gone} → resumed={resumed}, run ended={run.State.Ended}");
         Check("CLIENT-LEAVE-HANDLED-ON-HOST", gone && !run.State.Ended && session.Members.Count == 2,
             $"{leaving}; peers={host.Peers}, run players={run.State.Players.Count}, lobby={session.Members.Count}, run ended={run.State.Ended}");
         bool alphaEnded = await WaitFor(() => FileContains(ClientLog("alpha"), "LEFT-PARTY-RESULTS"), 10f);
         Check("CLIENT-LEAVE-HANDLED-ON-CLIENT", alphaEnded, ReadFile(ClientLog("alpha")).Split('\n').LastOrDefault(l => l.Contains("LEFT-PARTY")) ?? "no line");
 
-        // Beta still gets traffic after alpha left.
+        // Beta still gets traffic after alpha left, and isn't held by a round.
         string? still = await Ask(beta.PeerId, "check_players");
-        Check("PARTY-CONTINUES-AFTER-LEAVE", F(Fields(still ?? ""), "players") == 2f, still ?? "no answer");
+        Dictionary<string, string> betaRound = Fields(await Ask(beta.PeerId, "round") ?? "");
+        Check("PARTY-CONTINUES-AFTER-LEAVE", F(Fields(still ?? ""), "players") == 2f && F(betaRound, "paused") == 0f && F(betaRound, "open") == 0f,
+            $"{still ?? "no answer"}; beta round: open={betaRound.GetValueOrDefault("open")} paused={betaRound.GetValueOrDefault("paused")}");
 
         // --- the host leaves ---------------------------------------------------------------
         session.Leave();
@@ -420,6 +448,143 @@ public partial class CoopTestHost : CoopTestDriver
         Check("HOST-LEAVE-HANDLED-ON-CLIENT", betaHandled && betaLine.Contains("PASS"), betaLine);
 
         await RateLimitCheck(session, profile);
+    }
+
+    /// <summary>The host's copy of each client's build has the same history as the client's own.</summary>
+    private async Task BuildsMatch(string name, RunController run, params LobbyMember[] members)
+    {
+        foreach (LobbyMember m in members)
+        {
+            if (run.State.PlayerByPeer(m.PeerId) is not { Build: { } build })
+            {
+                continue;
+            }
+
+            string hostSide = string.Join(" ", build.History);
+            string? clientSide = await Ask(m.PeerId, "history");
+            Check($"{name}-{m.Name.ToUpperInvariant()}", clientSide is not null && clientSide == hostSide, $"host: '{hostSide}' client: '{clientSide}'");
+        }
+    }
+
+    /// <summary>
+    /// docs/design/multiplayer.md -> "Level-ups": one party bar; a level pauses the
+    /// whole game on every machine (monsters, telegraphs, the clock); everyone picks;
+    /// the counter replicates; the host's timer takes the first card after 10 s; a
+    /// burst of levels is rounds back to back; bad picks from a client are refused.
+    /// </summary>
+    private async Task LevelUpChecks(RunController run, RiftHost host, LobbyMember alpha, LobbyMember beta)
+    {
+        RunPlayer alphaRp = run.State.PlayerByPeer(alpha.PeerId)!;
+        RunPlayer betaRp = run.State.PlayerByPeer(beta.PeerId)!;
+        Player hostPlayer = run.Player;
+        int level = run.State.PartyLevel;
+        float need = run.State.ExperienceNeeded(level);
+        Check("PARTY-XP-CURVE", Mathf.IsEqualApprox(need, RunState.ExperienceToNext(level) * PartyRules.PartyExperience(3)) && PartyRules.PartyExperience(1) == 1f,
+            $"party of 3 needs {need:0.0} for level {level + 1} (solo {RunState.ExperienceToNext(level):0.0})");
+
+        // Something that would act: an awake slime walking at the host, and a telegraph on it.
+        // Far enough that it is still walking when the round opens, and after it.
+        Vector2 slimeAt = run.Arena.Clamp(hostPlayer.GlobalPosition + new Vector2(0f, -520f), 60f);
+        Enemy slime = run.Director.SpawnAt(run.Director.Slime!, slimeAt);
+        slime.Health.IgnoreDamage = true;
+        await Seconds(0.4f);
+
+        // Half the bar from alpha's gems, the rest from beta's: one level for everyone.
+        float missing = need - run.State.PartyExperience;
+        run.State.AddExperience(alphaRp, missing * 0.5f);
+        bool earlyRound = host.RoundOpen;
+        run.State.AddExperience(betaRp, missing * 0.5f + 0.1f);
+        bool open = await WaitFor(() => host.RoundOpen, 3f);
+        Check("SHARED-XP-ONE-LEVEL-FOR-ALL", !earlyRound && open && run.State.PartyLevel == level + 1 && run.State.Players.All(rp => rp.Level == level + 1 && rp.PendingLevelUps == 1),
+            $"half the bar opened no round={!earlyRound}; party level {level}→{run.State.PartyLevel}; players: {string.Join(", ", run.State.Players.Select(rp => $"Lv {rp.Level} pending {rp.PendingLevelUps}"))}");
+
+        var hit = new HitProfile { Damage = 40f, Type = DamageType.Physical, Faction = Faction.Enemy, Source = slime };
+        AreaBurst burst = AreaBurst.Spawn(run, hostPlayer.GlobalPosition, 60f, 0.4f, Colors.Red, hit);
+        hostPlayer.Health!.IgnoreDamage = false;
+        Vector2 slime0 = slime.GlobalPosition;
+        float life0 = hostPlayer.Stats.Life!.Current;
+        float clock0 = run.State.Elapsed;
+        await Seconds(1.5f);
+        Check("PAUSE-FREEZES-HOST", GetTree().Paused && slime.GlobalPosition.DistanceTo(slime0) < 0.01f && hostPlayer.Stats.Life.Current == life0
+                && run.State.Elapsed == clock0 && IsInstanceValid(burst) && !burst.IsQueuedForDeletion(),
+            $"1.5 s into the round: paused={GetTree().Paused}, slime moved {slime.GlobalPosition.DistanceTo(slime0):0.00} px, host life {life0:0}→{hostPlayer.Stats.Life.Current:0}, "
+            + $"clock {clock0:0.00}→{run.State.Elapsed:0.00}, 0.4 s telegraph still pending={IsInstanceValid(burst) && !burst.IsQueuedForDeletion()}");
+        foreach (LobbyMember m in new[] { alpha, beta })
+        {
+            Dictionary<string, string> f = Fields(await Ask(m.PeerId, "frozen") ?? "");
+            Check($"PAUSE-ON-CLIENT-{m.Name.ToUpperInvariant()}", F(f, "open") == 1f && F(f, "start") == 0f && F(f, "paused") == 1f && F(f, "level") == level + 1
+                    && F(f, "monster_moved") < 0.5f && F(f, "clock_moved") < 0.01f && f.GetValueOrDefault("count") == "0/3",
+                string.Join(" ", f.Select(kv => $"{kv.Key}={kv.Value}")));
+        }
+
+        // The host chooses, then alpha: still held for beta.
+        run.LevelUp.ChooseIndex(0);
+        await Ask(alpha.PeerId, "pick");
+        bool two = await WaitFor(() => host.RoundInfo.Picked == 2, 5f);
+        Dictionary<string, string> betaView = Fields(await Ask(beta.PeerId, "round") ?? "");
+        Check("GAME-WAITS-FOR-EVERYONE", two && host.RoundOpen && GetTree().Paused && betaView.GetValueOrDefault("count") == "2/3" && F(betaView, "chosen") == 0f,
+            $"{host.RoundInfo.Picked} of 3 chose (last refusal: {host.LastRefusal}): round open={host.RoundOpen}, paused={GetTree().Paused}; beta shows '{betaView.GetValueOrDefault("count")}', beta chosen={betaView.GetValueOrDefault("chosen")}");
+
+        // Beta never chooses: the countdown goes red from 5, ticks, and the host takes beta's first card.
+        int betaHistory = betaRp.Build!.History.Count;
+        int hostTicksBefore = run.LevelUp.TicksPlayed;
+        await WaitFor(() => run.LevelUp.PartySecondsShown is > 0 and <= 4 || !host.RoundOpen, 12f);
+        bool hostRed = run.LevelUp.PartyClockUrgent;
+        Dictionary<string, string> red = Fields(await Ask(beta.PeerId, "round") ?? "");
+        bool closed = await WaitFor(() => !host.RoundOpen, 12f);
+        // Resuming grants everyone a moment of invulnerability (owner decision 2026-10-17).
+        bool graced = run.State.Players.All(rp => rp.Player?.Health is { InvulnerableTime: > 0f });
+        Check("RESUME-GRACE", closed && graced,
+            $"after the round closed every player invulnerable={graced} ({string.Join(", ", run.State.Players.Select(rp => $"{rp.PeerId}:{rp.Player?.Health?.InvulnerableTime:0.00}s"))})");
+        Check("COUNTDOWN-RED-FROM-5", hostRed && F(red, "urgent") == 1f && F(red, "secs") <= 5f,
+            $"host red={hostRed}; beta: secs={red.GetValueOrDefault("secs")} urgent={red.GetValueOrDefault("urgent")}");
+        // Ticks only for a player still choosing (owner decision 2026-10-17): beta hears
+        // the countdown, the host — who already chose — doesn't.
+        Check("COUNTDOWN-TICKS", F(red, "ticks") >= 4f && run.LevelUp.TicksPlayed == hostTicksBefore,
+            $"beta (still choosing) heard {red.GetValueOrDefault("ticks")} ticks; the host (chosen) heard {run.LevelUp.TicksPlayed - hostTicksBefore} this round");
+        Check("TIMEOUT-AUTO-PICKS", closed && host.LastRoundSeconds is >= 9.5f and <= 11.5f && betaRp.Build.History.Count == betaHistory + 1 && run.State.Players.All(rp => rp.PendingLevelUps == 0),
+            $"round closed={closed} after {host.LastRoundSeconds:0.00} s (timeout {PartyRules.LevelUpTimeout} s); beta's build on the host {betaHistory}→{betaRp.Build.History.Count} ('{betaRp.Build.History.LastOrDefault()}')");
+        await BuildsMatch("TIMEOUT-SAME-BUILD", run, beta);
+
+        // Resumed: the clock runs, the slime walks, the telegraph lands.
+        float clock1 = run.State.Elapsed;
+        Vector2 slime1 = slime.GlobalPosition;
+        await Seconds(0.7f);
+        Check("RESUME-UNFREEZES", !GetTree().Paused && run.State.Elapsed > clock1 + 0.3f && slime.GlobalPosition.DistanceTo(slime1) > 2f && (!IsInstanceValid(burst) || burst.IsQueuedForDeletion()),
+            $"paused={GetTree().Paused}, clock {clock1:0.00}→{run.State.Elapsed:0.00}, slime moved {slime.GlobalPosition.DistanceTo(slime1):0.0} px, telegraph landed={!IsInstanceValid(burst) || burst.IsQueuedForDeletion()}, host life {life0:0}→{hostPlayer.Stats.Life.Current:0}");
+        Dictionary<string, string> betaAfter = Fields(await Ask(beta.PeerId, "round") ?? "");
+        Check("RESUME-ON-CLIENT", F(betaAfter, "open") == 0f && F(betaAfter, "paused") == 0f, string.Join(" ", betaAfter.Select(kv => $"{kv.Key}={kv.Value}")));
+        hostPlayer.Health.IgnoreDamage = true;
+        slime.QueueFree();
+
+        // A burst of two levels: two rounds back to back, never unpaused between them.
+        level = run.State.PartyLevel;
+        float twoLevels = run.State.ExperienceNeeded(level) + run.State.ExperienceNeeded(level + 1) - run.State.PartyExperience + 0.1f;
+        run.State.AddExperience(alphaRp, twoLevels);
+        bool burstOpen = await WaitFor(() => host.RoundOpen, 3f);
+        int firstId = host.RoundInfo.Id;
+        int alphaBuild = alphaRp.Build!.History.Count;
+        int refused = host.RefusedPicks;
+        string? bad = await Ask(alpha.PeerId, "bad_picks");
+        await Seconds(0.5f);
+        Check("BAD-PICKS-REFUSED", host.RefusedPicks >= refused + 5 && host.RoundInfo.Picked == 0 && alphaRp.Build.History.Count == alphaBuild,
+            $"{bad}; host refused {host.RefusedPicks - refused} messages (last: {host.LastRefusal}), chosen={host.RoundInfo.Picked}, alpha's build {alphaBuild}→{alphaRp.Build.History.Count}");
+        bool pausedThroughout = true;
+        run.LevelUp.ChooseIndex(0);
+        await Ask(alpha.PeerId, "pick");
+        await Ask(beta.PeerId, "pick");
+        bool second = await WaitFor(() => { pausedThroughout &= GetTree().Paused || !host.RoundOpen; return host.RoundOpen && host.RoundInfo.Id != firstId; }, 5f);
+        pausedThroughout &= GetTree().Paused;
+        int secondId = host.RoundInfo.Id;
+        Dictionary<string, string> alphaSecond = Fields(await Ask(alpha.PeerId, "round") ?? "");
+        run.LevelUp.ChooseIndex(0);
+        await Ask(alpha.PeerId, "pick");
+        await Ask(beta.PeerId, "pick");
+        bool done = await WaitFor(() => !host.RoundOpen && !GetTree().Paused, 5f);
+        Check("LEVEL-BURST-ROUNDS-BACK-TO-BACK", burstOpen && second && pausedThroughout && done && run.State.PartyLevel == level + 2 && run.State.Players.All(rp => rp.PendingLevelUps == 0)
+                && F(alphaSecond, "round") == secondId && F(alphaSecond, "chosen") == 0f && F(alphaSecond, "paused") == 1f,
+            $"rounds {firstId}→{secondId}, paused between={pausedThroughout}, resumed={done}, level {level}→{run.State.PartyLevel}, alpha saw round {alphaSecond.GetValueOrDefault("round")} (chosen={alphaSecond.GetValueOrDefault("chosen")})");
+        await BuildsMatch("LEVEL-UP-SAME-BUILD-BOTH-SIDES", run, alpha, beta);
     }
 
     private async Task<Error> HostOnFreePort(NetSession session, Profile profile)
@@ -784,6 +949,15 @@ public partial class CoopTestClient : CoopTestDriver
         }
     }
 
+    private string RoundLine(RunController run)
+    {
+        LevelUpScreen lu = run.LevelUp;
+        string count = lu.PartyRound != 0 ? lu.PartyCountText.Replace(" chosen", "").Replace(" ", "") : "-";
+        return $"open={(lu.PartyRound != 0 ? 1 : 0)} round={lu.PartyRound} start={(lu.PartyRound != 0 && lu.PartyRoundIsStart ? 1 : 0)} "
+            + $"paused={(GetTree().Paused ? 1 : 0)} chosen={(lu.PartyChosenThisRound ? 1 : 0)} count={count} secs={lu.PartySecondsShown} urgent={(lu.PartyClockUrgent ? 1 : 0)} ticks={lu.TicksPlayed} "
+            + $"ticks={lu.TicksPlayed} level={run.State.Level} cards={lu.Offers.Count}";
+    }
+
     private async Task<string> Answer(RunController run, NetSession session, string question)
     {
         Dictionary<string, string> f = Fields(question);
@@ -832,7 +1006,47 @@ public partial class CoopTestClient : CoopTestDriver
                     run.LevelUp.ChooseIndex(0);
                 }
 
-                return $"picked open_before={open} open_after={run.LevelUp.IsOpen} level={run.State.Level}";
+                return $"picked open_before={open} chosen={(run.LevelUp.PartyChosenThisRound ? 1 : 0)} level={run.State.Level}";
+            }
+
+            case "round":
+                return RoundLine(run);
+            case "frozen":
+            {
+                // Over half a second of the round: does anything this machine draws move?
+                Enemy? e = client.Enemies.FirstOrDefault(x => IsInstanceValid(x));
+                Vector2 at = e?.GlobalPosition ?? Vector2.Zero;
+                float clock = run.State.Elapsed;
+                await Seconds(0.5f);
+                float moved = e is not null && IsInstanceValid(e) ? e.GlobalPosition.DistanceTo(at) : -1f;
+                return $"{RoundLine(run)} monster_moved={Num(moved)} clock_moved={Num(run.State.Elapsed - clock)}";
+            }
+
+            case "bad_picks":
+            {
+                // What a broken or modified client could send in a round: all refused.
+                int round = run.LevelUp.PartyRound;
+                string real = run.LevelUp.Offers.Count > 0 ? run.LevelUp.Offers[0].Key : "s:spark";
+                client.SendPick(round + 100, real);            // wrong round
+                client.SendPick(round, "k:not_offered_here");  // not on its row
+                client.SendPick(round, new string('p', 300));  // malformed
+                var w = new NetWriter(256);
+                w.U8(RiftProtocol.ClientOffers);
+                w.U16((ushort)round);
+                w.U8(50);                                       // too many cards
+                for (int i = 0; i < 50; i++)
+                {
+                    w.Str("p:might:2");
+                }
+
+                session.SendClientEvents(w.ToArray());
+                w.Clear();
+                w.U8(RiftProtocol.ClientOffers);
+                w.U16((ushort)round);
+                w.U8(1);
+                w.Str("zz");                                    // not a card key
+                session.SendClientEvents(w.ToArray());
+                return $"sent 5 bad round messages for round {round}";
             }
 
             case "history":
