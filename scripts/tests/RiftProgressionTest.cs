@@ -89,6 +89,7 @@ public partial class RiftProgressionTest : Node2D
             OverflowChecks();
             await OverflowUiChecks(real);
             await RiftSceneChecks(real);
+            await CashOutChecks(real);
         }
         catch (System.Exception e)
         {

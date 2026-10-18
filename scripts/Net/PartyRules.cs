@@ -67,6 +67,20 @@ public static class PartyRules
     /// <summary>Invulnerability after a revive (seconds).</summary>
     public const float ReviveGrace = 2f;
 
+    /// <summary>More than one player: the party rules apply (portal, cash-out vote).</summary>
+    public static bool IsParty(int players) => players > 1;
+
+    /// <summary>The world label over the exit portal.</summary>
+    public static string PortalCaption(int players) => players > 1
+        ? "Portal home: the whole party walks in to leave"
+        : "Portal home: walk in to leave with your reward";
+
+    // --- cash-out offer (docs/design/run.md -> "Cash-out offer and the infinite Rift") -------
+
+    /// <summary>Co-op: seconds every player has to answer the Colossus offer. A player who
+    /// has not answered counts as "leave".</summary>
+    public const float CashOutTimeout = 15f;
+
     // --- level-ups (docs/design/multiplayer.md -> "Level-ups") ----------------------
 
     /// <summary>

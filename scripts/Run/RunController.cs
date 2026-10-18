@@ -40,6 +40,7 @@ public partial class RunController : Node2D
     public RunBuild Build { get; private set; } = null!;
     public RunHud Hud { get; private set; } = null!;
     public LevelUpScreen LevelUp { get; private set; } = null!;
+    public CashOutPanel CashOut { get; private set; } = null!;
     public PauseMenu Pause { get; private set; } = null!;
     public ResultsScreen Results { get; private set; } = null!;
 
@@ -63,6 +64,7 @@ public partial class RunController : Node2D
         float startTime = RunLaunchOptions.StartTime;
         string? startSkill = RunLaunchOptions.StartSkill;
         int autoLevels = RunLaunchOptions.AutoLevels;
+        bool autoCashOut = RunLaunchOptions.AutoCashOut;
         RunLaunchOptions.Reset();
 
         Arena = GetNode<Arena>("Arena");
@@ -73,6 +75,7 @@ public partial class RunController : Node2D
         Director.State = State;
         Director.Arena = Arena;
         Director.Spawning = false;
+        Director.AutoCashOut = autoCashOut;
 
         Session = NetSession.Get(this);
         if (Session is not { Active: true, InRun: true })
@@ -97,12 +100,25 @@ public partial class RunController : Node2D
         AddChild(Hud);
         LevelUp = new LevelUpScreen { State = State, Build = Build, Name = "LevelUp", Coop = Coop };
         AddChild(LevelUp);
+        CashOut = new CashOutPanel { State = State, Name = "CashOut" };
+        AddChild(CashOut);
+        Director.CashOutOffered += OnCashOutOffered;
+        Director.PortalEntered += OnPortalEntered;
+        // Co-op: nothing can pause, so the player is held still while the panel is up.
+        CashOut.OpenChanged += open =>
+        {
+            if (Coop && IsInstanceValid(Player) && !State.Ended)
+            {
+                Player.ControlsEnabled = !open;
+            }
+        };
         Results = new ResultsScreen { Name = "Results", OnHideout = () => LeaveTo(Scenes.Hideout), OnMenu = () => LeaveTo(Scenes.MainMenu) };
         AddChild(Results);
         Pause = new PauseMenu
         {
             Name = "Pause",
             LeaveText = Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the party",
+            LeaveTextNow = LeaveLabel,
             OnLeave = OnPauseLeave,
             Summary = () => LevelUpScreen.BuildSummary(Build),
             NoPause = Coop,
@@ -125,6 +141,7 @@ public partial class RunController : Node2D
             NetClient = new RiftClient { Name = "RiftClient", Run = this };
             AddChild(NetClient);
             LevelUp.PartyChosen += (round, offer) => NetClient.SendPick(round, offer.Key);
+            CashOut.PartyChosen += (round, leave) => NetClient.SendPick(round, leave ? "leave" : "stay");
             LevelUp.PartyOffersChanged += (round, offers) => NetClient.SendOffers(round, offers);
         }
 
@@ -352,7 +369,7 @@ public partial class RunController : Node2D
     {
         if (!Coop)
         {
-            State.EndRun(Director.ColossusDefeated);
+            State.EndRun(Director.ColossusDefeated, fell: true);
             return;
         }
 
@@ -364,7 +381,7 @@ public partial class RunController : Node2D
 
         if (State.AllDown)
         {
-            State.EndRun(Director.ColossusDefeated);
+            State.EndRun(Director.ColossusDefeated, fell: true);
         }
     }
 
@@ -450,8 +467,66 @@ public partial class RunController : Node2D
         }
     }
 
+    /// <summary>The pause menu's leave button: "Leave with reward" once the Colossus is down (it pays a
+    /// victory then), otherwise the old wording.</summary>
+    private string LeaveLabel()
+    {
+        if (!Director.ColossusDefeated)
+        {
+            return Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the party";
+        }
+
+        return Session is null ? "Leave with reward" : Session.IsHost ? "End the run for everyone" : "Leave the party";
+    }
+
+    /// <summary>Solo: the Colossus fell and the director's hold is over. (Co-op: the host opens a party round.)</summary>
+    private void OnCashOutOffered()
+    {
+        if (Coop || State.Ended)
+        {
+            return;
+        }
+
+        CashOut.OpenOffer(Director.TakeExitPortal, Director.BeginEndless);
+    }
+
+    /// <summary>Solo: walking into the portal asks, it never leaves by itself.</summary>
+    private void OnPortalEntered() => OpenLeavePanel();
+
+    /// <summary>The cash-out panel in leave mode, worded for solo, a client or the host.</summary>
+    private void OpenLeavePanel()
+    {
+        if (State.Ended || CashOut.IsOpen)
+        {
+            return;
+        }
+
+        if (Session is null)
+        {
+            CashOut.OpenLeave("Leave with your reward?", "Everything below is yours the moment you leave. You can come back to the Rift any time.", "Leave with reward", Director.TakeExitPortal, pause: true);
+        }
+        else if (Session.IsClient)
+        {
+            CashOut.OpenLeave("Leave the party?", "You leave alone and the party keeps playing. You take your reward.", "Leave with reward", () =>
+            {
+                Session.Leave();
+                NetClient?.OnHostLost("You left the party.");
+            }, pause: false);
+        }
+        else
+        {
+            CashOut.OpenLeave("End the run for everyone?", "Everyone goes home with their reward.", "End the run", () => State.EndRun(true), pause: false);
+        }
+    }
+
     private void OnPauseLeave()
     {
+        if (Director.ColossusDefeated && !State.Ended)
+        {
+            OpenLeavePanel();
+            return;
+        }
+
         if (Session is { IsClient: true })
         {
             // Leaving the party: this player's run ends here, with their rewards so far.

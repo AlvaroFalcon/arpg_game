@@ -416,6 +416,7 @@ public partial class CoopTestHost : CoopTestDriver
         }
 
         await LevelUpChecks(run, host, alpha, beta);
+        await CashOutStayChecks(run, host, alpha, beta);
 
         // --- a client leaves mid-pick: the round closes without them ------------------------
         float missing = run.State.ExperienceNeeded(run.State.PartyLevel) - run.State.PartyExperience;
@@ -440,6 +441,9 @@ public partial class CoopTestHost : CoopTestDriver
         Dictionary<string, string> betaRound = Fields(await Ask(beta.PeerId, "round") ?? "");
         Check("PARTY-CONTINUES-AFTER-LEAVE", F(Fields(still ?? ""), "players") == 2f && F(betaRound, "paused") == 0f && F(betaRound, "open") == 0f,
             $"{still ?? "no answer"}; beta round: open={betaRound.GetValueOrDefault("open")} paused={betaRound.GetValueOrDefault("paused")}");
+
+        // --- the party goes home: the host leaves, beta never answers (a timeout counts as leave) ---
+        await CashOutLeaveChecks(run, host, beta);
 
         // --- the host leaves ---------------------------------------------------------------
         session.Leave();
@@ -1049,6 +1053,11 @@ public partial class CoopTestClient : CoopTestDriver
                 return $"sent 5 bad round messages for round {round}";
             }
 
+            case "cashout":
+            case "cashout_pick":
+            case "cashout_bad":
+            case "toast":
+                return await CashOutAnswer(run, session, question);
             case "history":
                 return string.Join(" ", run.Build.History);
             case "leave":

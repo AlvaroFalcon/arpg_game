@@ -8,6 +8,9 @@ public partial class Portal : Node2D
 {
     private float _t;
 
+    /// <summary>A line floating over the portal ("Portal home: walk in to leave with your reward").</summary>
+    public string Caption { get; set; } = "";
+
     public override void _Process(double delta)
     {
         _t += (float)delta;
@@ -26,5 +29,11 @@ public partial class Portal : Node2D
         }
 
         DrawCircle(Vector2.Zero, 8f + Mathf.Sin(_t * 4f) * 2f, new Color(1f, 0.9f, 1f, 0.9f));
+        if (Caption.Length > 0)
+        {
+            Font font = ThemeDB.FallbackFont;
+            DrawString(font, new Vector2(-219f, -61f), Caption, HorizontalAlignment.Center, 440f, 15, new Color(0f, 0f, 0f, 0.85f));
+            DrawString(font, new Vector2(-220f, -62f), Caption, HorizontalAlignment.Center, 440f, 15, new Color(1f, 0.92f, 0.7f));
+        }
     }
 }

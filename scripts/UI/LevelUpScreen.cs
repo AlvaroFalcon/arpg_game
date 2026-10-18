@@ -41,7 +41,9 @@ public partial class LevelUpScreen : CanvasLayer
     /// <summary>True while a level-up screen is open anywhere: things that poll
     /// keys directly (dodge, flasks, the inventory key) stand down (tests run the
     /// cards over an unpaused tree; co-op keeps the screen up while waiting).</summary>
-    public static bool BlocksInput { get; private set; }
+    public static bool BlocksInput => _blocks || CashOutPanel.Blocks;
+
+    private static bool _blocks;
 
     /// <summary>Co-op: the screen is driven by the host's rounds (see the class summary).</summary>
     public bool Coop { get; set; }
@@ -373,7 +375,7 @@ public partial class LevelUpScreen : CanvasLayer
     private void SetOpen(bool open)
     {
         IsOpen = open;
-        BlocksInput = open;
+        _blocks = open;
         if (!Coop && PauseTree)
         {
             GetTree().Paused = open;
@@ -386,7 +388,7 @@ public partial class LevelUpScreen : CanvasLayer
         OpenChanged?.Invoke(open);
     }
 
-    public override void _ExitTree() => BlocksInput = false;
+    public override void _ExitTree() => _blocks = false;
 
     private void SetHint(string text)
     {

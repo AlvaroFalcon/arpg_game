@@ -226,6 +226,7 @@ public partial class RiftClient : Node, IRunLink
         if (id == 0 || kind == RiftProtocol.RoundNone)
         {
             Run.LevelUp.ClosePartyRound();
+            Run.CashOut.ClosePartyRound();
             if (!State.Ended)
             {
                 GetTree().Paused = false;
@@ -234,12 +235,26 @@ public partial class RiftClient : Node, IRunLink
             return;
         }
 
-        if (State.Ended || (kind != RiftProtocol.RoundStart && kind != RiftProtocol.RoundLevel))
+        if (State.Ended || (kind != RiftProtocol.RoundStart && kind != RiftProtocol.RoundLevel && kind != RiftProtocol.RoundCashOut))
         {
             return;
         }
 
         GetTree().Paused = true;
+        if (kind == RiftProtocol.RoundCashOut)
+        {
+            // The Colossus offer: the same panel as on the host, with the host's countdown.
+            if (Run.CashOut.PartyRound != id)
+            {
+                Run.CashOut.OpenPartyOffer(id);
+            }
+
+            double now = _haveOffset ? Now + _offset : _batchStamp;
+            float timeLeft = Sane((float)(hostDeadline - now), 0f, 60f);
+            Run.CashOut.SetPartyStatus(picked, total, Time.GetTicksMsec() + (ulong)(timeLeft * 1000f), mine);
+            return;
+        }
+
         if (Run.LevelUp.PartyRound != id)
         {
             Run.LevelUp.OpenPartyRound(id, kind == RiftProtocol.RoundStart, level, remaining);
@@ -393,7 +408,7 @@ public partial class RiftClient : Node, IRunLink
             flags |= 1;
         }
 
-        if (Run.LevelUp.IsOpen)
+        if (Run.LevelUp.IsOpen || Run.CashOut.IsOpen)
         {
             flags |= 2;
         }

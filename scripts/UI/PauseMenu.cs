@@ -21,12 +21,22 @@ public partial class PauseMenu : CanvasLayer
 
     public Action? OnLeave { get; set; }
 
+    /// <summary>Asked each time the menu opens: the leave button's label right now
+    /// (the Rift's "Abandon run" becomes "Leave with reward" once the Colossus is down).</summary>
+    public Func<string>? LeaveTextNow { get; set; }
+
     /// <summary>An extra entry above the leave button (the hideout's "Edit hideout").</summary>
     public string? ExtraText { get; set; }
 
     public Action? OnExtra { get; set; }
 
     public bool IsOpen { get; private set; }
+
+    /// <summary>The leave button's label (tests, captures).</summary>
+    public string LeaveButtonText => _leave.Text;
+
+    /// <summary>Presses the leave button as a click would (tests).</summary>
+    public void PressLeave() => _leave.EmitSignal(BaseButton.SignalName.Pressed);
 
     /// <summary>Co-op: the menu opens over a game that keeps running
     /// (docs/design/multiplayer.md -> "Pausing").</summary>
@@ -38,6 +48,7 @@ public partial class PauseMenu : CanvasLayer
     private Control _center = null!;
     private ulong _settingsClosedFrame = ulong.MaxValue;
     private Button _editHud = null!;
+    private Button _leave = null!;
 
     public override void _Ready()
     {
@@ -64,7 +75,8 @@ public partial class PauseMenu : CanvasLayer
         }
 
         _menu.AddChild(UiTheme.Button("Send feedback", () => OpenFeedback()));
-        _menu.AddChild(UiTheme.Button(LeaveText, () => { Close(); OnLeave?.Invoke(); }));
+        _leave = UiTheme.Button(LeaveText, () => { Close(); OnLeave?.Invoke(); });
+        _menu.AddChild(_leave);
         _menu.AddChild(UiTheme.Button("Quit to desktop", () => GetTree().Quit()));
         _root.Visible = false;
     }
@@ -79,7 +91,7 @@ public partial class PauseMenu : CanvasLayer
         // The inventory (or any PanelStack panel) gets Escape first, in either
         // processing order: if it already closed something this frame, or still
         // has something open, this press is not ours.
-        if (PanelStack.ClosedThisFrame || PanelStack.HasOpen)
+        if (PanelStack.ClosedThisFrame || PanelStack.HasOpen || CashOutPanel.Blocks)
         {
             return;
         }
@@ -106,6 +118,11 @@ public partial class PauseMenu : CanvasLayer
     {
         IsOpen = true;
         GetTree().Paused = !NoPause;
+        if (LeaveTextNow is not null)
+        {
+            _leave.Text = LeaveTextNow();
+        }
+
         _summary.Text = Summary?.Invoke() ?? "";
         _summary.Visible = _summary.Text.Length > 0;
         _editHud.Visible = GetTree().GetNodesInGroup(HudLayout.Group).Count > 0;
