@@ -719,12 +719,14 @@ public partial class RealityController : Node2D, IPickupHandler
                 c.AddShards(tier);
                 Sfx.Play(this, "levelup", -4f);
                 EmitSignal(SignalName.Toast, $"Mirror Shard (tier {tier})", RealityTiers.ShardColor(tier));
+                GameEvents.Raise(GameEvents.ShardFound, tier);
                 break;
             case PickupKind.Jewel when Profile.Get(this) is { } account:
                 account.Jewels.Found++;
                 account.Save();
                 Sfx.Play(this, "levelup", -2f);
                 EmitSignal(SignalName.Toast, $"Mirror Jewel ({account.Jewels.Found}/{JewelTree.Sockets}) — socket it at the Mirror", new Color(0.85f, 0.6f, 1f));
+                GameEvents.Raise(GameEvents.JewelFound, account.Jewels.Found);
                 break;
             case PickupKind.Currency when Crafting.Find(pickup.CurrencyKey) is { } currency:
                 Sfx.Play(this, "pickup", -2f);
@@ -797,14 +799,20 @@ public partial class RealityController : Node2D, IPickupHandler
             c.HighestTierCleared = Mathf.Max(c.HighestTierCleared, Tier);
             if (Tier >= AscendancyCatalog.Tier1Unlock && c.AscendancyPoints < AscendancyCatalog.FirstPoints)
             {
+                // The quest toast ("New quest: Choose an ascendancy") announces it.
                 c.AscendancyPoints = AscendancyCatalog.FirstPoints;
-                EmitSignal(SignalName.Toast, "Ascendancy trial complete! Visit the altar in your hideout.", new Color(1f, 0.85f, 0.4f));
             }
 
             if (Tier >= AscendancyCatalog.Tier2Unlock && c.AscendancyPoints < AscendancyCatalog.FirstPoints + AscendancyCatalog.SecondPoints)
             {
                 c.AscendancyPoints = AscendancyCatalog.FirstPoints + AscendancyCatalog.SecondPoints;
                 EmitSignal(SignalName.Toast, "Second ascendancy trial complete: +2 ascendancy points.", new Color(1f, 0.85f, 0.4f));
+            }
+
+            if (!IsTutorial)
+            {
+                // After the tier record and the ascendancy points: unlocks the quests they open.
+                GameEvents.Raise(GameEvents.BossKilled, Tier);
             }
         }
 

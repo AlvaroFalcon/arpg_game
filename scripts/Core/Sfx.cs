@@ -30,8 +30,18 @@ public partial class Sfx : Node
     private string _currentMusic = "";
     private readonly Random _rng = new(1234);
 
+    private static readonly Dictionary<string, int> Requested = new();
+
+    /// <summary>The sound most recently asked for, whether or not an audio device played it (tests).</summary>
+    public static string LastRequested { get; private set; } = "";
+
+    /// <summary>How many times a sound was asked for since the game started (tests).</summary>
+    public static int RequestCount(string name) => Requested.GetValueOrDefault(name);
+
     public static void Play(Node context, string name, float volumeDb = 0f)
     {
+        LastRequested = name;
+        Requested[name] = Requested.GetValueOrDefault(name) + 1;
         if (!context.IsInsideTree())
         {
             return;
@@ -82,6 +92,12 @@ public partial class Sfx : Node
         _sounds["ui"] = Build(0.05f, t => Square(t, 880f) * Env(t, 0.05f) * 0.2f);
         _sounds["victory"] = Build(1.4f, t => Arp(t, new[] { 392f, 523f, 659f, 784f, 1047f, 1319f }, 0.16f) * Env(t, 1.4f) * 0.35f);
         _sounds["defeat"] = Build(1.2f, t => Arp(t, new[] { 392f, 330f, 262f, 196f }, 0.25f) * Env(t, 1.2f) * 0.35f);
+
+        // Quests (docs/design/quests.md -> "The quest toast"): a rising two-note chime when
+        // one unlocks, a four-note arpeggio when its objective is met, a coin ring on claiming.
+        _sounds["quest_new"] = Build(0.55f, t => (Arp(t, new[] { 659f, 988f }, 0.12f) * 0.8f + Sine(t, 1976f) * 0.15f) * Env(t, 0.55f) * 0.35f);
+        _sounds["quest_done"] = Build(0.8f, t => (Arp(t, new[] { 523f, 659f, 784f, 1047f }, 0.08f) + Sine(t, 262f) * 0.2f) * Env(t, 0.8f) * 0.32f);
+        _sounds["quest_claim"] = Build(0.6f, t => (Sine(t, 1800f + 500f * Mathf.Sin(t * 70f)) * 0.5f + Noise() * 0.08f) * Env(t, 0.6f) * 0.3f);
 
         _sounds["music_menu"] = BuildMusic(new[] { 110f, 87.3f, 98f, 82.4f }, 0.5f, false);
         _sounds["music_run"] = BuildMusic(new[] { 110f, 110f, 87.3f, 98f }, 0.25f, true);

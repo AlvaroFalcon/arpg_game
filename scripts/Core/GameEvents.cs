@@ -35,6 +35,18 @@ public static class GameEvents
     /// <summary>Odran bought an item from the player.</summary>
     public const string ItemSold = "item_sold";
 
+    /// <summary>A reality's boss fell (not the introduction's). value = the reality's tier.</summary>
+    public const string BossKilled = "boss_killed";
+
+    /// <summary>A Mirror Jewel was picked up (already counted in <c>Jewels.Found</c>).</summary>
+    public const string JewelFound = "jewel_found";
+
+    /// <summary>A Mirror Shard was picked up. value = its tier.</summary>
+    public const string ShardFound = "shard_found";
+
+    /// <summary>The hideout finished loading (every visit).</summary>
+    public const string HideoutEntered = "hideout_entered";
+
     /// <summary>(eventId, value, key) — see the constants above for what each carries.</summary>
     public static event Action<string, int, string>? Raised;
 

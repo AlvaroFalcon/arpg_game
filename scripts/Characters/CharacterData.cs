@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using ArpgGame.Items;
+using ArpgGame.Quests;
 
 namespace ArpgGame.Characters;
 
@@ -111,6 +112,9 @@ public sealed class CharacterData
     public int TotalKills { get; set; }
     public int SurvivalRuns { get; set; }
     public float BestSurvivalTime { get; set; }
+
+    /// <summary>Progress of the character-scope quests (docs/design/quests.md); the account's are in <c>Profile.Quests</c>.</summary>
+    public Dictionary<string, QuestProgress> Quests { get; set; } = new();
 
     // Runtime gear (see class doc).
     public List<(EquipmentItem Item, Vector2I Cell)> Inventory { get; } = new();

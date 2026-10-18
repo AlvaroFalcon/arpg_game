@@ -98,6 +98,12 @@ public partial class Profile
             return "bad wallet";
         }
 
+        if (s.Quests is { } quests && (quests.Count > NetLimits.MaxQuests
+            || quests.Any(kv => BadId(kv.Key) || kv.Value is null || kv.Value.S is < 0 or > (int)ArpgGame.Quests.QuestStatus.Skipped || kv.Value.C is < 0 or > NetLimits.MaxQuestCount)))
+        {
+            return "bad quest data";
+        }
+
         return null;
     }
 

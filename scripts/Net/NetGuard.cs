@@ -63,6 +63,8 @@ public static class NetLimits
     public const int MaxGems = 200;
     public const int MaxPassives = 600;
     public const int MaxAscendancyNodes = 64;
+    public const int MaxQuests = 32;
+    public const int MaxQuestCount = 999;
     public const int MaxItemLevel = 200;
     public const float MaxStatValue = 1_000_000f;
 }
