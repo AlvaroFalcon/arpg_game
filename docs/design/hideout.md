@@ -170,7 +170,7 @@ Purchases go into the hideout's storage; you place them in edit mode. The floors
 the three reality tilesets are on sale too, so a corner of town can look like a
 crypt or the drowned mirror.
 
-## Odran's Skill gems tab **[PLANNED 2026-10-18]**
+## Odran's Skill gems tab **[IMPLEMENTED 2026-10-18]**
 
 Owner request (translated): *"Odran gets a new tab to buy skills: all of the game's
 skills for now, unlocked by character level. Support gems too. First approach, you
@@ -304,9 +304,9 @@ they are the biggest single jumps; conversions at 10, where the tree's elemental
 wheels start being reachable. "Favoured by" is the classes' `RiftSkills` list, so it
 also tells you which skills the class's Rift cards prefer. Nothing is class-locked.
 
-### Three new skills (proposed)
+### Three new skills
 
-Gaps in today's ten: Cold has only Frost Nova (no cold projectile for the Avatar of
+Gaps in the first ten: Cold has only Frost Nova (no cold projectile for the Avatar of
 Frost keystone and the freeze wheel), there is no Lightning attack (the Rogue's
 lightning wheel and Overcharge have no melee user), and the Rogue has the thinnest
 list (three skills, two shared). All three use existing archetypes, so each is a
@@ -363,6 +363,32 @@ progression.md's skills table when implemented.
 
 Capture: `RunCapture --only=crafting` gains `odran-gems-skills.png`,
 `odran-gems-supports.png` and `odran-gems-bought.png`.
+
+### As built (deviations and additions)
+
+- Code: `scripts/Characters/GemShop.cs` (rules, as planned: `GemOffer`, `Offers`, `Find`,
+  `Owned`, `CannotBuy`, `TryBuy`, `FavouredBy`, `FitsAny`, plus `FitNames`, `NewCount`,
+  `Locked`), `scripts/UI/GemShopView.cs` (the tab) and `MerchantPanel`
+  (`MerchantTab`, `ShowTab`, the ember dot, `Character` override for tests).
+  `CharacterData.GemShopSeenLevel` is saved (`SaveCharacter.GemShopSeenLevel`, clamped on load).
+- **Event:** `GemShop.TryBuy` raises `GameEvents.GemBought` (key = gem id, value 1 for a
+  support) for the quest system (`Core/GameEvents.cs`, see quests.md).
+- Rows are sorted by unlock level, then name (so Cleave comes before Double Strike at
+  level 1). The `NEW` tag is hidden on rows already owned. The lock is a drawn glyph (the
+  default font has no padlock). Starting skills the character already has show "Owned · Lv N".
+- Keys: Up/Down/Enter are handled in `_Input` while the tab is visible and all its
+  buttons take no focus, so Enter can't double-buy.
+- Skills panel (K): the dim line "More gems: reality bosses drop them, and Odran sells every
+  one (Skill gems tab)." is under the collection. Odran's `Blurb` reads "Sell gear, buy
+  crafting shards and skill gems."
+- The three new skills are in `UpgradeCatalog.Skills` and therefore also offered as
+  Survival Rift new-skill cards; each is in its class's `RiftSkills` (the Arcanist's Frost
+  Shards, the Rogue's Storm Strike, the Warrior's Glacial Hammer). Icons are in
+  `tools/art/sprites/endgame.ts` (not `icons.ts`, next to the other melee icons).
+  progression.md's skills table lists them.
+- Tests: `GEMSHOP-*` and `ALTAR-CONFIRM` in `EndgameSmokeTest` (`EndgameSmokeTest.GemShop.cs`),
+  plus `GEMSHOP-AFFORDABLE-AFTER-INTRO` (the introduction's boss alone drops 70 gold, a
+  level-1 gem costs at most 60) and `SKILLS-NEW-RESOURCES` per skill in `SkillsSmokeTest`.
 
 ### Open questions
 

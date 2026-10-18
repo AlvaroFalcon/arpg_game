@@ -104,15 +104,16 @@ up, the surges push back.
 
 ### The endless phase
 
-Killing the Colossus used to end the run. Now it opens a **portal home** (step on it
-to leave with a victory) and the waves come back: the danger clock keeps running, a
+Killing the Colossus used to end the run. Now it asks first (see "Cash-out offer and the
+infinite Rift" below); keeping going opens a **portal home** (step on it to be asked once
+more, then leave with a victory) and the waves come back: the danger clock keeps running, a
 boss arrives every two minutes (Herald and Colossus alternate, without clearing the
 arena), and every minute adds to the end-of-run reward. Falling in the endless phase
 still counts as a victory — the player already won; what they risk by staying is the
 time they would have spent, not the win. The autoplay bot takes the portal at once
 so balance numbers stay comparable with earlier passes.
 
-### Cash-out offer and the infinite Rift **[PLANNED 2026-10-18]**
+### Cash-out offer and the infinite Rift **[IMPLEMENTED 2026-10-18]**
 
 Owner request (translated): *"Make the Survival Rift infinite. When you reach the
 current cap (the Colossus kill) the game proposes a reward: take it and leave, or
@@ -303,7 +304,52 @@ the counter and the timer already exist and are understood.
 | `CASHOUT-AUTOPLAY` | the bot run ends at the Colossus with a victory |
 
 Capture: `RunCapture --only=update` gains `rift-cashout-offer.png`,
-`rift-cashout-leave.png`, `rift-reward-panel.png` and `coop-cashout.png`.
+`rift-cashout-leave.png`, `rift-reward-panel.png` and `coop-cashout.png`
+(plus `coop-cashout-chosen.png`).
+
+#### As built (deviations and additions)
+
+- **Code:** `UI/CashOutPanel.cs` (layer 22), `RunRewards` (`Tier`, `TierAt`, `TierStart`,
+  `NextTierAt`, `NextTierText`, `GuaranteedRare`, `BonusAscendant`, `OrbCount`,
+  `Preview`, `TierToast`; the tier X+ Ascendant Orbs are in `For`'s `Orbs` list),
+  `RunDirector` (`CashOutOffered`, `BeginEndless`, `AwaitingCashOut`, `PortalEntered`,
+  `AutoCashOut`), `RunHud` (reward panel, gauge line, tier toast), `PauseMenu`
+  (`LeaveTextNow`), `RunState.Fell`.
+- **The hold** is a 1.2 s `SceneTreeTimer` started at the kill (`CashOutHoldSeconds`),
+  not part of the director's clock; it pauses with the tree, so a level-up that opens
+  in those 1.2 s simply delays the panel. The victory banner now reads "Victory / The
+  Ember Colossus has fallen"; "The Rift deepens" (ember, `boss_warn` at -8 dB) and the
+  portal come with Keep going. `TakeExitPortal()` is now only "end the run as a
+  victory" (the panel's Take, the bot's backstop); walking into the portal solo raises
+  `PortalEntered`, and the controller opens the panel in leave mode.
+- **The numbers on the panel are the payout:** `CashOutPanel.Shown` comes from `Preview`
+  at the moment the panel opens, the tree is paused, and `For` runs in the same call
+  that ends the run (`CASHOUT-TAKE` compares gold, orbs, cards and keep).
+- **HUD reward panel** sizes itself to its five lines (about 100 px, not exactly 92)
+  and shows a placeholder in the HUD editor (`rift_reward`).
+- **Autoplay:** `RunLaunchOptions.AutoCashOut` (also `--auto-cash-out=0|1`) ends the run
+  as a victory on the kill, as the portal used to; the bot sets it for every run.
+- **Results:** the item-card text of five cards drops the "Hold Alt" line (and is 14 px,
+  cards 272 px tall); the "Every minute survived..." line is dropped at five cards. The
+  subtitle "You fell at 13:40 in the endless phase. The reward is yours." shows when
+  `RunState.Fell` and the run was a victory.
+- **Co-op:** `PartyRules.CashOutTimeout` (15 s), `RiftProtocol.RoundCashOut = 3` (the
+  `PartyRound` kind; a client's `ClientPick` carries "leave" or "stay"), `NetSession.Protocol`
+  is now 4. The host validates the answer (open round, once, only "leave" or "stay"; a
+  client row report for this round is refused). Anyone staying keeps the whole party in;
+  silence counts as leave. The party's stay toast, the one-second resume grace and the
+  pause on every machine are the level-up round's. `LastCashOutLeft`, `LastCashOutStayer`,
+  `LastCashOutPicks`, `OpenCashOutRoundForTest` and `CashOutTimeoutOverride` are hooks for
+  tests. Leave mode over a running co-op game (a client's Esc → Leave the party, the
+  host's End the run for everyone) cannot pause: the panel holds the local player still
+  (`Player.ControlsEnabled`) instead.
+- **Not built:** the "1 / 3 in the portal" count over the portal. The portal's caption in
+  co-op says "the whole party walks in to leave"; the rule is unchanged.
+- **Tests:** `CASHOUT-TIERS`, `-PREVIEW-MATCHES`, `-OFFER`, `-INPUT-GUARD`, `-TAKE`,
+  `-STAY`, `-TIER-TOAST`, `-PAUSE`, `-PORTAL`, `-LEAVE-PAYS`, `-DEATH`, `-AUTOPLAY` in
+  `RiftProgressionTest` (`RiftProgressionTest.CashOut.cs`; the run lives under a
+  pausable holder node, since a child of the always-processing test node never pauses);
+  `CASHOUT-COOP-*` in `CoopSmokeTest` (`CoopSmokeTest.CashOut.cs`).
 
 #### Open questions (owner)
 

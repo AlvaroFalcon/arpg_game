@@ -100,7 +100,7 @@ re-apply the equipment's stats mid-craft, and is the usual ARPG convention anywa
 The first pass had the orbs at the Artificer's bench; the owner asked for them under
 I, so the bench now does disenchanting and forging only.
 
-### Orb tooltips **[PLANNED 2026-10-18]**
+### Orb tooltips **[IMPLEMENTED 2026-10-18]**
 
 Owner report (translated): *"Hovering an orb in the Crafting tab shows its tooltip
 only after a delay, and it's annoying. It should appear at once, like item
@@ -158,7 +158,34 @@ still looks like a different program.
   `TooltipText`.
 
 Capture: `RunCapture --only=crafting` gains `craft-orb-tooltip.png` (the mouse
-warped over the Tempest Orb button, snapped two frames later).
+warped over the Tempest Orb button, snapped two frames later) and
+`craft-orb-tooltip-none.png` (the same over a disabled button with none in the bag).
+
+**As built (deviations from the plan):**
+
+- `UiTheme.InstantTooltip(Control, Action<HoverTooltip>)` has two plain-text overloads
+  (`string` and `Func<string>`: first line = title in gold, the rest in text colour; an
+  empty text shows nothing, which is how a Buy button without a reason stays quiet).
+  `HoverTooltip` gained `Source` (which control it is up for, so a control hiding only
+  hides its own tooltip), `Clear`, `HasContent` and `AllText`. A target with
+  `MouseFilter.Ignore` (a bare `TextureRect`, as the dust icons were) is switched to
+  `Pass`, or it would never get the enter signal.
+- The tooltip is created lazily under the nearest `CanvasLayer` ancestor (the inventory
+  is layer 12, modals 20), else under the window.
+- Moved to the helper: orb buttons, the Seal button, the dust/gold icons
+  (`CraftingBoard`), the hideout menu bar chips and directory rows (`HideoutHud`), the
+  minimap (`TownMap`), the stash's Pending tab, Arehucaz's Buy buttons (a disabled Buy
+  explains why: "Can't buy yet / Not enough gold."), the level-up reroll buttons
+  (`UpgradeCards`, one shared text). `HudEditor`'s empty `TooltipText = ""` stays.
+- Safety net: `TooltipPanel` / `TooltipLabel` are themed in `UiTheme.Build` and
+  `gui/timers/tooltip_delay_sec` is 0.15 in `project.godot`.
+- **Disabled buttons:** a disabled `BaseButton` keeps `MouseFilter.Stop`, so enter and
+  exit still arrive; `TOOLTIP-ORB-INSTANT` asserts that and drives the signal path.
+  A headless run cannot prove it with a real pointer (the 64 px headless window never
+  routes `InputEventMouseMotion` to the GUI, enabled buttons included), so
+  `craft-orb-tooltip-none.png` is the proof with a real pointer.
+- Tests live in `EndgameSmokeTest` (`EndgameSmokeTest.Tooltips.cs`), run inside the
+  hideout checks so the whole town, Odran, Arehucaz, the stash and the bench are built.
 
 ### Seals **[IMPLEMENTED 2026-10-13]**
 

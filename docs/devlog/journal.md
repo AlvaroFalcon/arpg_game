@@ -571,3 +571,25 @@ Found on the way: the altar's "Become a…" is permanent and takes one click wit
 ![Arehucaz](screenshots/review-arehucaz.png)
 ![Rift endless phase](screenshots/review-rift-endless.png)
 ![Rift results at 16:12](screenshots/review-rift-results.png)
+
+## 2026-10-18 — Built: instant orb tooltips, Odran's Skill gems, the Rift's cash-out
+
+The three plans from the UX review are in the game (the quests are not: they come next, and the hooks are ready).
+
+- **Orb tooltips.** `UiTheme.InstantTooltip` shows a themed tooltip on the very frame the mouse enters a control, one per canvas layer; the orbs, the Seal, the dust icons, the hideout HUD, the minimap, the stash tab, Arehucaz's Buy buttons and the reroll buttons use it, and the built-in tooltip is themed (and 0.15 s) as a safety net. Disabled buttons keep their mouse filter, so an orb you have none of explains where to get it. A headless window has no pointer, so the real-pointer proof is the capture `craft-orb-tooltip-none.png`.
+- **Odran's Skill gems.** A second tab on his panel sells all 13 skills and 20 supports by character level (50 gold × level, 20 + 40 × level), with kind toggle, filter chips, "Only what I can buy", locked rows greyed, NEW tags and an ember dot on the tab. A bought gem joins the collection (K) at level 1; skills once, supports up to 6. Three new skills fill the gaps: Frost Shards, Storm Strike, Glacial Hammer (resources, catalog, class lists, icons from the art pipeline). The introduction's boss drops 70 gold, enough for any level-1 gem.
+- **The altar** asks twice now ("Become a Sage: this is permanent. Click again."), the blocker from the review.
+- **The Rift's cash-out.** The Colossus kill holds the director for 1.2 s and opens a panel: [1] take the reward now (gold, orbs, cards, item level, rarity, exactly what the results will pay) or [2] keep going (the endless phase, portal and "The Rift deepens"). The portal and Esc → Leave with reward open the same panel later ("Not yet" instead of Keep going). Reward tiers I to IV are today's steps; V and up guarantee Rare cards and then Ascendant Orbs. A reward panel on the HUD shows the tier and the way to the next, with a toast and a flash on a new tier. In co-op the offer is a 15 s party round: anyone staying keeps the party in, silence counts as leave (protocol 4). The bot takes the reward at the kill, so balance numbers stay comparable. Five item cards on the results screen are no longer clipped.
+- **Hooks for the quests:** `GameEvents.Raised(eventId, value, key)` fires `gem_bought`, `disenchanted`, `forged`, `shard_bought`, `ascendancy_chosen`, `jewel_socketed` and `item_sold` (quests.md lists where).
+- **Tests:** `TOOLTIP-*`, `GEMSHOP-*`, `ALTAR-CONFIRM`, `SKILLS-NEW-RESOURCES`, `CASHOUT-*` (solo, in the real Rift scene) and `CASHOUT-COOP-*` (two real clients). Lesson: a scene added under a test node that never pauses never pauses either; the Rift checks use a pausable holder.
+
+![Orb tooltip](screenshots/craft-orb-tooltip.png)
+![A disabled orb](screenshots/craft-orb-tooltip-none.png)
+![Odran's Skill gems](screenshots/odran-gems-skills.png)
+![Supports](screenshots/odran-gems-supports.png)
+![After buying](screenshots/odran-gems-bought.png)
+![The Colossus offer](screenshots/rift-cashout-offer.png)
+![The reward panel](screenshots/rift-reward-panel.png)
+![Leaving later](screenshots/rift-cashout-leave.png)
+![Results, five cards](screenshots/rift-results.png)
+![Co-op vote](screenshots/coop-cashout.png)

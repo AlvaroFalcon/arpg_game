@@ -363,7 +363,7 @@ Open questions:
 - Showing the host's own failed-join attempts more prominently than the last two
   security lines.
 
-## UX review 2026-10-18: plan **[PLANNED]**
+## UX review 2026-10-18: plan **[IMPLEMENTED 2026-10-18 except the quests]**
 
 A review of four owner requests from captures of the current build
 (`docs/devlog/screenshots/review-*.png`, taken with `RunCapture --only=crafting`,
@@ -382,14 +382,21 @@ index and the findings by severity.
 | Polish | Inventory, Crafting tab | "Orb tooltips take ages to show." | Instant themed tooltips everywhere (crafting.md -> "Orb tooltips") |
 | Polish | Rift results | Item card text is clipped at five cards. | Drop the "Hold Alt" line in results cards (run.md -> "Reward tiers") |
 
+Status (2026-10-18): the altar's two-click confirm, Odran's Skill gems tab, the
+cash-out offer with the reward panel and tiers, the results-card fix and the instant
+tooltips are built (the sections they point to say how, and where they deviated). The
+quest rows (`ascend`, `mirror_jewel`, `arehucaz_shards`, `forge_*`) and the J log are
+still planned: quests.md. `GameEvents` (`scripts/Core/GameEvents.cs`) is the hook the
+quest system listens to.
+
 New shared pieces for `UiTheme` / the UI kit, so no screen invents its own:
 
-- `UiTheme.InstantTooltip` (one tooltip look and timing everywhere).
+- `UiTheme.InstantTooltip` (one tooltip look and timing everywhere) **[built]**.
 - `ModalPanel.SetQuestStrip` (a quest hint band under any panel's title).
 - `QuestToast` (layer 15) and the "!" / "?" marker glyph (`QuestMarker2D` in the
   world, the same drawing in the HUD and maps).
 - `CashOutPanel` reuses the level-up cards' rules: whole-card buttons, number keys,
-  a 0.45 s input guard, the cards own the keyboard.
+  a 0.45 s input guard, the cards own the keyboard **[built]**.
 
 Menu bar: a **J · Quests** chip between P and H, with an ember badge for new and
 ready quests.

@@ -408,7 +408,13 @@ waiting without opening anything. It also shows the shape of the system: rows of
   objective happens inside its station's panel.
 - The prompt's own `PromptText` (tests) includes the quest suffix.
 
-## The altar's confirmation (Q6)
+## The altar's confirmation (Q6) **[IMPLEMENTED 2026-10-18]**
+
+Built ahead of the quests: `AscendancyPanel.Choose(id)` returns whether it chose; the
+armed button reads "Become a {name}: this is permanent. Click again." in ember for
+`ConfirmSeconds` (3 s), and `ascendancy_chosen` is raised through `GameEvents` on the
+confirmed click (`GameEvents.AscendancyChosen`, key = the id). `ALTAR-CONFIRM` is in
+`EndgameSmokeTest`.
 
 `AscendancyPanel.Choose` gets a two-step confirm, like character deletion: the first
 click turns the button into "Become a {name}: this is permanent. Click again." in
@@ -518,6 +524,17 @@ public sealed class QuestBook   // pure rules over two progress maps
   scan of six entries.
 
 ### Where the events come from
+
+**Hooks already in the code (2026-10-18):** `Core/GameEvents.cs` is a static bus,
+`GameEvents.Raised(string eventId, int value, string key)`, with the ids as constants.
+Raised today: `gem_bought` (`GameEvents.GemBought`; `GemShop.TryBuy`; key = gem id, value 1
+for a support), `disenchanted` (`ArtificerPanel.Disenchant`; value = dust, key = rarity),
+`forged` (`ArtificerPanel.Forge`; key = rarity of the result), `shard_bought`
+(`ShardVendorPanel.Buy`; value = tier), `ascendancy_chosen` (`AscendancyPanel.Choose`;
+key = id), `jewel_socketed` (`MirrorPanel.ClickJewel`; key = node id), `item_sold`
+(`MerchantPanel.Sell`; value = gold). `boss_killed`, `jewel_found`, `shard_found` and
+`hideout_entered` below are not raised yet. The `Quests` facade can subscribe to the bus
+(in `_EnterTree`, unsubscribe in `_ExitTree`) instead of adding calls at each site.
 
 | Event | Raised in | When |
 |---|---|---|
