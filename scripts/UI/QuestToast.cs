@@ -202,8 +202,9 @@ public partial class QuestToast : CanvasLayer
         title.ClipText = true;
         title.CustomMinimumSize = new Vector2(CardWidth - 90f, 0f);
         text.AddChild(title);
+        // A long reward line wraps rather than being cut: the card grows by a line.
         _lineLabel = UiTheme.Label(entry.Line, 13, UiTheme.TextDim);
-        _lineLabel.ClipText = true;
+        _lineLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _lineLabel.CustomMinimumSize = new Vector2(CardWidth - 90f, 0f);
         text.AddChild(_lineLabel);
         AddChild(_card);

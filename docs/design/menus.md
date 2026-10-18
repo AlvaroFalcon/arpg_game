@@ -73,7 +73,7 @@ game, joins the panel stack, Escape or the button closes):
 | E | interact: Mirror, Altar, Stash, the exit portal after a boss |
 | F | pick up the nearest item (hold to keep picking; walks to it if out of reach) |
 | I / C / K / P | inventory, character sheet, skills, passive tree |
-| J | quest log (planned 2026-10-18, docs/design/quests.md) |
+| J | quest log, in the hideout and in realities (not in the Survival Rift; docs/design/quests.md) |
 | Esc | close the top panel, else pause |
 
 In the Survival Rift skills auto-cast and auto-aim (no mana). The boss's exit
@@ -363,7 +363,7 @@ Open questions:
 - Showing the host's own failed-join attempts more prominently than the last two
   security lines.
 
-## UX review 2026-10-18: plan **[IMPLEMENTED 2026-10-18 except the quests]**
+## UX review 2026-10-18: plan **[IMPLEMENTED 2026-10-18]**
 
 A review of four owner requests from captures of the current build
 (`docs/devlog/screenshots/review-*.png`, taken with `RunCapture --only=crafting`,
@@ -385,21 +385,20 @@ index and the findings by severity.
 Status (2026-10-18): the altar's two-click confirm, Odran's Skill gems tab, the
 cash-out offer with the reward panel and tiers, the results-card fix and the instant
 tooltips are built (the sections they point to say how, and where they deviated). The
-quest rows (`ascend`, `mirror_jewel`, `arehucaz_shards`, `forge_*`) and the J log are
-still planned: quests.md. `GameEvents` (`scripts/Core/GameEvents.cs`) is the hook the
-quest system listens to.
+six quests and the J log are built too (quests.md -> "Implementation"): `GameEvents`
+(`scripts/Core/GameEvents.cs`) is the hook the quest system listens to.
 
 New shared pieces for `UiTheme` / the UI kit, so no screen invents its own:
 
 - `UiTheme.InstantTooltip` (one tooltip look and timing everywhere) **[built]**.
-- `ModalPanel.SetQuestStrip` (a quest hint band under any panel's title).
+- `ModalPanel.SetQuestStrip` (a quest hint band under any panel's title) **[built]**.
 - `QuestToast` (layer 15) and the "!" / "?" marker glyph (`QuestMarker2D` in the
-  world, the same drawing in the HUD and maps).
+  world, the same drawing, `QuestGlyphs.DrawMarker`, in the HUD and maps) **[built]**.
 - `CashOutPanel` reuses the level-up cards' rules: whole-card buttons, number keys,
   a 0.45 s input guard, the cards own the keyboard **[built]**.
 
 Menu bar: a **J · Quests** chip between P and H, with an ember badge for new and
-ready quests.
+ready quests **[built]**.
 
 ## Open questions
 
@@ -528,10 +527,12 @@ HUD (dark glass panels, gold accents, the AION-style cluster):
   from ? / F1 or the menu bar afterwards. A card per station (picture, what it's
   for, which quarter it's in now, a "Show me" button that walks you there) and the
   controls that matter in town.
-- A "Hideout" banner fades in on arrival.
+- A "Hideout" banner fades in on arrival (with "1 new quest · J opens your quests" when
+  quests wait).
+- **Quest tracker** (under the plate) and the J chip: quests.md.
 
 All new panels are movable in Edit HUD (`character`, `hideout_menu`, `town`,
-`vitals`, `skills`). The whole HUD hides while the town editor is open.
+`vitals`, `skills`, `quests`). The whole HUD hides while the town editor is open.
 
 ## Feedback **[IMPLEMENTED 2026-10-13]**
 

@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "townmap" ? TownMapScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : _only == "settings" ? SettingsScript() : _only == "coop" ? CoopScript() : _only == "menus" ? MenusScript() : _only == "rift" ? RiftScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "townmap" ? TownMapScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : _only == "settings" ? SettingsScript() : _only == "coop" ? CoopScript() : _only == "menus" ? MenusScript() : _only == "rift" ? RiftScript() : _only == "quests" ? QuestsScript() : Script();
     }
 
     /// <summary>`--only=settings`: the settings panel's three tabs (docs/design/menus.md -> "Settings").</summary>

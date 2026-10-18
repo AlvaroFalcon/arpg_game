@@ -80,7 +80,8 @@ public static class QuestGlyphs
     private static readonly Regex Emphasis = new(@"\*\*(.+?)\*\*", RegexOptions.Compiled);
 
     /// <summary>The copy's <c>**emphasis**</c> as gold BBCode (the theme font has no bold face).</summary>
-    public static string Rich(string text) => Emphasis.Replace(text, "[color=#e8b84a]$1[/color]");
+    public static string Rich(string text) =>
+        Emphasis.Replace(text, "[color=#e8b84a]$1[/color]").Replace("\n\n", "\n[font_size=7] [/font_size]\n");
 
     /// <summary>The same text without the markers.</summary>
     public static string Plain(string text) => Emphasis.Replace(text, "$1");

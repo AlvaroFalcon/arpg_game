@@ -785,6 +785,16 @@ public partial class CoopTestHost : CoopTestDriver
         Check("CHARACTER-VALIDATION", okReason is null && vName == profile.Active.Name && vLevel == profile.Active.Level && lowReason is not null && nameReason is not null && junkReason is not null,
             $"valid → {okReason ?? "ok"}; level 0 → {lowReason}; 500-char name → {nameReason}; junk → {junkReason}; character JSON {valid.Length} chars");
 
+        // A character with quest progress still joins: the payload carries it and the host's check lets it through.
+        profile.Active.Quests["odran_wares"] = new Quests.QuestProgress { Status = Quests.QuestStatus.Ready, Count = 1 };
+        profile.Active.Quests["ascend"] = new Quests.QuestProgress { Status = Quests.QuestStatus.Active };
+        string withQuests = Profile.SerializeCharacter(profile.Active);
+        string? questReason = Profile.ValidateCharacterJson(withQuests, out _, out _);
+        Characters.CharacterData? rejoined = Profile.DeserializeCharacter(withQuests);
+        profile.Active.Quests.Clear();
+        Check("CHARACTER-QUESTS-JOIN", questReason is null && withQuests.Contains("\"Quests\"") && rejoined?.Quests["odran_wares"].Status == Quests.QuestStatus.Ready,
+            $"a character with two quests: payload carries them={withQuests.Contains("\"Quests\"")}, the host's check → {questReason ?? "ok"}, read back={rejoined?.Quests.Count} entries");
+
         // UPnP with a fake router: opens, renews, closes; CG-NAT refused; close mid-discovery leaves nothing.
         var good = new FakeGateway();
         var mapper = new PortMapper(() => good);

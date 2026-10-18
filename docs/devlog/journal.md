@@ -593,3 +593,31 @@ The three plans from the UX review are in the game (the quests are not: they com
 ![Leaving later](screenshots/rift-cashout-leave.png)
 ![Results, five cards](screenshots/rift-results.png)
 ![Co-op vote](screenshots/coop-cashout.png)
+
+## 2026-10-18 — Built: quests and the quest log (J)
+
+The six tutorial quests from `docs/design/quests.md` are in the game. Each teaches one station the moment it opens up: Odran's wares (after the introduction), Breaking it down and A modifier of your choosing at the Artificer's Forge (the second a visit later, the third at once), The shard dealer (a tier-2 clear), A jewel for the Mirror (the first jewel) and Choose an ascendancy (the tier-5 boss: 1,000 gold, 2 Crown, 2 Tempest, 1 Tuning).
+
+- **How it reads in play.** A quest unlocks by itself, with a toast and a chime (`quest_new`). Its station gets a gold "!" in the world, on its directory row (the arrow turns gold), on the minimap and the big map, and on the E prompt; the tracker under the character plate lists it and the J chip carries a badge. E at the station opens the explanation first and the panel second (its primary button opens the right tab: Skill gems, Disenchant, Forge, Jewels), with a one-line quest strip under the panel's title. Doing the thing turns the strip green (`quest_done`); closing the panel opens the turn-in, and Claim pays through `Player.Wallet` and saves. J opens the log: Ready, Active, Completed, the objective as a drawn checkbox, the rewards as icons and the town map with the turn-in ringed, plus "Walk there".
+- **Rules.** `QuestBook` is plain C# over two progress maps (character and account); `QuestService` feeds it the `GameEvents` the Profile autoload hears and announces what changed (save, sound, `Profile.QuestChanged`). Veterans get the quest skipped (no reward) when the save shows they already did the thing. Account quests leave a Done mark on the character that finished them, so another character never sees them listed. Saves are additive (version stays 2); the join payload carries quests and the host caps them (32 entries, 64-character ids, status 0-5, count 0-999).
+- **Events added to the bus:** `boss_killed` (tier), `jewel_found`, `shard_found`, `hideout_entered`. The old "Ascendancy trial complete!" toast is gone; the quest toast replaces it.
+- **Things that bit.** A class named `Quests` would have hidden the `ArpgGame.Quests` namespace, so the facade is `QuestService`. The first-visit guide opened a frame after the unlock toast and covered it for its whole six seconds: the arrival event is now queued behind the guide. A "complete" card queued while a card was showing outlived the panel it was about: cards are dropped when stale, and when the objective was met inside the station's own panel. The big map's "— New quest" suffix ran into the neighbouring badge: it is a second line above the name now.
+- **Tests:** `QuestSmokeTest` (24 checks: the rules, saves, the co-op caps, then the real hideout, altar, forge, log, toast, a tier-5 boss kill, the introduction's gold and the Rift scene), `CHARACTER-QUEST-CAPS` in SecuritySmokeTest and `CHARACTER-QUESTS-JOIN` in CoopSmokeTest. Capture: `RunCapture --only=quests`.
+
+![Toast after the tier-5 boss](screenshots/quests-toast-reality.png)
+![Arrival toast and markers](screenshots/quests-toast-hideout.png)
+![Every kind of marker](screenshots/quests-town-overview.png)
+![The altar's marker](screenshots/quests-marker-altar.png)
+![The E prompt](screenshots/quests-prompt-altar.png)
+![The big map](screenshots/quests-bigmap.png)
+![Odran's explanation](screenshots/quests-dialog-odran.png)
+![The altar's explanation](screenshots/quests-dialog-altar.png)
+![The altar's quest strip](screenshots/quests-altar-strip.png)
+![Quest complete](screenshots/quests-altar-ready.png)
+![The turn-in](screenshots/quests-turnin.png)
+![Reward claimed](screenshots/quests-claimed.png)
+![The forge's strip](screenshots/quests-forge-ready.png)
+![The quest log](screenshots/quests-log.png)
+![A ready quest in the log](screenshots/quests-log-ready.png)
+![The log in a reality](screenshots/quests-log-reality.png)
+![An empty log](screenshots/quests-log-empty.png)

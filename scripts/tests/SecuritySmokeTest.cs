@@ -344,6 +344,31 @@ public partial class SecurityTestHost : CoopTestDriver
                 && Profile.ValidateCharacterJson(character.ToJsonString(), out _, out _) is null,
             "NaN literal, unknown stat id in gear and 200-deep nesting refused; the real character passes");
 
+        // Quests ride along in the join payload (docs/design/quests.md -> "Persistence and migration"): capped like everything else.
+        JsonObject Quest(int status, int count) => new() { ["S"] = status, ["C"] = count, ["T"] = 0 };
+        var crowd = JsonNode.Parse(valid)!;
+        var crowded = new JsonObject();
+        for (int i = 0; i < 1000; i++)
+        {
+            crowded[$"quest_{i}"] = Quest(1, 0);
+        }
+
+        crowd["Quests"] = crowded;
+        var longQuestId = JsonNode.Parse(valid)!;
+        longQuestId["Quests"] = new JsonObject { [new string('q', 65)] = Quest(1, 0) };
+        var wildStatus = JsonNode.Parse(valid)!;
+        wildStatus["Quests"] = new JsonObject { ["ascend"] = Quest(99, 0) };
+        var wildCount = JsonNode.Parse(valid)!;
+        wildCount["Quests"] = new JsonObject { ["ascend"] = Quest(1, 1_000_000) };
+        var honest = JsonNode.Parse(valid)!;
+        honest["Quests"] = new JsonObject { ["ascend"] = Quest(2, 0), ["odran_wares"] = Quest(4, 1) };
+        Check("CHARACTER-QUEST-CAPS", Profile.ValidateCharacterJson(crowd.ToJsonString(), out _, out _) == "bad quest data"
+                && Profile.ValidateCharacterJson(longQuestId.ToJsonString(), out _, out _) == "bad quest data"
+                && Profile.ValidateCharacterJson(wildStatus.ToJsonString(), out _, out _) == "bad quest data"
+                && Profile.ValidateCharacterJson(wildCount.ToJsonString(), out _, out _) == "bad quest data"
+                && Profile.ValidateCharacterJson(honest.ToJsonString(), out _, out _) is null,
+            "1,000 quest entries, a 65-character id, status 99 and a count of a million are refused; two honest entries pass");
+
         // The save: a NaN anywhere used to truncate profile.json to nothing.
         var scratch = new Profile { Persist = true, FilePath = "user://test_results/security_profile_atomic.json" };
         scratch.CreateTestCharacter("Atomic", "rogue");

@@ -1,7 +1,9 @@
 # Quests and the quest log
 
-**Status: [PLANNED 2026-10-18]**, a plan for the implementer, not built yet. From a
-UX review of the hideout (captures `review-*.png` in `docs/devlog/screenshots/`).
+**Status: [IMPLEMENTED 2026-10-18]**. Planned from a UX review of the hideout (captures
+`review-*.png` in `docs/devlog/screenshots/`), built the same day; "Implementation" near the end
+lists what was built where and every place it departs from the plan (small). Captures of the
+result: `quests-*.png` (`RunCapture --only=quests`).
 
 Owner brief (translated): *"Some mechanics have no tutorial and lose the player.
 When they unlock, the player gets a quest that teaches them."* Six quests to start
@@ -509,9 +511,9 @@ public sealed class QuestBook   // pure rules over two progress maps
 }
 ```
 
-**The Godot facade** `Quests` (static):
+**The Godot facade** `QuestService` (static; planned as `Quests`, see Implementation):
 
-- `Quests.Evaluate(Node ctx)` and `Quests.Raise(Node ctx, string eventId, int value = 0, string key = "")`
+- `QuestService.Evaluate(Node ctx)` and `QuestService.Raise(Node ctx, string eventId, int value = 0, string key = "")`
   build the context from `Profile.Get(ctx)` (no-op without the autoload, so tests
   that run scenes directly don't break), call the book, save the profile when
   anything changed, play the sound and emit the change.
@@ -533,8 +535,9 @@ for a support), `disenchanted` (`ArtificerPanel.Disenchant`; value = dust, key =
 (`ShardVendorPanel.Buy`; value = tier), `ascendancy_chosen` (`AscendancyPanel.Choose`;
 key = id), `jewel_socketed` (`MirrorPanel.ClickJewel`; key = node id), `item_sold`
 (`MerchantPanel.Sell`; value = gold). `boss_killed`, `jewel_found`, `shard_found` and
-`hideout_entered` below are not raised yet. The `Quests` facade can subscribe to the bus
-(in `_EnterTree`, unsubscribe in `_ExitTree`) instead of adding calls at each site.
+`hideout_entered` below are raised too since the quests were built. The facade (`QuestService`)
+listens to the bus through the `Profile` autoload (`_EnterTree` / `_ExitTree`) instead of
+having calls at each site.
 
 | Event | Raised in | When |
 |---|---|---|
@@ -630,6 +633,81 @@ navigation and may hang at shutdown. Checks:
 hideout with markers (world, row, minimap), the big map with a marker, the E prompt
 with "New quest", the dialogue, the altar with the strip, the turn-in dialogue, the
 log (active and empty), the tracker.
+
+## Implementation **[2026-10-18]**
+
+Built as planned: the six quests, the rules, the markers, the dialogue, the toast, the tracker,
+the log, the migration and the co-op caps. Where things live:
+
+| What | Where |
+|---|---|
+| Model, catalog (all copy), rules | `scripts/Quests/QuestModel.cs`, `QuestCatalog.cs`, `QuestBook.cs` |
+| Godot facade and the hideout's reward sink | `scripts/Quests/QuestService.cs` (`QuestService`, `PlayerRewardSink`) |
+| Saves | `CharacterData.Quests`, `Profile.Quests`, `scripts/Core/Profile.Quests.cs`; caps in `Profile.Validate.cs` (`NetLimits.MaxQuests` 32, `MaxQuestCount` 999) |
+| Events | `GameEvents` (new: `boss_killed`, `jewel_found`, `shard_found`, `hideout_entered`); `Profile` listens in `_EnterTree` and feeds `QuestService.Raise` |
+| World marker, drawing helpers | `UI/QuestMarker2D.cs`, `UI/QuestGlyphs.cs` (marker disc, check mark, checkbox, section arrow, `**gold**` markup) |
+| Dialogue, toast, tracker, log | `UI/QuestDialog.cs`, `QuestToast.cs`, `QuestTracker.cs`, `QuestLogPanel.cs`, `QuestRewardRow.cs` |
+| Station panels | `ModalPanel.StationUid`, `SetQuestStrip`, `RefreshQuestStrip` (each station panel overrides `StationUid`) |
+| Hideout glue | `Hideout.Interact`, `TryAutoTurnIn`, `OpenStation`, the arrival banner; `HideoutHud` (prompt, directory, J chip, tracker); `TownMap` (markers, `Highlight` mode) |
+| Sounds | `Sfx` (`quest_new`, `quest_done`, `quest_claim`; `Sfx.LastRequested` / `RequestCount` for tests) |
+| Input | `toggle_quests` (physical J) in `project.godot`, polled by `CharacterPanels` (the Rift has none) |
+
+How it behaves, in short:
+
+- Every status change goes through `QuestService.Track`: snapshot the six statuses, run the book,
+  and for what changed save the profile, request the sound and emit `Profile.QuestChanged`.
+  Nothing polls the book except the markers (a six-entry scan).
+- E at a station: Ready opens the turn-in, New the explanation (its primary marks the quest
+  Active and opens the station on `OpenTab`), anything else the panel. A station panel that
+  closes with its quest Ready opens the turn-in one frame later (skipped if another panel opened
+  meanwhile, or the player is leaving).
+- Claiming pays through `PlayerRewardSink` into `Player.Wallet` (orbs, dust, gold), the character
+  (shards, gems) and the account (jewels, capped at 69; a full tree pays 1,000 gold instead),
+  then `Profile.CaptureFrom(Player)`.
+
+### Deviations from the plan
+
+- **The facade is `QuestService`, not `Quests`**: a class with the namespace's name would hide the
+  `ArpgGame.Quests` namespace from every file in `ArpgGame.*`.
+- **Account quests leave a Done mark on the character that finished them** (`QuestBook.TurnIn`),
+  and `Log()` lists an account quest that is Done only for that character. That is how "completed
+  on one character never appears on another" (criterion 7) holds while the status itself stays
+  shared (a second character is never offered it again).
+- **`QuestDef.OpenText`** (the dialogue's primary button text) was added to the model; `Toast` is
+  the place line and the card appends " · J for details" when it fits in 36 characters.
+- **The copy's `**word**` is gold, not bold** (the theme font has no bold face): `QuestGlyphs.Rich`.
+  Paragraph breaks are short gaps. The dialogue's text area is 270 px, so all six explanations fit
+  at 720p without scrolling (the plan allowed scrolling past 220).
+- **Log detail**: the explanation scrolls (about 130 px are left beside the 190 px map). Done
+  quests show a "Turned in" line with the turn-in text instead of the map.
+- **Big map**: the "New quest" / "Turn in" tag is a small gold second line above the station's
+  name instead of a suffix on the same line (the long suffix ran into neighbouring badges). The
+  hover header adds "· Quest: {title}" and replaces the static hint while it shows.
+- **Realities have no character panel**, so the toast's card sits 158 px under the origin of the
+  loot toasts ("Notifications" in Edit HUD), under their six lines; it follows them if moved.
+- **A card tells the truth**: a Ready card is dropped when its station's panel is the topmost one
+  (decided when it is queued, not only when it would show), and any card whose quest has since
+  moved on (read, claimed) is dropped when its turn comes.
+- **First visit**: `hideout_entered` is raised after the town guide opens (both deferred, in that
+  order), so the unlock toast waits for the guide instead of expiring behind it.
+- **The dialogue** hides `ModalPanel`'s own header (`ShowHeader`); Enter is `ui_accept` (Enter and
+  Space), its buttons take no focus so a key never presses one twice.
+- **Veterans**: `AlreadyDone` is checked on every evaluation while a quest has no record, not
+  once; with no record in between it is the same thing.
+- **Tests**: `ALTAR-CONFIRM` stayed in `EndgameSmokeTest` where it was built, and
+  `QUEST-ODRAN-AFFORDABLE` plays the real introduction (its boss's gold against the cheapest gem).
+  Added: `QUEST-ARRIVAL`, `QUEST-ASCEND-READY`, `QUEST-FORGE-FLOW`, `QUEST-BOSS-TOAST`,
+  `QUEST-TURNIN-NEEDS-READY`, `QUEST-EXPLAIN-TEXT`, `CHARACTER-QUEST-CAPS` (SecuritySmokeTest) and
+  `CHARACTER-QUESTS-JOIN` (CoopSmokeTest). The suite runs the real hideout, a real tier-5 boss kill
+  and the Rift scene against an emptied profile and puts the player's account back after.
+
+### Known limits
+
+- Rewards are the plan's first guesses (open question 1).
+- `QuestToast` has no card for a quest that changes while a *non-station* modal is open until that
+  modal closes (by design); several unlocks at once queue one card per quest, six seconds each.
+- The HUD (tracker, directory, chips) only updates while the game runs, so a quest that changes
+  while a station panel is open shows on them the moment it closes.
 
 ## Alternatives considered
 

@@ -23,7 +23,8 @@ public partial class QuestDialog : ModalPanel
 
     protected override bool ShowHeader => false;
 
-    protected override Vector2 FrameSize => new(640f, 420f);
+    // 640 wide; the height is whatever the text needs (a turn-in is short, an explanation fills the screen).
+    protected override Vector2 FrameSize => new(640f, 0f);
 
     /// <summary>The quest shown (null when closed).</summary>
     public QuestDef? Quest { get; private set; }
@@ -104,7 +105,7 @@ public partial class QuestDialog : ModalPanel
 
         _content.AddChild(new HSeparator());
 
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(600f, TurnInMode ? 70f : 200f), SizeFlagsVertical = Control.SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(600f, TurnInMode ? 70f : 270f), SizeFlagsVertical = Control.SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _content.AddChild(scroll);
         string text = TurnInMode ? q.TurnIn : q.Explain(_context ?? new QuestContext { Character = Characters.CharacterData.Create("", "warrior") });
         var rich = new RichTextLabel

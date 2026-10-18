@@ -102,8 +102,12 @@ public partial class QuestLogPanel : ModalPanel
         {
             Label empty = UiTheme.Label(EmptyText, 16, UiTheme.TextDim);
             empty.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            empty.CustomMinimumSize = new Vector2(300f, 0f);
-            _list.AddChild(empty);
+            empty.CustomMinimumSize = new Vector2(276f, 0f);
+            var pad = new MarginContainer();
+            pad.AddThemeConstantOverride("margin_left", 12);
+            pad.AddThemeConstantOverride("margin_top", 12);
+            pad.AddChild(empty);
+            _list.AddChild(pad);
             _detail.AddChild(UiTheme.Label("Nothing to show", 20, UiTheme.TextDim));
             return;
         }

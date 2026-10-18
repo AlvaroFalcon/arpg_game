@@ -125,16 +125,18 @@ public partial class Hideout : Node2D
         _hud = new HideoutHud { Hideout = this, Name = "HideoutHud" };
         AddChild(_hud);
 
-        // Every visit: the quests that wait for "the next visit" unlock, and the toast and the
-        // tracker (both listening by now) announce what is new.
-        GameEvents.Raise(GameEvents.HideoutEntered);
         if (!Data.GuideSeen && profile is not null)
         {
-            // First visit on this account: the guide explains the town.
+            // First visit on this account: the guide explains the town. The quests open behind it
+            // (queued after it, so their toast waits for the guide to close).
             CallDeferred(nameof(OpenGuide));
+            CallDeferred(nameof(EnterEvent));
         }
         else
         {
+            // Every visit: the quests that wait for "the next visit" unlock, and the toast and the
+            // tracker (both listening by now) announce what is new.
+            EnterEvent();
             int pending = profile?.Overflow.Count ?? 0;
             string line = pending > 0
                 ? $"{pending} reward{(pending == 1 ? " is" : "s are")} waiting in the stash — the Pending tab"
@@ -144,6 +146,8 @@ public partial class Hideout : Node2D
     }
 
     public HideoutHud Hud => _hud;
+
+    private void EnterEvent() => GameEvents.Raise(GameEvents.HideoutEntered);
 
     /// <summary>The quest dialogue (tests, captures).</summary>
     public QuestDialog QuestDialog => _questDialog;

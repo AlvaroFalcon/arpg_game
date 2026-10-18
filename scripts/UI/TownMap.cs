@@ -118,17 +118,6 @@ public partial class TownMap : Control
         DrawString(font, at, text, HorizontalAlignment.Left, -1, size, color);
     }
 
-    /// <summary>Centred text with a drop shadow and a gold tail ("Odran — New quest").</summary>
-    private void LabelWithTail(Font font, string text, string tail, Vector2 centre, int size, Color color)
-    {
-        float w1 = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
-        float w2 = font.GetStringSize(tail, HorizontalAlignment.Left, -1, size).X;
-        Vector2 at = centre - new Vector2((w1 + w2) / 2f, 0f);
-        DrawString(font, at + Vector2.One, text + tail, HorizontalAlignment.Left, -1, size, Colors.Black with { A = 0.85f });
-        DrawString(font, at, text, HorizontalAlignment.Left, -1, size, color);
-        DrawString(font, at + new Vector2(w1, 0f), tail, HorizontalAlignment.Left, -1, size, UiTheme.Gold);
-    }
-
     /// <summary>Where a world point is drawn, in this control's coordinates (captures, tests).</summary>
     public Vector2 MapPointOf(Vector2 world) => ToMap(world);
 
@@ -242,10 +231,12 @@ public partial class TownMap : Control
             // The name goes above the badge, or below when it would run into a
             // name already placed (Ysolde and Odran stand side by side).
             Color text = hover || target ? Colors.White : UiTheme.Text;
-            string tail = quest switch { QuestMarker.New => " — New quest", QuestMarker.Ready => " — Turn in", _ => "" };
-            float width = font.GetStringSize(def.Name + tail, HorizontalAlignment.Left, -1, 15).X;
+            // A quest adds a small gold line to the name (above it, or below when the name goes below).
+            string tail = quest switch { QuestMarker.New => "New quest", QuestMarker.Ready => "Turn in", _ => "" };
+            float extra = tail.Length > 0 ? 14f : 0f;
+            float width = Mathf.Max(font.GetStringSize(def.Name, HorizontalAlignment.Left, -1, 15).X, tail.Length > 0 ? 60f : 0f);
             Vector2 above = at + new Vector2(0f, -r - 8f);
-            var rect = new Rect2(above.X - width / 2f - 12f, above.Y - 15f, width + 24f, 19f);
+            var rect = new Rect2(above.X - width / 2f - 12f, above.Y - 15f - extra, width + 24f, 19f + extra);
             bool below = placed.Exists(o => o.Intersects(rect));
             if (below)
             {
@@ -253,13 +244,11 @@ public partial class TownMap : Control
             }
 
             placed.Add(rect);
+            Vector2 nameAt = below ? at + new Vector2(0f, r + 19f) : above;
+            Label(font, def.Name, nameAt, 15, text);
             if (tail.Length > 0)
             {
-                LabelWithTail(font, def.Name, tail, below ? at + new Vector2(0f, r + 19f) : above, 15, text);
-            }
-            else
-            {
-                Label(font, def.Name, below ? at + new Vector2(0f, r + 19f) : above, 15, text);
+                Label(font, tail, nameAt + new Vector2(0f, below ? 14f : -15f), 12, UiTheme.Gold);
             }
 
             if (quest != QuestMarker.None)
@@ -296,8 +285,11 @@ public partial class TownMap : Control
         if (Big)
         {
             DrawString(font, new Vector2(_area.Position.X, _area.Position.Y - 26f), "TOWN MAP", HorizontalAlignment.Left, -1, 22, UiTheme.Gold);
-            DrawString(font, new Vector2(_area.Position.X + 130f, _area.Position.Y - 29f), "click a station to walk there  ·  M or Esc to close",
-                HorizontalAlignment.Left, -1, 14, UiTheme.TextDim);
+            if (_hovered is null)
+            {
+                DrawString(font, new Vector2(_area.Position.X + 130f, _area.Position.Y - 29f), "click a station to walk there  ·  M or Esc to close",
+                    HorizontalAlignment.Left, -1, 14, UiTheme.TextDim);
+            }
         }
 
         DrawRect(Big ? _area.Grow(2f) : new Rect2(Vector2.Zero, Size), new Color(0.35f, 0.5f, 0.8f, Big ? 0.8f : 0.5f), false, Big ? 2f : 1.5f);
