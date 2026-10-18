@@ -51,6 +51,10 @@ public sealed class RunPlayer
     internal readonly List<Pickup> Gems = new();
 
     public bool Downed => Player?.Health is { IsDead: true };
+
+    /// <summary>Co-op, host: seconds this player has been down, and an ally's revive progress (0–1).</summary>
+    public float DownedFor { get; set; }
+    public float ReviveHelp { get; set; }
 }
 
 /// <summary>

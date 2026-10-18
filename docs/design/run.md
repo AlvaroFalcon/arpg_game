@@ -351,16 +351,14 @@ Capture: `RunCapture --only=update` gains `rift-cashout-offer.png`,
   pausable holder node, since a child of the always-processing test node never pauses);
   `CASHOUT-COOP-*` in `CoopSmokeTest` (`CoopSmokeTest.CashOut.cs`).
 
-#### Open questions (owner)
+#### Owner decisions (2026-10-17)
 
-1. **Risk on death.** Today falling in the endless phase pays everything you had,
-   so staying risks only time. A riskier rule, ready to switch on: the reward you
-   keep on death is the one of the **last tier you reached**; leaving alive pays the
-   live value (the panel and the HUD would say "If you fall, you keep tier II's
-   reward"). It makes the offer a real gamble without taking gear away. Default:
-   off (today's rule).
-2. The tier V+ rewards (guaranteed Rares, then Ascendant Orbs) are first guesses.
-3. Co-op: should the vote need everyone (as proposed) or a majority?
+1. **Death:** solo, falling ends the run with the reward reached; co-op, a downed
+   player gets back up after 10 s and the run ends only when everyone is down at
+   once, with the reward reached (multiplayer.md -> "Deaths"). The "keep only the
+   last tier" rule stays unused.
+2. Co-op vote: as built — if anyone stays, the party stays.
+3. Tier V+ rewards and prices: keep the first guesses until they've been played.
 
 ## Experience and pickups
 

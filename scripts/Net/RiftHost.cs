@@ -244,9 +244,11 @@ public partial class RiftHost : Node, IRunLink
     }
 
     /// <summary>
-    /// docs/design/multiplayer.md -> "Deaths": a downed player is revived by an
-    /// ally standing within <see cref="PartyRules.ReviveRadius"/> for
-    /// <see cref="PartyRules.ReviveTime"/> seconds (progress drains when they step away).
+    /// docs/design/multiplayer.md -> "Deaths": a downed player gets back up on their
+    /// own after <see cref="PartyRules.RespawnSeconds"/>, or sooner when an ally stands
+    /// within <see cref="PartyRules.ReviveRadius"/> for <see cref="PartyRules.ReviveTime"/>
+    /// seconds (that progress drains when they step away). The ring over the downed
+    /// player shows whichever is further (<see cref="PartyRules.StepRevive"/>).
     /// </summary>
     private void Revives(float dt)
     {
@@ -259,6 +261,8 @@ public partial class RiftHost : Node, IRunLink
         {
             if (rp.Player is not { } downed || !rp.Downed)
             {
+                rp.DownedFor = 0f;
+                rp.ReviveHelp = 0f;
                 continue;
             }
 
@@ -273,16 +277,17 @@ public partial class RiftHost : Node, IRunLink
                 }
             }
 
-            float progress = Mathf.Clamp(downed.ReviveProgress + (helped ? dt : -dt) / PartyRules.ReviveTime, 0f, 1f);
-            if (progress >= 1f)
+            (rp.ReviveHelp, rp.DownedFor, PartyRules.ReviveOutcome outcome, float shown) = PartyRules.StepRevive(rp.ReviveHelp, rp.DownedFor, helped, dt);
+            downed.ReviveProgress = shown;
+            if (outcome == PartyRules.ReviveOutcome.StillDown)
             {
-                progress = 0f;
-                downed.Health!.Revive(PartyRules.ReviveLife);
-                downed.Health.GrantInvulnerability(PartyRules.ReviveGrace);
-                ToastAll($"{NameOf(rp)} is back on their feet!", new Color(0.5f, 1f, 0.6f));
+                continue;
             }
 
-            downed.ReviveProgress = progress;
+            bool byAlly = outcome == PartyRules.ReviveOutcome.RevivedByAlly;
+            downed.Health!.Revive(byAlly ? PartyRules.ReviveLife : PartyRules.RespawnLife);
+            downed.Health.GrantInvulnerability(PartyRules.ReviveGrace);
+            ToastAll(byAlly ? $"{NameOf(rp)} is back on their feet!" : $"{NameOf(rp)} gets back up!", new Color(0.5f, 1f, 0.6f));
         }
     }
 
