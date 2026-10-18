@@ -170,6 +170,208 @@ Purchases go into the hideout's storage; you place them in edit mode. The floors
 the three reality tilesets are on sale too, so a corner of town can look like a
 crypt or the drowned mirror.
 
+## Odran's Skill gems tab **[PLANNED 2026-10-18]**
+
+Owner request (translated): *"Odran gets a new tab to buy skills: all of the game's
+skills for now, unlocked by character level. Support gems too. First approach, you
+have freedom; you may add new skills."*
+
+### Findings that shape it
+
+- Odran's panel (`review-odran-trade.png`) is a 1010×560 frame whose right column
+  (Wares, four shards) uses less than half its height. There is room for a tab bar
+  without growing the frame.
+- Gems are not bag items in this game: they live in the character's gem collection
+  (`CharacterData.Gems`) and are socketed from the skills panel (K). A bought gem
+  goes there, like a picked-up one, not into the inventory grid.
+- The skills panel (`review-skills-panel.png`) never says where gems come from. It
+  gets one line (see "Small fixes" below).
+
+### Layout (1280×720)
+
+The frame stays 1010×560. Under the title, two tab buttons like the Mirror's
+(160×40, the open one with a gold border): **Trade** (today's panel, unchanged) and
+**Skill gems**. The Skill gems tab button carries an ember dot while there are gems
+that unlocked since the character last opened it (`CharacterData.GemShopSeenLevel`,
+saved, default 0).
+
+```
+┌ Odran the Trader ─────────────────────────────────────────────── [Close (Esc)] ┐
+│ [ Trade ] [ Skill gems • ]                                                      │
+│ ┌ 600 ─────────────────────────────────────┐ ┌ 360 ─────────────────────────┐ │
+│ │ [Skills 13] [Supports 20]   ☐ Only what I can buy │ [icon 48] Spark           │ │
+│ │ All · Attack · Spell · Projectile · Melee · Area · │ Skill gem · Spell ·       │ │
+│ │ Fire · Cold · Lightning · My class                 │ Projectile · Lightning    │ │
+│ │ ┌ list, rows 52 px, scrolls ────────────┐ │ │ Favoured by: Arcanist        │ │
+│ │ │[ic] Fireball        Arcanist   Owned · Lv 7 │ │ Fires crackling sparks…     │ │
+│ │ │[ic] Spark           Arcanist   200 g        │ │ Damage 12 · use 0.40 s      │ │
+│ │ │[ic] Throwing Knives Rogue      200 g        │ │ Unlocked at level 4          │ │
+│ │ │[ic] Meteor          Arcanist   Level 16     │ │ [ Buy · 200 g ]  (primary)   │ │
+│ │ └──────────────────────────────────────┘ │ │ reason / result line         │ │
+│ └──────────────────────────────────────────┘ └──────────────────────────────┘ │
+│ Gold 2,400 · Gems go to your skills (K) at level 1, not to your bag.            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Kind toggle**: Skills / Supports with their counts (two 130×30 buttons).
+- **Filter chips** (one active at a time, 26 px tall, 12 px text). Skills: All,
+  Attack, Spell, Projectile, Melee, Area, Fire, Cold, Lightning, **My class** (the
+  class's `RiftSkills`). Supports: All, **Fits my skills** (supports whose
+  `SupportDefinition.Accepts` is true for at least one skill the character owns),
+  Projectile, Area, Melee, Spell, Attack (the support's `RequiresAny`).
+- **"Only what I can buy"** (off by default): hides locked, owned and unaffordable
+  rows. Off by default so the whole catalogue, locked rows included, shows the
+  shape of what's coming.
+- **Rows** (52 px): the gem's icon at 40 px (skills: `SkillDefinition.Icon`;
+  supports: `icon_support`), the name at 16 px (skill orange `(1, 0.6, 0.35)`,
+  support green `(0.45, 1, 0.55)`, the pickup colours), its tags at 12 px dim, the
+  favoured classes as small pills, and the state at the right:
+  - `200 g` in gold (buyable), in ember if you can't afford it;
+  - `Owned · Lv 7` in green-dim (skills you have);
+  - `2 / 6 owned · 60 g` (supports);
+  - `Level 16` in dim text with a small lock, the row at 55 % opacity (locked);
+  - a `NEW` tag for gems unlocked since the last visit.
+  Sorted by unlock level, then name. The first row is selected on open.
+- **Detail pane** (360 px): icon 48, name 22 px, "Skill gem · Spell · Projectile ·
+  Lightning", "Favoured by: Arcanist", the description (the skill resource's
+  `Description` / the support's `Description`), for skills the base numbers
+  (damage, use time, cooldown), for supports "Fits your: Fireball, Spark" or, in
+  ember, "None of your skills can use this yet". Then the unlock line ("Unlocks at
+  character level 16 · you are 9" / "Unlocked at level 4") and the primary
+  **Buy · 200 g** (`UiTheme.PrimaryButton`, 300×44). Under it, the reason when it's
+  disabled, or the result after buying.
+- **States of Buy**:
+  - locked: disabled, "Unlocks at character level 16";
+  - skill owned: disabled, "You have this skill. Skill gems level up as you use them.";
+  - supports at the cap: disabled, "You have 6 of 6, one per loadout slot";
+  - not enough gold: disabled, "Not enough gold: 140 more";
+  - bought: the row flips to Owned at once, `pickup` sound, gold updates, and the
+    pane reads "Bought Spark. It's in your skills (K) at level 1." with a secondary
+    **Open skills (K)** button (closes Odran, opens the skills panel; two modals
+    are never stacked).
+- **Keys**: ↑/↓ moves the selection, Enter buys the selected gem, Esc closes.
+  Tabs by click (Ctrl+Tab is not worth a binding).
+- **Feedback** within a frame for every click; errors next to the Buy button,
+  never only in a status line far away.
+
+### What you get, and buying twice
+
+- A gem at **level 1** in the character's collection (`CharacterData.AddGem(id,
+  support)`), saved when the panel closes (`MerchantPanel.OnClosed` already captures
+  the profile).
+- **Skill gems: one copy.** A second purchase is refused rather than melted into gem
+  experience (which is what a duplicate drop does). Buying levels with gold would
+  turn gold into skill power, a balance change the owner should decide (open
+  question).
+- **Supports: up to 6 copies** (`GemLoot.MaxSupportCopies`, one per loadout slot),
+  each at the full price. (endgame.md says supports stack to 4; the code's cap is 6,
+  the number of loadout slots. This plan follows the code.)
+- Drops are unchanged: bosses still drop gems, duplicates still melt.
+
+### Unlock levels and prices
+
+Skills cost **50 gold × unlock level**; supports **20 + 40 × unlock level**. Level 1
+gems are cheap enough to buy right after the introduction (the Odran quest needs
+one: quests.md).
+
+| Skill gem | Tags | Favoured by | Unlocks at | Price |
+|---|---|---|---|---|
+| Fireball | Spell, Projectile, Fire | Arcanist | 1 | 50 |
+| Double Strike | Attack, Melee | Rogue, Warrior | 1 | 50 |
+| Cleave | Attack, Melee, Area | Warrior | 1 | 50 |
+| Spark | Spell, Projectile, Lightning | Arcanist | 4 | 200 |
+| Throwing Knives | Attack, Projectile | Rogue | 4 | 200 |
+| Ground Slam | Attack, Melee, Area | Warrior | 4 | 200 |
+| **Frost Shards** (new) | Spell, Projectile, Cold | Arcanist | 6 | 300 |
+| Ethereal Blades | Spell, Area, Duration | Rogue, Arcanist | 8 | 400 |
+| Frost Nova | Spell, Area, Cold | Arcanist | 8 | 400 |
+| **Storm Strike** (new) | Attack, Melee, Lightning | Rogue | 10 | 500 |
+| Sunder | Attack, Melee, Area | Warrior | 12 | 600 |
+| **Glacial Hammer** (new) | Attack, Melee, Area, Cold | Warrior | 14 | 700 |
+| Meteor | Spell, Area, Fire | Arcanist | 16 | 800 |
+
+| Support gems | Unlock | Price |
+|---|---|---|
+| Faster Casting, Increased Area, Spell Echo (the classes' starting supports) | 1 | 60 |
+| Pierce, Faster Projectiles, Melee Splash, Extended Duration | 2 | 100 |
+| Multiple Projectiles, Fork, Chain, Multistrike, Blade Storm | 6 | 260 |
+| Ignition, Overcharge, Cold Conversion, Fire Conversion, Lightning Conversion | 10 | 420 |
+| Concentrated Effect, Elemental Focus, Brutality | 14 | 580 |
+
+Why these: starting gems at level 1 so every class can try the others' basics;
+damage multipliers (Concentrated Effect, Elemental Focus, Brutality) last because
+they are the biggest single jumps; conversions at 10, where the tree's elemental
+wheels start being reachable. "Favoured by" is the classes' `RiftSkills` list, so it
+also tells you which skills the class's Rift cards prefer. Nothing is class-locked.
+
+### Three new skills (proposed)
+
+Gaps in today's ten: Cold has only Frost Nova (no cold projectile for the Avatar of
+Frost keystone and the freeze wheel), there is no Lightning attack (the Rogue's
+lightning wheel and Overcharge have no melee user), and the Rogue has the thinnest
+list (three skills, two shared). All three use existing archetypes, so each is a
+`.tres` resource, one `UpgradeCatalog.Skills` entry, a `ClassCatalog.RiftSkills`
+entry and an icon; no new code paths.
+
+| Skill | Archetype | Tags (bits) | Numbers (first pass) | Notes |
+|---|---|---|---|---|
+| **Frost Shards** | `ProjectileSkillDefinition` | Spell, Projectile, Cold (1030) | 3 shards, 24° fan, speed 620, range 480, base damage 9 each, use time 0.45 s, mana 4 | reuses `assets/sprites/projectiles/frost_shard.tres`; cold always chills; Arcanist `RiftSkills` |
+| **Storm Strike** | `MeleeSkillDefinition` (arc) | Attack, Melee, Lightning (4105) | range 85, arc 60°, 1 strike, base damage 20, use time 0.40 s | shocks like any Lightning hit; Rogue `RiftSkills` (and fits the Warrior's Duelist border) |
+| **Glacial Hammer** | `MeleeSkillDefinition` (arc) | Attack, Melee, Area, Cold (1049) | range 95, arc 110°, base damage 30, use time 0.70 s, knockback 120 | cold always chills; Warrior `RiftSkills` |
+
+Icons: three 16×16 icons in `tools/art/sprites/icons.ts` (`icon_frost_shards`,
+`icon_storm_strike`, `icon_glacial_hammer`), the existing style; rebuild the art and
+re-import. Damage numbers are a starting point for the autoplay bot
+(`scripts/autoplay.sh --mode=reality --class=<id>`); the reference is the existing
+skill of the same archetype (Throwing Knives, Double Strike, Cleave). Add them to
+progression.md's skills table when implemented.
+
+### Code
+
+- `scripts/Characters/GemShop.cs` (new, static, no nodes):
+  `record GemOffer(string Id, bool Support, int Level)` with `Price`; `Offers` (the
+  tables above); `Find`; `Owned(c, offer)`; `CannotBuy(c, wallet, offer)` returning
+  the reason strings above or null; `TryBuy(c, wallet, offer, out message)` (spends
+  gold from the wallet, `c.AddGem(id, support)`, raises `gem_bought`);
+  `FavouredBy(skillId)`; `FitsAny(c, support)`.
+- `MerchantPanel`: a tab row; today's body becomes the Trade tab; a new
+  `GemShopView : VBoxContainer` (`scripts/UI/GemShopView.cs`) builds the Skill gems
+  tab. `MerchantPanel.ShowTab(MerchantTab)` for the quest dialogue's "Open the Skill
+  gems tab".
+- `HideoutCatalog`: Odran's `Blurb` becomes "Sell gear, buy crafting shards and skill
+  gems." (the town guide and the big map read it); `Verb` stays "Trade".
+
+### Small fixes in the same pass
+
+- Skills panel (K), under the gem collection, a dim line: "More gems: reality bosses
+  drop them, and Odran sells every one (Skill gems tab)."
+
+### Acceptance and tests (EndgameSmokeTest `GEMSHOP-*`)
+
+| Check | What |
+|---|---|
+| `GEMSHOP-COVERS-CATALOG` | every `UpgradeCatalog.Skills` and `Supports` id has exactly one offer, and every offer exists in the catalog |
+| `GEMSHOP-LOCKED` | a level-3 character: Meteor's row is locked, Buy disabled, reason "Unlocks at character level 16" |
+| `GEMSHOP-BUY-SKILL` | buying Spark at level 4 with 500 gold: wallet −200, a level-1 Spark gem in `Gems`, the row shows Owned, the `gem_bought` event fires |
+| `GEMSHOP-NO-DUPLICATE-SKILL` | a second Spark purchase is refused and the wallet is unchanged |
+| `GEMSHOP-SUPPORT-CAP` | the seventh copy of a support is refused ("6 of 6") |
+| `GEMSHOP-NOT-ENOUGH-GOLD` | the reason says how much more |
+| `GEMSHOP-FITS-FILTER` | a Fireball-only character: "Fits my skills" lists Pierce and Spell Echo, not Multistrike |
+| `GEMSHOP-SAVED` | after closing the panel the profile JSON has the new gem |
+| `GEMSHOP-NEW-DOT` | levelling past an unlock shows the tab's dot; opening the tab clears it |
+| `SKILLS-NEW-RESOURCES` | the three new skills load, cast in the sandbox and deal damage (SkillsSmokeTest) |
+
+Capture: `RunCapture --only=crafting` gains `odran-gems-skills.png`,
+`odran-gems-supports.png` and `odran-gems-bought.png`.
+
+### Open questions
+
+1. Prices and unlock levels are first guesses; the gold economy hasn't been tuned
+   (crafting.md open question).
+2. Should a skill gem you own be buyable again as gem experience (a gold sink that
+   levels gems)? Default: no.
+3. Should the shop ever sell gems above level 1 (PoE's vendors don't)? Default: no.
+
 ## Saving
 
 The town is the **account's**, like the stash: `Profile.Hideout` (saved in

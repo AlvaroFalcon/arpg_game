@@ -73,6 +73,7 @@ game, joins the panel stack, Escape or the button closes):
 | E | interact: Mirror, Altar, Stash, the exit portal after a boss |
 | F | pick up the nearest item (hold to keep picking; walks to it if out of reach) |
 | I / C / K / P | inventory, character sheet, skills, passive tree |
+| J | quest log (planned 2026-10-18, docs/design/quests.md) |
 | Esc | close the top panel, else pause |
 
 In the Survival Rift skills auto-cast and auto-aim (no mana). The boss's exit
@@ -361,6 +362,37 @@ Open questions:
   service, which we don't run). Relays (multiplayer.md) make it moot.
 - Showing the host's own failed-join attempts more prominently than the last two
   security lines.
+
+## UX review 2026-10-18: plan **[PLANNED]**
+
+A review of four owner requests from captures of the current build
+(`docs/devlog/screenshots/review-*.png`, taken with `RunCapture --only=crafting`,
+`town`, `update` and `endgame`). The plans live with their systems; this is the
+index and the findings by severity.
+
+| Severity | Screen | What a player would say | Plan |
+|---|---|---|---|
+| Blocker | Altar of Ascension | "I clicked Become a Samurai to read about it, and now I'm a Samurai forever." One click, permanent, no confirmation. | Two-step confirm (quests.md -> "The altar's confirmation") |
+| Confusion | Hideout, after a tier-5 clear | "Nothing told me the altar woke up." | Quest `ascend` with markers everywhere (quests.md) |
+| Confusion | Mirror, Jewels tab | "I found a jewel; what is it for?" | Quest `mirror_jewel` (quests.md) |
+| Confusion | Arehucaz | "Why does he only sell some tiers?" | Quest `arehucaz_shards` (quests.md) |
+| Confusion | Artificer's forge | "What is dust for?" | Quests `forge_disenchant`, `forge_forge` (quests.md) |
+| Confusion | Skills panel (K) | "Where do I get more skills?" | Odran's Skill gems tab + a line in K (hideout.md -> "Odran's Skill gems tab") |
+| Confusion | Survival Rift, endless phase | "What do I get if I leave now? How do I leave?" | Cash-out offer, reward panel, tiers (run.md -> "Cash-out offer") |
+| Polish | Inventory, Crafting tab | "Orb tooltips take ages to show." | Instant themed tooltips everywhere (crafting.md -> "Orb tooltips") |
+| Polish | Rift results | Item card text is clipped at five cards. | Drop the "Hold Alt" line in results cards (run.md -> "Reward tiers") |
+
+New shared pieces for `UiTheme` / the UI kit, so no screen invents its own:
+
+- `UiTheme.InstantTooltip` (one tooltip look and timing everywhere).
+- `ModalPanel.SetQuestStrip` (a quest hint band under any panel's title).
+- `QuestToast` (layer 15) and the "!" / "?" marker glyph (`QuestMarker2D` in the
+  world, the same drawing in the HUD and maps).
+- `CashOutPanel` reuses the level-up cards' rules: whole-card buttons, number keys,
+  a 0.45 s input guard, the cards own the keyboard.
+
+Menu bar: a **J · Quests** chip between P and H, with an ember badge for new and
+ready quests.
 
 ## Open questions
 

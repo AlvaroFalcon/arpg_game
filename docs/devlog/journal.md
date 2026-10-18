@@ -551,3 +551,23 @@ The owner's answers to last night's questions:
 - **Resume grace.** After a card round everyone gets 1 s of invulnerability, chosen over a 3-2-1. The host grants it in co-op, and solo gets it too.
 - **Quiet tick.** The countdown ticks only for players still choosing.
 - **Kept as is:** the co-op pace (to be playtested first), the 10 s limit for keystone rounds, no character supports in the Rift, and nothing for reality floor drops.
+
+## 2026-10-18 — UX review and plan: quests, Odran's gems, the Rift's cash-out, orb tooltips
+
+A planning session, no game code. The owner asked for four things, and a UI/UX pass turned them into buildable plans for the implementer, from fresh captures of the current build (`RunCapture --only=crafting`, `town`, `update`, `endgame`).
+
+- **Orb tooltips** (crafting.md -> "Orb tooltips"). The delay is Godot's built-in tooltip: the orb buttons set `TooltipText`, which waits `gui/timers/tooltip_delay_sec` (0.5 s, starting over when the mouse moves) and isn't themed. Item tooltips are ours and show on the first hover frame. Plan: `UiTheme.InstantTooltip` on the existing `HoverTooltip`, applied to every `TooltipText` in the UI, plus a test that no native tooltip is left.
+- **Odran's Skill gems tab** (hideout.md). Every skill and support, unlocked by character level (skills 50 gold × level, supports 20 + 40 × level), locked rows shown greyed with their level, filters for tags, class and "fits my skills". One copy per skill, up to six per support, gems at level 1 into the skills collection (gems aren't bag items here). Three new skills on existing archetypes fill gaps: Frost Shards (cold projectile), Storm Strike (lightning attack for the Rogue), Glacial Hammer (cold slam for the Warrior).
+- **The Rift's cash-out** (run.md). The Colossus kill now asks: two equal cards, take the reward now or keep going, with the reward spelled out. The portal and Esc open the same panel later instead of ending the run outright. A reward panel on the HUD shows the tier and the next one. Tiers I–IV are today's steps, named; V and up add guaranteed Rare cards, then Ascendant Orbs. Dying keeps today's rule (you keep what you had); a riskier "last tier only" rule is ready as an owner question. Co-op: a 15 s party round on the level-up machinery, and the party leaves only if everyone votes to.
+- **Quests and a quest log on J** (quests.md, new). Six tutorial quests (Odran, two at the forge, Arehucaz, the first jewel, ascendancy), "!" / grey "?" / gold "?" markers in the world, the E prompt, the directory row, the minimap and the big map, an explanation dialogue before the station opens, auto turn-in when the panel closes, a tracker under the character plate, and a log with a town map and a Walk there button. The data model is a pure `QuestBook` over per-character and per-account progress, fed by events from ten existing hook points.
+
+Found on the way: the altar's "Become a…" is permanent and takes one click with no confirmation. A quest that sends everyone there makes it urgent, so the plan adds a two-click confirm. Also, Arehucaz only sells tiers 2 up to your best cleared tier, so his quest unlocks on clearing tier 2 rather than on the first shard (a tier-1 boss drops tier-1 shards he doesn't sell). And endgame.md says supports stack to 4, but the code's cap is 6.
+
+![Odran today](screenshots/review-odran-trade.png)
+![The Crafting tab](screenshots/review-crafting-tab.png)
+![Hideout HUD](screenshots/review-hideout-hud.png)
+![The altar](screenshots/review-altar.png)
+![The Mirror's jewels](screenshots/review-mirror-jewels.png)
+![Arehucaz](screenshots/review-arehucaz.png)
+![Rift endless phase](screenshots/review-rift-endless.png)
+![Rift results at 16:12](screenshots/review-rift-results.png)

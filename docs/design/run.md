@@ -112,6 +112,210 @@ still counts as a victory — the player already won; what they risk by staying 
 time they would have spent, not the win. The autoplay bot takes the portal at once
 so balance numbers stay comparable with earlier passes.
 
+### Cash-out offer and the infinite Rift **[PLANNED 2026-10-18]**
+
+Owner request (translated): *"Make the Survival Rift infinite. When you reach the
+current cap (the Colossus kill) the game proposes a reward: take it and leave, or
+decline and continue, so the reward keeps improving. Then you can leave whenever you
+want, and the reward is shown at that moment."*
+
+**Findings** (`review-rift-endless.png`, `review-rift-results.png`):
+
+- The endless phase already exists, but the only sign of it is the gauge line
+  "Portal open · stay for more rewards" and a portal somewhere in the arena. The
+  reward is invisible until the results screen: you can't tell what staying is
+  worth, or what you'd walk away with now.
+- The choice is never asked. The Colossus dies, a 3 s banner says "A portal home
+  opens — or stay for greater rewards", and the waves come back at once.
+- Leaving is by walking into the portal (easy to do by accident while kiting
+  around it) or Esc → "Abandon run", whose name sounds like a loss although after the
+  Colossus it pays a victory.
+- The results screen at 16:12 is already full (five cards, text clipped at the
+  bottom of each card), so any new reward panel must be compact.
+
+#### The flow
+
+1. **The Colossus dies.** As today: "Victory" banner, `victory` sound, gems fly to
+   the player. New: the director **holds** (no spawns, no endless boss timer) for
+   1.2 s, then the **cash-out panel** opens. Solo: the tree pauses, as for level-up
+   cards. The danger clock is paused with the tree, so deciding costs nothing.
+2. **Take it and leave** → the run ends as a victory: the results screen as today,
+   with exactly the reward the panel showed.
+3. **Keep going** → the panel closes, the game resumes with 1 s of invulnerability
+   (`PartyRules.ResumeGraceSeconds`, as after the cards), the banner "The Rift
+   deepens" (ember), and the endless phase starts as today: the portal opens where
+   the Colossus fell, bosses every two minutes, the danger clock running.
+4. **Leaving later**, three ways, all showing the same panel in *leave* mode with the
+   reward at that moment:
+   - **the portal**: walking into it opens the panel (it never ends the run by
+     itself). It re-arms when you step out of its radius. A world label over it
+     reads "Portal home: walk in to leave with your reward".
+   - **Esc → Leave with reward** (the pause menu's "Abandon run" button is relabelled
+     once the Colossus is dead; before that it stays "Abandon run").
+   - (no extra key: Esc and the portal are enough, and every free key near WASD is
+     taken.)
+   In leave mode, "Keep going" is labelled **Not yet** and Esc means Not yet.
+5. **Falling in the endless phase** stays what it is today: the run ends as a
+   victory with the reward you had at that moment (run.md's rule, "dying is not a
+   punishment beyond ending the run"). The results title gets a subtitle: "You fell
+   at 13:40 in the endless phase. The reward is yours." Open question 1 proposes a
+   riskier rule.
+6. The autoplay bot takes the reward at once (`RunLaunchOptions`), so balance
+   numbers stay comparable with earlier passes, as it does with the portal today.
+
+#### The panel
+
+`UI/CashOutPanel.cs`, a `CanvasLayer` at layer 22 (over the HUD, under the item
+tooltip), `ProcessMode.Always`. Dim 0.7 over the arena, frame 760×430, centred.
+
+```
+┌──────────────────────────────── 760 ───────────────────────────────┐
+│                    The Colossus falls             (34 px, gold)     │
+│   Take your reward home now, or stay: the Rift keeps getting        │
+│   harder, and what it pays keeps growing.        (15 px, text)      │
+│ ┌ [1] Take it and leave ───── 350 ┐ ┌ [2] Keep going ───── 350 ┐    │
+│ │ (gold border)                    │ │ (ember border)            │    │
+│ │ [coin]  1,240 gold               │ │ Next: tier II at 10:00    │    │
+│ │ [orb]   12 crafting orbs         │ │   keep 2 items            │    │
+│ │ [card]  4 item cards, keep 1     │ │ Every minute: more gold,  │    │
+│ │ [ilvl]  item level 59 · rarity   │ │   orbs, item level, rarity│    │
+│ │         ×2.9                     │ │ A boss every 2 minutes    │    │
+│ │                                  │ │ Leave any time: the portal│    │
+│ │                                  │ │   or Esc                  │    │
+│ │                                  │ │ If you fall, you keep the │    │
+│ │                                  │ │   reward you had.         │    │
+│ └──────────────────────────────────┘ └───────────────────────────┘    │
+│        Survived 7:18 · 3 bosses · 412 kills · Reward tier I (13 px)  │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+- Two **cards** of equal weight (350×250, like the level-up cards: whole card
+  clickable, a key cap in the corner). Neither is "the" primary: both are
+  legitimate, and the screen exists to ask. Hover lights the border.
+- Keys: **1** takes, **2** keeps going. The cards own the keyboard while open
+  (`LevelUpScreen`'s rule): every other key is swallowed, and the first 0.45 s
+  show the cards dimmed and ignore input, so a dodge pressed as the boss died
+  can't pick. At the Colossus offer, Esc does nothing (it's a choice); in leave
+  mode Esc = Not yet.
+- Item cards line: "4 item cards, keep 1" when items are earned; the orbs line
+  counts the orbs (their kinds are rolled at the end, as today).
+- Sounds: opening `ui`; Take → the results' `victory`; Keep going → `boss_warn`
+  at −8 dB under the "The Rift deepens" banner.
+
+#### The reward on the HUD (endless phase)
+
+- **Reward panel**, top right under the kill counter (x 1006, y 56, 260×92, dark
+  glass, gold top border), `HudLayout.Register(panel, "rift_reward", "Rift reward")`:
+  ```
+  REWARD · TIER II                       (13 px, gold caps)
+  1,240 gold · 12 orbs                   (15 px)
+  4 cards · keep 2 · item level 59       (13 px)
+  [██████████░░░░░░] Tier III at 12:00: 5 cards   (bar 240×6, 12 px dim)
+  Leave: walk into the portal, or Esc    (11 px dim)
+  ```
+  Updated four times a second from `RunRewards.Preview` (no RNG). Hidden before
+  the Colossus.
+- **Danger gauge** line: "Reward tier II · next at 12:00" replaces "Portal open ·
+  stay for more rewards".
+- **A new tier**: toast "Reward tier III: 5 item cards" (the Rift's pickup toast
+  spot), `levelup` at −8 dB, the panel's border flashes gold for 0.6 s.
+
+#### Reward tiers
+
+Tiers I–IV are **today's steps** in `RunRewards` (no number changes); the tiers name
+them so the HUD can show "next". Tier V onwards is new and is what makes the reward
+keep improving past 15:00 in a way you can see. Gold, orb count, item level and the
+rarity multiplier keep growing continuously as today (formulas under "Rewards").
+
+| Tier | Reached at | What the tier adds |
+|---|---|---|
+| I · Victory | the Colossus kill | the victory bonus (+150 gold, +2 orbs, +0.3 rarity); 4 item cards (from 7:00), keep 1 |
+| II | 10:00 | keep 2 |
+| III | 12:00 | 5 item cards |
+| IV | 15:00 | keep 3 |
+| V | 20:00 | 1 card is guaranteed Rare or better |
+| VI | 25:00 | 2 cards guaranteed Rare or better |
+| VII, VIII, IX | 30:00, 35:00, 40:00 | 3, 4, 5 cards guaranteed Rare or better |
+| X and up | every 5:00 after 40:00 | +1 Ascendant Orb each |
+
+Five cards stay the maximum: the results screen fits five at 1280×720 (and already
+clips text at five; the card text should drop the "Hold Alt" hint line in results to
+fit). `RunRewards` gains `Tier`, `NextTierAt`, `NextTierText`, `GuaranteedRare`,
+`BonusAscendant` and a `Preview(elapsed, bosses, kills, victory)` that returns the
+numbers without rolling orb kinds. `For` keeps its current results; the guaranteed
+cards re-roll their rarity up to Rare in `ResultsScreen.RollRewards`.
+
+#### Co-op
+
+Keep it simple, and reuse what players already know from the level-up rounds:
+
+- **The offer is a party round** (`RiftHost.Rounds`, a new round kind
+  `RoundCashOut = 3` with the row `["leave", "stay"]` for everyone). The game pauses
+  for everyone, each player chooses on the same panel, the top shows "1 / 3 chosen"
+  and a **15 s** countdown (`PartyRules.CashOutTimeout`), red from 5 s with the
+  tick, exactly like the cards.
+- **The party leaves only if everyone chooses to leave.** Otherwise everyone stays.
+  A player who timed out counts as "leave" (if they're away, leaving is what's safe
+  for them, and it can't drag the others home).
+- After choosing: "You chose to leave. The party goes home only if everyone does."
+  When the round closes with a stay: a toast "The party stays (Ana chose to keep
+  going). You can still leave alone: Esc → Leave the party, with your reward."
+- **Leaving later**: a client's Esc → **Leave the party** opens the panel in leave
+  mode ("You leave alone; the party keeps playing") and then takes today's path
+  (`Session.Leave`, own results and rewards). The host's Esc → **End the run for
+  everyone** opens it with "Everyone goes home with their reward" and ends the run
+  as a victory for all (today's host path). The portal keeps today's party rule:
+  when every living player stands in it, the run ends as a victory for all (no panel:
+  standing in it together is the decision); a player standing in it alone sees "1 / 3
+  in the portal" over it.
+- Rewards stay per player, computed on each machine from the shared numbers.
+
+Why a vote and not "the host decides": the host already has the power to end the
+run; a vote makes the offer mean the same on every screen, and the round machinery,
+the counter and the timer already exist and are understood.
+
+#### Code notes
+
+- `RunDirector.OnColossusKilled`: set `ColossusDefeated`, hold spawning and the
+  endless boss timer, and raise `CashOutOffered` instead of opening the portal at
+  once; `BeginEndless()` (called on "Keep going") does what `OnColossusKilled` does
+  today after the banner (portal, timers, music).
+- `RunDirector.CheckExitPortal`: solo → open the panel in leave mode (once per entry)
+  instead of `TakeExitPortal`; co-op → unchanged.
+- `RunController.OnPauseLeave` and the `PauseMenu` labels as above.
+- `RunHud`: the reward panel, the gauge line, the tier toast.
+- Autoplay: `RunLaunchOptions.AutoCashOut = true` for the bot.
+
+#### Acceptance and tests (RunSmokeTest / RiftProgressionTest `CASHOUT-*`)
+
+| Check | What |
+|---|---|
+| `CASHOUT-OFFER` | killing the Colossus opens the panel within 1.5 s; the tree is paused; the director spawns nothing while it is open |
+| `CASHOUT-TAKE` | key 1 ends the run as a victory; the results' gold, orb count, cards and keep equal the panel's numbers |
+| `CASHOUT-STAY` | key 2 unpauses; the portal exists; spawning resumes; the reward panel shows tier I and "Tier II at 10:00" |
+| `CASHOUT-INPUT-GUARD` | a key in the first 0.45 s does nothing; Space never picks |
+| `CASHOUT-PORTAL` | walking into the portal opens the panel in leave mode and doesn't end the run; Not yet closes it; re-entering after stepping out reopens it |
+| `CASHOUT-PAUSE` | after the Colossus the pause menu reads "Leave with reward" and opens the panel |
+| `CASHOUT-TIERS` | `RunRewards.Preview` at 9:59 → tier I, 10:00 → II, 20:00 → V with 1 guaranteed Rare, 45:00 → X with 1 Ascendant Orb |
+| `CASHOUT-PREVIEW-MATCHES` | `Preview` and `For` agree on gold, orb count, cards, keep, item level and rarity at random times |
+| `CASHOUT-DEATH` | dying at 13:40 in the endless phase gives a victory with the reward at 13:40 and the "You fell…" subtitle |
+| `CASHOUT-COOP` (CoopSmokeTest) | the offer opens a round on host and client; host leave + client stay → the run continues; both leave → victory for both; a client that doesn't answer counts as leave |
+| `CASHOUT-AUTOPLAY` | the bot run ends at the Colossus with a victory |
+
+Capture: `RunCapture --only=update` gains `rift-cashout-offer.png`,
+`rift-cashout-leave.png`, `rift-reward-panel.png` and `coop-cashout.png`.
+
+#### Open questions (owner)
+
+1. **Risk on death.** Today falling in the endless phase pays everything you had,
+   so staying risks only time. A riskier rule, ready to switch on: the reward you
+   keep on death is the one of the **last tier you reached**; leaving alive pays the
+   live value (the panel and the HUD would say "If you fall, you keep tier II's
+   reward"). It makes the offer a real gamble without taking gear away. Default:
+   off (today's rule).
+2. The tier V+ rewards (guaranteed Rares, then Ascendant Orbs) are first guesses.
+3. Co-op: should the vote need everyone (as proposed) or a majority?
+
 ## Experience and pickups
 
 - Enemies drop experience gems worth their `ExperienceValue` (1–5, elites ×6,
