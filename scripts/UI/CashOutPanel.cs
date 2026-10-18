@@ -275,7 +275,7 @@ public partial class CashOutPanel : CanvasLayer
         }
 
         string next = r.NextTierText;
-        int colon = next.IndexOf(':');
+        int colon = next.IndexOf(": ", System.StringComparison.Ordinal);
         _stayBody.AddChild(Plain(next.Length > 0 ? "Next: " + (colon > 0 ? next[..colon].Replace("Tier", "tier") : next) : "", 16, UiTheme.Ember));
         if (colon > 0)
         {

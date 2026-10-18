@@ -57,6 +57,26 @@ public partial class CoopTestHost
         }
     }
 
+    /// <summary>After the Colossus a client's "Leave the party" and the host's "End the run for everyone" ask first,
+    /// with the reward (the cash-out panel in leave mode over the running game).</summary>
+    private async Task CashOutLeaveModeChecks(RunController run, LobbyMember beta)
+    {
+        run.Director.ApplyRemoteFlags(false, true); // as if the Colossus had fallen
+        run.Pause.Open();
+        string hostLabel = run.Pause.LeaveButtonText;
+        run.Pause.PressLeave();
+        await Frames(2);
+        bool hostPanel = run.CashOut.IsOpen && run.CashOut.Mode == CashOutPanel.PanelMode.Leave && run.CashOut.TitleText == "End the run for everyone?"
+            && run.CashOut.IntroText.Contains("Everyone goes home") && !GetTree().Paused && !run.State.Ended;
+        await WaitFor(() => run.CashOut.Armed, 2f);
+        run.CashOut.TryChoose(false);
+        bool hostClosed = !run.CashOut.IsOpen && !run.State.Ended;
+        run.Director.ApplyRemoteFlags(false, false);
+        Dictionary<string, string> f = Fields(await Ask(beta.PeerId, "leave_panel") ?? "");
+        Check("CASHOUT-COOP-LEAVE-MODE", hostLabel == "End the run for everyone" && hostPanel && hostClosed && F(f, "open") == 1f && f.GetValueOrDefault("title") == "Leave_the_party?" && F(f, "closed") == 1f,
+            $"host: label '{hostLabel}', panel '{run.CashOut.TitleText}' open={hostPanel}, Not yet closes it={hostClosed}; beta: {string.Join(" ", f.Select(kv => $"{kv.Key}={kv.Value}"))}");
+    }
+
     private async Task CashOutLeaveChecks(RunController run, RiftHost host, LobbyMember beta)
     {
         RiftHost.CashOutTimeoutOverride = 3f;
@@ -113,6 +133,21 @@ public partial class CoopTestClient
 
             case "toast":
                 return run.Hud.ToastText;
+            case "leave_panel":
+            {
+                run.Director.ApplyRemoteFlags(false, true);
+                run.Pause.Open();
+                string label = run.Pause.LeaveButtonText;
+                run.Pause.PressLeave();
+                await Frames(2);
+                bool open = run.CashOut.IsOpen && run.CashOut.Mode == CashOutPanel.PanelMode.Leave;
+                string title = run.CashOut.TitleText;
+                await WaitFor(() => run.CashOut.Armed, 2f);
+                run.CashOut.TryChoose(false);
+                bool closed = !run.CashOut.IsOpen && !run.State.Ended;
+                run.Director.ApplyRemoteFlags(false, false);
+                return $"open={(open ? 1 : 0)} label={label.Replace(' ', '_')} title={title.Replace(' ', '_')} closed={(closed ? 1 : 0)}";
+            }
         }
 
         return $"unknown question '{question}'";

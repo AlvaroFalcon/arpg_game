@@ -417,6 +417,7 @@ public partial class CoopTestHost : CoopTestDriver
 
         await LevelUpChecks(run, host, alpha, beta);
         await CashOutStayChecks(run, host, alpha, beta);
+        await CashOutLeaveModeChecks(run, beta);
 
         // --- a client leaves mid-pick: the round closes without them ------------------------
         float missing = run.State.ExperienceNeeded(run.State.PartyLevel) - run.State.PartyExperience;
@@ -1057,6 +1058,7 @@ public partial class CoopTestClient : CoopTestDriver
             case "cashout_pick":
             case "cashout_bad":
             case "toast":
+            case "leave_panel":
                 return await CashOutAnswer(run, session, question);
             case "history":
                 return string.Join(" ", run.Build.History);

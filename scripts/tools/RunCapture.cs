@@ -869,22 +869,73 @@ public partial class RunCapture : Node
             colossus.Health.ApplyResolvedDamage(float.MaxValue / 4f, run.Player);
         }
 
-        // Stand still: the capture's steering would walk into the portal.
+        // The offer (docs/design/run.md -> "Cash-out offer and the infinite Rift"): the director holds,
+        // then the panel asks. Keep going opens the portal and starts the endless phase.
         bool steer = _steer;
         _steer = false;
-        await Wait(9f);
+        for (int i = 0; i < 80 && !run.CashOut.IsOpen; i++)
+        {
+            await Wait(0.1f);
+        }
+
+        await Wait(CashOutPanel.ArmDelay + 0.4f);
+        await Snap("rift-cashout-offer.png");
+        run.CashOut.TryChoose(false);
+        await Wait(1.5f);
+        // Out of the portal, a few minutes on: the reward panel, the gauge line and the tier toast.
         if (run.Director.ExitPortal is { } portal)
         {
             run.Player.GlobalPosition = portal.GlobalPosition + new Vector2(0f, 120f);
         }
 
-        await Wait(2f);
+        run.State.SkipTo(10f * 60f + 3f);
+        await Wait(0.8f);
         await Snap("rift-endless.png");
+        await Wait(2.6f);
+        await Snap("rift-reward-panel.png");
+
+        // Leaving later: the portal asks, with the reward as it is now.
+        if (run.Director.ExitPortal is { } exit)
+        {
+            run.Player.GlobalPosition = exit.GlobalPosition;
+            for (int i = 0; i < 40 && !run.CashOut.IsOpen; i++)
+            {
+                await Wait(0.1f);
+            }
+
+            await Wait(CashOutPanel.ArmDelay + 0.4f);
+            await Snap("rift-cashout-leave.png");
+            run.CashOut.TryChoose(false);
+            await Wait(0.3f);
+        }
+
         _steer = steer;
         run.State.SkipTo(16f * 60f + 12f);
         run.Director.TakeExitPortal();
         await Wait(1.5f);
         await Snap("rift-results.png");
+        GetTree().Paused = false;
+
+        // The co-op vote: the same panel as a host's round shows it (RiftHost.Rounds), a party of three.
+        RunLaunchOptions.Reset();
+        RunLaunchOptions.StartTime = 418f;
+        RunLaunchOptions.StartSkill = "meteor";
+        RunLaunchOptions.AutoLevels = 12;
+        await Launch();
+        run = Run()!;
+        run.Player.Health!.IgnoreDamage = true;
+        run.State.SkipTo(8f * 60f + 20f);
+        GetTree().Paused = true;
+        run.CashOut.OpenPartyOffer(1);
+        await Wait(CashOutPanel.ArmDelay + 0.4f);
+        run.CashOut.SetPartyStatus(1, 3, Time.GetTicksMsec() + 11400, false);
+        await Wait(0.05f);
+        await Snap("coop-cashout.png");
+        run.CashOut.TryChoose(true);
+        run.CashOut.SetPartyStatus(2, 3, Time.GetTicksMsec() + 3400, true);
+        await Wait(0.05f);
+        await Snap("coop-cashout-chosen.png");
+        run.CashOut.ClosePartyRound();
         GetTree().Paused = false;
 
         // Arehucaz in the north alley, and his cloth of wares.
