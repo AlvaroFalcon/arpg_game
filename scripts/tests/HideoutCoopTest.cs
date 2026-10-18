@@ -139,6 +139,7 @@ public partial class HideoutCoopHost : CoopTestDriver
             return;
         }
 
+        ProposalUnitChecks();
         profile.Hideout = new HideoutData();
         HideoutCatalog.EnsureDefaults(profile.Hideout);
         profile.Hideout.GuideSeen = true;
@@ -239,17 +240,145 @@ public partial class HideoutCoopHost : CoopTestDriver
         Check("HIDEOUT-GUEST-SAVE-SAFE", saved.GetValueOrDefault("own_kept") == "1" && saved.GetValueOrDefault("gem_kept") == "1", Line(saved));
 
         await AfterHideoutChecks(session, town, ana, bo);
+        town = Town ?? town;
 
         // --- the host leaves: guests to the main menu with a notice --------------------------------------------
+        string[] guests = session.Members.Count > 3 ? new[] { "ana", "bo", "cy" } : new[] { "ana", "bo" };
         session.Leave();
-        bool told = await WaitFor(() => ReadFile(GuestLog("ana")).Contains("HOST-LEFT") && ReadFile(GuestLog("bo")).Contains("HOST-LEFT"), 10f);
-        string anaLine = ReadFile(GuestLog("ana")).Split('\n').LastOrDefault(l => l.Contains("HOST-LEFT")) ?? "no line";
-        string boLine = ReadFile(GuestLog("bo")).Split('\n').LastOrDefault(l => l.Contains("HOST-LEFT")) ?? "no line";
-        Check("HIDEOUT-HOST-LEFT", told && anaLine.Contains("PASS") && boLine.Contains("PASS"), $"{anaLine} | {boLine}");
+        bool told = await WaitFor(() => guests.All(g => ReadFile(GuestLog(g)).Contains("HOST-LEFT")), 10f);
+        string[] lines = guests.Select(g => ReadFile(GuestLog(g)).Split('\n').LastOrDefault(l => l.Contains("HOST-LEFT")) ?? $"{g}: no line").ToArray();
+        Check("HIDEOUT-HOST-LEFT", told && lines.All(l => l.Contains("PASS")), string.Join(" | ", lines));
     }
 
-    /// <summary>Later steps hang their checks here (proposals, invite, edit permission).</summary>
-    private Task AfterHideoutChecks(NetSession session, Hideout town, LobbyMember ana, LobbyMember bo) => Task.CompletedTask;
+    /// <summary>
+    /// Proposals (docs/design/multiplayer.md -> "Proposals"): a guest proposes, the host
+    /// declines (cancelled for all), then accepts with one guest staying (the rift runs for
+    /// two; the other waits in the hideout and a late joiner lands next to them), the run
+    /// ends and everyone is home again in the same session, and an unanswered host times out.
+    /// </summary>
+    private async Task AfterHideoutChecks(NetSession session, Hideout town, LobbyMember ana, LobbyMember bo)
+    {
+        // --- ana proposes; the host and bo are asked --------------------------------------------
+        Dictionary<string, string> proposed = Fields(await Ask(ana.PeerId, "propose"));
+        bool hostAsked = await WaitFor(() => town.Party.Popup.Current == RiftProposalPopup.Mode.Asked, 5f);
+        Dictionary<string, string> boPopup = Fields(await Ask(bo.PeerId, "popup"));
+        Check("PROPOSAL-POPUP", hostAsked && town.Party.Popup.TitleText == "ana is opening the Survival Rift" && town.Party.Popup.NoText == "Decline (cancels it for everyone)"
+                && boPopup.GetValueOrDefault("mode") == "Asked" && boPopup.GetValueOrDefault("title") == "ana_is_opening_the_Survival_Rift" && boPopup.GetValueOrDefault("no") == "Stay_in_the_hideout"
+                && proposed.GetValueOrDefault("mode") == "Waiting" && F(boPopup, "secs") is > 20f and <= 30f,
+            $"host: {town.Party.Popup.Current} '{town.Party.Popup.TitleText}' / '{town.Party.Popup.NoText}'; bo: {Line(boPopup)}; ana: {Line(proposed)}");
+
+        // --- the host declines: cancelled for everyone, nobody moves ---------------------------------
+        town.Party.Popup.PressNo();
+        bool closed = await WaitFor(() => session.OpenProposal is null, 3f);
+        await Seconds(0.3f);
+        Dictionary<string, string> anaAfter = Fields(await Ask(ana.PeerId, "popup"));
+        Dictionary<string, string> boAfter = Fields(await Ask(bo.PeerId, "popup"));
+        Check("PROPOSAL-HOST-DECLINE", closed && anaAfter.GetValueOrDefault("mode") == "Hidden" && boAfter.GetValueOrDefault("mode") == "Hidden"
+                && anaAfter.GetValueOrDefault("toast", "").Contains("the_host_declined") && boAfter.GetValueOrDefault("toast", "").Contains("the_host_declined")
+                && session.Members.All(m => session.PlaceOf(m.PeerId) == MemberPlace.Hideout) && Town == town,
+            $"closed={closed}; ana: {Line(anaAfter)}; bo: {Line(boAfter)}; places={string.Join(",", session.Members.Select(m => session.PlaceOf(m.PeerId)))}");
+
+        // --- again: the host joins, bo stays — the rift runs for two -----------------------------------
+        await Seconds(PartyRules.ProposalCooldownSeconds + 0.3f);
+        await Ask(ana.PeerId, "propose");
+        await WaitFor(() => town.Party.Popup.Current == RiftProposalPopup.Mode.Asked, 5f);
+        await Ask(bo.PeerId, "answer accept=0");
+        await Seconds(0.3f);
+        town.Party.Popup.PressYes();
+        bool inRun = await WaitFor(() => Run?.NetHost is { } h && h.Peers == 1 && session.PlaceOf(ana.PeerId) == MemberPlace.Run, 30f);
+        Dictionary<string, string> anaRun = Fields(await Ask(ana.PeerId, "scene"));
+        Check("PROPOSAL-START", inRun && Run!.State.PartySize == 2 && Run.NetHost!.Peers == 1 && anaRun.GetValueOrDefault("scene") == "Run" && session.HostRun?.Participants.Count == 2,
+            $"host in the run={inRun}, party size={Run?.State.PartySize}, links={Run?.NetHost?.Peers}, participants={session.HostRun?.Participants.Count}; ana: {Line(anaRun)}");
+
+        Dictionary<string, string> waiting = Fields(await Ask(bo.PeerId, "waiting"));
+        Check("PROPOSAL-DECLINER-WAITS", waiting.GetValueOrDefault("scene") == "Hideout" && waiting.GetValueOrDefault("line", "").Contains("Survival_Rift") && waiting.GetValueOrDefault("clientside") == "0"
+                && waiting.GetValueOrDefault("runlink") == "0" && waiting.GetValueOrDefault("inrun") == "0" && F(waiting, "puppets") == 0f,
+            Line(waiting));
+
+        // --- someone new joins while the rift runs: they land in the hideout with bo -------------------------
+        StartGuest("cy");
+        bool cyHome = await WaitFor(() => session.Members.FirstOrDefault(m => m.Name == "cy") is { } c && session.PlaceOf(c.PeerId) == MemberPlace.Hideout, 40f);
+        LobbyMember? cy = session.Members.FirstOrDefault(m => m.Name == "cy");
+        await Seconds(1f);
+        Dictionary<string, string> cySees = cy is null ? new() : Fields(await Ask(cy.PeerId, "puppets"));
+        Dictionary<string, string> boSeesCy = Fields(await Ask(bo.PeerId, "puppets"));
+        Check("LATE-JOIN-DURING-RUN", cyHome && F(cySees, "puppets") == 1f && F(boSeesCy, "puppets") == 1f,
+            $"cy home={cyHome}; cy: {Line(cySees)}; bo: {Line(boSeesCy)}");
+
+        // --- the host ends the run; both go home from the results: same session, everyone together ---------------
+        Run!.State.EndRun(false);
+        await WaitFor(() => Run?.Results.Showing == true, 5f);
+        Dictionary<string, string> anaHome = Fields(await Ask(ana.PeerId, "results_home", 12f));
+        Run?.Results.OnHideout?.Invoke();
+        bool back = await WaitFor(() => Town is { } t && t != town && session.PartyPhase == SessionPhase.Hideout
+            && session.Members.All(m => session.PlaceOf(m.PeerId) == MemberPlace.Hideout), 30f);
+        bool together = back && await WaitFor(() => Town!.Party.Puppets.Count == 3, 8f);
+        Check("RUN-RETURN", back && together && session.Active && session.IsHost && session.Members.Count == 4 && session.HostRun is null && !session.InRun,
+            $"home={back}, host sees {Town?.Party.Puppets.Count} puppets, phase={session.PartyPhase}, members={session.Members.Count}, still hosting={session.IsHost}; ana: {Line(anaHome)}");
+        if (!back)
+        {
+            return;
+        }
+
+        // --- the host doesn't answer: cancelled when the time runs out ------------------------------------------
+        Hideout home = Town!;
+        NetSession.ProposalSecondsOverride = 3f;
+        await Ask(bo.PeerId, "propose");
+        bool asked = await WaitFor(() => home.Party.Popup.Current == RiftProposalPopup.Mode.Asked, 5f);
+        bool timedOut = await WaitFor(() => session.OpenProposal is null, 6f);
+        await Seconds(0.3f);
+        Dictionary<string, string> boTimeout = Fields(await Ask(bo.PeerId, "popup"));
+        NetSession.ProposalSecondsOverride = null;
+        Check("PROPOSAL-TIMEOUT", asked && timedOut && boTimeout.GetValueOrDefault("toast", "").Contains("didn't_answer") && Town == home,
+            $"asked={asked}, closed after the timeout={timedOut}; bo: {Line(boTimeout)}");
+    }
+
+    /// <summary>The proposal's rules without a network (docs/design/multiplayer.md -> "Proposals").</summary>
+    private void ProposalUnitChecks()
+    {
+        bool Home(long _) => true;
+        RiftSpec rift = RiftSpec.SurvivalRift();
+        var lines = new List<string>();
+        bool ok = true;
+
+        var decline = new RiftProposal(1, 7, rift, new long[] { 1, 7, 8 }, 0, 30);
+        decline.Answer(1, false);
+        ok &= decline.Tick(1, Home, "A") == RiftProposal.Result.Cancelled && decline.Reason == "the host declined";
+        lines.Add($"host declines → {decline.State} '{decline.Reason}'");
+
+        var silent = new RiftProposal(2, 7, rift, new long[] { 1, 7, 8 }, 0, 30);
+        silent.Answer(8, true);
+        ok &= silent.Tick(29, Home, "A") == RiftProposal.Result.Open && silent.Tick(30, Home, "A") == RiftProposal.Result.Cancelled && silent.Reason == "the host didn't answer";
+        lines.Add($"host silent → {silent.State} '{silent.Reason}'");
+
+        var early = new RiftProposal(3, 7, rift, new long[] { 1, 7, 8, 9 }, 0, 30);
+        early.Answer(1, true);
+        early.Answer(8, false);
+        bool openWithOnePending = early.Tick(5, Home, "A") == RiftProposal.Result.Open;
+        early.Answer(9, true);
+        ok &= openWithOnePending && early.Tick(6, Home, "A") == RiftProposal.Result.Started && string.Join(",", early.Participants) == "1,7,9";
+        lines.Add($"all answered → {early.State} with {string.Join(",", early.Participants)}");
+
+        var lapse = new RiftProposal(4, 7, rift, new long[] { 1, 7, 8 }, 0, 30);
+        lapse.Answer(1, true);
+        ok &= lapse.Tick(30, Home, "A") == RiftProposal.Result.Started && string.Join(",", lapse.Participants) == "1,7";
+        lines.Add($"no answer = stay → {string.Join(",", lapse.Participants)}");
+
+        var gone = new RiftProposal(5, 7, rift, new long[] { 1, 7 }, 0, 30);
+        ok &= gone.Tick(1, p => p != 7, "Ana") == RiftProposal.Result.Cancelled && gone.Reason == "Ana left";
+        lines.Add($"proposer gone → '{gone.Reason}'");
+
+        var twice = new RiftProposal(6, 1, rift, new long[] { 1, 8 }, 0, 30);
+        ok &= !twice.Answer(1, false) && twice.Answer(8, true) && !twice.Answer(8, false) && !twice.Answer(42, true) && twice.Tick(1, Home, "Host") == RiftProposal.Result.Started;
+        lines.Add($"host proposing = host in; repeats and strangers ignored → {twice.State}");
+
+        var spec = new RiftSpec { Kind = RiftKind.Reality, Tier = 25 };
+        var bad = new RiftSpec { Kind = RiftKind.Reality, Tier = 5, Modifiers = new List<string> { "hardened", "hardened" } };
+        var junk = new RiftSpec { Kind = (RiftKind)9 };
+        ok &= !spec.Sanitize() && !bad.Sanitize() && !junk.Sanitize() && RiftSpec.Reality(20, new[] { "swift" }).Sanitize();
+        lines.Add("specs: tier 25, duplicate modifiers and an unknown kind refused");
+        Check("PROPOSAL-UNIT", ok, string.Join("; ", lines));
+    }
 
     public static string LayoutKey(HideoutData data) =>
         string.Join(";", data.Props.OrderBy(p => p.Uid, StringComparer.Ordinal).Select(p => $"{p.Uid}:{p.Kind}:{Mathf.RoundToInt(p.X)}:{Mathf.RoundToInt(p.Y)}"))
@@ -350,6 +479,12 @@ public partial class HideoutCoopGuest : CoopTestDriver
         }
     }
 
+    private static string PopupLine(Hideout town)
+    {
+        RiftProposalPopup p = town.Party.Popup;
+        return $"mode={p.Current} title={p.TitleText.Replace(' ', '_')} no={p.NoText.Replace(' ', '_')} secs={p.SecondsShown} toast={town.Hud.ToastText.Replace(' ', '_')}";
+    }
+
     private async Task OnEnded(string reason)
     {
         bool menu = await WaitFor(() => GetTree().CurrentScene is MainMenu, 8f);
@@ -447,6 +582,34 @@ public partial class HideoutCoopGuest : CoopTestDriver
                 bool shownDiffers = town.Data.Find("d1") is { } shown && shown.Position.DistanceTo(OwnMark) > 1f;
                 bool gemKept = _boughtGem.Length > 0 && json.Contains(_boughtGem);
                 return $"own_kept={(ownKept && shownDiffers ? 1 : 0)} gem_kept={(gemKept ? 1 : 0)} file_bytes={json.Length}";
+            }
+            case "propose":
+                town!.ProposeRift(RiftSpec.SurvivalRift());
+                await WaitFor(() => session.OpenProposal is not null, 3f);
+                return PopupLine(town);
+            case "popup":
+                return PopupLine(town!);
+            case "answer":
+                if (f.GetValueOrDefault("accept") == "1")
+                {
+                    town!.Party.Popup.PressYes();
+                }
+                else
+                {
+                    town!.Party.Popup.PressNo();
+                }
+
+                await Frames(2);
+                return PopupLine(town);
+            case "waiting":
+                await Frames(10);
+                return $"scene={GetTree().CurrentScene?.Name} line={town?.Hud.PartyLine.Replace(' ', '_')} clientside={(NetMode.ClientSide ? 1 : 0)} runlink={(session.Run is null ? 0 : 1)} "
+                    + $"inrun={(session.InRun ? 1 : 0)} puppets={town?.Party.Puppets.Count ?? -1}";
+            case "results_home":
+            {
+                bool ended = await WaitFor(() => Run?.State.Ended == true && Run.Results.Showing, 10f);
+                Run?.Results.OnHideout?.Invoke();
+                return $"ended={(ended ? 1 : 0)}";
             }
             default:
                 return $"unknown={question.Split(' ')[0]}";

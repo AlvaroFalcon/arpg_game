@@ -24,6 +24,9 @@ public partial class HideoutParty : Node
     /// <summary>Puppets by peer id (tests).</summary>
     public IReadOnlyDictionary<long, Player> Puppets => _puppets;
 
+    /// <summary>The rift proposal popup (created with the party hooks).</summary>
+    public RiftProposalPopup Popup { get; private set; } = null!;
+
     private NetSession? _session;
     private readonly Dictionary<long, Player> _puppets = new();
     private readonly Dictionary<long, string> _builtFrom = new();
@@ -45,6 +48,10 @@ public partial class HideoutParty : Node
 
         _session.Ended += OnEnded;
         _session.PartyChanged += OnPartyChanged;
+        _session.ProposalClosed += OnProposalClosed;
+        _session.Notice += OnNotice;
+        Popup = new RiftProposalPopup { Session = _session, Name = "RiftProposalPopup" };
+        AddChild(Popup);
         Attach();
     }
 
@@ -54,6 +61,8 @@ public partial class HideoutParty : Node
         {
             _session.Ended -= OnEnded;
             _session.PartyChanged -= OnPartyChanged;
+            _session.ProposalClosed -= OnProposalClosed;
+            _session.Notice -= OnNotice;
         }
     }
 
@@ -102,6 +111,41 @@ public partial class HideoutParty : Node
 
         _home.Clear();
         _home.UnionWith(home);
+    }
+
+    private void OnNotice(string text) => Hideout.Toast(text, UiTheme.Ember);
+
+    private void OnProposalClosed(ProposalView view, bool started, string reason)
+    {
+        if (_leaving || _session is not { Active: true } s)
+        {
+            return;
+        }
+
+        if (!started)
+        {
+            string whose = view.Proposer == s.LocalPeerId ? "Your" : $"{view.ProposerName}'s";
+            Hideout.Toast($"{whose} rift was cancelled — {reason}", new Color(1f, 0.7f, 0.4f));
+        }
+        else if (view.Mine != true && view.Proposer != s.LocalPeerId)
+        {
+            Hideout.Toast($"The party set off without you: {view.Spec.Short()} — you can join the next one", UiTheme.Gold);
+        }
+    }
+
+    /// <summary>The standing line while the party is in a rift without this player.</summary>
+    private void UpdateWaiting(NetSession s)
+    {
+        string line = "";
+        if (s.HostRun is { } run && !run.Includes(s.LocalPeerId) && s.PartyPhase is SessionPhase.Run or SessionPhase.Returning)
+        {
+            float elapsed = (float)(NetSession.Clock - run.StartedAt);
+            line = s.PartyPhase == SessionPhase.Returning
+                ? $"{s.HostName}'s party is coming back from the {run.Spec.Short()}"
+                : $"{s.HostName}'s party is in the {run.Spec.Short()} · {UiTheme.FormatTime(elapsed)} — wait here, you're asked next time";
+        }
+
+        Hideout.Hud.PartyLine = line;
     }
 
     private void OnEnded(string reason)
@@ -162,6 +206,11 @@ public partial class HideoutParty : Node
                 ClearPuppets();
             }
 
+            if (IsInstanceValid(Hideout.Hud) && Hideout.Hud.PartyLine.Length > 0)
+            {
+                Hideout.Hud.PartyLine = "";
+            }
+
             ReleaseControls();
             return;
         }
@@ -185,6 +234,7 @@ public partial class HideoutParty : Node
         }
 
         SyncPuppets(s);
+        UpdateWaiting(s);
     }
 
     private void ReleaseControls()

@@ -22,6 +22,9 @@ public partial class ResultsScreen : CanvasLayer
     public Action? OnHideout { get; set; }
     public Action? OnMenu { get; set; }
 
+    /// <summary>The results are on screen (tests).</summary>
+    public bool Showing => _root?.Visible == true;
+
     private Control _root = null!;
     private VBoxContainer _box = null!;
     private HBoxContainer _rewards = null!;

@@ -292,6 +292,7 @@ public partial class NetSession : Node
         if (IsHost)
         {
             RelayPresence(delta);
+            TickProposal();
         }
 
         if (IsClient && Phase == JoinPhase.Connecting && Clock - PhaseSince > ConnectTimeout)

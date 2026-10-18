@@ -111,7 +111,7 @@ public partial class Hideout : Node2D
         };
         AddChild(Pause);
         AddChild(new CharacterPanels { Player = _player, Name = "CharacterPanels" });
-        _mirror = new MirrorPanel { Player = _player, Travel = Travel, Name = "MirrorPanel" };
+        _mirror = new MirrorPanel { Player = _player, Travel = Travel, Propose = ProposeRift, InParty = () => _session is { Active: true }, Name = "MirrorPanel" };
         _altar = new AscendancyPanel { Player = _player, Name = "AscendancyPanel" };
         _stash = new StashPanel { Player = _player, Name = "StashPanel" };
         _merchant = new MerchantPanel { Player = _player, Name = "MerchantPanel" };
@@ -155,6 +155,8 @@ public partial class Hideout : Node2D
         if (_session is not null)
         {
             _session.LayoutChanged += OnHostLayoutChanged;
+            _session.Launching += OnLaunching;
+            _session.LocalCharacter = CaptureCharacter;
             if (_session.IsHost)
             {
                 _session.LayoutSource = () => Data;
@@ -189,6 +191,12 @@ public partial class Hideout : Node2D
         if (_session is not null)
         {
             _session.LayoutChanged -= OnHostLayoutChanged;
+            _session.Launching -= OnLaunching;
+            if (_session.LocalCharacter == CaptureCharacter)
+            {
+                _session.LocalCharacter = null;
+            }
+
             if (_session.LayoutSource is not null && _session.IsHost)
             {
                 // Late joiners while the host is away get the saved town (SaveLayout ran on the way out).
@@ -303,16 +311,60 @@ public partial class Hideout : Node2D
         Leave(Scenes.MainMenu);
     }
 
-    /// <summary>The Mirror's travel: solo as before; in a party the rift is proposed instead.</summary>
+    /// <summary>The Mirror's travel: solo as before (in a party the Mirror proposes instead).</summary>
     private void Travel(string scene)
     {
         if (_session is { Active: true })
         {
-            Toast("Rifts with friends arrive in the next update", UiTheme.Ember);
+            Toast("In a party, rifts open for everyone: choose one at the Mirror or walk into the portal", UiTheme.Ember);
             return;
         }
 
         Leave(scene);
+    }
+
+    /// <summary>The player as they are now, saved into the profile (what a rift will build).</summary>
+    private CharacterData? CaptureCharacter()
+    {
+        SaveLayout();
+        return Profile.Get(this)?.Active;
+    }
+
+    /// <summary>The party is setting off and this machine goes too: save first, like any exit.</summary>
+    private void OnLaunching()
+    {
+        if (!_leaving)
+        {
+            _leaving = true;
+            Editor?.QueueFree();
+            SaveLayout();
+        }
+    }
+
+    /// <summary>
+    /// Opens a rift for the party (docs/design/multiplayer.md -> "Proposals"): the
+    /// host asks everyone in the hideout. Refusals come back as a toast.
+    /// </summary>
+    public void ProposeRift(RiftSpec spec)
+    {
+        if (_session is not { Active: true } s)
+        {
+            return;
+        }
+
+        if (s.PartyPhase != SessionPhase.Hideout)
+        {
+            Toast("The party is in a rift — wait for them to return", UiTheme.Ember);
+            return;
+        }
+
+        if (s.OpenProposal is { } open)
+        {
+            Toast($"{open.ProposerName} is already opening a rift", UiTheme.Ember);
+            return;
+        }
+
+        s.Propose(spec);
     }
 
     private void EnterEvent() => GameEvents.Raise(GameEvents.HideoutEntered);
@@ -985,7 +1037,9 @@ public partial class Hideout : Node2D
         {
             if (_session is { Active: true })
             {
-                Toast("Rifts with friends arrive in the next update", UiTheme.Ember);
+                Party.Popup.Confirm("Open the Survival Rift for the party?",
+                    $"Everyone in the hideout is asked to join; you set off with whoever does, within {PartyRules.ProposalSeconds:0} s.",
+                    "Open it", () => ProposeRift(RiftSpec.SurvivalRift()));
             }
             else
             {

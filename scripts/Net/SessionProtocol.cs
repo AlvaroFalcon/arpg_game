@@ -153,6 +153,9 @@ public sealed class PartyRun
     /// <summary>Host clock (seconds) when it started (clients: their own clock when told).</summary>
     public double StartedAt { get; init; }
 
+    /// <summary>Who proposed it (their shard pays for a reality).</summary>
+    public long Proposer { get; init; } = 1;
+
     public bool Includes(long peer) => Participants.Contains(peer);
 }
 

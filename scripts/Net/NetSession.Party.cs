@@ -73,6 +73,7 @@ public partial class NetSession
         EditHolder = 0;
         _canEdit.Clear();
         ResetHideout();
+        ResetProposals();
     }
 
     // --- places ----------------------------------------------------------------------
@@ -158,7 +159,7 @@ public partial class NetSession
     /// characters are refreshed first: the lobby goes out before the start, on the
     /// same reliable channel, so it arrives first.
     /// </summary>
-    public void StartRift(RiftSpec spec, IEnumerable<long> participants)
+    public void StartRift(RiftSpec spec, IEnumerable<long> participants, long proposer = 1)
     {
         if (!IsHost || InRun || !spec.Sanitize())
         {
@@ -167,27 +168,31 @@ public partial class NetSession
 
         var peers = new List<long> { 1 };
         peers.AddRange(participants.Where(p => p != 1 && Member(p) is not null).Distinct());
-        var run = new PartyRun { Id = ++_runIds, Spec = spec.Copy(), Participants = peers, StartedAt = Clock };
+        var run = new PartyRun { Id = ++_runIds, Spec = spec.Copy(), Participants = peers, StartedAt = Clock, Proposer = proposer };
         CurrentRun = run;
         HostRun = run;
         InRun = true;
         PartyPhase = SessionPhase.Run;
+        // What the host wears now (the hideout saves its player first), then everyone's characters.
+        Launching?.Invoke();
+        RefreshOwnCharacter();
         BroadcastLobby();
-        byte[] start = StartRiftMessage(run.Id, run.Spec, peers);
+        byte[] start = StartRiftMessage(run.Id, run.Spec, peers, proposer);
         foreach (long peer in peers.Where(p => p != 1))
         {
             RpcId(peer, MethodName.RpcPartyToClient, start);
         }
 
+        BroadcastRoster();
         ReportPlace(MemberPlace.Loading);
-        Launch(run.Spec);
+        Launch(run);
     }
 
     /// <summary>Host: everyone in the lobby loads the Survival Rift (the lobby's start, tools, tests).</summary>
     public void StartRun() => StartRift(RiftSpec.SurvivalRift(), Members.Select(m => m.PeerId));
 
     /// <summary>The <see cref="SessionProtocol.StartRift"/> message (tests send a forged one).</summary>
-    public static byte[] StartRiftMessage(int id, RiftSpec spec, IReadOnlyCollection<long> peers)
+    public static byte[] StartRiftMessage(int id, RiftSpec spec, IReadOnlyCollection<long> peers, long proposer = 1)
     {
         var w = new NetWriter(64);
         w.U8(SessionProtocol.StartRift);
@@ -199,14 +204,22 @@ public partial class NetSession
             w.U32((uint)p);
         }
 
+        w.U32((uint)proposer);
         return w.ToArray();
     }
 
     /// <summary>Loads the rift's scene on this machine.</summary>
-    private void Launch(RiftSpec spec)
+    private void Launch(PartyRun run)
     {
+        RiftSpec spec = run.Spec;
         if (spec.Kind == RiftKind.Reality)
         {
+            // D8: the proposer's shard is spent when the rift starts (never on a cancel).
+            if (run.Proposer == LocalPeerId && Core.Profile.Get(this)?.Active is { } c)
+            {
+                c.TrySpendShard(spec.Tier);
+            }
+
             World.RealityLaunch.Tier = spec.Tier;
             World.RealityLaunch.LayoutId = spec.LayoutId.Length > 0 ? spec.LayoutId : null;
             World.RealityLaunch.Modifiers = new List<string>(spec.Modifiers);
@@ -425,6 +438,7 @@ public partial class NetSession
 
                     break;
                 default:
+                    OnProposalToClient(kind, r);
                     OnPartyToClient(kind, r);
                     break;
             }
@@ -451,16 +465,19 @@ public partial class NetSession
             peers.Add(r.U32());
         }
 
+        long proposer = r.Remaining >= 4 ? r.U32() : 1;
         if (spec is null || InRun || !peers.Contains(LocalPeerId))
         {
             return;
         }
 
-        CurrentRun = new PartyRun { Id = id, Spec = spec, Participants = peers, StartedAt = Clock };
+        CurrentRun = new PartyRun { Id = id, Spec = spec, Participants = peers, StartedAt = Clock, Proposer = proposer };
         HostRun ??= CurrentRun;
         InRun = true;
+        OpenProposal = null;
+        Launching?.Invoke();
         ReportPlace(MemberPlace.Loading);
-        Launch(spec);
+        Launch(CurrentRun);
     }
 
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
@@ -493,6 +510,7 @@ public partial class NetSession
 
                 break;
             default:
+                OnProposalToHost(sender, kind, r);
                 OnPartyToHost(sender, kind, r);
                 break;
         }
