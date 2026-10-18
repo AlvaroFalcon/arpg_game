@@ -480,7 +480,7 @@ public partial class HideoutHud : CanvasLayer
             MouseDefaultCursorShape = CursorShape.PointingHand;
             MouseEntered += () => { _hover = true; QueueRedraw(); };
             MouseExited += () => { _hover = false; QueueRedraw(); };
-            TooltipText = $"{Caption} ({Key})";
+            UiTheme.InstantTooltip(this, $"{Caption} ({Key})");
         }
 
         public override void _GuiInput(InputEvent e)
@@ -528,7 +528,7 @@ public partial class HideoutHud : CanvasLayer
             CustomMinimumSize = new Vector2(250f, 30f);
             MouseFilter = MouseFilterEnum.Stop;
             MouseDefaultCursorShape = CursorShape.PointingHand;
-            TooltipText = Def.Blurb;
+            UiTheme.InstantTooltip(this, () => $"{Def.Name}\n{Def.Blurb}");
             MouseEntered += () => { _hover = true; QueueRedraw(); };
             MouseExited += () => { _hover = false; QueueRedraw(); };
         }

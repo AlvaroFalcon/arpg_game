@@ -33,7 +33,7 @@ public partial class TownMap : Control
         TextureFilter = TextureFilterEnum.Nearest;
         if (!Big)
         {
-            TooltipText = "Town map — click or press M for the big map";
+            UiTheme.InstantTooltip(this, "Town map\nClick or press M for the big map");
             MouseDefaultCursorShape = CursorShape.PointingHand;
         }
     }

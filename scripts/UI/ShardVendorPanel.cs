@@ -134,7 +134,8 @@ public partial class ShardVendorPanel : ModalPanel
         int t = tier;
         Button buy = UiTheme.Button("Buy", () => Buy(t), 14, 80f);
         buy.Disabled = ShardVendor.CannotBuy(c, Player.Wallet, tier) is not null;
-        buy.TooltipText = ShardVendor.CannotBuy(c, Player.Wallet, tier) ?? "";
+        string? why = ShardVendor.CannotBuy(c, Player.Wallet, tier);
+        UiTheme.InstantTooltip(buy, () => why is null ? "" : "Can't buy yet\n" + why);
         line.AddChild(buy);
         return row;
     }

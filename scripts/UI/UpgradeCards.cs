@@ -27,6 +27,7 @@ public partial class UpgradeCards : HBoxContainer
 
     private readonly List<UpgradeOffer> _offers = new();
     private readonly List<Button> _rerollButtons = new();
+    private string _rerollTip = "";
     private float _cardWidth = 250f;
 
     /// <summary>Show a reroll button under each card.</summary>
@@ -83,7 +84,7 @@ public partial class UpgradeCards : HBoxContainer
             if (IsInstanceValid(b))
             {
                 b.Disabled = !enabled;
-                b.TooltipText = tooltip;
+                _rerollTip = tooltip;
             }
         }
     }
@@ -108,6 +109,7 @@ public partial class UpgradeCards : HBoxContainer
         reroll.AddThemeStyleboxOverride("hover", UiTheme.Box(new Color(0.16f, 0.13f, 0.22f), UiTheme.Gold, 1, 6, 6));
         reroll.AddThemeStyleboxOverride("pressed", UiTheme.Box(new Color(0.22f, 0.18f, 0.3f), UiTheme.Gold, 1, 6, 6));
         reroll.AddThemeStyleboxOverride("disabled", UiTheme.Box(UiTheme.Panel with { A = 0.5f }, UiTheme.TextDim with { A = 0.15f }, 1, 6, 6));
+        UiTheme.InstantTooltip(reroll, () => _rerollTip);
         reroll.Pressed += () =>
         {
             int at = _rerollButtons.IndexOf(reroll);

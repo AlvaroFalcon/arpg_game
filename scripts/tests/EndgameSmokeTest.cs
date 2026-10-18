@@ -1425,6 +1425,8 @@ public partial class EndgameSmokeTest : Node2D
         Check("HUD-AVOIDS-INVENTORY", inv.Layer > 10 && townHidden && menuClear && restored,
             $"inventory layer {inv.Layer}, town directory hidden={townHidden}, menu bar clear of the panel={menuClear}, back in place after closing={restored} (town visible={town?.Target.Visible}, menu shift={menuBar?.AvoidShift}, blockers open={UI.HudLayout.OpenBlockers().Count})");
 
+        await TooltipChecks(hideout);
+
         // Walls block, and click-to-move can path from the plaza into the smithy.
         Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);
         Vector2 to = HideoutTown.World(forgeCell + new Vector2I(1, 2));

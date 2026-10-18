@@ -74,6 +74,11 @@ public static class UiTheme
         theme.SetStylebox("read_only", "LineEdit", Box(new Color(0.08f, 0.07f, 0.1f), new Color(0.2f, 0.2f, 0.25f), 2, 4, 10));
         theme.SetColor("font_placeholder_color", "LineEdit", new Color(0.62f, 0.6f, 0.66f, 0.7f));
         theme.SetColor("caret_color", "LineEdit", Gold);
+        // Safety net: anything that still sets a built-in TooltipText looks like ours
+        // (crafting.md -> "Orb tooltips"); the screens use InstantTooltip instead.
+        theme.SetStylebox("panel", "TooltipPanel", Box(new Color(0.06f, 0.05f, 0.09f, 0.97f), PanelBorder, 2, 4, 8));
+        theme.SetColor("font_color", "TooltipLabel", Text);
+        theme.SetFontSize("font_size", "TooltipLabel", 15);
         theme.SetStylebox("background", "ProgressBar", Box(new Color(0.05f, 0.04f, 0.07f, 0.9f), new Color(0.25f, 0.22f, 0.32f), 1, 2, 0));
         return theme;
     }
@@ -255,6 +260,110 @@ public static class UiTheme
 
         frame.AddChild(Icon(texture, size - 6f));
         return frame;
+    }
+
+    private const string InstantTooltipName = "InstantTooltip";
+
+    /// <summary>
+    /// The one tooltip of the UI: shows on the very frame the mouse enters
+    /// <paramref name="target"/> (Godot's built-in one waits for the mouse to rest
+    /// and is unthemed) — docs/design/crafting.md -> "Orb tooltips". One
+    /// <see cref="HoverTooltip"/> per canvas layer is shared by every control on it.
+    /// <paramref name="fill"/> runs on every enter and builds the content with
+    /// <see cref="HoverTooltip.Begin"/> / <see cref="HoverTooltip.AddLine"/>.
+    /// Disabled buttons still get it (a disabled BaseButton keeps its mouse filter).
+    /// </summary>
+    public static void InstantTooltip(Control target, Action<HoverTooltip> fill)
+    {
+        if (target.MouseFilter == Control.MouseFilterEnum.Ignore)
+        {
+            target.MouseFilter = Control.MouseFilterEnum.Pass;
+        }
+
+        // Disabled or hidden: hide only if this control's tooltip is the one up.
+        void Hide()
+        {
+            if (FindTooltip(target) is { } tip && tip.Source == target)
+            {
+                tip.Source = null;
+                tip.HideTooltip();
+            }
+        }
+
+        target.MouseEntered += () =>
+        {
+            if (EnsureTooltip(target) is not { } tip)
+            {
+                return;
+            }
+
+            tip.Source = target;
+            tip.HideTooltip();
+            tip.Clear();
+            fill(tip);
+            if (tip.HasContent)
+            {
+                tip.ShowTooltip();
+            }
+        };
+        target.MouseExited += Hide;
+        target.VisibilityChanged += () =>
+        {
+            if (!target.IsVisibleInTree())
+            {
+                Hide();
+            }
+        };
+        target.TreeExiting += Hide;
+    }
+
+    /// <summary>A plain tooltip: the first line is the title, the rest dim text.</summary>
+    public static void InstantTooltip(Control target, Func<string> text) => InstantTooltip(target, tip =>
+    {
+        string[] lines = text().Split('\n');
+        if (lines.Length == 0 || lines[0].Length == 0)
+        {
+            return;
+        }
+
+        tip.Begin(lines[0], Gold);
+        foreach (string line in lines[1..])
+        {
+            tip.AddLine(line, Text);
+        }
+    });
+
+    public static void InstantTooltip(Control target, string text) => InstantTooltip(target, () => text);
+
+    private static Node? TooltipParent(Control target)
+    {
+        Node? n = target.GetParent();
+        while (n is not null and not CanvasLayer)
+        {
+            n = n.GetParent();
+        }
+
+        return n ?? target.GetWindow();
+    }
+
+    private static HoverTooltip? FindTooltip(Control target) => TooltipParent(target)?.GetNodeOrNull<HoverTooltip>(InstantTooltipName);
+
+    private static HoverTooltip? EnsureTooltip(Control target)
+    {
+        Node? parent = TooltipParent(target);
+        if (parent is null)
+        {
+            return null;
+        }
+
+        if (parent.GetNodeOrNull<HoverTooltip>(InstantTooltipName) is { } existing)
+        {
+            return existing;
+        }
+
+        var tip = new HoverTooltip { Name = InstantTooltipName, Theme = Theme };
+        parent.AddChild(tip);
+        return tip;
     }
 
     public static string FormatTime(float seconds)
