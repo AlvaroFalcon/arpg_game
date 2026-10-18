@@ -70,6 +70,9 @@ public partial class NetSession
         CurrentRun = null;
         HostRun = null;
         _places.Clear();
+        EditHolder = 0;
+        _canEdit.Clear();
+        ResetHideout();
     }
 
     // --- places ----------------------------------------------------------------------
@@ -118,18 +121,33 @@ public partial class NetSession
     }
 
     /// <summary>Host: a member's hello was accepted (the roster follows).</summary>
-    private void OnMemberJoined(long peer)
-    {
-    }
+    private void OnMemberJoined(long peer) => PublishLayout(peer);
 
     /// <summary>Host: a member left or dropped (the roster follows).</summary>
-    private void OnMemberLeft(long peer)
-    {
-    }
+    private void OnMemberLeft(long peer) => DropPresence(peer);
 
     /// <summary>Host: hook for what a place change means (the hideout's layout, the phase).</summary>
     private void OnPlaceChanged(long peer, MemberPlace old, MemberPlace place)
     {
+        if (place != MemberPlace.Hideout)
+        {
+            if (peer == 1)
+            {
+                _hostPresence = null;
+            }
+
+            DropPresence(peer);
+            return;
+        }
+
+        if (peer == 1 && PartyPhase is SessionPhase.Run or SessionPhase.Returning)
+        {
+            PartyPhase = SessionPhase.Hideout;
+        }
+        else if (peer != 1)
+        {
+            PublishLayout(peer); // whatever changed while they were away (ignored when the same)
+        }
     }
 
     // --- the rift ------------------------------------------------------------------------
@@ -313,9 +331,7 @@ public partial class NetSession
     }
 
     /// <summary>Client: hook after a roster arrived (moving into the hideout, the waiting banner).</summary>
-    private void OnRosterRead(SessionPhase was)
-    {
-    }
+    private void OnRosterRead(SessionPhase was) => MaybeEnterHideout();
 
     // Edit rights (increment "edit permission"): the roster carries them; the lock lives here.
     public long EditHolder { get; private set; }

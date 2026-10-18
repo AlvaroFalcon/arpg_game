@@ -289,6 +289,11 @@ public partial class NetSession : Node
     public override void _Process(double delta)
     {
         Ports.Poll(Time.GetTicksMsec());
+        if (IsHost)
+        {
+            RelayPresence(delta);
+        }
+
         if (IsClient && Phase == JoinPhase.Connecting && Clock - PhaseSince > ConnectTimeout)
         {
             End(UnreachableMessage(), SessionEnd.Unreachable);
@@ -500,10 +505,14 @@ public partial class NetSession : Node
     private void End(string reason, SessionEnd why)
     {
         bool wasActive = Active;
+        bool wasClient = IsClient;
+        bool wasInWorld = LocalPlace != MemberPlace.Menu;
         IRunLink? run = Run;
         Leave();
         if (wasActive)
         {
+            // A guest out in the world goes back to the main menu, which shows why.
+            MenuNotice = wasClient && wasInWorld ? reason : null;
             LastEnd = why;
             Status = reason;
             run?.OnHostLost(reason);
@@ -580,7 +589,12 @@ public partial class NetSession : Node
 
     private void OnConnectionFailed() => End(UnreachableMessage(), SessionEnd.Unreachable);
 
-    private void OnServerDisconnected() => End(InRun ? "The host left — the run is over." : "The host closed the session.", InRun ? SessionEnd.HostLeftRun : SessionEnd.HostClosed);
+    private void OnServerDisconnected()
+    {
+        string host = HostName == "someone" ? "The host" : HostName;
+        End(InRun ? $"{host} left — the run is over." : LocalPlace != MemberPlace.Menu ? $"{host} closed the party." : "The host closed the session.",
+            InRun ? SessionEnd.HostLeftRun : SessionEnd.HostClosed);
+    }
 
     // --- authentication: the join code (engine auth step, before any RPC) ------------
 
@@ -634,9 +648,11 @@ public partial class NetSession : Node
         }
 
         _pending[id] = address;
-        if (InRun || Members.Count >= PartyRules.MaxPlayers)
+        // Joining is open whenever the party has room (docs/design/multiplayer.md -> "Party session"):
+        // a newcomer lands in the hideout, even while a rift runs (they wait for it there).
+        if (Members.Count >= PartyRules.MaxPlayers)
         {
-            Refuse(id, InRun ? JoinRefusal.RunStarted : JoinRefusal.Full);
+            Refuse(id, JoinRefusal.Full);
         }
     }
 
@@ -868,7 +884,6 @@ public partial class NetSession : Node
         }
 
         string? reason = protocol != Protocol ? JoinRefusal.Version
-            : InRun ? JoinRefusal.RunStarted
             : Members.Count >= PartyRules.MaxPlayers ? JoinRefusal.Full
             : null;
         LobbyMember? member = null;

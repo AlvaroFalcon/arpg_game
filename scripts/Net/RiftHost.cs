@@ -802,9 +802,9 @@ public partial class RiftHost : Node, IRunLink
     private void OnRunEnded(bool victory)
     {
         RoundRunEnded();
-        // Nobody can join a finished run: close the router port now, not when the
-        // host finally leaves the results screen (docs/design/multiplayer.md -> "Security").
-        _session.ReleasePortMapping();
+        // The party lives on (docs/design/multiplayer.md -> "Party session"): the router
+        // port stays open for friends joining the hideout; the phase says the rift is over.
+        _session.OnHostRunEnded();
         Broadcast(w =>
         {
             w.U8(RiftProtocol.RunEnded);

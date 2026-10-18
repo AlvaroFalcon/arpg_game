@@ -90,6 +90,7 @@ public partial class HideoutHud : CanvasLayer
         BuildVitals();
         BuildPrompt();
         BuildBanner();
+        BuildParty();
         BuildBigMap();
     }
 
@@ -478,6 +479,68 @@ public partial class HideoutHud : CanvasLayer
             _banner.Text = "";
             _bannerSub.Text = "";
         }
+
+        if (_toastTime > 0f)
+        {
+            _toastTime -= dt;
+            _toast.Modulate = new Color(1f, 1f, 1f, Mathf.Clamp(_toastTime / 0.6f, 0f, 1f));
+            _toast.Visible = true;
+        }
+        else
+        {
+            _toast.Visible = false;
+        }
+
+        _partyBox.Visible = _partyLine.Text.Length > 0;
+    }
+
+    // --- party (docs/design/multiplayer.md -> "Shared hideout") ----------------------------
+
+    private Label _toast = null!;
+    private float _toastTime;
+    private PanelContainer _partyBox = null!;
+    private Label _partyLine = null!;
+
+    /// <summary>The last party toast while it shows (tests).</summary>
+    public string ToastText => _toastTime > 0f ? _toast.Text : "";
+
+    /// <summary>The standing party line ("Ana's party is in the Survival Rift · 3:12"), "" when hidden.</summary>
+    public string PartyLine
+    {
+        get => _partyLine.Text;
+        set => _partyLine.Text = value;
+    }
+
+    private void BuildParty()
+    {
+        _toast = UiTheme.Label("", 18, UiTheme.Text, HorizontalAlignment.Center);
+        _toast.Name = "PartyToast";
+        _toast.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _toast.AddThemeConstantOverride("outline_size", 5);
+        _toast.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.85f));
+        _root.AddChild(_toast);
+        _toast.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
+        _toast.OffsetLeft = -460f;
+        _toast.OffsetRight = 460f;
+        _toast.OffsetTop = 112f;
+        _toast.Visible = false;
+
+        _partyBox = new PanelContainer { Name = "PartyLine", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+        _partyBox.AddThemeStyleboxOverride("panel", Glass(UiTheme.Gold, 1));
+        _root.AddChild(_partyBox);
+        _partyBox.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
+        _partyBox.GrowHorizontal = Control.GrowDirection.Both;
+        _partyBox.OffsetTop = 66f;
+        _partyLine = UiTheme.Label("", 16, UiTheme.Gold, HorizontalAlignment.Center);
+        _partyBox.AddChild(_partyLine);
+    }
+
+    /// <summary>A short party message under the menu bar ("Bo is here").</summary>
+    public void ShowToast(string text, Color colour)
+    {
+        _toast.Text = text;
+        _toast.AddThemeColorOverride("font_color", colour);
+        _toastTime = 3.5f;
     }
 
     private void UpdatePlate()

@@ -127,7 +127,7 @@ public partial class CoopPanel : PanelContainer
         CustomMinimumSize = new Vector2(1000f, 0f);
         AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, UiTheme.PanelBorder, 2, 8, 18));
         _body = UiTheme.VBox(this, 10);
-        _body.AddChild(UiTheme.Label("Co-op — Survival Rift", 32, UiTheme.Gold, HorizontalAlignment.Center));
+        _body.AddChild(UiTheme.Label("Play with friends", 32, UiTheme.Gold, HorizontalAlignment.Center));
         _who = UiTheme.Label("", 16, UiTheme.TextDim, HorizontalAlignment.Center);
         _body.AddChild(_who);
         // Short feedback (copied, host errors) right under the title, where the eye is.
@@ -470,7 +470,7 @@ public partial class CoopPanel : PanelContainer
     {
         if (_session is { IsHost: true, InRun: false })
         {
-            _session.StartRun();
+            _session.EnterHideout();
         }
     }
 
@@ -737,7 +737,8 @@ public partial class CoopPanel : PanelContainer
         if (s.IsHost)
         {
             int n = s.Members.Count;
-            Button start = UiTheme.PrimaryButton(n > 1 ? $"Start run — {n} players" : "Start run alone", () => _session?.StartRun(), 20, 320f);
+            Button start = UiTheme.PrimaryButton(n > 1 ? $"Go to the hideout — {n} players" : "Go to the hideout", () => _session?.EnterHideout(), 20, 360f);
+            UiTheme.InstantTooltip(start, "Everyone goes to your hideout. Friends can still join from there, and anyone can open a rift for the party.");
             buttons.AddChild(start);
             start.CallDeferred(Control.MethodName.GrabFocus);
         }
@@ -745,7 +746,7 @@ public partial class CoopPanel : PanelContainer
         {
             string hostName = s.Members.FirstOrDefault(m => m.PeerId == 1)?.Name ?? "the host";
             buttons.AddChild(new Spinner(24f));
-            buttons.AddChild(UiTheme.Label($"In the party — waiting for {hostName} to start the run.", 18, UiTheme.Text));
+            buttons.AddChild(UiTheme.Label($"In the party — waiting for {hostName} to open the hideout.", 18, UiTheme.Text));
         }
 
         buttons.AddChild(UiTheme.Button(s.IsHost ? "Close lobby" : "Leave", () =>

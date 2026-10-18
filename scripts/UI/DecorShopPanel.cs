@@ -16,6 +16,9 @@ public partial class DecorShopPanel : ModalPanel
     public Player Player { get; set; } = null!;
     public HideoutData Data { get; set; } = null!;
 
+    /// <summary>Set when shopping in a friend's town: whose town this is (purchases still go to your own storage).</summary>
+    public string? HostName { get; set; }
+
     protected override string Title => "Ysolde's Furnishings";
 
     protected override Vector2 FrameSize => new(1000f, 600f);
@@ -26,7 +29,9 @@ public partial class DecorShopPanel : ModalPanel
 
     protected override void Build(VBoxContainer body)
     {
-        Label intro = UiTheme.Label("Everything you buy is stored for your whole account. Press H in the hideout to pave floors and place decorations.", 14, UiTheme.TextDim);
+        Label intro = UiTheme.Label(HostName is { } host
+            ? $"You're in {host}'s town: everything you buy is delivered to your own town's storage, for your whole account."
+            : "Everything you buy is stored for your whole account. Press H in the hideout to pave floors and place decorations.", 14, UiTheme.TextDim);
         intro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         body.AddChild(intro);
         HBoxContainer columns = UiTheme.HBox(body, 24);

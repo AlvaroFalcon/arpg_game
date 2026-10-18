@@ -8,8 +8,8 @@ namespace ArpgGame.UI;
 
 /// <summary>
 /// Base for the full-screen character panels (Mirror, skills, passive tree,
-/// ascendancy) — docs/design/menus.md -> "Panels". Opening pauses the game and
-/// joins <see cref="PanelStack"/>; Escape or the close button closes it. The
+/// ascendancy) — docs/design/menus.md -> "Panels". Opening pauses the game (not in a
+/// co-op party, where nothing pauses) and joins <see cref="PanelStack"/>; Escape or the close button closes it. The
 /// panel itself polls Escape because the usual poller (the inventory) lives on
 /// the player and is paused while a modal is up.
 /// </summary>
@@ -123,7 +123,9 @@ public abstract partial class ModalPanel : CanvasLayer, IClosablePanel
 
         IsOpen = true;
         Root.Visible = true;
-        GetTree().Paused = true;
+        // In a party nothing pauses (docs/design/multiplayer.md -> "Pausing"): the hideout
+        // holds the local player still while a panel is open instead.
+        GetTree().Paused = Net.NetSession.Get(this) is not { Active: true };
         PanelStack.Push(this);
         Refresh();
         RefreshQuestStrip();

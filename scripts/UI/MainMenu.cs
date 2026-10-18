@@ -18,6 +18,11 @@ public partial class MainMenu : Node2D
 	private CenterContainer _center = null!;
 	private float _t;
 
+	// Kept to give focus back (by reference: the menu's children shift when a notice shows).
+	private Button _playButton = null!;
+	private Button _settingsButton = null!;
+	private Button _coopButton = null!;
+
 	public override void _Ready()
 	{
 		GetTree().Paused = false;
@@ -36,10 +41,12 @@ public partial class MainMenu : Node2D
 		_menu.AddChild(UiTheme.Label("ARPG GAME", 72, UiTheme.Gold, HorizontalAlignment.Center));
 		_menu.AddChild(UiTheme.Label("— Altered Realities —", 24, UiTheme.Ember, HorizontalAlignment.Center));
 		_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 24f) });
+		ShowNotice();
 
 		Button play = AddButton("Play", OpenCharacters);
-		AddButton("Settings", OpenSettings);
-		AddButton("Co-op (Survival Rift)", () => OpenCoop());
+		_playButton = play;
+		_settingsButton = AddButton("Settings", OpenSettings);
+		_coopButton = AddButton("Co-op (Survival Rift)", () => OpenCoop());
 		AddButton("Training Grounds (sandbox)", () => Scenes.Go(this, Scenes.Sandbox));
 		AddButton("Quit", () => GetTree().Quit());
 
@@ -77,6 +84,38 @@ public partial class MainMenu : Node2D
 				CallDeferred(MethodName.OpenCoopJoin, kv[1]);
 			}
 		}
+	}
+
+	/// <summary>The notice card shown above the buttons (tests); null when none.</summary>
+	public string? NoticeText { get; private set; }
+
+	/// <summary>A party that ended out in the world says why, once (docs/design/menus.md -> "Main menu").</summary>
+	private void ShowNotice()
+	{
+		if (Net.NetSession.Get(this) is not { MenuNotice: { Length: > 0 } notice } session)
+		{
+			return;
+		}
+
+		session.MenuNotice = null;
+		NoticeText = notice;
+		var card = new PanelContainer { Name = "Notice", SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
+		card.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.1f, 0.08f, 0.14f, 0.95f), UiTheme.Gold, 2, 8, 14));
+		_menu.AddChild(card);
+		HBoxContainer row = UiTheme.HBox(card, 14);
+		VBoxContainer text = UiTheme.VBox(row, 2);
+		text.AddChild(UiTheme.Label("The party ended", 20, UiTheme.Gold));
+		Label why = UiTheme.Label(notice, 16, UiTheme.Text);
+		why.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		why.CustomMinimumSize = new Vector2(420f, 0f);
+		text.AddChild(why);
+		Button ok = UiTheme.Button("OK", () =>
+		{
+			card.QueueFree();
+			NoticeText = null;
+		}, 16, 80f);
+		ok.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+		row.AddChild(ok);
 	}
 
 	private void OpenCoopHost(int port) => OpenCoop(port, null);
@@ -122,7 +161,7 @@ public partial class MainMenu : Node2D
 		{
 			panel.QueueFree();
 			_menu.Visible = true;
-			((Button)_menu.GetChild(5)).CallDeferred(Control.MethodName.GrabFocus);
+			_coopButton.CallDeferred(Control.MethodName.GrabFocus);
 		};
 		panel.CreateCharacter += () =>
 		{
@@ -150,7 +189,7 @@ public partial class MainMenu : Node2D
 		{
 			select.QueueFree();
 			_menu.Visible = true;
-			((Button)_menu.GetChild(3)).CallDeferred(Control.MethodName.GrabFocus);
+			_playButton.CallDeferred(Control.MethodName.GrabFocus);
 		};
 	}
 
@@ -195,7 +234,7 @@ public partial class MainMenu : Node2D
 		panel.Closed += () =>
 		{
 			_menu.Visible = true;
-			((Button)_menu.GetChild(4)).CallDeferred(Control.MethodName.GrabFocus);
+			_settingsButton.CallDeferred(Control.MethodName.GrabFocus);
 		};
 	}
 

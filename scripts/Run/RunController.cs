@@ -117,7 +117,7 @@ public partial class RunController : Node2D
         Pause = new PauseMenu
         {
             Name = "Pause",
-            LeaveText = Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the party",
+            LeaveText = Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the run",
             LeaveTextNow = LeaveLabel,
             OnLeave = OnPauseLeave,
             Summary = () => LevelUpScreen.BuildSummary(Build),
@@ -451,10 +451,10 @@ public partial class RunController : Node2D
     {
         if (!Director.ColossusDefeated)
         {
-            return Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the party";
+            return Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the run";
         }
 
-        return Session is null ? "Leave with reward" : Session.IsHost ? "End the run for everyone" : "Leave the party";
+        return Session is null ? "Leave with reward" : Session.IsHost ? "End the run for everyone" : "Leave the run";
     }
 
     /// <summary>Solo: the Colossus fell and the director's hold is over. (Co-op: the host opens a party round.)</summary>
@@ -485,11 +485,7 @@ public partial class RunController : Node2D
         }
         else if (Session.IsClient)
         {
-            CashOut.OpenLeave("Leave the party?", "You leave alone and the party keeps playing. You take your reward.", "Leave with reward", () =>
-            {
-                Session.Leave();
-                NetClient?.OnHostLost("You left the party.");
-            }, pause: false);
+            CashOut.OpenLeave("Leave the run?", "You go back to the hideout and the others keep playing. You take your reward, and you stay in the party.", "Leave with reward", LeaveRunAsClient, pause: false);
         }
         else
         {
@@ -507,19 +503,40 @@ public partial class RunController : Node2D
 
         if (Session is { IsClient: true })
         {
-            // Leaving the party: this player's run ends here, with their rewards so far.
-            Session.Leave();
-            NetClient?.OnHostLost("You left the party.");
+            LeaveRunAsClient();
             return;
         }
 
         State.EndRun(Director.ColossusDefeated);
     }
 
+    /// <summary>A client leaves the run, not the party (docs/design/multiplayer.md -> "Party session"):
+    /// this player's run ends here, with their rewards so far, and the results lead home to the party.</summary>
+    private void LeaveRunAsClient()
+    {
+        Session?.LeaveRun();
+        NetClient?.OnHostLost("You left the run.");
+    }
+
     private void LeaveTo(string scene)
     {
-        // A session lasts one run: leaving the results leaves the party.
-        Session?.Leave();
+        if (Session is { Active: true } party && scene == Scenes.Hideout)
+        {
+            // The party lives on between rifts: back to the (host's) hideout with everyone.
+            party.ReturnToHideout();
+            Scenes.Go(this, scene);
+            return;
+        }
+
+        if (scene == Scenes.MainMenu)
+        {
+            Session?.Leave(); // the host closes the party for everyone; a guest leaves it
+        }
+        else if (Session is { Active: false, MenuNotice: not null })
+        {
+            scene = Scenes.MainMenu; // the host left: guests go to the main menu, which says so
+        }
+
         Scenes.Go(this, scene);
     }
 

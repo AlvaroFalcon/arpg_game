@@ -57,7 +57,7 @@ public partial class CoopTestHost
         }
     }
 
-    /// <summary>After the Colossus a client's "Leave the party" and the host's "End the run for everyone" ask first,
+    /// <summary>After the Colossus a client's "Leave the run" and the host's "End the run for everyone" ask first,
     /// with the reward (the cash-out panel in leave mode over the running game).</summary>
     private async Task CashOutLeaveModeChecks(RunController run, LobbyMember beta)
     {
@@ -73,7 +73,7 @@ public partial class CoopTestHost
         bool hostClosed = !run.CashOut.IsOpen && !run.State.Ended;
         run.Director.ApplyRemoteFlags(false, false);
         Dictionary<string, string> f = Fields(await Ask(beta.PeerId, "leave_panel") ?? "");
-        Check("CASHOUT-COOP-LEAVE-MODE", hostLabel == "End the run for everyone" && hostPanel && hostClosed && F(f, "open") == 1f && f.GetValueOrDefault("title") == "Leave_the_party?" && F(f, "closed") == 1f,
+        Check("CASHOUT-COOP-LEAVE-MODE", hostLabel == "End the run for everyone" && hostPanel && hostClosed && F(f, "open") == 1f && f.GetValueOrDefault("title") == "Leave_the_run?" && F(f, "closed") == 1f,
             $"host: label '{hostLabel}', panel '{run.CashOut.TitleText}' open={hostPanel}, Not yet closes it={hostClosed}; beta: {string.Join(" ", f.Select(kv => $"{kv.Key}={kv.Value}"))}");
     }
 
