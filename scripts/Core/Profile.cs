@@ -519,6 +519,7 @@ public partial class Profile : Node
         public int RealitiesCleared { get; set; }
         public int? ShardVendorStock { get; set; }
         public int ShardVendorSince { get; set; }
+        public int GemShopSeenLevel { get; set; }
         public int Deaths { get; set; }
 
         /// <summary>Null in saves from before the tutorial existed: those characters skip it.</summary>
@@ -610,6 +611,7 @@ public partial class Profile : Node
             RealitiesCleared = c.RealitiesCleared,
             ShardVendorStock = c.ShardVendorStock,
             ShardVendorSince = c.ShardVendorSince,
+            GemShopSeenLevel = c.GemShopSeenLevel,
             Deaths = c.Deaths,
             TutorialDone = c.TutorialDone,
             TotalKills = c.TotalKills,
@@ -655,6 +657,7 @@ public partial class Profile : Node
             RealitiesCleared = s.RealitiesCleared,
             ShardVendorStock = Mathf.Clamp(s.ShardVendorStock ?? World.ShardVendor.StockSize, 0, World.ShardVendor.StockSize),
             ShardVendorSince = s.ShardVendorSince,
+            GemShopSeenLevel = Mathf.Clamp(s.GemShopSeenLevel, 0, CharacterData.MaxLevel),
             Deaths = s.Deaths,
             TutorialDone = s.TutorialDone ?? true,
             TotalKills = s.TotalKills,

@@ -459,6 +459,24 @@ public partial class RunCapture : Node
         await Wait(0.3f);
         await HoverFirstItem(merchant, player);
         await Snap("panel-merchant.png");
+        // Odran's Skill gems tab (docs/design/hideout.md): skills, supports, and a purchase.
+        if (ArpgGame.Core.Profile.Get(this) is { } gemProfile)
+        {
+            gemProfile.Active.Level = 9;
+            gemProfile.Active.GemShopSeenLevel = 3;
+        }
+
+        merchant.ShowTab(MerchantTab.SkillGems);
+        await Wait(0.3f);
+        await Snap("odran-gems-skills.png");
+        merchant.Gems.SetKind(true);
+        await Wait(0.2f);
+        await Snap("odran-gems-supports.png");
+        merchant.Gems.SetKind(false);
+        merchant.Gems.Select(Characters.GemShop.Find("frost_shards", false)!);
+        merchant.Gems.Buy();
+        await Wait(0.3f);
+        await Snap("odran-gems-bought.png");
         merchant.Close();
 
         var inventoryUi = player.GetNode<InventoryUI>("InventoryUI");
@@ -474,6 +492,23 @@ public partial class RunCapture : Node
         inventoryUi.Board.Arm(Items.Crafting.Orbs.First(o => o.Action == Items.CraftAction.Tempest));
         await Wait(0.2f);
         await Snap("craft-orbs.png");
+        // Orb tooltips show on the frame the pointer arrives (docs/design/crafting.md -> "Orb tooltips"):
+        // one with orbs in the bag, one on a disabled button with none.
+        inventoryUi.Board.Disarm();
+        foreach ((string orbId, string file) in new[] { ("tempest_orb", "craft-orb-tooltip.png"), ("kindling_shard", "craft-orb-tooltip-none.png") })
+        {
+            if (orbId == "kindling_shard")
+            {
+                player.Wallet.TrySpend(orbId, player.Wallet.GetBalance(orbId));
+                inventoryUi.Board.Refresh();
+            }
+
+            GetViewport().WarpMouse(inventoryUi.Board.OrbButton(orbId)!.GetGlobalRect().GetCenter());
+            await Wait(0.1f);
+            await Snap(file);
+        }
+
+        GetViewport().WarpMouse(new Vector2(40f, 40f));
         inventoryUi.Board.ArmSeal();
         await Wait(0.2f);
         await Snap("craft-seal.png");

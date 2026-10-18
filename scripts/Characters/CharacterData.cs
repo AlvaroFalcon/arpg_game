@@ -101,6 +101,10 @@ public sealed class CharacterData
     /// <summary><see cref="RealitiesCleared"/> at Arehucaz's last restock.</summary>
     public int ShardVendorSince { get; set; }
 
+    /// <summary>The character level at which the player last opened Odran's Skill gems
+    /// tab; gems unlocked since then are "new" (<see cref="GemShop.NewCount"/>).</summary>
+    public int GemShopSeenLevel { get; set; }
+
     /// <summary>False for a freshly created character until they finish (or
     /// skip) the introduction reality — docs/design/tutorial.md.</summary>
     public bool TutorialDone { get; set; } = true;

@@ -153,6 +153,7 @@ public partial class ShardVendorPanel : ModalPanel
         {
             Sfx.Play(this, "pickup");
             Save();
+            GameEvents.Raise(GameEvents.ShardBought, tier);
         }
 
         Refresh();

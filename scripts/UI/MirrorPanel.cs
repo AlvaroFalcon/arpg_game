@@ -202,6 +202,11 @@ public partial class MirrorPanel : ModalPanel
         Profile.Get(this)?.Save();
         RefreshJewels();
         HoverJewel(node);
+        if (!remove)
+        {
+            GameEvents.Raise(GameEvents.JewelSocketed, 0, node.Id);
+        }
+
         return true;
     }
 

@@ -184,7 +184,65 @@ export const mirror: SpriteSpec = {
   animations: [{ name: 'idle', from: 0, to: 1 }], autoplay: 'idle',
 };
 
+// --- Skill icons for the shop's new skills (docs/design/hideout.md -> "Three new skills") ---
+export const iconFrostShards = icon('icon_frost_shards', { b: '#2a6fd6', c: '#6ec6ff', w: '#e8fbff' }, [
+  'kkkkkkkkkkkkkkkk',
+  'kfffffffwffffffk',
+  'kffffffwcbfffffk',
+  'kfffwfffwcbffwfk',
+  'kffwcbffwcbfwcbk',
+  'kffwcbffwcbfwcbk',
+  'kffwcbfwwccbwcbk',
+  'kfffcbfwcccbfcbk',
+  'kfffcbfwcccbfcFk',
+  'kffffbffcccbfbFk',
+  'kffffffffcbbfFFk',
+  'kfffffffffbFFFFk',
+  'kffffbbbbbbbbffk',
+  'kfffFFFFFFFFFFFk',
+  'kffFFFFFFFFFFFFk',
+  'kkkkkkkkkkkkkkkk',
+]);
+
+export const iconStormStrike = icon('icon_storm_strike', { s: '#c8d0da', w: '#ffffff', y: '#fff27a', Y: '#ffc83f', g: '#7a5a3a' }, [
+  'kkkkkkkkkkkkkkkk',
+  'kffffffffffwwffk',
+  'kfffffffffwssffk',
+  'kfffyyyfwssfffFk',
+  'kffffyYfsswfffFk',
+  'kfffyYffssfffFFk',
+  'kffyyyyyyffffFFk',
+  'kfffffYYyfffgFFk',
+  'kffffYYyfffgfFFk',
+  'kfffYYyffggffFFk',
+  'kffYyyfffgffFFFk',
+  'kffyYfffgfFFFFFk',
+  'kfffYffgfffFFFFk',
+  'kffffYffffFFFFFk',
+  'kffffffFFFFFFFFk',
+  'kkkkkkkkkkkkkkkk',
+]);
+
+export const iconGlacialHammer = icon('icon_glacial_hammer', { b: '#2a6fd6', c: '#6ec6ff', w: '#e8fbff', g: '#7a5a3a', s: '#c8d0da' }, [
+  'kkkkkkkkkkkkkkkk',
+  'kffffffffffffffk',
+  'kffcccccccwffffk',
+  'kfcwwwwwcccbfffk',
+  'kfcwcccccccbfffk',
+  'kfcwccccccbbfffk',
+  'kffcbbbbbbbfgffk',
+  'kffffffffgggfffk',
+  'kfffffffgggffffk',
+  'kffffffggffffffk',
+  'kfwfffggfffcfffk',
+  'kfffwgfffcfffFFk',
+  'kffgsfffwfffFFFk',
+  'kfgsfffffffFFFFk',
+  'kfffffFFFFFFFFFk',
+  'kkkkkkkkkkkkkkkk',
+]);
+
 export const endgame = [
-  iconCleave, iconGroundSlam, iconSunder, iconDoubleStrike, iconThrowingKnives, knife,
+  iconCleave, iconGroundSlam, iconSunder, iconDoubleStrike, iconThrowingKnives, knife, iconFrostShards, iconStormStrike, iconGlacialHammer,
   shardLow, shardMid, shardHigh, shardTop, mirror,
 ];
