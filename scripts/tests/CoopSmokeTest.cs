@@ -559,6 +559,22 @@ public partial class CoopTestHost : CoopTestDriver
             $"paused={GetTree().Paused}, clock {clock1:0.00}→{run.State.Elapsed:0.00}, slime moved {slime.GlobalPosition.DistanceTo(slime1):0.0} px, telegraph landed={!IsInstanceValid(burst) || burst.IsQueuedForDeletion()}, host life {life0:0}→{hostPlayer.Stats.Life.Current:0}");
         Dictionary<string, string> betaAfter = Fields(await Ask(beta.PeerId, "round") ?? "");
         Check("RESUME-ON-CLIENT", F(betaAfter, "open") == 0f && F(betaAfter, "paused") == 0f, string.Join(" ", betaAfter.Select(kv => $"{kv.Key}={kv.Value}")));
+
+        // Downed in co-op: back up on their own after 10 s at half life (owner decision
+        // 2026-10-17), the run going on meanwhile. The host is moved away from the
+        // others so nobody revives it sooner.
+        await Seconds(1.2f); // past the resume grace
+        Vector2 others = run.State.Players.Where(rp => !rp.IsLocal && rp.Player is not null).Select(rp => rp.Player!.GlobalPosition).Aggregate(Vector2.Zero, (a, b) => a + b) / Mathf.Max(1, run.State.Players.Count - 1);
+        hostPlayer.GlobalPosition = run.Arena.Clamp(others + (hostPlayer.GlobalPosition - others).Normalized() * 500f + new Vector2(1f, 0f), 60f);
+        hostPlayer.Health!.ApplyResolvedDamage(float.MaxValue / 4f, null);
+        bool fell = hostPlayer.Health.IsDead && !run.State.Ended;
+        await Seconds(5f);
+        bool stillDown = hostPlayer.Health.IsDead && !run.State.Ended;
+        float ring = hostPlayer.ReviveProgress;
+        bool up = await WaitFor(() => !hostPlayer.Health.IsDead, 7f);
+        float lifeShare = hostPlayer.Stats.Life.Current / Mathf.Max(1f, hostPlayer.Stats.Life.Max);
+        Check("DOWNED-RESPAWNS-IN-10S", fell && stillDown && ring is > 0.35f and < 0.75f && up && lifeShare is > 0.4f and <= 0.6f && !run.State.Ended,
+            $"fell={fell}, still down at 5 s={stillDown} (ring {ring:0.00}), back up={up} at {lifeShare:P0} life, run ended={run.State.Ended}");
         hostPlayer.Health.IgnoreDamage = true;
         slime.QueueFree();
 

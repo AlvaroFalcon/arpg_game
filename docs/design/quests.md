@@ -725,9 +725,9 @@ How it behaves, in short:
 ## Open questions (owner)
 
 1. Rewards are first guesses (1,000 gold is a lot at tier 2 and little at tier 12).
-   Tune with play.
-2. Veterans who already did the thing get the quest **skipped** with no reward.
-   Grant the rewards retroactively instead?
+   Owner: keep them until they've been played.
+2. ~~Veterans: retroactive rewards?~~ Owner (2026-10-17): no — as built, quests
+   appear when their requirements are met and veterans' are skipped.
 3. Should the log also track non-tutorial goals ("Clear tier 10", "Fill a jewel
    branch")? The model supports counted objectives and `boss_killed` with a tier
    filter already.

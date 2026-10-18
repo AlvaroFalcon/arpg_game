@@ -67,6 +67,38 @@ public static class PartyRules
     /// <summary>Invulnerability after a revive (seconds).</summary>
     public const float ReviveGrace = 2f;
 
+    /// <summary>Seconds after which a downed player gets back up on their own
+    /// (owner decision 2026-10-17); an ally standing by still revives sooner.</summary>
+    public const float RespawnSeconds = 10f;
+
+    /// <summary>Life a player who got up on their own comes back with (fraction of max).</summary>
+    public const float RespawnLife = 0.5f;
+
+    public enum ReviveOutcome { StillDown, RevivedByAlly, Respawned }
+
+    /// <summary>
+    /// One step of the downed rule: an ally's help fills over <see cref="ReviveTime"/>
+    /// and drains when nobody stands by; the respawn timer fills over
+    /// <see cref="RespawnSeconds"/> regardless. Returns the new help and time down,
+    /// what happened, and the progress the ring shows (whichever is further).
+    /// </summary>
+    public static (float Help, float DownedFor, ReviveOutcome Outcome, float Shown) StepRevive(float help, float downedFor, bool helped, float dt)
+    {
+        help = Mathf.Clamp(help + (helped ? dt : -dt) / ReviveTime, 0f, 1f);
+        downedFor += dt;
+        if (help >= 1f)
+        {
+            return (0f, 0f, ReviveOutcome.RevivedByAlly, 0f);
+        }
+
+        if (downedFor >= RespawnSeconds)
+        {
+            return (0f, 0f, ReviveOutcome.Respawned, 0f);
+        }
+
+        return (help, downedFor, ReviveOutcome.StillDown, Mathf.Max(help, downedFor / RespawnSeconds));
+    }
+
     /// <summary>More than one player: the party rules apply (portal, cash-out vote).</summary>
     public static bool IsParty(int players) => players > 1;
 

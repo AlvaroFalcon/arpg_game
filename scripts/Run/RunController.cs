@@ -363,7 +363,8 @@ public partial class RunController : Node2D
     /// <summary>
     /// Offline: falling ends the run (after the Colossus it still counts as a
     /// victory). Co-op (docs/design/multiplayer.md -> "Deaths"): the player is
-    /// downed until an ally revives them; the run is lost when everyone is down.
+    /// downed and gets back up after 10 s (sooner if an ally stands by); the run
+    /// ends when everyone is down at once, with the reward reached so far.
     /// </summary>
     private void OnPlayerDied(Player player)
     {
@@ -376,7 +377,9 @@ public partial class RunController : Node2D
         player.ReviveProgress = 0f;
         if (State.PlayerOf(player) is { } rp)
         {
-            NetHost?.ToastAll($"{RiftHost.NameOf(rp)} is down — stand next to them to revive", new Color(1f, 0.45f, 0.4f));
+            rp.DownedFor = 0f;
+            rp.ReviveHelp = 0f;
+            NetHost?.ToastAll($"{RiftHost.NameOf(rp)} is down — back in {Net.PartyRules.RespawnSeconds:0} s, or stand next to them to revive", new Color(1f, 0.45f, 0.4f));
         }
 
         if (State.AllDown)

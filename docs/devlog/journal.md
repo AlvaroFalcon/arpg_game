@@ -621,3 +621,13 @@ The six tutorial quests from `docs/design/quests.md` are in the game. Each teach
 ![A ready quest in the log](screenshots/quests-log-ready.png)
 ![The log in a reality](screenshots/quests-log-reality.png)
 ![An empty log](screenshots/quests-log-empty.png)
+
+## 2026-10-18 — Co-op deaths: back up after 10 s
+
+The owner's answers to the quest/cash-out questions:
+- **Veterans:** no retroactive quest rewards.
+- **Cash-out vote:** stays as built.
+- **Prices:** stay as first guesses for now.
+- **Deaths:** solo, death ends the run with the reward reached. In co-op, a downed player now gets back up on their own after **10 s** at half life, where they fell. An ally standing by for 3 s still revives sooner, at 40%. The run ends only when everyone is down at once, paying the reward reached.
+
+The rule is a pure `PartyRules.StepRevive`. The snapshot's revive byte now carries whichever progress is further, so the ring fills over 10 s by itself and faster with help, with no protocol change. Tests: RiftProgressionTest `DOWNED-*` checks the rule; CoopSmokeTest `DOWNED-RESPAWNS-IN-10S` downs the host away from the clients, sees it still down at 5 s with the ring at 0.50, and back up at 50% life before 11 s.

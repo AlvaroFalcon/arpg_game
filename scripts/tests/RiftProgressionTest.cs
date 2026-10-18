@@ -87,6 +87,7 @@ public partial class RiftProgressionTest : Node2D
             await MinimumLootChecks();
             await EnergyShieldChecks();
             OverflowChecks();
+            DownedRuleChecks();
             await OverflowUiChecks(real);
             await RiftSceneChecks(real);
             await CashOutChecks(real);
@@ -444,6 +445,37 @@ public partial class RiftProgressionTest : Node2D
         }
 
         return account;
+    }
+
+    /// <summary>Co-op downed rule (PartyRules.StepRevive): back up alone after 10 s,
+    /// sooner with an ally standing by; the ring shows whichever is further.</summary>
+    private void DownedRuleChecks()
+    {
+        float help = 0f, down = 0f, shown = 0f;
+        Net.PartyRules.ReviveOutcome outcome = Net.PartyRules.ReviveOutcome.StillDown;
+        int steps = 0;
+        while (outcome == Net.PartyRules.ReviveOutcome.StillDown && steps < 2000)
+        {
+            (help, down, outcome, shown) = Net.PartyRules.StepRevive(help, down, false, 0.05f);
+            steps++;
+        }
+
+        Check("DOWNED-ALONE-RESPAWNS-AT-10S", outcome == Net.PartyRules.ReviveOutcome.Respawned && Mathf.Abs(steps * 0.05f - Net.PartyRules.RespawnSeconds) < 0.06f,
+            $"outcome={outcome} after {steps * 0.05f:0.00} s");
+
+        help = 0f; down = 0f; outcome = Net.PartyRules.ReviveOutcome.StillDown; steps = 0;
+        while (outcome == Net.PartyRules.ReviveOutcome.StillDown && steps < 2000)
+        {
+            (help, down, outcome, shown) = Net.PartyRules.StepRevive(help, down, true, 0.05f);
+            steps++;
+        }
+
+        Check("DOWNED-ALLY-REVIVES-SOONER", outcome == Net.PartyRules.ReviveOutcome.RevivedByAlly && Mathf.Abs(steps * 0.05f - Net.PartyRules.ReviveTime) < 0.06f,
+            $"outcome={outcome} after {steps * 0.05f:0.00} s");
+
+        (float h, float d, Net.PartyRules.ReviveOutcome o, float ring) = Net.PartyRules.StepRevive(0.1f, 6f, false, 0.05f);
+        Check("DOWNED-RING-SHOWS-FURTHEST", o == Net.PartyRules.ReviveOutcome.StillDown && Mathf.IsEqualApprox(ring, 6.05f / Net.PartyRules.RespawnSeconds) && h < 0.1f,
+            $"ring={ring:0.000}, help drained to {h:0.000}, down {d:0.00} s");
     }
 
     private void OverflowChecks()
