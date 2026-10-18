@@ -26,6 +26,8 @@ public partial class MerchantPanel : ModalPanel
 
     protected override string Title => "Odran the Trader";
 
+    public override string? StationUid => "merchant";
+
     protected override Vector2 FrameSize => new(1010f, 560f);
 
     /// <summary>The character the Skill gems tab sells to; defaults to the active one (tests set it).</summary>

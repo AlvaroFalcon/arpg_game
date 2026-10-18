@@ -15,6 +15,9 @@ public partial class CharacterPanels : Node
     public PassiveTreePanel Tree { get; private set; } = null!;
     public CharacterPanel Sheet { get; private set; } = null!;
 
+    /// <summary>The quest log (J) — docs/design/quests.md.</summary>
+    public QuestLogPanel Quests { get; private set; } = null!;
+
     public override void _Ready()
     {
         ProcessMode = ProcessModeEnum.Always;
@@ -24,6 +27,8 @@ public partial class CharacterPanels : Node
         AddChild(Tree);
         Sheet = new CharacterPanel { Player = Player, Name = "CharacterPanel" };
         AddChild(Sheet);
+        Quests = new QuestLogPanel { Name = "QuestLogPanel" };
+        AddChild(Quests);
     }
 
     public override void _Process(double delta)
@@ -32,6 +37,10 @@ public partial class CharacterPanels : Node
         Toggle("toggle_skills", Skills);
         Toggle("toggle_passives", Tree);
         Toggle("toggle_character", Sheet);
+        if (Quests.Blocked?.Invoke() != true)
+        {
+            Toggle("toggle_quests", Quests);
+        }
     }
 
     private void Toggle(string action, ModalPanel panel)
@@ -41,7 +50,7 @@ public partial class CharacterPanels : Node
             return;
         }
 
-        if (!panel.IsOpen && (Skills.IsOpen || Tree.IsOpen || Sheet.IsOpen))
+        if (!panel.IsOpen && (Skills.IsOpen || Tree.IsOpen || Sheet.IsOpen || Quests.IsOpen))
         {
             return;
         }

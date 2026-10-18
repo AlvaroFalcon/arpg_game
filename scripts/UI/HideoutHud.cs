@@ -6,6 +6,7 @@ using Godot;
 using ArpgGame.Characters;
 using ArpgGame.Core;
 using ArpgGame.Items;
+using ArpgGame.Quests;
 using ArpgGame.Skills;
 using ArpgGame.World;
 
@@ -50,11 +51,32 @@ public partial class HideoutHud : CanvasLayer
     private readonly List<SkillSlotView> _slots = new();
     private string _skillSignature = "";
     private string _plateSprite = "";
+    private QuestTracker _tracker = null!;
+    private QuestBadge _promptBadge = null!;
+    private string _promptQuestSuffix = "";
 
     /// <summary>The prompt's text while it shows (tests).</summary>
     public string PromptText => _prompt.Visible ? $"{_promptName.Text} — {_promptVerb.Text}" : "";
 
+    /// <summary>The marker on the E prompt's card (tests).</summary>
+    public QuestMarker PromptMarker => _prompt.Visible ? _promptBadge.Marker : QuestMarker.None;
+
     public IReadOnlyList<string> DirectoryEntries => _rows.Select(r => r.Kind).ToList();
+
+    /// <summary>The quest marker each directory row shows (tests).</summary>
+    public IReadOnlyDictionary<string, QuestMarker> DirectoryMarkers => _rows.ToDictionary(r => r.Kind, r => r.Quest);
+
+    /// <summary>The small town map above the directory (tests, captures).</summary>
+    public TownMap Minimap => _directory.GetParent().GetNode<TownMap>("Minimap");
+
+    /// <summary>The big map (M).</summary>
+    public TownMap BigMap => _bigMap!;
+
+    /// <summary>The arrival banner's second line (tests).</summary>
+    public string BannerSub => _bannerSub.Text;
+
+    /// <summary>The badge on a menu-bar chip by its key ("J"), 0 when it has none (tests).</summary>
+    public int ChipBadge(string key) => _chips.FirstOrDefault(c => c.Key == key)?.Badge?.Invoke() ?? 0;
 
     public override void _Ready()
     {
@@ -62,6 +84,7 @@ public partial class HideoutHud : CanvasLayer
         _root = UiTheme.FullRect(this);
         _root.MouseFilter = Control.MouseFilterEnum.Ignore;
         BuildPlate();
+        BuildTracker();
         BuildMenuBar();
         BuildDirectory();
         BuildVitals();
@@ -147,6 +170,22 @@ public partial class HideoutHud : CanvasLayer
 
     private CharacterPanels? Panels => Hideout.GetNodeOrNull<CharacterPanels>("CharacterPanels");
 
+    // --- quest tracker (under the plate) -------------------------------------------
+
+    /// <summary>The quest tracker (tests, captures).</summary>
+    public QuestTracker Tracker => _tracker;
+
+    private void BuildTracker()
+    {
+        _tracker = new QuestTracker { Position = new Vector2(14f, 164f), OpenLog = id => Panels?.Quests.OpenOn(id) };
+        _root.AddChild(_tracker);
+        HudLayout.Register(_tracker, "quests", "Quests", _tracker.SetPreview);
+    }
+
+    /// <summary>Where the quest toast's card goes: 8 px under the tracker, or where the tracker would be.</summary>
+    public Vector2 ToastAnchor() =>
+        _tracker.GlobalPosition + new Vector2(0f, _tracker.Visible ? _tracker.Size.Y + 8f : 0f);
+
     // --- menu bar (top centre) -----------------------------------------------------
 
     private void BuildMenuBar()
@@ -162,6 +201,7 @@ public partial class HideoutHud : CanvasLayer
         AddChip(row, "C", "Character", () => Panels?.Sheet.Toggle());
         AddChip(row, "K", "Skills", () => Panels?.Skills.Toggle());
         AddChip(row, "P", "Passives", () => Panels?.Tree.Toggle(), () => CharacterBuild.Of(Player)?.Data.PassivePointsFree ?? 0);
+        AddChip(row, "J", "Quests", () => Panels?.Quests.Toggle(), () => QuestService.Attention(Hideout));
         AddChip(row, "H", "Edit town", Hideout.OpenEditor);
         AddChip(row, "?", "Guide", Hideout.OpenGuide);
         AddChip(row, "Esc", "Menu", OpenPauseMenu);
@@ -335,6 +375,8 @@ public partial class HideoutHud : CanvasLayer
         _promptVerb = UiTheme.Label("", 13, UiTheme.Text);
         text.AddChild(_promptName);
         text.AddChild(_promptVerb);
+        _promptBadge = new QuestBadge { Visible = false };
+        row.AddChild(_promptBadge);
     }
 
     private void UpdatePrompt()
@@ -349,7 +391,16 @@ public partial class HideoutHud : CanvasLayer
         (PlacedProp prop, PropDef def) = near;
         _promptName.Text = def.Name;
         _promptName.AddThemeColorOverride("font_color", def.Accent);
-        _promptVerb.Text = def.Id == "portal" ? $"{def.Verb} — {def.Blurb}" : def.Verb;
+        QuestMarker marker = QuestService.MarkerAt(Hideout, prop.Uid);
+        _promptVerb.Text = (def.Id == "portal" ? $"{def.Verb} — {def.Blurb}" : def.Verb) + marker switch
+        {
+            QuestMarker.New => " · New quest",
+            QuestMarker.Ready => " · Quest ready to turn in",
+            QuestMarker.Active => " · Quest in progress",
+            _ => "",
+        };
+        _promptBadge.Marker = marker;
+        _promptBadge.Visible = marker != QuestMarker.None;
         _prompt.AddThemeStyleboxOverride("panel", Glass(def.Accent));
         _prompt.Visible = true;
         _prompt.ResetSize();
@@ -522,6 +573,10 @@ public partial class HideoutHud : CanvasLayer
         private string _where = "";
         private float _angle;
         private bool _alert;
+        private QuestMarker _quest;
+
+        /// <summary>The quest marker the row shows (tests).</summary>
+        public QuestMarker Quest => _quest;
 
         public override void _Ready()
         {
@@ -546,6 +601,7 @@ public partial class HideoutHud : CanvasLayer
             _where = $"{HideoutTown.QuarterOf(prop.Position)} · {Mathf.RoundToInt(d.Length() / 32f)} m";
             CharacterData? c = CharacterBuild.Of(h.Player)?.Data;
             _alert = Kind == "altar" && c is not null && (c.AscendancyPointsFree > 0 || c is { AscendancyPoints: > 0, Ascendancy: null });
+            _quest = QuestService.MarkerAt(h, Kind);
             QueueRedraw();
         }
 
@@ -569,17 +625,49 @@ public partial class HideoutHud : CanvasLayer
             DrawRect(new Rect2(0f, 5f, 3f, Size.Y - 10f), Def.Accent);
             DrawString(font, new Vector2(10f, 14f), Def.Name, HorizontalAlignment.Left, Size.X - 50f, 14, _hover ? Colors.White : UiTheme.Text);
             DrawString(font, new Vector2(10f, 27f), _where, HorizontalAlignment.Left, Size.X - 50f, 11, UiTheme.TextDim);
-            if (_alert)
+            // A quest's marker wins over the ascendancy-points dot (the altar has both).
+            if (_quest != QuestMarker.None)
+            {
+                QuestGlyphs.DrawMarker(this, new Vector2(Size.X - 46f, Size.Y / 2f), 8f, _quest, 11f);
+            }
+            else if (_alert)
             {
                 DrawCircle(new Vector2(Size.X - 46f, 10f), 5f, UiTheme.Ember);
             }
 
-            // The arrow: which way to walk.
+            // The arrow: which way to walk (gold and a fifth larger when a quest waits here).
+            bool waiting = _quest is QuestMarker.New or QuestMarker.Ready;
+            float k = waiting ? 1.2f : 1f;
             Vector2 c = new(Size.X - 16f, Size.Y / 2f);
             Vector2 f = Vector2.FromAngle(_angle);
             Vector2 s = new(-f.Y, f.X);
-            DrawCircle(c, 11f, new Color(1f, 1f, 1f, 0.06f));
-            DrawColoredPolygon(new[] { c + f * 8f, c - f * 5f + s * 5f, c - f * 2f, c - f * 5f - s * 5f }, Def.Accent);
+            DrawCircle(c, 11f * k, new Color(1f, 1f, 1f, 0.06f));
+            DrawColoredPolygon(new[] { c + f * 8f * k, c - f * 5f * k + s * 5f * k, c - f * 2f * k, c - f * 5f * k - s * 5f * k }, waiting ? UiTheme.Gold : Def.Accent);
         }
+    }
+
+    /// <summary>The 22 px quest marker on the E prompt's card.</summary>
+    private sealed partial class QuestBadge : Control
+    {
+        private QuestMarker _marker;
+
+        public QuestMarker Marker
+        {
+            get => _marker;
+            set
+            {
+                _marker = value;
+                QueueRedraw();
+            }
+        }
+
+        public override void _Ready()
+        {
+            CustomMinimumSize = new Vector2(24f, 24f);
+            SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            MouseFilter = MouseFilterEnum.Ignore;
+        }
+
+        public override void _Draw() => QuestGlyphs.DrawMarker(this, new Vector2(12f, 12f), 11f, _marker, 16f);
     }
 }

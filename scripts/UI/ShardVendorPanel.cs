@@ -22,6 +22,8 @@ public partial class ShardVendorPanel : ModalPanel
 
     protected override string Title => "Arehucaz";
 
+    public override string? StationUid => "arehucaz";
+
     protected override Vector2 FrameSize => new(900f, 560f);
 
     private static readonly Color Violet = new(0.68f, 0.45f, 1f);

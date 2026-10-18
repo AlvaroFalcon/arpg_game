@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 using Godot;
 using ArpgGame.Characters;
 using ArpgGame.Core;
+using ArpgGame.Items;
 using ArpgGame.Quests;
+using ArpgGame.Run;
+using ArpgGame.UI;
 using ArpgGame.World;
 
 namespace ArpgGame.Tests;
@@ -77,6 +80,7 @@ public partial class QuestSmokeTest : Node2D
             await Frames(2);
             RuleChecks();
             PersistChecks();
+            await LiveChecks();
         }
         catch (System.Exception e)
         {
@@ -344,5 +348,323 @@ public partial class QuestSmokeTest : Node2D
             && Profile.ValidateCharacterJson(nullEntry.ToJsonString(), out _, out _) == "bad quest data";
         Check("QUEST-VALIDATE-COOP", ok is null && refused && Profile.ValidateCharacterJson(atCap.ToJsonString(), out _, out _) is null,
             $"a payload with quests passes ({ok ?? "ok"}); 1,000 entries → '{many}', a 65-character id → '{longReason}', status 6, count 1000 and a null entry are refused; exactly {Net.NetLimits.MaxQuests} entries still pass");
+    }
+
+    // --- live: hideout, reality, rift ------------------------------------------------------
+
+    private static List<T> FindAll<T>(Node root) where T : Node
+    {
+        var found = new List<T>();
+        void Walk(Node n)
+        {
+            if (n is T t)
+            {
+                found.Add(t);
+            }
+
+            foreach (Node child in n.GetChildren())
+            {
+                Walk(child);
+            }
+        }
+
+        Walk(root);
+        return found;
+    }
+
+    private async Task LiveChecks()
+    {
+        // Never touch the real account: the autoload is emptied for the test and put back after.
+        Profile? profile = Profile.Get(this);
+        if (profile is null)
+        {
+            Check("QUEST-LIVE", false, "the Profile autoload is missing");
+            return;
+        }
+
+        string snapshot = profile.ToJson();
+        bool persisted = profile.Persist;
+        profile.Persist = false;
+        try
+        {
+            await HideoutScenario(profile);
+            await LogScenario(profile);
+            await RealityScenario(profile);
+            await IntroScenario(profile);
+            await RiftScenario(profile);
+        }
+        finally
+        {
+            profile.LoadJson(snapshot);
+            profile.Persist = persisted;
+        }
+    }
+
+    private async Task<Hideout> NewHideout(Profile profile, CharacterData hero)
+    {
+        profile.Hideout = new HideoutData { GuideSeen = true };
+        var hideout = GD.Load<PackedScene>("res://scenes/Hideout.tscn").Instantiate<Hideout>();
+        AddChild(hideout);
+        await Frames(4);
+        await Process(2);
+        _ = hero;
+        return hideout;
+    }
+
+    private async Task LeaveHideout(Hideout hideout)
+    {
+        GetTree().Paused = false;
+        PanelStack.Clear();
+        hideout.QueueFree();
+        await Frames(2);
+    }
+
+    private async Task HideoutScenario(Profile profile)
+    {
+        profile.Reset();
+        CharacterData hero = profile.CreateCharacter("Quester", "warrior");
+        hero.TutorialDone = false;
+        hero.AscendancyPoints = AscendancyCatalog.FirstPoints;
+        int newSounds = Sfx.RequestCount("quest_new");
+        Hideout hideout = await NewHideout(profile, hero);
+        HideoutHud hud = hideout.Hud;
+        QuestToast toast = hideout.GetNode<QuestToast>("QuestToast");
+        string banner = hud.BannerSub;
+        Check("QUEST-ARRIVAL", QuestService.StatusOf(hideout, QuestCatalog.AscendId) == QuestStatus.New && banner == "1 new quest · J opens your quests"
+            && toast.Showing is { Kind: QuestToast.Kind.New, Title: "Choose an ascendancy" } && Sfx.RequestCount("quest_new") > newSounds,
+            $"entering the hideout with 4 ascendancy points: ascend is {QuestService.StatusOf(hideout, QuestCatalog.AscendId)}, banner '{banner}', toast {toast.Showing?.Kind} '{toast.Showing?.Title}', quest_new requested={Sfx.RequestCount("quest_new") > newSounds}");
+
+        // Markers: over the station, on the directory row, on both maps, on the E prompt, in the tracker, on the J chip.
+        Vector2 altarAt = hideout.Data.Find("altar")!.Position;
+        hideout.Player.GlobalPosition = HideoutTown.World(HideoutTown.SpawnCell);
+        await Process(3);
+        var marker = hideout.Props["altar"].GetNode<QuestMarker2D>("QuestMarker");
+        bool inWorld = marker.Marker == QuestMarker.New && marker.Visible && hideout.Props["forge"].GetNode<QuestMarker2D>("QuestMarker").Marker == QuestMarker.None;
+        bool onRow = hud.DirectoryMarkers["altar"] == QuestMarker.New && hud.DirectoryMarkers["forge"] == QuestMarker.None;
+        bool onMaps = hud.Minimap.QuestMarkerOf("altar") == QuestMarker.New && hud.BigMap.QuestMarkerOf("altar") == QuestMarker.New;
+        hideout.Player.GlobalPosition = altarAt + new Vector2(0f, 40f);
+        await Process(3);
+        string prompt = hud.PromptText;
+        bool promptCarries = prompt.Contains("New quest") && hud.PromptMarker == QuestMarker.New && !marker.Visible;
+        bool tracked = hud.Tracker.Visible && hud.Tracker.RowIds.Count == 1 && hud.Tracker.RowIds[0] == QuestCatalog.AscendId;
+        int badge = hud.ChipBadge("J");
+        Check("QUEST-HIDEOUT-MARKERS", inWorld && onRow && onMaps && promptCarries && tracked && badge == 1,
+            $"world marker {marker.Marker}/visible far={inWorld}, directory row={onRow}, minimap and big map={onMaps}, prompt '{prompt}' (marker {hud.PromptMarker}, world marker hidden while it shows={!marker.Visible}), tracker rows {hud.Tracker.RowIds.Count}, J badge {badge}");
+
+        // E at the altar: the dialogue first, the altar after.
+        var altar = hideout.GetNode<AscendancyPanel>("AscendancyPanel");
+        QuestDialog dialog = hideout.QuestDialog;
+        Input.ActionPress("interact");
+        await Process(2);
+        Input.ActionRelease("interact");
+        bool viaKey = dialog.IsOpen;
+        if (!viaKey)
+        {
+            hideout.Interact("altar");
+            await Process(1);
+        }
+
+        bool dialogFirst = dialog.IsOpen && !altar.IsOpen && dialog.Quest?.Id == QuestCatalog.AscendId && !dialog.TurnInMode && dialog.PrimaryText == "Open the altar";
+        dialog.PressPrimary();
+        await Process(1);
+        bool then = altar.IsOpen && QuestService.StatusOf(hideout, QuestCatalog.AscendId) == QuestStatus.Active && QuestService.MarkerAt(hideout, "altar") == QuestMarker.Active
+            && altar.QuestStripVisible && altar.QuestStripText.StartsWith("Quest: Choose an ascendancy") && !altar.QuestStripDone;
+        Check("QUEST-E-DIALOG-FIRST", dialogFirst && then, $"E opened the dialogue and not the altar={dialogFirst} (by the real key={viaKey}); its primary opened the altar={altar.IsOpen}, quest Active={QuestService.StatusOf(hideout, QuestCatalog.AscendId)}, strip '{altar.QuestStripText}'");
+
+        // Two clicks choose; the second makes the quest Ready (green strip, quest_done) and no card covers the panel.
+        int doneSounds = Sfx.RequestCount("quest_done");
+        bool armed = !altar.Choose("paladin") && altar.PendingChoice == "paladin";
+        bool chosen = altar.Choose("paladin");
+        bool ready = QuestService.StatusOf(hideout, QuestCatalog.AscendId) == QuestStatus.Ready && altar.QuestStripDone && altar.QuestStripText.StartsWith("Quest complete")
+            && Sfx.RequestCount("quest_done") > doneSounds;
+        bool noCard = !toast.AnnouncesDone(QuestCatalog.AscendId);
+        Check("QUEST-ASCEND-READY", armed && chosen && ready && noCard, $"first click arms={armed}, second chooses={chosen}; Ready with a green strip '{altar.QuestStripText}' and quest_done requested={ready}; no 'complete' card over the panel={noCard}");
+
+        // Closing the altar opens the turn-in; claiming pays exactly the table.
+        Wallet wallet = hideout.Player.Wallet;
+        long gold0 = wallet.GetBalance(Profile.GoldId);
+        long crown0 = wallet.GetBalance("crown_orb");
+        long tempest0 = wallet.GetBalance("tempest_orb");
+        long tuning0 = wallet.GetBalance("tuning_orb");
+        altar.Close();
+        await Process(2);
+        bool turnIn = dialog.IsOpen && dialog.TurnInMode && dialog.Quest?.Id == QuestCatalog.AscendId && dialog.PrimaryText == "Claim reward";
+        dialog.PressPrimary();
+        await Process(1);
+        bool paid = wallet.GetBalance(Profile.GoldId) == gold0 + 1000 && wallet.GetBalance("crown_orb") == crown0 + 2 && wallet.GetBalance("tempest_orb") == tempest0 + 2 && wallet.GetBalance("tuning_orb") == tuning0 + 1;
+        bool done = QuestService.StatusOf(hideout, QuestCatalog.AscendId) == QuestStatus.Done && QuestService.MarkerAt(hideout, "altar") == QuestMarker.None && hud.Tracker.RowIds.Count == 0
+            && profile.Currency.GetValueOrDefault("crown_orb") >= 2 && hero.Gold >= 1000 && !hideout.QuestDialog.IsOpen;
+        bool rewardCard = toast.Queued > 0 || toast.Showing is { Kind: QuestToast.Kind.Reward } || QuestService.LastClaim is { Id: QuestCatalog.AscendId };
+        Check("QUEST-AUTO-TURNIN", turnIn && paid && done && rewardCard, $"closing the altar opened the turn-in={turnIn}; claim paid 1,000 gold + 2 Crown + 2 Tempest + 1 Tuning through the wallet={paid} (gold {wallet.GetBalance(Profile.GoldId) - gold0}); Done, no marker, tracker empty, captured into the profile={done}; reward line '{QuestService.LastClaim?.Text}'");
+
+        // The forge: the objective is met inside the panel, which closes into the turn-in.
+        profile.Quests[QuestCatalog.DisenchantId] = new QuestProgress { Status = QuestStatus.Active };
+        var forge = hideout.GetNode<ArtificerPanel>("ArtificerPanel");
+        forge.Open();
+        var rng = new RandomNumberGenerator { Seed = 5 };
+        EquipmentItem scrap = ItemFactory.RollRandom(20, DropSource.NormalMonster, 1f, rng);
+        hideout.Player.Inventory.TryAdd(scrap);
+        long azure0 = wallet.GetBalance("azure_dust");
+        long grey0 = wallet.GetBalance("grey_dust");
+        long forgeGold0 = wallet.GetBalance(Profile.GoldId);
+        bool strip = forge.QuestStripVisible && forge.QuestStripText.Contains("Disenchant an item");
+        forge.Disenchant(scrap);
+        bool forgeReady = QuestService.StatusOf(hideout, QuestCatalog.DisenchantId) == QuestStatus.Ready && forge.QuestStripDone;
+        bool noForgeCard = !toast.AnnouncesDone(QuestCatalog.DisenchantId);
+        forge.Close();
+        await Process(2);
+        bool forgeTurnIn = dialog.IsOpen && dialog.TurnInMode && dialog.Quest?.Id == QuestCatalog.DisenchantId;
+        dialog.PressPrimary();
+        await Process(1);
+        long dustAzure = wallet.GetBalance("azure_dust") - azure0;
+        long dustGrey = wallet.GetBalance("grey_dust") - grey0;
+        bool chained = QuestService.StatusOf(hideout, QuestCatalog.ForgeId) == QuestStatus.New && QuestService.MarkerAt(hideout, "forge") == QuestMarker.New;
+        Check("QUEST-FORGE-FLOW", strip && forgeReady && noForgeCard && forgeTurnIn && dustAzure >= 6 && dustGrey >= 6 && wallet.GetBalance(Profile.GoldId) >= forgeGold0 + 100 && chained,
+            $"the forge showed its quest strip={strip}; disenchanting made it Ready with no card={forgeReady && noForgeCard}; closing it opened the turn-in={forgeTurnIn}; reward dust azure +{dustAzure}, grey +{dustGrey} (at least 6 each, the item's own dust is in there too), gold +{wallet.GetBalance(Profile.GoldId) - forgeGold0}; the forge quest followed at once={chained}");
+
+        // The mirror jewel with a full tree: gold instead, never past 69.
+        profile.Jewels.Found = JewelTree.Sockets;
+        profile.Quests[QuestCatalog.JewelId] = new QuestProgress { Status = QuestStatus.Ready };
+        long jewelGold0 = wallet.GetBalance(Profile.GoldId);
+        hideout.Interact("mirror");
+        await Process(1);
+        bool jewelDialog = dialog.IsOpen && dialog.TurnInMode && dialog.Quest?.Id == QuestCatalog.JewelId;
+        dialog.PressPrimary();
+        await Process(1);
+        Check("QUEST-JEWEL-CAP", jewelDialog && profile.Jewels.Found == JewelTree.Sockets && wallet.GetBalance(Profile.GoldId) == jewelGold0 + 2000,
+            $"tree full ({JewelTree.Sockets} found): the turn-in opened={jewelDialog}, Found stays {profile.Jewels.Found}, gold +{wallet.GetBalance(Profile.GoldId) - jewelGold0} (1,000 and 1,000 instead of the jewel)");
+
+        // The toast: unlocks show on the same frame; held back while the guide is open.
+        hero.Quests.Clear();
+        profile.Quests.Clear();
+        hero.AscendancyPoints = 0;
+        hero.Ascendancy = null;
+        hero.TutorialDone = false;
+        hero.HighestTierCleared = 1;
+        var fresh = new QuestToast { Name = "FreshToast" };
+        hideout.AddChild(fresh);
+        int sounds = Sfx.RequestCount("quest_new");
+        hero.TutorialDone = true;
+        QuestService.Evaluate(hideout);
+        bool sameFrame = fresh.Showing is { Kind: QuestToast.Kind.New, Title: "Odran's wares" } && Sfx.RequestCount("quest_new") == sounds + 1;
+        fresh.QueueFree();
+        await Process(2);
+        var held = new QuestToast { Name = "HeldToast" };
+        hideout.AddChild(held);
+        hideout.OpenGuide();
+        await Process(1);
+        hero.HighestTierCleared = 2;
+        QuestService.Evaluate(hideout);
+        bool waits = held.Showing is null && held.Queued == 1;
+        hideout.GetNode<TownGuidePanel>("TownGuide").Close();
+        await Process(2);
+        bool thenShown = held.Showing is { Kind: QuestToast.Kind.New, Title: "The shard dealer" };
+        Check("QUEST-TOAST", sameFrame && waits && thenShown, $"an unlock shows its card on the same frame and requests quest_new={sameFrame}; with the guide open the card waits ({held.Queued} queued)={waits} and shows once it closes={thenShown}");
+        held.QueueFree();
+
+        await LeaveHideout(hideout);
+    }
+
+    private async Task LogScenario(Profile profile)
+    {
+        profile.Reset();
+        CharacterData hero = profile.CreateCharacter("Reader", "rogue");
+        hero.TutorialDone = false;
+        Hideout hideout = await NewHideout(profile, hero);
+        QuestLogPanel log = hideout.GetNode<CharacterPanels>("CharacterPanels").Quests;
+
+        // Empty first.
+        Input.ActionPress("toggle_quests");
+        await Process(2);
+        Input.ActionRelease("toggle_quests");
+        bool viaKey = log.IsOpen;
+        if (!viaKey)
+        {
+            log.Open();
+        }
+
+        bool empty = log.IsOpen && log.ShowingEmpty && QuestLogPanel.EmptyText.StartsWith("No quests yet.");
+        log.Close();
+        await Process(1);
+
+        hero.Quests[QuestCatalog.OdranId] = new QuestProgress { Status = QuestStatus.Done };
+        hero.Quests[QuestCatalog.AscendId] = new QuestProgress { Status = QuestStatus.New };
+        hero.Quests[QuestCatalog.ArehucazId] = new QuestProgress { Status = QuestStatus.Active };
+        profile.Quests[QuestCatalog.JewelId] = new QuestProgress { Status = QuestStatus.Ready };
+        log.Open();
+        await Process(1);
+        string[] expected = { "READY TO TURN IN (1)", QuestCatalog.JewelId, "ACTIVE (2)", QuestCatalog.AscendId, QuestCatalog.ArehucazId, "COMPLETED (1)" };
+        bool sections = log.Listing.SequenceEqual(expected) && log.SelectedId == QuestCatalog.JewelId;
+        log.OpenOn(QuestCatalog.AscendId);
+        await Process(1);
+        bool walkable = log.SelectedId == QuestCatalog.AscendId && log.CanWalk;
+        log.WalkThere();
+        await Frames(3);
+        bool walking = !log.IsOpen && hideout.WalkingTo == "altar";
+        hideout.Player.StopAutoWalk();
+        Check("QUEST-LOG", empty && sections && walkable && walking, $"J opens the log (by the real key={viaKey}); empty state={empty}; sections [{string.Join(" | ", log.Listing)}] selected '{log.SelectedId}'; Walk there closed the log and the hideout is walking to '{hideout.WalkingTo}'");
+        await LeaveHideout(hideout);
+    }
+
+    private async Task RealityScenario(Profile profile)
+    {
+        profile.Reset();
+        CharacterData hero = profile.CreateCharacter("Slayer", "rogue");
+        hero.TutorialDone = true;
+        hero.Quests[QuestCatalog.OdranId] = new QuestProgress { Status = QuestStatus.Done };
+        hero.Quests[QuestCatalog.ArehucazId] = new QuestProgress { Status = QuestStatus.Active };
+        RealityLaunch.Tier = AscendancyCatalog.Tier1Unlock;
+        var reality = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+        AddChild(reality);
+        await Frames(5);
+        QuestToast toast = reality.GetNode<QuestToast>("QuestToast");
+        int before = Sfx.RequestCount("quest_new");
+        reality.Boss!.Health.ApplyResolvedDamage(1e9f, reality.Player);
+        await Process(1);
+        bool unlocked = hero.AscendancyPoints == AscendancyCatalog.FirstPoints && QuestService.StatusOf(reality, QuestCatalog.AscendId) == QuestStatus.New;
+        bool shown = toast.Showing is { Kind: QuestToast.Kind.New, Title: "Choose an ascendancy" } && Sfx.RequestCount("quest_new") > before;
+        Pickup jewel = Pickup.Spawn(reality, PickupKind.Jewel, 1f, reality.Player.GlobalPosition);
+        reality.OnPickup(jewel, reality.Player);
+        bool jewelQuest = profile.Jewels.Found == 1 && QuestService.StatusOf(reality, QuestCatalog.JewelId) == QuestStatus.New;
+        bool tier = hero.HighestTierCleared == AscendancyCatalog.Tier1Unlock;
+        Check("QUEST-BOSS-TOAST", unlocked && shown && jewelQuest && tier, $"a tier-{AscendancyCatalog.Tier1Unlock} boss kill: ascendancy points {hero.AscendancyPoints}, quest {QuestService.StatusOf(reality, QuestCatalog.AscendId)}; the toast showed within a frame={shown} ({toast.Showing?.Title}); a jewel pickup unlocks the Mirror's quest={jewelQuest}; the tier record is set={tier}");
+        GetTree().Paused = false;
+        PanelStack.Clear();
+        reality.QueueFree();
+        await Frames(2);
+    }
+
+    private async Task IntroScenario(Profile profile)
+    {
+        profile.Reset();
+        profile.CreateCharacter("Newcomer", "warrior");
+        RealityLaunch.Tutorial = true;
+        var reality = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+        AddChild(reality);
+        await Frames(5);
+        reality.Boss!.Health.ApplyResolvedDamage(1e9f, reality.Player);
+        await Frames(2);
+        float gold = reality.GetChildren().OfType<Pickup>().Where(k => k.Kind == PickupKind.Gold).Sum(k => k.Value) + reality.Player.Wallet.GetBalance(Profile.GoldId);
+        long cheapest = GemShop.Offers.Min(o => o.Price);
+        Check("QUEST-ODRAN-AFFORDABLE", gold >= cheapest && QuestService.StatusOf(reality, QuestCatalog.AscendId) == QuestStatus.Locked,
+            $"a new character clearing the introduction holds {gold} gold, the cheapest gem costs {cheapest}; the introduction's boss unlocks no tier quest");
+        reality.QueueFree();
+        await Frames(2);
+    }
+
+    private async Task RiftScenario(Profile profile)
+    {
+        profile.Reset();
+        profile.CreateCharacter("Runner", "arcanist").AscendancyPoints = 4;
+        var rift = GD.Load<PackedScene>(Scenes.Run).Instantiate<Node>();
+        AddChild(rift);
+        await Frames(3);
+        GameEvents.Raise(GameEvents.HideoutEntered);
+        await Process(2);
+        int toasts = FindAll<QuestToast>(rift).Count + FindAll<QuestTracker>(rift).Count + FindAll<QuestLogPanel>(rift).Count + FindAll<CharacterPanels>(rift).Count;
+        Check("QUEST-NO-RIFT-UI", toasts == 0 && FindAll<QuestToast>(GetTree().Root).All(t => !rift.IsAncestorOf(t)),
+            $"the Survival Rift has {toasts} quest toasts, trackers, logs or character panels (the J binding lives in the character panels)");
+        rift.QueueFree();
+        await Frames(2);
     }
 }

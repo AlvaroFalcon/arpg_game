@@ -18,6 +18,8 @@ public partial class AscendancyPanel : ModalPanel
 
     protected override string Title => "Altar of Ascension";
 
+    public override string? StationUid => "altar";
+
     private VBoxContainer _content = null!;
 
     /// <summary>How long the first click on "Become a ..." stays armed.</summary>

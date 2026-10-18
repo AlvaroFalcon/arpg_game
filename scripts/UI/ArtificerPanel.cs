@@ -28,6 +28,8 @@ public partial class ArtificerPanel : ModalPanel
 
     protected override string Title => "Artificer's Bench";
 
+    public override string? StationUid => "forge";
+
     protected override Vector2 FrameSize => new(1040f, 600f);
 
     public Tab Current { get; private set; } = Tab.Disenchant;

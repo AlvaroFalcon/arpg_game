@@ -5,6 +5,7 @@ using System.Linq;
 using Godot;
 using ArpgGame.Characters;
 using ArpgGame.Core;
+using ArpgGame.Quests;
 using ArpgGame.Stats;
 using ArpgGame.UI;
 using ArpgGame.World;
@@ -43,6 +44,7 @@ public partial class Hideout : Node2D
     private ShardVendorPanel _dealer = null!;
     private TownGuidePanel _guide = null!;
     private HideoutHud _hud = null!;
+    private QuestDialog _questDialog = null!;
     private string? _highlighted;
     private readonly Dictionary<string, Node2D> _props = new();
     private readonly HashSet<TileMap> _dirtyMaps = new();
@@ -93,10 +95,26 @@ public partial class Hideout : Node2D
         _shop = new DecorShopPanel { Player = _player, Data = Data, Name = "DecorShopPanel" };
         _guide = new TownGuidePanel { Data = Data, ShowMe = WalkTo, Name = "TownGuide" };
         _dealer = new ShardVendorPanel { Player = _player, Name = "ShardVendorPanel" };
-        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer })
+        _questDialog = new QuestDialog { Name = "QuestDialog" };
+        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer, _questDialog })
         {
             AddChild(panel);
         }
+
+        // Closing a station's panel with its quest done opens the turn-in (quests.md -> "E prompt and station panels").
+        foreach ((ModalPanel panel, string kind) in new (ModalPanel, string)[] { (_mirror, "mirror"), (_altar, "altar"), (_merchant, "merchant"), (_artificer, "forge"), (_dealer, "arehucaz") })
+        {
+            string station = kind;
+            panel.Closed += () => CallDeferred(nameof(TryAutoTurnIn), station);
+        }
+
+        if (GetNodeOrNull<CharacterPanels>("CharacterPanels") is { } panels)
+        {
+            panels.Quests.Hideout = this;
+            panels.Quests.Blocked = () => Editing || _leaving;
+        }
+
+        AddChild(new QuestToast { Name = "QuestToast", Anchor = ToastAnchor });
 
         foreach (PlacedProp prop in Data.Props.ToList())
         {
@@ -106,6 +124,10 @@ public partial class Hideout : Node2D
         EnsureEditAction();
         _hud = new HideoutHud { Hideout = this, Name = "HideoutHud" };
         AddChild(_hud);
+
+        // Every visit: the quests that wait for "the next visit" unlock, and the toast and the
+        // tracker (both listening by now) announce what is new.
+        GameEvents.Raise(GameEvents.HideoutEntered);
         if (!Data.GuideSeen && profile is not null)
         {
             // First visit on this account: the guide explains the town.
@@ -114,13 +136,45 @@ public partial class Hideout : Node2D
         else
         {
             int pending = profile?.Overflow.Count ?? 0;
-            _hud.ShowBanner("Hideout", pending > 0
+            string line = pending > 0
                 ? $"{pending} reward{(pending == 1 ? " is" : "s are")} waiting in the stash — the Pending tab"
-                : "Your town between realities — ? opens the guide");
+                : "Your town between realities — ? opens the guide";
+            _hud.ShowBanner("Hideout", QuestBanner(line, pending > 0));
         }
     }
 
     public HideoutHud Hud => _hud;
+
+    /// <summary>The quest dialogue (tests, captures).</summary>
+    public QuestDialog QuestDialog => _questDialog;
+
+    /// <summary>The arrival banner's second line, with the quests that wait: "1 new quest · J opens your quests".</summary>
+    private string QuestBanner(string line, bool keepLine)
+    {
+        var fresh = new List<string>();
+        int news = QuestService.Log(this).Count(q => q.Progress.Status == QuestStatus.New);
+        int ready = QuestService.Log(this).Count(q => q.Progress.Status == QuestStatus.Ready);
+        if (news > 0)
+        {
+            fresh.Add($"{news} new quest{(news == 1 ? "" : "s")}");
+        }
+
+        if (ready > 0)
+        {
+            fresh.Add($"{ready} quest{(ready == 1 ? "" : "s")} ready to turn in");
+        }
+
+        if (fresh.Count == 0)
+        {
+            return line;
+        }
+
+        string quests = string.Join(" · ", fresh) + " · J opens your quests";
+        return keepLine ? $"{line} · {quests}" : quests;
+    }
+
+    /// <summary>Where the quest toast's card goes: under the quest tracker (under the character plate while it is empty).</summary>
+    private Vector2 ToastAnchor() => _hud.ToastAnchor();
 
     public void OpenGuide()
     {
@@ -183,6 +237,7 @@ public partial class Hideout : Node2D
         if (def.Station && def.Id != "portal")
         {
             AddLabel(node, def.Name, LabelHeight(def));
+            node.AddChild(new QuestMarker2D { Station = prop.Uid, LabelHeight = LabelHeight(def), Hideout = this });
         }
         else if (def.Id == "portal")
         {
@@ -410,6 +465,9 @@ public partial class Hideout : Node2D
 
         return best;
     }
+
+    /// <summary>The station whose E prompt is showing (its world marker hides: the prompt carries it).</summary>
+    public string? HighlightedStation => _highlighted;
 
     /// <summary>Hides the world label of the station whose prompt is showing (the
     /// prompt carries its name), and shows the others.</summary>
@@ -640,10 +698,88 @@ public partial class Hideout : Node2D
             return;
         }
 
-        if (!GetTree().Paused && Input.IsActionJustPressed("interact") && NearestStation() is { } near && UseOf(near.Def.Id) is { } use)
+        if (!GetTree().Paused && Input.IsActionJustPressed("interact") && NearestStation() is { } near && UseOf(near.Def.Id) is not null)
         {
-            use();
+            Interact(near.Def.Id);
         }
+    }
+
+    // --- quests at stations -------------------------------------------------------------
+
+    /// <summary>
+    /// What E does at a station (docs/design/quests.md -> "E prompt and station panels"): a
+    /// quest that is ready opens its turn-in; a new one opens its explanation first and the panel
+    /// after; otherwise the panel opens at once (with the quest strip if one is running).
+    /// </summary>
+    public void Interact(string kind)
+    {
+        if (Profile.Get(this) is { } profile && QuestService.FirstAt(this, kind) is { } quest && QuestService.ContextOf(profile) is { } ctx)
+        {
+            QuestStatus status = QuestService.StatusOf(this, quest.Id);
+            if (status == QuestStatus.Ready)
+            {
+                ShowTurnIn(quest, profile, ctx);
+                return;
+            }
+
+            if (status == QuestStatus.New)
+            {
+                _questDialog.Show(quest, false, ctx, () =>
+                {
+                    QuestService.MarkRead(profile, quest.Id);
+                    OpenStation(kind, quest.OpenTab);
+                });
+                return;
+            }
+        }
+
+        UseOf(kind)?.Invoke();
+    }
+
+    private void ShowTurnIn(QuestDef quest, Profile profile, QuestContext ctx) =>
+        _questDialog.Show(quest, true, ctx, () => Claim(quest, profile));
+
+    /// <summary>Pays a ready quest's rewards through the player's wallet and saves.</summary>
+    private void Claim(QuestDef quest, Profile profile)
+    {
+        var sink = new PlayerRewardSink(_player, profile);
+        if (QuestService.TurnIn(profile, quest.Id, sink, out _))
+        {
+            profile.CaptureFrom(_player);
+        }
+    }
+
+    private void OpenStation(string kind, string? tab)
+    {
+        UseOf(kind)?.Invoke();
+        switch (tab)
+        {
+            case "gems":
+                _merchant.ShowTab(MerchantTab.SkillGems);
+                break;
+            case "disenchant":
+                _artificer.Show(ArtificerPanel.Tab.Disenchant);
+                break;
+            case "forge":
+                _artificer.Show(ArtificerPanel.Tab.Forge);
+                break;
+            case "jewels":
+                _mirror.ShowTab(true);
+                break;
+        }
+    }
+
+    /// <summary>A station panel closed: if its quest is done, the turn-in opens by itself (called deferred).</summary>
+    private void TryAutoTurnIn(string kind)
+    {
+        if (_leaving || Editing || PanelStack.HasOpen || Profile.Get(this) is not { } profile
+            || QuestService.FirstAt(this, kind) is not { } quest || QuestService.StatusOf(this, quest.Id) != QuestStatus.Ready
+            || QuestService.ContextOf(profile) is not { } ctx)
+        {
+            return;
+        }
+
+        ShowTurnIn(quest, profile, ctx);
     }
 
     /// <summary>? (whatever the keyboard layout) or F1 opens the town guide.</summary>

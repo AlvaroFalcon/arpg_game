@@ -25,6 +25,8 @@ public partial class MirrorPanel : ModalPanel
 
     protected override string Title => "Mirror of Realities";
 
+    public override string? StationUid => "mirror";
+
     protected override Vector2 FrameSize => new(1060f, 660f);
 
     private Button _realitiesTab = null!;

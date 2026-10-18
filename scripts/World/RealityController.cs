@@ -146,6 +146,7 @@ public partial class RealityController : Node2D, IPickupHandler
         Pause = new PauseMenu { LeaveText = IsTutorial ? "Skip the introduction" : "Abandon reality", OnLeave = Abandon, Summary = Summary };
         AddChild(Pause);
         AddChild(new CharacterPanels { Player = Player, Name = "CharacterPanels" });
+        AddChild(new QuestToast { Name = "QuestToast", Anchor = Hud.QuestToastAnchor });
         if (IsTutorial)
         {
             AddChild(new TutorialGuide { Reality = this, Name = "TutorialGuide" });
