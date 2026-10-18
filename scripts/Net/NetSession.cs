@@ -113,8 +113,10 @@ public partial class NetSession : Node
     /// <summary>Bumped whenever the wire format changes: a mismatched build is turned away.
     /// 2: the join code travels in the engine's authentication step.
     /// 3: co-op level-up rounds (PartyRound, PickApplied, ClientOffers; ClientPick carries the round).
-    /// 4: the cash-out round (PartyRound kind 3; ClientPick carries "leave" or "stay").</summary>
-    public const int Protocol = 4;
+    /// 4: the cash-out round (PartyRound kind 3; ClientPick carries "leave" or "stay").
+    /// 5: party session (hideout, proposals, presence, edit lock, co-op realities):
+    /// RpcStartRun replaced by the StartRift party message, to the participants only.</summary>
+    public const int Protocol = 5;
 
     /// <summary>First bytes of the authentication message ("ARPG").</summary>
     private static readonly byte[] AuthMagic = { 0x41, 0x52, 0x50, 0x47 };
@@ -139,7 +141,7 @@ public partial class NetSession : Node
     /// <summary>A client is connected and listed in the host's lobby.</summary>
     public bool Joined { get; private set; }
 
-    /// <summary>The run has started (no one may join any more).</summary>
+    /// <summary>This machine takes part in the party's running rift (the host: a rift runs).</summary>
     public bool InRun { get; private set; }
 
     public long LocalPeerId => Active ? _api.GetUniqueId() : 0;
@@ -403,6 +405,8 @@ public partial class NetSession : Node
         _me.PeerId = 1;
         Members.Clear();
         Members.Add(_me);
+        ResetParty();
+        _places[1] = MemberPlace.Menu;
         LastEnd = SessionEnd.None;
         JoinStarted = Clock;
         SetPhase(JoinPhase.InLobby);
@@ -452,6 +456,7 @@ public partial class NetSession : Node
         InRun = false;
         _me = MemberFor(character, ViewSize());
         Members.Clear();
+        ResetParty();
         Status = $"Connecting to {address}:{port}…";
         LobbyChanged?.Invoke();
         return Error.Ok;
@@ -481,6 +486,7 @@ public partial class NetSession : Node
         _authAnswered.Clear();
         _kicked.Clear();
         _pending.Clear();
+        ResetParty();
         _me = null;
         if (peer is not null and not OfflineMultiplayerPeer)
         {
@@ -504,19 +510,6 @@ public partial class NetSession : Node
             Ended?.Invoke(reason);
             LobbyChanged?.Invoke();
         }
-    }
-
-    /// <summary>Host: everyone loads the Survival Rift. Nobody can join after this.</summary>
-    public void StartRun()
-    {
-        if (!IsHost || InRun)
-        {
-            return;
-        }
-
-        InRun = true;
-        Rpc(MethodName.RpcStartRun);
-        Core.Scenes.Go(this, Core.Scenes.Run);
     }
 
     // --- engine callbacks ----------------------------------------------------------
@@ -556,10 +549,14 @@ public partial class NetSession : Node
         _kicked.Remove(id);
 
         int removed = Members.RemoveAll(m => m.PeerId == id);
+        _places.Remove(id);
+        CurrentRun?.Participants.Remove(id);
         Run?.OnPeerLeft(id);
         if (removed > 0)
         {
             BroadcastLobby();
+            OnMemberLeft(id);
+            BroadcastRoster();
         }
     }
 
@@ -901,7 +898,10 @@ public partial class NetSession : Node
 
         member!.PeerId = sender;
         Members.Add(member);
+        _places[sender] = MemberPlace.Menu;
         BroadcastLobby();
+        OnMemberJoined(sender);
+        BroadcastRoster();
     }
 
     /// <summary>Host: is a joining player's lobby entry and character sane
@@ -1022,18 +1022,6 @@ public partial class NetSession : Node
     {
         string cut = Cut(reason, 200);
         End(cut, JoinRefusal.Classify(cut));
-    }
-
-    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
-    private void RpcStartRun()
-    {
-        if (!IsClient || InRun)
-        {
-            return;
-        }
-
-        InRun = true;
-        Core.Scenes.Go(this, Core.Scenes.Run);
     }
 
     // --- RPCs: the run ---------------------------------------------------------------

@@ -127,6 +127,7 @@ public partial class RunController : Node2D
 
         State.RunEnded += OnRunEnded;
         Sfx.Music(this, "music_run");
+        Session?.ReportPlace(MemberPlace.Run);
 
         // Co-op level-ups (docs/design/multiplayer.md -> "Level-ups"): the host runs
         // rounds of picks for the whole party and pauses everything meanwhile; a
@@ -189,8 +190,8 @@ public partial class RunController : Node2D
 
     private void ConfigurePlayer()
     {
-        int slot = Session?.Members.FindIndex(m => m.PeerId == Player.PeerId) ?? 0;
-        Player.GlobalPosition = SpawnPoint(Mathf.Max(0, slot), Session?.Members.Count ?? 1);
+        int slot = Session?.RunMembers.ToList().FindIndex(m => m.PeerId == Player.PeerId) ?? 0;
+        Player.GlobalPosition = SpawnPoint(Mathf.Max(0, slot), Session is null ? 1 : Session.RunMembers.Count);
         Build = ConfigureRunCharacter(Player);
         Profile.Get(this)?.ApplyTo(Player);
         FinishRunCharacter(Player, Build);
@@ -283,45 +284,19 @@ public partial class RunController : Node2D
     /// </summary>
     private void SpawnParty(NetSession session)
     {
-        var scene = GD.Load<PackedScene>("res://scenes/Player.tscn");
-        for (int i = 0; i < session.Members.Count; i++)
+        // Only the rift's participants: whoever stayed in the hideout gets no player here.
+        IReadOnlyList<LobbyMember> members = session.RunMembers;
+        for (int i = 0; i < members.Count; i++)
         {
-            LobbyMember member = session.Members[i];
+            LobbyMember member = members[i];
             if (member.PeerId == Player.PeerId)
             {
                 continue;
             }
 
-            // A character that can't be read still joins, with a fresh build (friends-only:
-            // characters are trusted, but malformed data must not crash the host).
-            Characters.CharacterData? character = null;
-            try
-            {
-                character = Profile.DeserializeCharacter(member.Character);
-            }
-            catch (System.Exception e)
-            {
-                GD.PushWarning($"Co-op: could not read {member.Name}'s character: {e.Message}");
-            }
-            var p = scene.Instantiate<Player>();
-            p.Name = $"Player_{member.PeerId}";
-            p.IsLocal = false;
-            p.PeerId = member.PeerId;
-            p.NetName = member.Name;
-            p.Puppet = session.IsClient;
-            if (session.IsHost)
-            {
-                p.Command = new PlayerCommand();
-            }
-
-            AddChild(p);
-            p.GlobalPosition = SpawnPoint(i, session.Members.Count);
-            RunBuild build = ConfigureRunCharacter(p);
-            if (character is not null)
-            {
-                Profile.ApplyCharacterTo(p, character);
-            }
-
+            RunBuild build = null!;
+            Player p = PartySpawner.Build(this, member, puppet: session.IsClient, commanded: session.IsHost, SpawnPoint(i, members.Count),
+                player => build = ConfigureRunCharacter(player));
             FinishRunCharacter(p, build);
             if (session.IsClient)
             {

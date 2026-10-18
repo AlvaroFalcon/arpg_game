@@ -147,4 +147,22 @@ public static class PartyRules
 
     /// <summary>Host limit: the longest card key accepted ("g:support_id:skill_id").</summary>
     public const int MaxOfferKeyChars = 64;
+
+    // --- the party session (docs/design/multiplayer.md -> "Party session") ----------
+
+    /// <summary>Seconds everyone in the hideout has to answer a rift proposal (the host's clock).</summary>
+    public const float ProposalSeconds = 30f;
+
+    /// <summary>The popup's countdown turns red (and ticks) from this many seconds.</summary>
+    public const int ProposalUrgentSeconds = 5;
+
+    /// <summary>After a cancelled proposal, its proposer waits this long before proposing again.</summary>
+    public const float ProposalCooldownSeconds = 3f;
+
+    /// <summary>Hideout presence (position, moving/sprinting/dodging) per second, each way.</summary>
+    public const int PresenceHz = 10;
+
+    /// <summary>Co-op Altered Realities exist (phase B). Until then a proposal for a
+    /// reality is refused and the Mirror only offers the Survival Rift in a party.</summary>
+    public const bool CoopRealities = false;
 }
