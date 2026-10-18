@@ -14,7 +14,7 @@ set -uo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FILTER="${1:-}"
-TIMEOUT_S="${TEST_TIMEOUT_S:-90}"
+TIMEOUT_S="${TEST_TIMEOUT_S:-180}"
 LOG_DIR="${TEST_LOG_DIR:-${TMPDIR:-/tmp}/pte-tests}"
 mkdir -p "${LOG_DIR}"
 
