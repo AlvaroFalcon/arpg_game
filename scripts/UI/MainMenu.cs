@@ -21,7 +21,18 @@ public partial class MainMenu : Node2D
 	// Kept to give focus back (by reference: the menu's children shift when a notice shows).
 	private Button _playButton = null!;
 	private Button _settingsButton = null!;
-	private Button _coopButton = null!;
+
+	/// <summary>Play → Solo / With friends (null while closed).</summary>
+	private VBoxContainer? _chooser;
+	private Button? _soloButton;
+	private Button? _friendsButton;
+
+	/// <summary>The Play chooser is open (tests).</summary>
+	public bool ChooserOpen => _chooser is not null && IsInstanceValid(_chooser);
+
+	/// <summary>The character list or co-op screen open now (tests).</summary>
+	public CharacterSelect? OpenCharacterSelect => _center.GetChildren().OfType<CharacterSelect>().LastOrDefault(c => !c.IsQueuedForDeletion());
+	public CoopPanel? OpenCoopPanel => _center.GetChildren().OfType<CoopPanel>().LastOrDefault(c => !c.IsQueuedForDeletion());
 
 	public override void _Ready()
 	{
@@ -43,10 +54,9 @@ public partial class MainMenu : Node2D
 		_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 24f) });
 		ShowNotice();
 
-		Button play = AddButton("Play", OpenCharacters);
+		Button play = AddButton("Play", OpenPlayChooser);
 		_playButton = play;
 		_settingsButton = AddButton("Settings", OpenSettings);
-		_coopButton = AddButton("Co-op (Survival Rift)", () => OpenCoop());
 		AddButton("Training Grounds (sandbox)", () => Scenes.Go(this, Scenes.Sandbox));
 		AddButton("Quit", () => GetTree().Quit());
 
@@ -151,22 +161,104 @@ public partial class MainMenu : Node2D
 		return null;
 	}
 
-	/// <summary>Co-op lobby — docs/design/multiplayer.md -> "Session and lobby".</summary>
-	private void OpenCoop(int? hostPort = null, string? join = null)
+	// --- Play: Solo / With friends (docs/design/menus.md -> "Main menu") -------------------
+
+	/// <summary>Play opens a two-way choice in place of the menu.</summary>
+	public void OpenPlayChooser()
 	{
+		CloseChooser();
 		_menu.Visible = false;
-		var panel = new CoopPanel { AutoHostPort = hostPort, AutoJoin = join, AutoStartAt = AutoStartArg(), AutoCode = UserArg("coop-code"), NoUpnp = UserArg("coop-no-upnp") is not null };
+		_chooser = UiTheme.VBox(_center, 12);
+		_chooser.Name = "PlayChooser";
+		_chooser.AddChild(UiTheme.Label("How do you want to play?", 34, UiTheme.Gold, HorizontalAlignment.Center));
+		_soloButton = ChoiceButton("Solo", "Your hideout, your rifts, at your pace.", PressSolo);
+		_friendsButton = ChoiceButton("With friends", $"Host a party or join one — up to {Net.PartyRules.MaxPlayers} players, each with their own character and loot.", PressWithFriends);
+		_chooser.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 8f) });
+		Button back = UiTheme.Button("Back", BackToMenu, 18, 160f);
+		back.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		_chooser.AddChild(back);
+		_soloButton.CallDeferred(Control.MethodName.GrabFocus);
+	}
+
+	private Button ChoiceButton(string text, string blurb, System.Action press)
+	{
+		Button b = UiTheme.Button(text, press, 24, 400f);
+		b.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		_chooser!.AddChild(b);
+		Label l = UiTheme.Label(blurb, 15, UiTheme.TextDim, HorizontalAlignment.Center);
+		l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		l.CustomMinimumSize = new Vector2(440f, 0f);
+		_chooser.AddChild(l);
+		return b;
+	}
+
+	public void PressSolo() => OpenCharacters(false, CharacterSelect.PlayPurpose.Solo);
+
+	public void PressWithFriends() => OpenCharacters(false, CharacterSelect.PlayPurpose.Coop);
+
+	private void CloseChooser()
+	{
+		if (_chooser is not null && IsInstanceValid(_chooser))
+		{
+			_chooser.QueueFree();
+		}
+
+		_chooser = null;
+	}
+
+	/// <summary>Esc / Back in the chooser: the title menu again, Play focused.</summary>
+	public void BackToMenu()
+	{
+		CloseChooser();
+		_menu.Visible = true;
+		_playButton.CallDeferred(Control.MethodName.GrabFocus);
+	}
+
+	/// <summary>Back from a screen opened from the chooser: the chooser, its button focused.</summary>
+	private void BackToChooser(CharacterSelect.PlayPurpose purpose)
+	{
+		OpenPlayChooser();
+		(purpose == CharacterSelect.PlayPurpose.Coop ? _friendsButton : _soloButton)!.CallDeferred(Control.MethodName.GrabFocus);
+	}
+
+	public override void _Input(InputEvent e)
+	{
+		if (ChooserOpen && _chooser!.IsVisibleInTree() && e.IsActionPressed("ui_cancel"))
+		{
+			GetViewport().SetInputAsHandled();
+			BackToMenu();
+		}
+	}
+
+	/// <summary>Co-op lobby — docs/design/multiplayer.md -> "Session and lobby". From the
+	/// chooser (With friends), Back returns there; from the command line, to the menu.</summary>
+	private void OpenCoop(int? hostPort = null, string? join = null, bool fromChooser = false)
+	{
+		CloseChooser();
+		_menu.Visible = false;
+		var panel = new CoopPanel { AutoHostPort = hostPort, AutoJoin = join, AutoStartAt = AutoStartArg(), AutoCode = UserArg("coop-code"), NoUpnp = UserArg("coop-no-upnp") is not null, OfferChange = true };
 		_center.AddChild(panel);
 		panel.Back += () =>
 		{
 			panel.QueueFree();
-			_menu.Visible = true;
-			_coopButton.CallDeferred(Control.MethodName.GrabFocus);
+			if (fromChooser)
+			{
+				BackToChooser(CharacterSelect.PlayPurpose.Coop);
+			}
+			else
+			{
+				BackToMenu();
+			}
 		};
 		panel.CreateCharacter += () =>
 		{
 			panel.QueueFree();
-			OpenCharacters(create: true);
+			OpenCharacters(create: true, CharacterSelect.PlayPurpose.Coop);
+		};
+		panel.ChangeCharacter += () =>
+		{
+			panel.QueueFree();
+			OpenCharacters(false, CharacterSelect.PlayPurpose.Coop);
 		};
 	}
 
@@ -178,23 +270,27 @@ public partial class MainMenu : Node2D
 		return b;
 	}
 
-	private void OpenCharacters() => OpenCharacters(false);
-
-	private void OpenCharacters(bool create)
+	private void OpenCharacters(bool create, CharacterSelect.PlayPurpose purpose)
 	{
+		CloseChooser();
 		_menu.Visible = false;
-		var select = new CharacterSelect { StartInCreate = create };
+		var select = new CharacterSelect { StartInCreate = create, Purpose = purpose };
 		_center.AddChild(select);
 		select.Back += () =>
 		{
 			select.QueueFree();
-			_menu.Visible = true;
-			_playButton.CallDeferred(Control.MethodName.GrabFocus);
+			BackToChooser(purpose);
+		};
+		// With friends: the chosen character goes on to the co-op screen.
+		select.CoopChosen += () =>
+		{
+			select.QueueFree();
+			OpenCoop(fromChooser: true);
 		};
 	}
 
 	/// <summary>Capture tool hook.</summary>
-	public void OpenCharactersForCapture() => OpenCharacters();
+	public void OpenCharactersForCapture() => OpenCharacters(false, CharacterSelect.PlayPurpose.Solo);
 
 	/// <summary>Capture tool hook.</summary>
 	public void OpenSettingsForCapture() => OpenSettings();

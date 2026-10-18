@@ -14,7 +14,27 @@ namespace ArpgGame.UI;
 /// </summary>
 public partial class CharacterSelect : PanelContainer
 {
+    public enum PlayPurpose
+    {
+        Solo,
+
+        /// <summary>Main menu → Play → With friends: the character goes on to the co-op screen.</summary>
+        Coop,
+    }
+
     public event Action? Back;
+
+    /// <summary>With friends: a character was chosen (and is the active one).</summary>
+    public event Action? CoopChosen;
+
+    /// <summary>Set before adding: what the chosen character is for.</summary>
+    public PlayPurpose Purpose { get; set; }
+
+    /// <summary>The "hasn't played the introduction" question is showing (tests).</summary>
+    public bool TutorialPromptShowing { get; private set; }
+
+    /// <summary>The title shown (tests).</summary>
+    public string TitleText { get; private set; } = "";
 
     private VBoxContainer _body = null!;
     private string _newClass = "arcanist";
@@ -51,7 +71,7 @@ public partial class CharacterSelect : PanelContainer
         }
 
         GetViewport().SetInputAsHandled();
-        if (_creating && !StartInCreate)
+        if ((_creating && !StartInCreate) || TutorialPromptShowing)
         {
             ShowList();
         }
@@ -63,6 +83,7 @@ public partial class CharacterSelect : PanelContainer
 
     private void Clear()
     {
+        TutorialPromptShowing = false;
         foreach (Node child in _body.GetChildren())
         {
             _body.RemoveChild(child);
@@ -75,7 +96,8 @@ public partial class CharacterSelect : PanelContainer
         Clear();
         _creating = false;
         StartInCreate = false;
-        _body.AddChild(UiTheme.Label("Choose your hero", 34, UiTheme.Gold, HorizontalAlignment.Center));
+        TitleText = Purpose == PlayPurpose.Coop ? "Choose who plays with friends" : "Choose your hero";
+        _body.AddChild(UiTheme.Label(TitleText, 34, UiTheme.Gold, HorizontalAlignment.Center));
         Profile? profile = Profile;
         if (profile is null || !profile.HasCharacters)
         {
@@ -137,10 +159,66 @@ public partial class CharacterSelect : PanelContainer
         }
     }
 
-    private void Play(int index)
+    /// <summary>Back, as the button or Esc (tests).</summary>
+    public void PressBack() => Back?.Invoke();
+
+    /// <summary>Plays character <paramref name="index"/> (the row's Play button; tests).</summary>
+    public void Play(int index)
     {
         Profile?.Select(index);
-        Enter();
+        Chosen();
+    }
+
+    /// <summary>The active character was chosen: solo goes in; with friends goes to the co-op
+    /// screen, first asking about the introduction if it is still ahead (docs/design/tutorial.md -> "With friends").</summary>
+    private void Chosen()
+    {
+        if (Purpose != PlayPurpose.Coop)
+        {
+            Enter();
+        }
+        else if (Profile?.Active is { TutorialDone: false })
+        {
+            ShowTutorialPrompt();
+        }
+        else
+        {
+            CoopChosen?.Invoke();
+        }
+    }
+
+    private void ShowTutorialPrompt()
+    {
+        CharacterData c = Profile!.Active;
+        Clear();
+        TutorialPromptShowing = true;
+        TitleText = $"{c.Name} hasn't played the introduction";
+        _body.AddChild(UiTheme.Label(TitleText, 30, UiTheme.Gold, HorizontalAlignment.Center));
+        Label text = UiTheme.Label("The Threshold takes about 5 minutes and is played alone: it shows the basics, then leads home to your hideout. "
+            + "Play it first and join your friends after, or skip it now — the same as \"Skip the introduction\" in its menu.", 17, UiTheme.Text, HorizontalAlignment.Center);
+        text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        text.CustomMinimumSize = new Vector2(760f, 0f);
+        _body.AddChild(text);
+        HBoxContainer buttons = UiTheme.HBox(_body, 12);
+        buttons.Alignment = BoxContainer.AlignmentMode.Center;
+        Button first = UiTheme.Button("Play it first (solo)", Enter, 18, 260f);
+        Button skip = UiTheme.PrimaryButton("Skip it and play with friends", SkipTutorial, 18, 340f);
+        buttons.AddChild(first);
+        buttons.AddChild(skip);
+        buttons.AddChild(UiTheme.Button("Back", ShowList, 18, 140f));
+        skip.CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    /// <summary>"Skip it and play with friends" (tests press it).</summary>
+    public void SkipTutorial()
+    {
+        if (Profile is { } profile)
+        {
+            profile.Active.TutorialDone = true;
+            profile.Save();
+        }
+
+        CoopChosen?.Invoke();
     }
 
     /// <summary>New characters start in The Threshold, the introduction
@@ -245,12 +323,12 @@ public partial class CharacterSelect : PanelContainer
     private void CreateTest()
     {
         Profile?.CreateTestCharacter(_name?.Text ?? "", _newClass);
-        Enter();
+        Chosen();
     }
 
     private void Create()
     {
         Profile?.CreateCharacter(_name?.Text ?? "", _newClass);
-        Enter();
+        Chosen();
     }
 }

@@ -44,6 +44,12 @@ public partial class CoopPanel : PanelContainer
     /// <summary>"Create a character" from the no-character state.</summary>
     public event Action? CreateCharacter;
 
+    /// <summary>"Change" next to "Playing as" (the main menu offers it; set <see cref="OfferChange"/>).</summary>
+    public event Action? ChangeCharacter;
+
+    /// <summary>Set before adding: show [Change] next to the character line.</summary>
+    public bool OfferChange { get; set; }
+
     /// <summary>Set before adding: host on this port / join this address right away
     /// (scripts/coop_local.sh passes them on the command line).</summary>
     public int? AutoHostPort { get; set; }
@@ -91,6 +97,7 @@ public partial class CoopPanel : PanelContainer
     private VBoxContainer _body = null!;
     private VBoxContainer _view = null!;
     private Label _who = null!;
+    private Button _change = null!;
     private Label _notice = null!;
     private Button _back = null!;
     private string _signature = "";
@@ -128,8 +135,13 @@ public partial class CoopPanel : PanelContainer
         AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, UiTheme.PanelBorder, 2, 8, 18));
         _body = UiTheme.VBox(this, 10);
         _body.AddChild(UiTheme.Label("Play with friends", 32, UiTheme.Gold, HorizontalAlignment.Center));
+        HBoxContainer whoRow = UiTheme.HBox(_body, 10);
+        whoRow.Alignment = BoxContainer.AlignmentMode.Center;
         _who = UiTheme.Label("", 16, UiTheme.TextDim, HorizontalAlignment.Center);
-        _body.AddChild(_who);
+        whoRow.AddChild(_who);
+        _change = UiTheme.Button("Change", () => ChangeCharacter?.Invoke(), 14, 90f);
+        _change.CustomMinimumSize = new Vector2(90f, 30f);
+        whoRow.AddChild(_change);
         // Short feedback (copied, host errors) right under the title, where the eye is.
         _notice = UiTheme.Label("", 16, UiTheme.Experience, HorizontalAlignment.Center);
         _notice.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -150,9 +162,10 @@ public partial class CoopPanel : PanelContainer
 
         Profile? profile = Profile.Get(this);
         _who.Text = profile is { HasCharacters: true }
-            ? $"Playing as {profile.Active.Name}, level {profile.Active.Level} {profile.Active.AscendancyDef?.Name ?? profile.Active.Class.Name}  ·  change character in Play"
+            ? $"Playing as {profile.Active.Name}, level {profile.Active.Level} {profile.Active.AscendancyDef?.Name ?? profile.Active.Class.Name}"
             : "";
         _who.Visible = _who.Text.Length > 0;
+        _change.Visible = _who.Visible && OfferChange;
 
         Refresh();
         if (HasCharacter && AutoHostPort is { } port)
@@ -325,6 +338,9 @@ public partial class CoopPanel : PanelContainer
         Refresh();
     }
 
+    /// <summary>The Back button (tests).</summary>
+    public void PressBack() => GoBack();
+
     private void GoBack()
     {
         _session?.Leave();
@@ -438,6 +454,8 @@ public partial class CoopPanel : PanelContainer
         _slotTexts.Clear();
         Current = Decide();
         _back.Visible = Current is not View.Lobby and not View.Connecting;
+        // A different character only before hosting or joining (the lobby has this one).
+        _change.Visible = _who.Visible && OfferChange && Current is View.Choose or View.Failed;
         switch (Current)
         {
             case View.Unavailable:

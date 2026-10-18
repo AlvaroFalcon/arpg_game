@@ -48,6 +48,8 @@ public partial class PauseMenu : CanvasLayer
     private Control _center = null!;
     private ulong _settingsClosedFrame = ulong.MaxValue;
     private Button _editHud = null!;
+    private Button _resume = null!;
+    private Button _settings = null!;
     private Button _leave = null!;
 
     public override void _Ready()
@@ -65,8 +67,10 @@ public partial class PauseMenu : CanvasLayer
         _summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summary.CustomMinimumSize = new Vector2(420f, 0f);
         _menu.AddChild(_summary);
-        _menu.AddChild(UiTheme.Button("Resume", Close));
-        _menu.AddChild(UiTheme.Button("Settings", OpenSettings));
+        _resume = UiTheme.Button("Resume", Close);
+        _menu.AddChild(_resume);
+        _settings = UiTheme.Button("Settings", OpenSettings);
+        _menu.AddChild(_settings);
         _editHud = UiTheme.Button("Edit HUD", OpenHudEditor);
         _menu.AddChild(_editHud);
         if (ExtraText is not null)
@@ -128,7 +132,7 @@ public partial class PauseMenu : CanvasLayer
         _editHud.Visible = GetTree().GetNodesInGroup(HudLayout.Group).Count > 0;
         _menu.Visible = true;
         _root.Visible = true;
-        ((Button)_menu.GetChild(2)).CallDeferred(Control.MethodName.GrabFocus);
+        _resume.CallDeferred(Control.MethodName.GrabFocus);
     }
 
     public void Close()
@@ -178,7 +182,7 @@ public partial class PauseMenu : CanvasLayer
         {
             _settingsClosedFrame = Engine.GetProcessFrames();
             _menu.GetParent<Control>().Visible = true;
-            ((Button)_menu.GetChild(3)).CallDeferred(Control.MethodName.GrabFocus);
+            _settings.CallDeferred(Control.MethodName.GrabFocus);
         };
     }
 }
