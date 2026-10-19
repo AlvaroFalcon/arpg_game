@@ -649,3 +649,20 @@ Two things that bit:
 - **Idle C# compiler servers** (several `VBCSCompiler` processes, about 1 GB each, some busy) starved the multi-process tests until guests ran at 1 fps; `run_all_tests.sh` now shuts the build server down after building.
 
 Tests: new `HideoutCoopTest` (host + up to four guest processes, about 40 checks: hideout, presence, saves, NPCs, no-pause, edit permission, proposals, late join, run return, timeouts, host leaving, invite, stop hosting), `CoopUiSmokeTest` `MENU-*`, `SecuritySmokeTest` for the new RPCs. Needs a real test with friends: the popup and puppets at 100–200 ms ping, UPnP while hosting from the hideout, and a guest editing the host's town over the internet.
+
+## 2026-10-19 — Co-op Altered Realities ("Rift 20" with friends)
+
+Phase B of the party session: a party in the hideout can now open an Altered Reality of any tier together. Whoever proposes it from the Mirror pays the shard (only when it starts); the 30 s popup is the same as the Survival Rift's; the host always goes; whoever says no waits in the hideout.
+
+- **The replication became reusable first, as a pure move.** `RiftHost`/`RiftClient` were 2,500 lines typed to the Rift. The shared part (snapshots, events, string table, capture and replay of monsters/projectiles/effects, prediction and reconciliation, instanced drops, boss tracking, load handshake, disconnects) moved into abstract `CoopHost`/`CoopClient` over a small `ICoopWorld` interface. The Rift's subclasses keep only the run's numbers, rounds, revives and director hooks. The snapshot bytes are identical: `CoopSmokeTest` passed untouched and the bench read the same 0.3 ms step.
+- **Same cavern on every machine** from the host's seed; only the host spawns and simulates. The `RealityHost` goes into the tree *before* the packs spawn, because capture is driven by `SceneTree.NodeAdded`; a client that loads later gets every monster, plus which replica is the boss (a bug the test caught: the boss record went out before anyone was ready).
+- **Realities cast on press.** The Rift auto-casts, so its input never carried buttons. A reality client now sends the six skill buttons it holds, and the host casts for its copy at its cursor. Found on the way: in `CastMode.Bound`, a remote copy on the host would have read the *host's* keyboard and mouse. It now reads only its command.
+- **The save-safety fix.** In solo, `RealityController.OnPickup` writes shards, jewels and gems straight into the active profile. In co-op that would have put every friend's drops into the host's account. Remote pickups now only tell the owner's machine, which applies them through the same `ApplyReward` the solo path uses. Clears, ascendancy points and quest events are recorded per machine.
+- **Party rules** (proposals, one table): monster life ×1.5/2/2.5, boss ×1.7/2.4/3.1, packs ×1.2/1.4/1.6, +15 %/+10 % quantity/rarity per extra player, one shared portal pool (tier's + 1 per extra), the boss arena pulls everyone in, every participant gets the kill's experience and a full loot table of their own.
+- **Monsters chase the nearest player** through one multi-source flow field.
+
+Measured (`CoopBench --mode=reality --tier=10`, four players): 16 KB/s per client exploring, 8 KB/s in the boss fight, 4 KB/s after a 143-monster wipe, replication under 0.5 ms. The phase-A question about ENet's throttle: snapshots arrive 98–100 % on loopback, inputs lose 3–10 %, which is harmless (full-state inputs, counters for presses), so nothing was changed.
+
+Tests: new `CoopRealityTest` (host + guest process, 20 checks: same cavern hash, replicas, input and casting, shared XP, instanced loot that lands in the guest's save and not the host's, no pause, the portal pool and respawn teleport, a forged teleport refused, the boss pull-in and gate, the clear on the guest's machine, a guest leaving alone, the host closing, a collapse). 18/18 suites.
+
+Needs a real test with friends: a reality boss fight at 100–200 ms ping (casts show after the round trip, there's no cast prediction), four players' frame time on real PCs, and a guest's drops/clears over the internet.

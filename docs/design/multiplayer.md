@@ -220,6 +220,7 @@ Clients trust the host's *game*, not its bytes. A friend's host may be modified 
 - **Node budget:** nothing new is spawned from host events once the run scene has 6 000 children (a late wave is under 2 000). 20 000 never-ending effects in one batch are tested: 14 000 are refused.
 - The host can't remove the client's own player (`PlayerLeft` with the client's id is ignored). A malformed batch costs the rest of that batch, never the run. Strings are kept up to 512 characters, banner and toast texts up to 200.
 - **Level-up rounds:** an unknown round kind is ignored; chosen/total are clamped to the party size, the level to 0–999, the deadline must be finite (0–60 s from now, else the countdown shows 0). A card the host applies is applied once per round and only if its key is at most 64 characters. The run's end always closes a round, and the client's own results screen follows. Accepted: a host can hold the pause for as long as it likes (as it could stop sending anything at all); the client can still close the game. Tested in `SecuritySmokeTest` (hostile host).
+- **Co-op realities (2026-10-19):** the shared rules above apply to `RealityClient` (it inherits them from `CoopClient`). A teleport or an exit portal must land on a walkable cell of the cavern this machine built (a teleport into the void is ignored: `REALITY-HOSTILE-TELEPORT`); a shard's tier is clamped to 1–20; a collected gem must be a known skill or support id (a made-up id would otherwise be written into the character's gems); a collected orb stack is clamped to 1–1000; a jewel never takes `Found` past the tree's sockets; mana from the snapshot is clamped to the player's own maximum; an unknown end reason counts as "the host closed it". On the host, a client's extra input byte (held skill buttons) only has meaning for the six slots and is covered by the input size cap; a client that isn't a participant has no link, so its inputs are dropped; a proposal may pin a seed and layout (harmless: the layout must exist and the host draws its own seed only when none is given).
 - **Accepted:** a host can still give a client rewards (gold, orbs, gear, experience within the bounds above). Friends could already edit their own saves, and loot is the host's to decide; the bounds only keep the numbers valid. A host can also send as much data as its bandwidth allows (memory grows with what is received, not faster).
 
 ### Still trusted, still exposed
@@ -354,7 +355,7 @@ It judges by its RESULT line, mirrored to `user://test_results/CoopSmokeTest.txt
 
 **Co-op realities:** `./scripts/run_all_tests.sh CoopRealityTest` (about 60 s). The host and one guest process (scratch save that really writes) go to the hideout; the host proposes a tier-3 reality with a pinned seed from the session's proposal path and the guest joins. Pure checks first (`FLOWFIELD-MULTI`, `PARTY-RULES-REALITY`). Then: the same cavern hash on both, two players on each side, every monster replicated, the shared pool and the boss known on the client; the guest walks and holds its skill buttons and the host's copy follows and casts; a kill gives both characters experience; a forced shard and item for the guest land in the guest's profile and floor while the host's shard count stays put and nothing of the guest's shows on the host; the host's pause menu stops nothing; a death costs the pool one and the guest is teleported back; a forged teleport outside the cavern is ignored; the host entering the arena pulls the guest in and closes the gate on both; the boss falls and the guest's clear is recorded on its machine with an exit portal; the guest goes home alone (its own save file has the clear) while the host plays on; the host closes it; a second reality collapses on the last portal and both are home. Mirrored to `user://test_results/CoopRealityTest.txt`.
 
-**Load bench:** `./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350]` runs a full party of four at a late wave, then a Cataclysm. Output goes to `user://bench/coop_bench.txt`. It sets `RiftHost.AutoPickAll`: every round, the start pick included, is decided at once with the first cards, so the bench measures the fight and not the pauses.
+**Load bench:** `./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350]` runs a full party of four at a late wave, then a Cataclysm. Output goes to `user://bench/coop_bench.txt`. It sets `RiftHost.AutoPickAll`: every round, the start pick included, is decided at once with the first cards, so the bench measures the fight and not the pauses. `-- --mode=reality [--tier=10]` measures a co-op Altered Reality instead (exploring, the boss fight, a pack wipe) into `user://bench/coop_bench_reality.txt`. Both modes log snapshot delivery per client and input loss per client.
 
 ### Testing it yourself
 
@@ -387,6 +388,10 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 - **The heavy part is the monster count.** A first table with the enemy cap ×2.05 for four put 535 monsters on the host and pushed its physics step to 129 ms. The cap now grows slowly (×1.45). Extra pressure comes from spawn rate and life instead.
 - The host's whole-game physics step is still well above 16 ms on this shared container. That comes from per-monster simulation, which is already 29 ms solo here. Measure it on a real PC.
 
+### Co-op realities and the refactor (measured 2026-10-19)
+
+See `performance.md` → "Co-op Altered Realities". In short: the `CoopHost`/`CoopClient` split costs nothing (same bytes, same 0.3 ms step); a tier-10 reality with four players sends 16 KB/s per client while exploring, 8 KB/s in the boss fight and 4 KB/s after a 143-monster wipe, with a replication step under 0.5 ms. Snapshots arrive 98–100 % on loopback; 3–10 % of client inputs are lost to ENet's throttle, which is harmless because every input carries the full state and presses are counters.
+
 ## Known limitations
 
 - The tutorial (The Threshold) is single-player.
@@ -413,5 +418,5 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 - Joining a rift already running (`RiftHost.MarkReady` has a partial catch-up).
 - Two rifts at once (impossible while one process runs one scene).
 - A guest buying decorations for the host's town.
-- ENet's packet throttle and the Rift's unreliable inputs/snapshots (it dropped up to two thirds of unreliable hideout presence on loopback): measure in `CoopBench`, and consider `ENetPacketPeer.ThrottleConfigure` or reliable inputs.
+- ENet's packet throttle: measured 2026-10-19 (`CoopBench`): snapshots 98–100 % delivered, inputs 3–10 % lost on loopback, harmless by design (full-state inputs, counters for presses). Re-measure over a real internet link before touching `ThrottleConfigure`.
 - Should a host alone in the Rift play by solo rules (pausing menu) rather than co-op rules for a party of one?

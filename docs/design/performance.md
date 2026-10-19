@@ -404,3 +404,23 @@ the replication code.
    that much later. That is a gameplay change, so it was not done.
    (2026-10-17: co-op level-ups pause the whole game now, so the cards no longer
    ward anyone and this case doesn't come up; `Player.Warded` stays for later uses.)
+
+## Co-op Altered Realities and the replication refactor — measured 2026-10-19
+
+Same method as above (`scenes/tools/CoopBench.tscn`, host + 3 headless clients on one 4-core cloud container, ENet's own byte counters). New: `--mode=reality --tier=10`, and loss counters on both ends (snapshot ticks a client saw out of those sent; input sequence gaps on the host).
+
+**The refactor (`CoopHost`/`CoopClient`) costs nothing.** Rift, clock 120 s, before → after: 24.9 → 23.5 KB/s per client (125 vs 124 monsters; the wire format is byte-for-byte the same, the difference is the wave), replication step 0.3 → 0.3 ms avg.
+
+**Rift, clock 350 s, after:** 242 monsters avg (max 312), 29.1 KB/s per client (p95 38.3), replication step 0.6 ms avg (p95 2.5). The container was saturated in this run (7.9 physics steps per rendered frame on the host), so whole-game times are not comparable with earlier runs.
+
+**Reality tier 10, party of four (324 monsters, all spawned at the start):**
+
+| Phase | Upload per client | Replication step | Host frame |
+|---|---|---|---|
+| Exploring, packs asleep, party at the entrance | 16.3 KB/s (p95 18.3) | 0.4 ms avg | 21 ms avg |
+| Boss fight, everyone in the arena | 8.4 KB/s (p95 9.1) | 0.3 ms avg | 23 ms avg |
+| Pack wipe (143 killed on one frame), next 2 s | 4.0 KB/s | 0.2 ms avg, 0.6 max | p95 75 ms |
+
+Clients: 17–18 ms frames, 0.8 ms replica update. Far sleeping packs are left out of snapshots (`SkipFarDormant`); without that every one of the 324 would go out at least at 5 Hz.
+
+**ENet's throttle and the unreliable channels (the phase-A open question).** Snapshots (host → client, ≤ 1100 B chunks at 20 Hz): 98.4–100 % of ticks delivered on loopback, in both modes. Inputs (client → host, ~20 B at 60 Hz): 3–10 % lost to sequence gaps. Not fixed: an input carries the whole state (direction, aim, held buttons) and one-shot presses travel as counters, so a lost input only delays the next by one frame; the host stops a player only after 300 ms without input. Presence in the hideout stays reliable (phase A), where losing two thirds was visible.
