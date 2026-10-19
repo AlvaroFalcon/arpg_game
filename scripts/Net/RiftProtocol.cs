@@ -22,7 +22,10 @@ public static class RiftProtocol
     /// <summary>Clients draw the world this far in the past, between two snapshots.</summary>
     public const float InterpolationDelay = 0.1f;
 
-    // host → client events
+    // host → client events. Shared by every co-op mode (CoopHost/CoopClient): 1-16,
+    // 18-22, 26-29. Survival Rift only (RiftHost/RiftClient): Progress 17, Portal 23,
+    // RunBegin 24, RunEnded 25, PartyRound 30, PickApplied 31. Altered Realities:
+    // RealityProtocol, 64-79 (never reused here).
     public const byte StringDef = 1;
     public const byte EnemySpawn = 2;
     public const byte EnemyGone = 3;
@@ -71,7 +74,7 @@ public static class RiftProtocol
     /// the row is fixed, ["leave", "stay"]; a client's <see cref="ClientPick"/> carries one of those keys.</summary>
     public const byte RoundCashOut = 3;
 
-    // client → host events
+    // client → host events (shared: ClientReady, ClientTest; Rift only: ClientPick, ClientOffers)
     public const byte ClientReady = 1;
     /// <summary>A card chosen in a round: round id, key.</summary>
     public const byte ClientPick = 2;

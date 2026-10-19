@@ -72,7 +72,7 @@ public sealed class RunPlayer
 /// local player's, so single-player code reads exactly as before.
 /// </summary>
 [GlobalClass]
-public partial class RunState : Node, IPickupHandler
+public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
 {
     public const string Group = "run_state";
     public const string PickupGroup = "pickups";

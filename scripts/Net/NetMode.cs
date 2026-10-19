@@ -8,7 +8,7 @@ namespace ArpgGame.Net;
 /// <see cref="ClientSide"/> is the one switch that makes a co-op client a pure
 /// view: nothing it runs locally can deal damage (<see cref="Combat.Health"/>
 /// ignores every hit), so every number the player sees comes from the host.
-/// Set by <see cref="RiftClient"/> while it lives and cleared when it leaves the
+/// Set by a <see cref="CoopClient"/> while it lives and cleared when it leaves the
 /// tree; always false offline and on the host.
 /// </summary>
 public static class NetMode
@@ -39,6 +39,11 @@ public sealed class PlayerCommand
     public Vector2 DodgeDir;
     public byte LifeFlaskCount;
     public byte ManaFlaskCount;
+
+    /// <summary>Skill buttons held this frame, one bit per slot in
+    /// <see cref="PlayerSkillInput.BoundSlots"/> order (Altered Realities: casting is
+    /// pressed, not automatic; the Survival Rift never sends it).</summary>
+    public byte HeldSlots;
 
     /// <summary>Host clock (msec) when the last packet arrived; a stale command stops the player.</summary>
     public ulong ReceivedMsec;
