@@ -335,7 +335,7 @@ public partial class HideoutEditor : CanvasLayer, IClosablePanel
     }
 
     /// <summary>Props stand on open ground inside the town.</summary>
-    public static bool Valid(Vector2 world) => HideoutTown.Bounds.Grow(-HideoutTown.CellPx).HasPoint(world) && HideoutTown.Walkable(HideoutTown.CellOf(world));
+    public static bool Valid(Vector2 world) => HideoutLayoutRules.CanStand(world);
 
     private static Vector2 Snap(Vector2 p) => (p / 8f).Round() * 8f;
 

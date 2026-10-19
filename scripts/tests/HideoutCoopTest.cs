@@ -327,6 +327,8 @@ public partial class HideoutCoopHost : CoopTestDriver
     /// </summary>
     private async Task AfterHideoutChecks(NetSession session, Hideout town, LobbyMember ana, LobbyMember bo)
     {
+        await EditChecks(session, town, ana, bo);
+
         // --- ana proposes; the host and bo are asked --------------------------------------------
         Dictionary<string, string> proposed = Fields(await Ask(ana.PeerId, "propose"));
         bool hostAsked = await WaitFor(() => town.Party.Popup.Current == RiftProposalPopup.Mode.Asked, 5f);
@@ -400,6 +402,108 @@ public partial class HideoutCoopHost : CoopTestDriver
         NetSession.ProposalSecondsOverride = null;
         Check("PROPOSAL-TIMEOUT", asked && timedOut && boTimeout.GetValueOrDefault("toast", "").Contains("didn't_answer") && Town == home,
             $"asked={asked}, closed after the timeout={timedOut}; bo: {Line(boTimeout)}");
+    }
+
+    /// <summary>A spot inside the town where a prop may stand, near the spawn.</summary>
+    public static Vector2 OpenSpot(int dx, int dy)
+    {
+        for (int r = 0; r < 12; r++)
+        {
+            Vector2 at = HideoutTown.World(HideoutTown.SpawnCell + new Vector2I(dx + r, dy));
+            if (HideoutLayoutRules.CanStand(at))
+            {
+                return at;
+            }
+        }
+
+        return HideoutTown.World(HideoutTown.SpawnCell);
+    }
+
+    /// <summary>The edit checks' rules without a network (docs/design/hideout.md -> "Edit permission").</summary>
+    private void EditRuleChecks()
+    {
+        static HideoutData Town()
+        {
+            var d = new HideoutData();
+            HideoutCatalog.EnsureDefaults(d);
+            d.Stock["barrel"] = 1;
+            d.Stock[HideoutCatalog.FloorsForSale.First().Id] = 10;
+            return d;
+        }
+
+        static HideoutData Edit(Action<HideoutData> change)
+        {
+            HideoutData d = Town();
+            change(d);
+            return d;
+        }
+
+        HideoutData before = Town();
+        string floor = HideoutCatalog.FloorsForSale.First().Id;
+        string cell = HideoutData.Key(HideoutTown.SpawnCell);
+        Vector2 spot = OpenSpot(2, 2);
+        var results = new (string Name, bool Ok, string? Why)[]
+        {
+            ("move", true, HideoutLayoutRules.ValidateEdit(before, Edit(d => d.Find("d2")!.Position = spot))),
+            ("place from storage", true, HideoutLayoutRules.ValidateEdit(before, Edit(d => { d.Stock.Remove("barrel"); d.Props.Add(new PlacedProp { Uid = "n1", Kind = "barrel", Position = spot }); }))),
+            ("pave from storage", true, HideoutLayoutRules.ValidateEdit(before, Edit(d => { d.Stock[floor] = 9; d.Floors[cell] = floor; }))),
+            ("decoration from nowhere", false, HideoutLayoutRules.ValidateEdit(before, Edit(d => d.Props.Add(new PlacedProp { Uid = "n1", Kind = "barrel", Position = spot })))),
+            ("tiles from nowhere", false, HideoutLayoutRules.ValidateEdit(before, Edit(d => d.Floors[cell] = floor))),
+            ("station removed", false, HideoutLayoutRules.ValidateEdit(before, Edit(d => d.Props.RemoveAll(p => p.Uid == "mirror")))),
+            ("into a wall", false, HideoutLayoutRules.ValidateEdit(before, Edit(d => d.Find("d2")!.Position = new Vector2(16f, 16f)))),
+            ("kind swapped", false, HideoutLayoutRules.ValidateEdit(before, Edit(d => { PlacedProp p = d.Find("d1")!; p.Kind = p.Kind == "barrel" ? "crate" : "barrel"; }))),
+        };
+        bool ok = results.All(r => (r.Why is null) == r.Ok);
+        Check("EDIT-RULES", ok, string.Join("; ", results.Select(r => $"{r.Name}: {(r.Why is null ? "kept" : $"refused ({r.Why})")}")));
+    }
+
+    /// <summary>
+    /// Edit permission (D10): ana may edit once the host allows it; while she edits the host
+    /// can't; her change lands in the host's town (and bo's view) but never in her own save; a
+    /// forged edit is refused without kicking her; taking the right back closes her editor.
+    /// </summary>
+    private async Task EditChecks(NetSession session, Hideout town, LobbyMember ana, LobbyMember bo)
+    {
+        EditRuleChecks();
+        Profile profile = Profile.Get(this)!;
+        town.PartyOverlay.Panel.SetAllowEditing(ana.PeerId, true);
+        await Seconds(0.3f);
+        Dictionary<string, string> allowed = Fields(await Ask(ana.PeerId, "can_edit"));
+        Dictionary<string, string> boAllowed = Fields(await Ask(bo.PeerId, "can_edit"));
+        Check("EDIT-ALLOWED", allowed.GetValueOrDefault("ok") == "1" && allowed.GetValueOrDefault("entries", "").Contains("Edit_hideout") && boAllowed.GetValueOrDefault("ok") == "0",
+            $"ana: {Line(allowed)}; bo (not allowed): {Line(boAllowed)}");
+
+        Dictionary<string, string> opened = Fields(await Ask(ana.PeerId, "edit_open"));
+        town.OpenEditor();
+        await Frames(3);
+        bool hostRefused = !town.Editing && town.Hud.ToastText.Contains("ana is editing");
+        Check("EDIT-LOCK", opened.GetValueOrDefault("editing") == "1" && session.EditHolder == ana.PeerId && hostRefused,
+            $"ana: {Line(opened)}; lock holder={session.EditHolder}; host's own editor refused={hostRefused} ('{town.Hud.ToastText}')");
+
+        Vector2 target = OpenSpot(4, 3);
+        Dictionary<string, string> moved = Fields(await Ask(ana.PeerId, $"edit_move uid=d2 x={Num(target.X)} y={Num(target.Y)}"));
+        bool landed = await WaitFor(() => town.Data.Find("d2") is { } p && p.Position.DistanceTo(target) < 1f, 3f);
+        await Seconds(0.5f);
+        Dictionary<string, string> boLayout = Fields(await Ask(bo.PeerId, "layout"));
+        Dictionary<string, string> anaOwn = Fields(await Ask(ana.PeerId, "own_d2"));
+        Check("EDIT-GRANT", landed && ReferenceEquals(profile.Hideout, town.Data) && boLayout.GetValueOrDefault("shown") == Hash(LayoutKey(town.Data))
+                && anaOwn.GetValueOrDefault("own_default") == "1" && session.EditHolder == 0 && moved.GetValueOrDefault("editing") == "0",
+            $"d2 on the host at {town.Data.Find("d2")?.Position} (target {target}) = {landed}; host profile holds it={ReferenceEquals(profile.Hideout, town.Data)}; bo shows the host's town={boLayout.GetValueOrDefault("shown") == Hash(LayoutKey(town.Data))}; ana's own save untouched: {Line(anaOwn)}; lock {session.EditHolder}");
+
+        string layoutBefore = LayoutKey(town.Data);
+        int refusedBefore = session.RefusedEdits;
+        Dictionary<string, string> forged = Fields(await Ask(ana.PeerId, "edit_forge"));
+        bool refused = await WaitFor(() => session.RefusedEdits > refusedBefore, 3f);
+        Check("EDIT-INVALID", refused && LayoutKey(town.Data) == layoutBefore && session.Member(ana.PeerId) is not null && session.EditHolder == 0
+                && forged.GetValueOrDefault("toast", "").Contains("weren't_kept") && forged.GetValueOrDefault("editing") == "0",
+            $"refused={refused} ('{session.LastEditRefusal}'), host layout unchanged={LayoutKey(town.Data) == layoutBefore}, ana still in the party={session.Member(ana.PeerId) is not null}; ana: {Line(forged)}");
+
+        Dictionary<string, string> again = Fields(await Ask(ana.PeerId, "edit_open"));
+        town.PartyOverlay.Panel.SetAllowEditing(ana.PeerId, false);
+        Dictionary<string, string> revoked = Fields(await Ask(ana.PeerId, "editing"));
+        Check("EDIT-REVOKE", again.GetValueOrDefault("editing") == "1" && revoked.GetValueOrDefault("editing") == "0" && revoked.GetValueOrDefault("toast", "").Contains("took_back")
+                && session.EditHolder == 0 && !session.CanEditOf(ana.PeerId) && LayoutKey(town.Data) == layoutBefore,
+            $"editing before={again.GetValueOrDefault("editing")}; after the revoke: {Line(revoked)}; lock {session.EditHolder}");
     }
 
     /// <summary>The proposal's rules without a network (docs/design/multiplayer.md -> "Proposals").</summary>
@@ -671,6 +775,70 @@ public partial class HideoutCoopGuest : CoopTestDriver
                 string leave = town.Pause.LeaveButtonText;
                 town.Pause.Close();
                 return $"entries={entries.Replace(' ', '_')} leave={leave.Replace(' ', '_')}";
+            }
+            case "can_edit":
+            {
+                town!.Pause.Open();
+                string entries = string.Join(",", town.Pause.ExtraTexts);
+                town.Pause.Close();
+                return $"ok={(town.EditBlockedReason is null ? 1 : 0)} entries={entries.Replace(' ', '_')}";
+            }
+            case "edit_open":
+                town!.OpenEditor();
+                await WaitFor(() => town.Editing, 4f);
+                return $"editing={(town.Editing ? 1 : 0)} toast={town.Hud.ToastText.Replace(' ', '_')}";
+            case "edit_move":
+            {
+                bool was = town!.Editing;
+                town.MoveProp(f.GetValueOrDefault("uid", ""), new Vector2(F(f, "x"), F(f, "y")));
+                town.Editor?.Close();
+                await Frames(3);
+                return $"was={(was ? 1 : 0)} editing={(town.Editing ? 1 : 0)}";
+            }
+            case "edit_forge":
+            {
+                town!.OpenEditor();
+                await WaitFor(() => town.Editing, 4f);
+                // A modified client: a decoration that was never bought, sent without the editor.
+                var forged = new HideoutData { Initialized = true };
+                forged.Props.AddRange(town.Data.Props.Select(p => new PlacedProp { Uid = p.Uid, Kind = p.Kind, Position = p.Position }));
+                foreach ((string key, string style) in town.Data.Floors)
+                {
+                    forged.Floors[key] = style;
+                }
+
+                foreach ((string id, int n) in town.Data.Stock)
+                {
+                    forged.Stock[id] = n;
+                }
+
+                forged.Props.Add(new PlacedProp { Uid = "forged1", Kind = "statue", Position = HideoutCoopHost.OpenSpot(1, 4) });
+                session.SubmitLayout(forged);
+                await WaitFor(() => !town.Editing, 4f);
+                await Frames(3);
+                return $"editing={(town.Editing ? 1 : 0)} toast={town.Hud.ToastText.Replace(' ', '_')}";
+            }
+            case "editing":
+                await WaitFor(() => !town!.Editing, 3f);
+                await Frames(2);
+                return $"editing={(town!.Editing ? 1 : 0)} toast={town.Hud.ToastText.Replace(' ', '_')}";
+            case "own_d2":
+            {
+                var defaults = new HideoutData();
+                HideoutCatalog.EnsureDefaults(defaults);
+                Vector2 home = defaults.Find("d2")!.Position;
+                using FileAccess? file = FileAccess.Open(_profile.FilePath, FileAccess.ModeFlags.Read);
+                using JsonDocument doc = JsonDocument.Parse(file?.GetAsText() is { Length: > 0 } text ? text : "{}");
+                Vector2 own = new(float.NaN, float.NaN);
+                if (doc.RootElement.TryGetProperty("Hideout", out JsonElement h) && h.TryGetProperty("Props", out JsonElement props))
+                {
+                    foreach (JsonElement p in props.EnumerateArray().Where(p => p.GetProperty("Uid").GetString() == "d2"))
+                    {
+                        own = new Vector2(p.GetProperty("X").GetSingle(), p.GetProperty("Y").GetSingle());
+                    }
+                }
+
+                return $"own_default={(own.DistanceTo(home) < 0.5f ? 1 : 0)} own={Num(own.X)},{Num(own.Y)} default={Num(home.X)},{Num(home.Y)}";
             }
             case "propose":
                 town!.ProposeRift(RiftSpec.SurvivalRift());

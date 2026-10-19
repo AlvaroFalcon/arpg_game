@@ -516,11 +516,16 @@ public partial class SecurityTestHost : CoopTestDriver
         silent.RpcId(1, "RpcPartyToClient", NetSession.StartRiftMessage(1, RiftSpec.SurvivalRift(), new long[] { 1 }));
         silent.RpcId(1, "RpcPartyToHost", new byte[] { SessionProtocol.Place, (byte)MemberPlace.Hideout });
         silent.RpcId(1, "RpcPartyToHost", new byte[] { SessionProtocol.Propose, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+        silent.RpcId(1, "RpcLayoutSubmit", "{\"Props\":[],\"Floors\":{}}");
+        silent.RpcId(1, "RpcPresenceToHost", new byte[7]);
+        silent.RpcId(1, "RpcCharacterUpdate", "{}");
+        silent.RpcId(1, "RpcHideoutLayout", "{}");
+        silent.RpcId(1, "RpcEditCopy", "{}");
         silent.RpcId(1, "RpcLobby", "[]");
         silent.RpcId(1, "RpcRejected", "go away");
         silent.RpcId(1, "RpcSnapshot", new byte[64]);
         await Seconds(1f);
-        Check("NO-HELLO-TRAFFIC-IGNORED", session.Members.Count == 1 && !session.InRun && session.IsHost && session.PlaceOf(1) == MemberPlace.Menu && session.PartyPhase == SessionPhase.Lobby,
+        Check("NO-HELLO-TRAFFIC-IGNORED", session.Members.Count == 1 && !session.InRun && session.IsHost && session.PlaceOf(1) == MemberPlace.Menu && session.PartyPhase == SessionPhase.Lobby && session.RefusedEdits == 0 && session.EditHolder == 0,
             $"input, events, party messages and host-only RPCs before a hello: lobby={session.Members.Count}, host in run={session.InRun}, still hosting={session.IsHost}, phase={session.PartyPhase}");
         bool timedOut = await WaitFor(() => !silent.Active, (float)NetSession.HelloTimeout + 3f);
         Check("NO-HELLO-TIMEOUT", timedOut, $"a peer with the code that never says hello is dropped after {NetSession.HelloTimeout} s: gone={timedOut}");

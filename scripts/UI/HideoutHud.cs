@@ -203,15 +203,15 @@ public partial class HideoutHud : CanvasLayer
         AddChip(row, "K", "Skills", () => Panels?.Skills.Toggle());
         AddChip(row, "P", "Passives", () => Panels?.Tree.Toggle(), () => CharacterBuild.Of(Player)?.Data.PassivePointsFree ?? 0);
         AddChip(row, "J", "Quests", () => Panels?.Quests.Toggle(), () => QuestService.Attention(Hideout));
-        AddChip(row, "H", "Edit town", Hideout.OpenEditor);
+        AddChip(row, "H", "Edit town", Hideout.OpenEditor, blocked: () => Hideout.EditBlockedReason);
         AddChip(row, "?", "Guide", Hideout.OpenGuide);
         AddChip(row, "Esc", "Menu", OpenPauseMenu);
         HudLayout.Register(bar, "hideout_menu", "Menu bar", avoid: HudAvoid.Slide);
     }
 
-    private void AddChip(HBoxContainer row, string key, string label, Action press, Func<int>? badge = null)
+    private void AddChip(HBoxContainer row, string key, string label, Action press, Func<int>? badge = null, Func<string?>? blocked = null)
     {
-        var chip = new KeyChip { Key = key, Caption = label, Pressed = press, Badge = badge };
+        var chip = new KeyChip { Key = key, Caption = label, Pressed = press, Badge = badge, Blocked = blocked };
         row.AddChild(chip);
         _chips.Add(chip);
     }
@@ -464,6 +464,7 @@ public partial class HideoutHud : CanvasLayer
 
         foreach (KeyChip chip in _chips)
         {
+            chip.Modulate = chip.Blocked?.Invoke() is null ? Colors.White : new Color(1f, 1f, 1f, 0.45f);
             chip.QueueRedraw();
         }
 
@@ -585,6 +586,9 @@ public partial class HideoutHud : CanvasLayer
         public string Caption = "";
         public Action Pressed = () => { };
         public Func<int>? Badge;
+
+        /// <summary>Why the chip can't be used now (greyed, said in its tooltip), or null.</summary>
+        public Func<string?>? Blocked;
         private bool _hover;
 
         public override void _Ready()
@@ -594,7 +598,7 @@ public partial class HideoutHud : CanvasLayer
             MouseDefaultCursorShape = CursorShape.PointingHand;
             MouseEntered += () => { _hover = true; QueueRedraw(); };
             MouseExited += () => { _hover = false; QueueRedraw(); };
-            UiTheme.InstantTooltip(this, $"{Caption} ({Key})");
+            UiTheme.InstantTooltip(this, () => Blocked?.Invoke() ?? $"{Caption} ({Key})");
         }
 
         public override void _GuiInput(InputEvent e)

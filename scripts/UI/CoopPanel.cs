@@ -445,7 +445,7 @@ public partial class CoopPanel : PanelContainer
         }
 
         string lobby = view == View.Lobby
-            ? string.Join("|", _session.Members.Select(m => $"{m.PeerId}:{m.Name}:{m.Level}:{m.ClassName}"))
+            ? string.Join("|", _session.Members.Select(m => $"{m.PeerId}:{m.Name}:{m.Level}:{m.ClassName}:{_session.CanEditOf(m.PeerId)}"))
               + $"#{_session.Code}#{_session.Ports.State}#{_session.Ports.Message}#{_session.Ports.ExternalAddress}#{_session.SecurityLog.Count}#{_session.InRun}#{_publicIp}#{_publicIpState}"
             : "";
         string connecting = view == View.Connecting ? _session.Phase.ToString() : "";
@@ -867,6 +867,15 @@ public partial class CoopPanel : PanelContainer
         }
     }
 
+    /// <summary>Invite, host: the "Allow editing" toggle of a friend's slot (tests).</summary>
+    public void SetAllowEditing(long peer, bool allowed)
+    {
+        if (Purpose == PanelPurpose.Invite)
+        {
+            _session?.SetCanEdit(peer, allowed);
+        }
+    }
+
     /// <summary>Invite: the host's "Stop hosting" (tests).</summary>
     public void PressStopHosting()
     {
@@ -1035,6 +1044,21 @@ public partial class CoopPanel : PanelContainer
             PanelContainer cap = UiTheme.KeyCap(tag, 13);
             cap.SizeFlagsVertical = SizeFlags.ShrinkCenter;
             row.AddChild(cap);
+        }
+
+        if (Purpose == PanelPurpose.Invite && s.IsHost && member.PeerId != 1)
+        {
+            // D10: per friend, this session only, revocable at any time.
+            long peer = member.PeerId;
+            var allow = new CheckButton { Text = "Allow editing", ButtonPressed = s.CanEditOf(peer), FocusMode = FocusModeEnum.None, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+            allow.AddThemeFontSizeOverride("font_size", 14);
+            allow.Toggled += on => _session?.SetCanEdit(peer, on);
+            UiTheme.InstantTooltip(allow, $"Let {member.Name} rearrange your town (H): one editor at a time, with your storage. For this party only.");
+            row.AddChild(allow);
+            if (s.CanEditOf(peer))
+            {
+                tags.Add("Can edit");
+            }
         }
 
         _slotTexts.Add($"{member.Name} · Level {member.Level} {member.ClassName}{string.Concat(tags.Select(t => $" · {t}"))}");

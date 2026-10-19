@@ -110,7 +110,7 @@ public partial class Hideout : Node2D
             {
                 // Owner decision 2026-10-18: inviting lives only here, in the hideout's menu.
                 new PauseMenu.Entry { Text = "Invite friends", LiveText = PartyEntryLabel, OnPress = OpenPartyOverlay },
-                new PauseMenu.Entry { Text = "Edit hideout", LiveText = () => IsGuest ? null : "Edit hideout", OnPress = OpenEditor },
+                new PauseMenu.Entry { Text = "Edit hideout", LiveText = () => EditBlockedReason is null ? "Edit hideout" : null, OnPress = OpenEditor },
             },
         };
         AddChild(Pause);
@@ -160,6 +160,9 @@ public partial class Hideout : Node2D
         {
             _session.LayoutChanged += OnHostLayoutChanged;
             _session.Launching += OnLaunching;
+            _session.EditGranted += OnEditGranted;
+            _session.EditEnded += OnEditEnded;
+            _session.LayoutSubmitted += ApplyGuestEdit;
             _session.LocalCharacter = CaptureCharacter;
             // Read only while hosting (also when hosting starts here, from "Invite friends").
             _session.LayoutSource = () => Data;
@@ -194,6 +197,9 @@ public partial class Hideout : Node2D
         {
             _session.LayoutChanged -= OnHostLayoutChanged;
             _session.Launching -= OnLaunching;
+            _session.EditGranted -= OnEditGranted;
+            _session.EditEnded -= OnEditEnded;
+            _session.LayoutSubmitted -= ApplyGuestEdit;
             if (_session.LocalCharacter == CaptureCharacter)
             {
                 _session.LocalCharacter = null;
@@ -237,6 +243,7 @@ public partial class Hideout : Node2D
         if (IsGuest && _session?.HostLayout is { } layout && !Editing)
         {
             ReplaceLayout(CopyOf(layout));
+            _onCopy = false;
         }
     }
 
@@ -384,8 +391,9 @@ public partial class Hideout : Node2D
     {
         if (!_leaving)
         {
+            _discardEdit = IsGuest; // a guest's half-done edit isn't sent on the way out
+            Editor?.Close();
             _leaving = true;
-            Editor?.QueueFree();
             SaveLayout();
         }
     }
@@ -688,6 +696,15 @@ public partial class Hideout : Node2D
 
     // --- edit mode -------------------------------------------------------------------
 
+    /// <summary>Why this player can't edit the town now (null: they can). Offline and
+    /// for the host always null; a guest needs the host's permission.</summary>
+    public string? EditBlockedReason => IsGuest && _session is { } s && !s.CanEditOf(s.LocalPeerId)
+        ? $"Only {s.HostName} can edit this town — ask them to allow it (their Party menu)"
+        : null;
+
+    private bool _askedToEdit;
+    private bool _discardEdit;
+
     public void OpenEditor()
     {
         if (Editing || _leaving)
@@ -697,21 +714,110 @@ public partial class Hideout : Node2D
 
         if (IsGuest)
         {
-            Toast($"Only {_session!.HostName} can edit this town", UiTheme.Ember);
+            // docs/design/hideout.md -> "Edit permission": the host's lock, the host's town.
+            if (EditBlockedReason is { } why)
+            {
+                Toast(why, UiTheme.Ember);
+                return;
+            }
+
+            if (!_askedToEdit)
+            {
+                _askedToEdit = true;
+                _session!.RequestEdit();
+                Toast($"Asking {_session.HostName} for the editor…", UiTheme.TextDim);
+            }
+
             return;
         }
 
+        if (_session is { IsHost: true } host && !host.TryHostEditLock(out string holder))
+        {
+            Toast($"{holder} is editing the town — wait until they're done", UiTheme.Ember);
+            return;
+        }
+
+        StartEditor();
+    }
+
+    private void StartEditor()
+    {
         GetTree().Paused = false;
         Editor = new HideoutEditor { Hideout = this, Name = "HideoutEditor" };
         _player.StopAutoWalk();
         Editor.Closed += () =>
         {
             Editor = null;
-            SaveLayout();
             InvalidatePaths();
+            if (IsGuest)
+            {
+                // The host checks the result and publishes it (or refuses and resends its own).
+                if (!_discardEdit)
+                {
+                    _session?.SubmitLayout(Data);
+                }
+
+                _discardEdit = false;
+                return;
+            }
+
+            SaveLayout();
             _session?.PublishLayout();
+            _session?.ReleaseHostEditLock();
         };
         AddChild(Editor);
+    }
+
+    /// <summary>Guest: the lock is ours; edit a copy of the host's town with its storage.</summary>
+    private void OnEditGranted(HideoutData copy)
+    {
+        _askedToEdit = false;
+        if (Editing || _leaving)
+        {
+            _session?.CancelEdit();
+            return;
+        }
+
+        ReplaceLayout(copy);
+        _onCopy = true;
+        StartEditor();
+    }
+
+    /// <summary>Guest: the town on screen is the editor's copy (with the host's storage), not the visitor's view.</summary>
+    private bool _onCopy;
+
+    /// <summary>Guest: refused or revoked; any open editor closes without sending, and the host's town shows again.</summary>
+    private void OnEditEnded(string why)
+    {
+        _askedToEdit = false;
+        Toast(why, UiTheme.Ember);
+        if (Editing)
+        {
+            _discardEdit = true;
+            Editor!.Close();
+        }
+
+        if (_onCopy && _session?.HostLayout is { } layout)
+        {
+            ReplaceLayout(CopyOf(layout));
+            _onCopy = false;
+        }
+    }
+
+    /// <summary>Host: a friend's edit passed the checks: it becomes this town, saved.</summary>
+    private void ApplyGuestEdit(HideoutData edited)
+    {
+        if (IsGuest || _leaving)
+        {
+            return;
+        }
+
+        ReplaceLayout(edited);
+        if (Profile.Get(this) is { } profile)
+        {
+            profile.Hideout = Data;
+            profile.Save();
+        }
     }
 
     public void SaveLayout()

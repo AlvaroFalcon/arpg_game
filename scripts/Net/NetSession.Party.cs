@@ -125,11 +125,25 @@ public partial class NetSession
     private void OnMemberJoined(long peer) => PublishLayout(peer);
 
     /// <summary>Host: a member left or dropped (the roster follows).</summary>
-    private void OnMemberLeft(long peer) => DropPresence(peer);
+    private void OnMemberLeft(long peer)
+    {
+        DropPresence(peer);
+        _canEdit.Remove(peer);
+        if (EditHolder == peer)
+        {
+            ReleaseEditLock(null);
+        }
+    }
 
     /// <summary>Host: hook for what a place change means (the hideout's layout, the phase).</summary>
     private void OnPlaceChanged(long peer, MemberPlace old, MemberPlace place)
     {
+        if (place != MemberPlace.Hideout && (EditHolder == peer || (peer == 1 && EditHolder != 0)))
+        {
+            // The editor (or the host, whose town it is) left the hideout.
+            ReleaseEditLock("the town can only be edited while you're both in it");
+        }
+
         if (place != MemberPlace.Hideout)
         {
             if (peer == 1)
@@ -173,6 +187,7 @@ public partial class NetSession
         HostRun = run;
         InRun = true;
         PartyPhase = SessionPhase.Run;
+        ReleaseEditLock("the party is setting off");
         // What the host wears now (the hideout saves its player first), then everyone's characters.
         Launching?.Invoke();
         RefreshOwnCharacter();
@@ -450,9 +465,7 @@ public partial class NetSession
     }
 
     /// <summary>Client: hook for the message kinds of later steps (proposals, edits, notices).</summary>
-    private void OnPartyToClient(byte kind, NetReader r)
-    {
-    }
+    private void OnPartyToClient(byte kind, NetReader r) => OnEditToClient(kind, r);
 
     private void ReadStartRift(NetReader r)
     {
@@ -517,7 +530,5 @@ public partial class NetSession
     }
 
     /// <summary>Host: hook for the message kinds of later steps.</summary>
-    private void OnPartyToHost(long sender, byte kind, NetReader r)
-    {
-    }
+    private void OnPartyToHost(long sender, byte kind, NetReader r) => OnEditToHost(sender, kind);
 }

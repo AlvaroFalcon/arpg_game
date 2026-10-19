@@ -40,7 +40,7 @@ public static class HideoutLayoutRules
 
     /// <summary>A layout received from the network, made safe to build a town
     /// from; null when it can't be read or breaks a rule.</summary>
-    public static HideoutData? SanitizeReceived(string json, int maxChars)
+    public static HideoutData? SanitizeReceived(string json, int maxChars, bool keepStock = false)
     {
         if (json.Length > maxChars)
         {
@@ -63,6 +63,11 @@ public static class HideoutLayoutRules
         }
 
         var data = new HideoutData { Initialized = true, GuideSeen = true };
+        if (!keepStock)
+        {
+            wire.Stock = null; // a visitor's copy never carries storage
+        }
+
         return Problem(wire, data) is null ? data : null;
     }
 
@@ -137,6 +142,67 @@ public static class HideoutLayoutRules
         HideoutCatalog.EnsureDefaults(into);
         return null;
     }
+
+    /// <summary>Where a prop may stand: open ground inside the town, a cell from the wall
+    /// (the editor's own rule, <c>HideoutEditor.Valid</c>).</summary>
+    public static bool CanStand(Vector2 world) =>
+        HideoutTown.Bounds.Grow(-HideoutTown.CellPx).HasPoint(world) && HideoutTown.Walkable(HideoutTown.CellOf(world));
+
+    /// <summary>
+    /// Is <paramref name="after"/> something the editor could have made from
+    /// <paramref name="before"/> (docs/design/hideout.md -> "Edit permission")? Null if so,
+    /// else why not. The stations are the same ones; every prop that moved or is new
+    /// stands where the editor allows; a prop keeps its kind; and nothing appears or
+    /// vanishes: for every decoration, placed + stored is unchanged, and for every floor
+    /// tile, cells paved + stored is unchanged.
+    /// </summary>
+    public static string? ValidateEdit(HideoutData before, HideoutData after)
+    {
+        var stationsBefore = before.Props.Where(IsStation).Select(p => p.Uid).OrderBy(u => u, StringComparer.Ordinal).ToList();
+        var stationsAfter = after.Props.Where(IsStation).Select(p => p.Uid).OrderBy(u => u, StringComparer.Ordinal).ToList();
+        if (!stationsBefore.SequenceEqual(stationsAfter))
+        {
+            return "the stations changed";
+        }
+
+        foreach (PlacedProp p in after.Props)
+        {
+            PlacedProp? old = before.Find(p.Uid);
+            if (old is not null && old.Kind != p.Kind)
+            {
+                return $"{p.Uid} changed into something else";
+            }
+
+            if ((old is null || old.Position.DistanceTo(p.Position) > 0.01f) && !CanStand(p.Position))
+            {
+                return $"{HideoutCatalog.Prop(p.Kind)?.Name ?? p.Kind} stands where nothing can";
+            }
+        }
+
+        foreach (PropDef def in HideoutCatalog.Decorations)
+        {
+            int was = before.Props.Count(p => p.Kind == def.Id) + before.StockOf(def.Id);
+            int now = after.Props.Count(p => p.Kind == def.Id) + after.StockOf(def.Id);
+            if (was != now)
+            {
+                return $"{def.Name}: {was} owned before, {now} after";
+            }
+        }
+
+        foreach (FloorStyle style in HideoutCatalog.Floors)
+        {
+            int was = before.Floors.Values.Count(v => v == style.Id) + before.StockOf(style.Id);
+            int now = after.Floors.Values.Count(v => v == style.Id) + after.StockOf(style.Id);
+            if (was != now)
+            {
+                return $"{style.Name} tiles: {was} owned before, {now} after";
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsStation(PlacedProp p) => HideoutCatalog.Prop(p.Kind) is { Station: true };
 
     /// <summary>"x,y" naming a walkable cell of the town.</summary>
     public static bool ValidFloorKey(string key)
