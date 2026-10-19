@@ -275,6 +275,18 @@ Why a vote and not "the host decides": the host already has the power to end the
 run; a vote makes the offer mean the same on every screen, and the round machinery,
 the counter and the timer already exist and are understood.
 
+#### In a party (2026-10-18)
+
+The Rift is opened for the party from the hideout (docs/design/multiplayer.md ->
+"Proposals"): the Mirror's "Enter the Survival Rift" or the portal (a confirm card),
+then a 30 s popup for everyone home. It runs with whoever joined; scaling counts only
+them. A client's pause entry and leave panel read **Leave the run** ("You go back to
+the hideout and the others keep playing. You take your reward, and you stay in the
+party."); the host's stay "End the run for everyone". The results' Hideout button
+goes home to the party; Main menu leaves it (the host's closes it). Loot gets the
+party bonus (+15 % quantity, +10 % rarity per extra player; multiplayer.md -> "Party
+rules"), shown on the start banner.
+
 #### Code notes
 
 - `RunDirector.OnColossusKilled`: set `ColossusDefeated`, hold spawning and the

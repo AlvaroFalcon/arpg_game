@@ -3,7 +3,8 @@
 # the first hosts (lobby open on the port), the second joins 127.0.0.1 with
 # the lobby's join code (a random one per launch, passed to both; UPnP is
 # skipped since nobody joins from outside).
-# Press Start in the host window once the second player shows in the lobby.
+# Press "Go to the hideout" in the host window once the second player shows in the
+# lobby (everyone goes to the host's hideout; open the Survival Rift from there).
 #
 # Usage: ./scripts/coop_local.sh [port] [extra godot args...]
 #   COOP_CLIENTS=3 ./scripts/coop_local.sh   # host + three clients (four players)

@@ -405,6 +405,41 @@ The town is the **account's**, like the stash: `Profile.Hideout` (saved in
 record is filled with the town as designed on the first visit, and stations added in
 later versions are added to old records where the design puts them.
 
+## Co-op: whose town **[IMPLEMENTED 2026-10-18]**
+
+In a party (docs/design/multiplayer.md -> "Shared hideout") everyone walks **the
+host's town**: the host sends its props and floors, and each guest's `Hideout`
+shows a copy (`Data`) while keeping its own account's town (`OwnTown`) for
+everything that belongs to the account:
+
+- **Saving.** `SaveLayout` on a guest only captures the player (gear, wallet); it
+  never writes the host's town over the guest's own `Profile.Hideout`. Tested with
+  guests whose saves really write (`HideoutCoopTest` `HIDEOUT-GUEST-SAVE-SAFE`).
+- **Ysolde.** A guest shopping in a friend's town buys for **their own** storage
+  ("You're in Ana's town: everything you buy is delivered to your own town's
+  storage"). Nobody buys for the host.
+- **The guide.** It lists the host's stations, but "seen" is the guest's own flag.
+- **Every NPC works on the guest's own character and wallet** (Odran, the forge,
+  the altar, the stash, quests): nothing is replicated, the town is the only thing
+  shared.
+- The host's town follows edits live: a guest's props and floors are rebuilt in
+  place (`Hideout.ReplaceLayout`), the player stays where they are.
+
+### Edit permission and the lock
+
+Only the host edits by default; a guest's H (and the pause menu's Edit hideout)
+says "Only Ana can edit this town — ask them to allow it". The host allows a friend
+in the party overlay ("Allow editing", per friend, this party only). **One editor at
+a time**, the host included ("Bo is editing the town — wait until they're done"). A
+guest edits a copy of the host's town **with the host's storage** (move, store,
+place from storage, pave and unpave with stocked tiles); Done sends it to the host,
+which keeps it only if the editor could have made it: the same stations, every
+moved or new prop on open ground, nothing appearing or vanishing (for each
+decoration and tile, placed + stored is unchanged —
+`HideoutLayoutRules.ValidateEdit`). Then it is saved as the host's town and sent to
+everyone. A refused edit tells the guest why; revoking the right closes their
+editor without keeping anything.
+
 ## Open questions
 
 - Ysolde's prices are guesses, as are all crafting prices; gold sinks need play.

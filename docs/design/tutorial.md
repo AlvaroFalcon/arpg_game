@@ -41,6 +41,16 @@ Reusing the reality controller instead of a bespoke scene means the tutorial
 teaches the real thing — same HUD, same loot, same boss gate — and costs a layout
 and a ~250-line guide rather than a second game mode.
 
+## With friends (2026-10-18, D11)
+
+Choosing a character that hasn't played The Threshold under Play → With friends asks
+first: "Rookie hasn't played the introduction" — it takes about 5 minutes and is
+played alone, then leads home. **Play it first (solo)** starts it as usual (join your
+friends after); **Skip it and play with friends** sets `TutorialDone`, the same flag
+"Skip the introduction" sets in its own menu, and goes on to the co-op screen. Co-op
+games commonly let a solo tutorial be skipped to play with friends; the flag already
+existed, so nothing new is saved. Tested in `CoopUiSmokeTest` `MENU-TUTORIAL-PROMPT`.
+
 ## Alternatives considered
 
 - **Tooltips in the hideout only.** Cheaper, but nothing to practise on.
