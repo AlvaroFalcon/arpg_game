@@ -94,7 +94,8 @@ There is **no upfront GDD**. Design specs get written down incrementally:
 ## Devlog policy
 
 - After a session with notable progress (a working feature, a hard bug solved, a design pivot), append a short raw entry to `docs/devlog/journal.md`: date, what changed, why, screenshot references if relevant.
-- Periodically (when asked, or when the journal has enough material), the **game-dev-blogger** agent compiles journal entries into a polished post under `docs/devlog/posts/`, technical but friendly, explaining decisions and trade-offs, embedding screenshots from `docs/devlog/screenshots/`.
+- **Every milestone gets a published post.** When a milestone lands (a feature or system merged, a mode playable, a hard bug solved, a design pivot), run the **game-dev-blogger** agent: it compiles the journal entries since the last post into a polished post under `docs/devlog/posts/`, technical but friendly, explaining decisions and trade-offs, with screenshots from `docs/devlog/screenshots/` (capturing new ones when the milestone is visual), and then publishes it on the devlog site.
+- **Devlog site:** [AlvaroFalcon/devlogs](https://github.com/AlvaroFalcon/devlogs) (Astro, deployed to https://alvarofalcon.github.io/devlogs/ on every push to its `main`). This project's posts live in `src/content/posts/arpg-game/` there, with their images in `images/` next to them; follow that repo's `CLAUDE.md`. In a cloud session, attach it first (`add_repo` with push access) and clone it to `/home/user/devlogs`. `docs/devlog/posts/` here stays the source copy.
 - Screenshots: capture via the headless/editor run tooling below, save into `docs/devlog/screenshots/`, reference with relative markdown image links.
 
 ## Running the game headless
