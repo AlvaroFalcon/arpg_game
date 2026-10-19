@@ -117,7 +117,7 @@ public partial class RunController : Node2D
         Pause = new PauseMenu
         {
             Name = "Pause",
-            LeaveText = Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the party",
+            LeaveText = Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the run",
             LeaveTextNow = LeaveLabel,
             OnLeave = OnPauseLeave,
             Summary = () => LevelUpScreen.BuildSummary(Build),
@@ -127,6 +127,7 @@ public partial class RunController : Node2D
 
         State.RunEnded += OnRunEnded;
         Sfx.Music(this, "music_run");
+        Session?.ReportPlace(MemberPlace.Run);
 
         // Co-op level-ups (docs/design/multiplayer.md -> "Level-ups"): the host runs
         // rounds of picks for the whole party and pauses everything meanwhile; a
@@ -189,8 +190,8 @@ public partial class RunController : Node2D
 
     private void ConfigurePlayer()
     {
-        int slot = Session?.Members.FindIndex(m => m.PeerId == Player.PeerId) ?? 0;
-        Player.GlobalPosition = SpawnPoint(Mathf.Max(0, slot), Session?.Members.Count ?? 1);
+        int slot = Session?.RunMembers.ToList().FindIndex(m => m.PeerId == Player.PeerId) ?? 0;
+        Player.GlobalPosition = SpawnPoint(Mathf.Max(0, slot), Session is null ? 1 : Session.RunMembers.Count);
         Build = ConfigureRunCharacter(Player);
         Profile.Get(this)?.ApplyTo(Player);
         FinishRunCharacter(Player, Build);
@@ -283,45 +284,19 @@ public partial class RunController : Node2D
     /// </summary>
     private void SpawnParty(NetSession session)
     {
-        var scene = GD.Load<PackedScene>("res://scenes/Player.tscn");
-        for (int i = 0; i < session.Members.Count; i++)
+        // Only the rift's participants: whoever stayed in the hideout gets no player here.
+        IReadOnlyList<LobbyMember> members = session.RunMembers;
+        for (int i = 0; i < members.Count; i++)
         {
-            LobbyMember member = session.Members[i];
+            LobbyMember member = members[i];
             if (member.PeerId == Player.PeerId)
             {
                 continue;
             }
 
-            // A character that can't be read still joins, with a fresh build (friends-only:
-            // characters are trusted, but malformed data must not crash the host).
-            Characters.CharacterData? character = null;
-            try
-            {
-                character = Profile.DeserializeCharacter(member.Character);
-            }
-            catch (System.Exception e)
-            {
-                GD.PushWarning($"Co-op: could not read {member.Name}'s character: {e.Message}");
-            }
-            var p = scene.Instantiate<Player>();
-            p.Name = $"Player_{member.PeerId}";
-            p.IsLocal = false;
-            p.PeerId = member.PeerId;
-            p.NetName = member.Name;
-            p.Puppet = session.IsClient;
-            if (session.IsHost)
-            {
-                p.Command = new PlayerCommand();
-            }
-
-            AddChild(p);
-            p.GlobalPosition = SpawnPoint(i, session.Members.Count);
-            RunBuild build = ConfigureRunCharacter(p);
-            if (character is not null)
-            {
-                Profile.ApplyCharacterTo(p, character);
-            }
-
+            RunBuild build = null!;
+            Player p = PartySpawner.Build(this, member, puppet: session.IsClient, commanded: session.IsHost, SpawnPoint(i, members.Count),
+                player => build = ConfigureRunCharacter(player));
             FinishRunCharacter(p, build);
             if (session.IsClient)
             {
@@ -435,7 +410,10 @@ public partial class RunController : Node2D
     private void BeginRun()
     {
         Director.Spawning = !NetSessionIsClient;
-        Hud.ShowBanner("Survival Rift", Coop ? $"A party of {State.PartySize} — reach the Ember Colossus and break it" : "Reach the Ember Colossus — and break it", UiTheme.Gold);
+        string bonus = Net.PartyRules.LootBonusText(State.PartySize);
+        Hud.ShowBanner("Survival Rift", Coop
+            ? $"A party of {State.PartySize}{(bonus.Length > 0 ? $" · {bonus}" : "")} — reach the Ember Colossus and break it"
+            : "Reach the Ember Colossus — and break it", UiTheme.Gold);
     }
 
     public override void _Process(double delta)
@@ -476,10 +454,10 @@ public partial class RunController : Node2D
     {
         if (!Director.ColossusDefeated)
         {
-            return Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the party";
+            return Session is null ? "Abandon run" : Session.IsHost ? "End the run for everyone" : "Leave the run";
         }
 
-        return Session is null ? "Leave with reward" : Session.IsHost ? "End the run for everyone" : "Leave the party";
+        return Session is null ? "Leave with reward" : Session.IsHost ? "End the run for everyone" : "Leave the run";
     }
 
     /// <summary>Solo: the Colossus fell and the director's hold is over. (Co-op: the host opens a party round.)</summary>
@@ -510,11 +488,7 @@ public partial class RunController : Node2D
         }
         else if (Session.IsClient)
         {
-            CashOut.OpenLeave("Leave the party?", "You leave alone and the party keeps playing. You take your reward.", "Leave with reward", () =>
-            {
-                Session.Leave();
-                NetClient?.OnHostLost("You left the party.");
-            }, pause: false);
+            CashOut.OpenLeave("Leave the run?", "You go back to the hideout and the others keep playing. You take your reward, and you stay in the party.", "Leave with reward", LeaveRunAsClient, pause: false);
         }
         else
         {
@@ -532,19 +506,40 @@ public partial class RunController : Node2D
 
         if (Session is { IsClient: true })
         {
-            // Leaving the party: this player's run ends here, with their rewards so far.
-            Session.Leave();
-            NetClient?.OnHostLost("You left the party.");
+            LeaveRunAsClient();
             return;
         }
 
         State.EndRun(Director.ColossusDefeated);
     }
 
+    /// <summary>A client leaves the run, not the party (docs/design/multiplayer.md -> "Party session"):
+    /// this player's run ends here, with their rewards so far, and the results lead home to the party.</summary>
+    private void LeaveRunAsClient()
+    {
+        Session?.LeaveRun();
+        NetClient?.OnHostLost("You left the run.");
+    }
+
     private void LeaveTo(string scene)
     {
-        // A session lasts one run: leaving the results leaves the party.
-        Session?.Leave();
+        if (Session is { Active: true } party && scene == Scenes.Hideout)
+        {
+            // The party lives on between rifts: back to the (host's) hideout with everyone.
+            party.ReturnToHideout();
+            Scenes.Go(this, scene);
+            return;
+        }
+
+        if (scene == Scenes.MainMenu)
+        {
+            Session?.Leave(); // the host closes the party for everyone; a guest leaves it
+        }
+        else if (Session is { Active: false, MenuNotice: not null })
+        {
+            scene = Scenes.MainMenu; // the host left: guests go to the main menu, which says so
+        }
+
         Scenes.Go(this, scene);
     }
 

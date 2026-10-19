@@ -72,7 +72,7 @@ public sealed class RunPlayer
 /// local player's, so single-player code reads exactly as before.
 /// </summary>
 [GlobalClass]
-public partial class RunState : Node, IPickupHandler
+public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
 {
     public const string Group = "run_state";
     public const string PickupGroup = "pickups";
@@ -577,6 +577,29 @@ public partial class RunState : Node, IPickupHandler
     /// gear. Rolled now, spawned a few per frame (<see cref="Loot"/>). Co-op: owned
     /// by that player; ordinary monsters' chances are scaled by the party share.
     /// </summary>
+    /// <summary>
+    /// One player's chances from one kill (docs/design/run.md -> "Rewards"): a life orb, gold
+    /// (cumulative with the life orb: one roll picks at most one of them), an orb, and an
+    /// elite's gear. <paramref name="share"/> scales ordinary monsters' chances down for a
+    /// party (instanced loot); <paramref name="quantity"/> is the party's item quantity bonus
+    /// (1 alone, docs/design/multiplayer.md -> "Party rules") on gold, orbs and gear — life
+    /// orbs are not loot and keep their chance. Pure, so the party bonus is unit-checked.
+    /// </summary>
+    public static (float Life, float LifeOrGold, float Orb, float Gear) DropChances(bool elite, float share, float quantity)
+    {
+        float life = elite ? 0.5f : 0.012f * share;
+        float gold = (elite ? 0.5f : (0.05f - 0.012f) * share) * quantity;
+        float orb = (elite ? 0.25f : OrbChance * share) * quantity;
+        float gear = elite ? 0.3f * quantity : 0f;
+        return (life, Mathf.Min(1f, life + gold), Mathf.Min(1f, orb), Mathf.Min(1f, gear));
+    }
+
+    /// <summary>The party's item quantity multiplier (1 offline and for a party of one).</summary>
+    public float LootQuantity => Coop ? 1f + Net.PartyRules.ItemQuantity(PartySize) : 1f;
+
+    /// <summary>The party's gear rarity multiplier (1 offline and for a party of one).</summary>
+    public float LootRarity => Coop ? 1f + Net.PartyRules.ItemRarity(PartySize) : 1f;
+
     private void RollDropsFor(RunPlayer? who, Enemy enemy, Vector2 at, float share)
     {
         Player? owner = Coop ? who?.Player : null;
@@ -587,20 +610,21 @@ public partial class RunState : Node, IPickupHandler
             Loot.Add(Items.LootQueue.PickupCost, () => SpawnExperience(at, value, owner));
         }
 
+        (float lifeChance, float goldChance, float orbChance, float gearChance) = DropChances(enemy.IsElite, share, LootQuantity);
         float roll = _rng.Randf();
-        if (roll < (enemy.IsElite ? 0.5f : 0.012f * share))
+        if (roll < lifeChance)
         {
             Vector2 p = at + RandomOffset(10f);
             Loot.Add(Items.LootQueue.PickupCost, () => Spawned(Pickup.Spawn(scene, PickupKind.Life, 0.25f, p), owner));
         }
-        else if (roll < (enemy.IsElite ? 1f : 0.05f * share))
+        else if (roll < goldChance)
         {
             Vector2 p = at + RandomOffset(10f);
             float gold = enemy.IsElite ? 25 : 3;
             Loot.Add(Items.LootQueue.PickupCost, () => Spawned(Pickup.Spawn(scene, PickupKind.Gold, gold, p), owner));
         }
 
-        int orbs = enemy.IsBoss ? 3 : _rng.Randf() < (enemy.IsElite ? 0.25f : OrbChance * share) ? 1 : 0;
+        int orbs = enemy.IsBoss ? 3 : _rng.Randf() < orbChance ? 1 : 0;
         for (int i = 0; i < orbs; i++)
         {
             Vector2 p = at + RandomOffset(24f);
@@ -608,7 +632,7 @@ public partial class RunState : Node, IPickupHandler
         }
 
         // Gear drops (docs/design/run.md -> "Rewards"): elites sometimes, bosses always.
-        int drops = enemy.IsBoss ? 2 : enemy.IsElite && _rng.Randf() < 0.3f ? 1 : 0;
+        int drops = enemy.IsBoss ? 2 : enemy.IsElite && _rng.Randf() < gearChance ? 1 : 0;
         for (int i = 0; i < drops; i++)
         {
             Vector2 p = at + RandomOffset(30f);
@@ -646,7 +670,7 @@ public partial class RunState : Node, IPickupHandler
         }
 
         // Cascade rarity (docs/design/items.md -> "Drop tables (cascade)"), better the longer the run.
-        Items.Rarity rarity = Items.DropTables.RollRarity(source, Items.DropTables.RiftMultiplier(Elapsed), _rng);
+        Items.Rarity rarity = Items.DropTables.RollRarity(source, Items.DropTables.RiftMultiplier(Elapsed) * LootRarity, _rng);
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, itemLevel, Items.ItemFactory.Affixes.Entries, _rng);
         if (remote)
         {

@@ -7,6 +7,7 @@ using ArpgGame.Combat;
 using ArpgGame.Core;
 using ArpgGame.Enemies;
 using ArpgGame.Items;
+using ArpgGame.Net;
 using ArpgGame.Progression;
 using ArpgGame.Run;
 using ArpgGame.Skills;
@@ -22,6 +23,14 @@ namespace ArpgGame.World;
 /// experience and drops on kill, portals (lives) on death, the gate closing
 /// when the boss fight starts, shards and loot when the boss dies, and the
 /// exit portal home.
+///
+/// Co-op (docs/design/endgame.md -> "Co-op realities"): when the party session
+/// runs this reality, every participant builds the same cavern from the host's
+/// seed; only the host spawns and simulates monsters, deals damage and rolls
+/// loot (every participant gets their own drops and the kill's experience), and
+/// the party shares one portal pool. A <see cref="RealityHost"/> or
+/// <see cref="RealityClient"/> carries it over the network. Rewards are applied
+/// on each player's own machine, never into the host's profile.
 /// </summary>
 [GlobalClass]
 public partial class RealityController : Node2D, IPickupHandler
@@ -66,6 +75,24 @@ public partial class RealityController : Node2D, IPickupHandler
     public HashSet<Vector2I> Explored { get; } = new();
     public RealityHud Hud { get; private set; } = null!;
     public PauseMenu Pause { get; private set; } = null!;
+
+    // --- co-op (docs/design/endgame.md -> "Co-op realities") -------------------------
+
+    /// <summary>The party session running this reality (null solo).</summary>
+    public NetSession? Session { get; private set; }
+
+    public bool Coop => Session is not null;
+    public bool IsHostSide => Session is { IsHost: true };
+    public bool IsClientSide => Session is { IsClient: true };
+
+    /// <summary>Every participant (the local player first; solo: just the player).</summary>
+    public RealityParty Party { get; private set; } = null!;
+
+    public RealityHost? NetHost { get; private set; }
+    public RealityClient? NetClient { get; private set; }
+
+    /// <summary>Participants when the reality started (the pool and the scaling use it).</summary>
+    public int PartySize { get; private set; } = 1;
 
     private readonly RandomNumberGenerator _rng = new();
     private StaticBody2D _gate = null!;
@@ -112,15 +139,31 @@ public partial class RealityController : Node2D, IPickupHandler
                 ?? (Seed is { } s ? RealityLaunch.LayoutFor(s) : LayoutCatalog.Layouts[_rng.RandiRange(0, LayoutCatalog.Layouts.Count - 1)]);
         Modifiers = IsTutorial ? new List<string>() : new List<string>(RealityLaunch.Modifiers);
         RealityLaunch.Reset();
+        Session = NetSession.Get(this);
+        if (IsTutorial || Session is not { Active: true, InRun: true } || Session.CurrentRun?.Spec.Kind != RiftKind.Reality)
+        {
+            Session = null;
+        }
+
+        Party = new RealityParty((text, color) => EmitSignal(SignalName.Toast, text, color));
+        PartySize = Session is null ? 1 : Mathf.Max(1, Session.RunMembers.Count);
         Theme = RealityTheme.Get(Layout.ThemeId);
         (_quantity, _rarityBonus) = RealityLaunch.Bonuses(Modifiers);
-        if (!IsTutorial)
+        if (!IsTutorial && !IsClientSide)
         {
+            // Co-op: the host's jewels shape the whole map (its packs, its drop rolls).
             Jewels = JewelTree.Bonuses(Profile.Get(this)?.Jewels);
             _quantity += Jewels[JewelStat.Quantity];
             _rarityBonus += Jewels[JewelStat.Rarity];
         }
-        PortalsLeft = IsTutorial ? TutorialPortals : RealityTiers.Portals(Tier);
+
+        if (Coop)
+        {
+            _quantity += PartyRules.ItemQuantity(PartySize);
+            _rarityBonus += PartyRules.ItemRarity(PartySize);
+        }
+
+        PortalsLeft = IsTutorial ? TutorialPortals : Coop ? PartyRules.RealityPortals(Tier, PartySize) : RealityTiers.Portals(Tier);
 
         RenderingServer.SetDefaultClearColor(Theme.Void);
         AddChild(new CanvasModulate { Color = Theme.Ambient });
@@ -136,14 +179,42 @@ public partial class RealityController : Node2D, IPickupHandler
         FlowField.Current = Field;
 
         Player = GetNode<Player>("Player");
+        if (Session is not null)
+        {
+            Player.PeerId = Session.LocalPeerId;
+            Player.NetName = Session.Member(Player.PeerId)?.Name ?? "";
+        }
+
         ConfigurePlayer();
         Player.UseCloseCamera();
-        SpawnPacks();
-        SpawnBoss();
+        Party.Add(Player);
+        if (Session is not null)
+        {
+            SpawnParty(Session);
+        }
+
+        // The host's replication goes in before the monsters, so it sees every one appear.
+        if (IsHostSide)
+        {
+            NetHost = new RealityHost { Name = "RealityHost", Reality = this };
+            AddChild(NetHost);
+        }
+
+        if (!IsClientSide)
+        {
+            SpawnPacks();
+            SpawnBoss();
+        }
 
         Hud = new RealityHud { Reality = this, Name = "Hud" };
         AddChild(Hud);
-        Pause = new PauseMenu { LeaveText = IsTutorial ? "Skip the introduction" : "Abandon reality", OnLeave = Abandon, Summary = Summary };
+        Pause = new PauseMenu
+        {
+            LeaveText = IsTutorial ? "Skip the introduction" : !Coop ? "Abandon reality" : IsHostSide ? "Close the reality for everyone" : "Leave the reality",
+            OnLeave = Abandon,
+            Summary = Summary,
+            NoPause = Coop,
+        };
         AddChild(Pause);
         AddChild(new CharacterPanels { Player = Player, Name = "CharacterPanels" });
         AddChild(new QuestToast { Name = "QuestToast", Anchor = Hud.QuestToastAnchor });
@@ -153,6 +224,13 @@ public partial class RealityController : Node2D, IPickupHandler
         }
 
         Enemy.SplitSpawned += OnSplitSpawned;
+        if (IsClientSide)
+        {
+            NetClient = new RealityClient { Name = "RealityClient", Reality = this };
+            AddChild(NetClient);
+        }
+
+        Session?.ReportPlace(MemberPlace.Run);
 
         Sfx.Music(this, Theme.Music);
         string mods = Modifiers.Count > 0 ? "  ·  " + string.Join(", ", Modifiers.Select(m => RealityModifier.Find(m)?.Text ?? m)) : "";
@@ -162,7 +240,7 @@ public partial class RealityController : Node2D, IPickupHandler
     private void AnnounceStart(string mods) =>
         EmitSignal(SignalName.Announced, Layout.Name, IsTutorial ? "A short introduction — follow the objectives on the left" : StartSubtitle(mods), IsTutorial ? new Color(1f, 0.85f, 0.4f) : RealityTiers.ShardColor(Tier));
 
-    private string StartSubtitle(string mods) => $"Tier {Tier}  ·  monster level {MonsterLevel}  ·  {PortalsLeft} portal{(PortalsLeft == 1 ? "" : "s")}{mods}";
+    private string StartSubtitle(string mods) => $"Tier {Tier}  ·  monster level {MonsterLevel}  ·  {PortalsLeft} portal{(PortalsLeft == 1 ? "" : "s")}{(Coop ? $" (shared, party of {PartySize})" : "")}{mods}";
 
     /// <summary>Portals in the introduction: dying there costs nothing.</summary>
     public const int TutorialPortals = 99;
@@ -173,7 +251,7 @@ public partial class RealityController : Node2D, IPickupHandler
     /// <summary>A normal monster's life multiplier — docs/design/endgame.md ->
     /// "Monster scaling" (the introduction keeps authored life, softened: its
     /// hero is level 1 with no gear, far below the reference character).</summary>
-    private float TierLife => IsTutorial ? TutorialLife : MonsterScaling.LifeMultiplier(MonsterLevel);
+    private float TierLife => (IsTutorial ? TutorialLife : MonsterScaling.LifeMultiplier(MonsterLevel)) * (Coop ? PartyRules.MonsterLife(PartySize) : 1f);
 
     /// <summary>Resistances and armour by monster level plus the theme's affinity
     /// (none in the introduction).</summary>
@@ -216,32 +294,24 @@ public partial class RealityController : Node2D, IPickupHandler
 
     private void ConfigurePlayer()
     {
-        Player.GlobalPosition = RasterLayout.World(Raster.Entrance);
+        Player.GlobalPosition = SpawnSpot(Session?.RunMembers.ToList().FindIndex(m => m.PeerId == Player.PeerId) ?? 0);
         // LMB, RMB, 1-4 each fire their own loadout slot (CharacterBuild.Slots).
         Player.GetNode<PlayerSkillInput>("PlayerSkillInput").Mode = PlayerSkillInput.CastMode.Bound;
         Player.GetNodeOrNull<CanvasLayer>("DebugReadout")?.Hide();
         Profile.Get(this)?.ApplyTo(Player);
-
-        if (Modifiers.Contains("frail"))
+        ApplyRealityModifiers(Player);
+        if (IsClientSide)
         {
-            Player.Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.More, -15f, ModifierSource));
+            // The host casts for everyone (from this player's buttons); this machine only shows it.
+            Player.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;
+            MuteLocalEffects(Player);
         }
-
-        if (Modifiers.Contains("exposed"))
+        else
         {
-            foreach (StatId r in new[] { StatId.FireResistance, StatId.ColdResistance, StatId.LightningResistance })
-            {
-                Player.Stats.Get(r).AddModifier(new StatModifier(ModifierType.Flat, -20f, ModifierSource));
-            }
+            Player p = Player;
+            Player.Health!.Died += () => OnPlayerDied(p);
+            Player.Dodge!.Dodged += () => OnPlayerDodged(p);
         }
-
-        if (Player.Stats.Life is { } life)
-        {
-            life.Current = life.Max;
-        }
-
-        Player.Health!.Died += OnPlayerDied;
-        Player.Dodge!.Dodged += OnPlayerDodged;
 
         var camera = Player.GetNode<Camera2D>("Camera2D");
         camera.LimitLeft = 0;
@@ -252,17 +322,99 @@ public partial class RealityController : Node2D, IPickupHandler
         camera.PositionSmoothingSpeed = 9f;
     }
 
-    private void OnPlayerDodged()
+    /// <summary>The shard's modifiers on a player, then full life (every participant on the host).</summary>
+    private void ApplyRealityModifiers(Player player)
     {
-        if (!BuildQuery.Any(Player, b => b.PhaseDancer))
+        if (Modifiers.Contains("frail"))
+        {
+            player.Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.More, -15f, ModifierSource));
+        }
+
+        if (Modifiers.Contains("exposed"))
+        {
+            foreach (StatId r in new[] { StatId.FireResistance, StatId.ColdResistance, StatId.LightningResistance })
+            {
+                player.Stats.Get(r).AddModifier(new StatModifier(ModifierType.Flat, -20f, ModifierSource));
+            }
+        }
+
+        if (player.Stats.Life is { } life)
+        {
+            life.Current = life.Max;
+        }
+    }
+
+    /// <summary>Where participant <paramref name="slot"/> starts (and comes back): around the entrance.</summary>
+    private Vector2 SpawnSpot(int slot)
+    {
+        Vector2 entrance = RasterLayout.World(Raster.Entrance);
+        if (slot <= 0)
+        {
+            return entrance;
+        }
+
+        Vector2 at = entrance + Vector2.Right.Rotated(slot * Mathf.Tau / 4f) * 40f;
+        return Raster.Walkable(Field.CellOf(at)) ? at : entrance;
+    }
+
+    /// <summary>
+    /// Co-op: a player node for every other participant, dressed from the character
+    /// their machine sent. On the host it is driven by that player's inputs (its
+    /// skills cast from their buttons); on a client it is a puppet placed by snapshots.
+    /// </summary>
+    private void SpawnParty(NetSession session)
+    {
+        List<LobbyMember> members = session.RunMembers.ToList();
+        for (int i = 0; i < members.Count; i++)
+        {
+            LobbyMember member = members[i];
+            if (member.PeerId == Player.PeerId)
+            {
+                continue;
+            }
+
+            Player p = PartySpawner.Build(this, member, puppet: session.IsClient, commanded: session.IsHost, SpawnSpot(i), player =>
+            {
+                player.GetNode<PlayerSkillInput>("PlayerSkillInput").Mode = PlayerSkillInput.CastMode.Bound;
+                player.GetNodeOrNull<CanvasLayer>("DebugReadout")?.Hide();
+            });
+            ApplyRealityModifiers(p);
+            if (session.IsClient)
+            {
+                p.GetNode<PlayerSkillInput>("PlayerSkillInput").InputEnabled = false;
+                p.Dodge!.InputEnabled = false;
+                MuteLocalEffects(p);
+            }
+            else
+            {
+                p.Health!.Died += () => OnPlayerDied(p);
+                p.Dodge!.Dodged += () => OnPlayerDodged(p);
+            }
+
+            Party.Add(p);
+        }
+    }
+
+    /// <summary>Co-op client: ascendancy behaviours with their own timers stay off (the host runs them).</summary>
+    private static void MuteLocalEffects(Player player)
+    {
+        if (CharacterBuild.Of(player)?.Ascendancy is { } ascendancy)
+        {
+            ascendancy.ProcessMode = ProcessModeEnum.Disabled;
+        }
+    }
+
+    private void OnPlayerDodged(Player player)
+    {
+        if (!BuildQuery.Any(player, b => b.PhaseDancer))
         {
             return;
         }
 
         var tags = SkillTags.Spell | SkillTags.Area | SkillTags.Cold;
-        float damage = Stat.ComputeFormula(20f + 3f * MonsterLevel, Player.Stats.GetModifiers(new ModifierQuery(StatId.Damage, tags)));
-        var hit = new HitProfile { Damage = damage, Type = DamageType.Cold, Source = Player, Faction = Faction.Player, Tags = tags, KnockbackForce = 220f };
-        AreaBurst.Spawn(this, Player.GlobalPosition, 110f * Player.Stats.Get(StatId.AreaOfEffect).Value, 0f, new Color(0.45f, 0.8f, 1f), hit);
+        float damage = Stat.ComputeFormula(20f + 3f * MonsterLevel, player.Stats.GetModifiers(new ModifierQuery(StatId.Damage, tags)));
+        var hit = new HitProfile { Damage = damage, Type = DamageType.Cold, Source = player, Faction = Faction.Player, Tags = tags, KnockbackForce = 220f };
+        AreaBurst.Spawn(this, player.GlobalPosition, 110f * player.Stats.Get(StatId.AreaOfEffect).Value, 0f, new Color(0.45f, 0.8f, 1f), hit);
     }
 
     private PackedScene LoadEnemy(string name) => GD.Load<PackedScene>($"res://scenes/enemies/{name}.tscn");
@@ -321,7 +473,8 @@ public partial class RealityController : Node2D, IPickupHandler
             ? Theme.Roster[spot.Territory % Theme.Roster.Count]
             : Theme.Roster[_rng.RandiRange(0, Theme.Roster.Count - 1)];
         float budget = RealityTiers.PackBudget(Tier) * RealityTiers.BudgetScale(spot.Heat, spot.Zone)
-            * (hordes ? 1.3f : 1f) * (1f + Jewels[JewelStat.Density]) * _rng.RandfRange(0.85f, 1.15f);
+            * (hordes ? 1.3f : 1f) * (1f + Jewels[JewelStat.Density]) * _rng.RandfRange(0.85f, 1.15f)
+            * (Coop ? PartyRules.RealityPackSize(PartySize) : 1f);
         int normals = kind switch
         {
             'm' or 'u' => 0,
@@ -449,13 +602,14 @@ public partial class RealityController : Node2D, IPickupHandler
         // Bosses last MonsterScaling.TtkBoss against the reference character; the
         // introduction's guardian keeps its authored life (softened).
         float life = (IsTutorial ? Theme.BossLifeMultiplier * TutorialLife : MonsterScaling.BossLifeMultiplier(MonsterLevel, boss.BaseLife * Theme.BossLifeMultiplier) * Theme.BossLifeMultiplier)
-            * (Modifiers.Contains("hardened") ? 1.4f : 1f);
+            * (Modifiers.Contains("hardened") ? 1.4f : 1f) * (Coop ? PartyRules.BossLife(PartySize) : 1f);
         // Its hits are aimed at the reference character's life (MonsterScaling.BossHitShare).
         float dmg = (IsTutorial ? TutorialLife : MonsterScaling.BossDamageMultiplier(MonsterLevel)) * (Modifiers.Contains("searing") ? 1.25f : 1f);
         boss.ApplyTierScaling(life, dmg);
         ApplyDefences(boss);
         boss.Killed += OnBossKilled;
         Boss = boss;
+        NetHost?.AdoptBossNow(boss);
     }
 
     // --- loop ------------------------------------------------------------------------
@@ -476,17 +630,57 @@ public partial class RealityController : Node2D, IPickupHandler
         if (_fieldTimer <= 0f)
         {
             _fieldTimer = 0.25f;
-            Field.Update(Player.GlobalPosition);
+            if (Coop)
+            {
+                // Monsters walk toward whichever living player is nearest along the walls.
+                _targets.Clear();
+                foreach (RunPlayer rp in Party.Players)
+                {
+                    if (rp.Player is { } p && IsInstanceValid(p) && !rp.Downed)
+                    {
+                        _targets.Add(p.GlobalPosition);
+                    }
+                }
+
+                if (_targets.Count > 0)
+                {
+                    Field.Update(_targets);
+                }
+            }
+            else
+            {
+                Field.Update(Player.GlobalPosition);
+            }
+
             Reveal();
         }
 
-        if (!BossFightActive && Boss is not null && IsInstanceValid(Boss) && !Boss.Health.IsDead && !(Player.Health?.IsDead ?? true)
-            && Raster.BossRegion.Contains(Field.CellOf(Player.GlobalPosition)))
+        if (IsClientSide || BossFightActive || Boss is null || !IsInstanceValid(Boss) || Boss.Health.IsDead)
         {
-            StartBossFight();
+            return;
         }
 
+        if (!Coop)
+        {
+            if (!(Player.Health?.IsDead ?? true) && Raster.BossRegion.Contains(Field.CellOf(Player.GlobalPosition)))
+            {
+                StartBossFight(null);
+            }
+
+            return;
+        }
+
+        foreach (RunPlayer rp in Party.Players)
+        {
+            if (rp.Player is { } p && IsInstanceValid(p) && !rp.Downed && Raster.BossRegion.Contains(Field.CellOf(p.GlobalPosition)))
+            {
+                StartBossFight(rp);
+                break;
+            }
+        }
     }
+
+    private readonly List<Vector2> _targets = new();
 
     public override void _Process(double delta)
     {
@@ -505,7 +699,7 @@ public partial class RealityController : Node2D, IPickupHandler
 
         if (near && !GetTree().Paused && Input.IsActionJustPressed("interact"))
         {
-            Finish();
+            UseExitPortal();
         }
     }
 
@@ -521,15 +715,97 @@ public partial class RealityController : Node2D, IPickupHandler
         }
     }
 
-    private void StartBossFight()
+    /// <summary>
+    /// The fight starts (<paramref name="starter"/>: who walked in; null solo). Co-op
+    /// (docs/design/endgame.md -> "Co-op realities"): every other living participant
+    /// is pulled in just inside the gate before it closes, so nobody is shut out.
+    /// </summary>
+    private void StartBossFight(RunPlayer? starter)
     {
         BossFightActive = true;
+        if (starter is not null)
+        {
+            int slot = 0;
+            foreach (RunPlayer rp in Party.Players)
+            {
+                if (rp == starter || rp.Player is not { } p || !IsInstanceValid(p) || rp.Downed || Raster.BossRegion.Contains(Field.CellOf(p.GlobalPosition)))
+                {
+                    continue;
+                }
+
+                MovePlayer(rp, ArenaSpot(slot++));
+            }
+        }
+
         SetGate(true);
         Boss!.Wake();
         Sfx.Play(this, "boss_warn");
         Sfx.Music(this, "music_boss");
-        EmitSignal(SignalName.Announced, Boss.DisplayName, "The way back is sealed", new Color(1f, 0.35f, 0.25f));
+        string subtitle = starter is null ? "The way back is sealed" : $"{CoopHost.NameOf(starter)} started the fight · the way back is sealed";
+        AnnounceAll(Boss.DisplayName, subtitle, new Color(1f, 0.35f, 0.25f));
+        NetHost?.Gate(true);
         EmitSignal(SignalName.BossStarted, Boss);
+    }
+
+    /// <summary>The host moves a participant (respawn, pull-in) and tells their machine.</summary>
+    private void MovePlayer(RunPlayer rp, Vector2 at)
+    {
+        if (rp.Player is not { } p)
+        {
+            return;
+        }
+
+        p.GlobalPosition = at;
+        p.Velocity = Vector2.Zero;
+        if (!rp.IsLocal)
+        {
+            NetHost?.Teleport(rp.PeerId, at);
+        }
+    }
+
+    private Vector2? _arenaSpot;
+
+    /// <summary>A walkable spot just inside the boss gate (spread by <paramref name="slot"/>).</summary>
+    public Vector2 ArenaSpot(int slot = 0)
+    {
+        if (_arenaSpot is null)
+        {
+            Vector2 gate = Vector2.Zero;
+            foreach (Vector2I c in Raster.Gate)
+            {
+                gate += RasterLayout.World(c);
+            }
+
+            gate = Raster.Gate.Count > 0 ? gate / Raster.Gate.Count : RasterLayout.World(Raster.BossCell);
+            var gateCells = new HashSet<Vector2I>(Raster.Gate);
+            Vector2 best = RasterLayout.World(Raster.BossCell);
+            float bestScore = float.MaxValue;
+            foreach (Vector2I c in Raster.BossRegion)
+            {
+                Vector2 at = RasterLayout.World(c);
+                float d = at.DistanceTo(gate);
+                // Inside the gate, not on it: at least a cell and a half in.
+                if (!Raster.Walkable(c) || gateCells.Contains(c) || d < RasterLayout.CellPx * 1.5f || d >= bestScore)
+                {
+                    continue;
+                }
+
+                bestScore = d;
+                best = at;
+            }
+
+            _arenaSpot = best;
+        }
+
+        Vector2 spot = _arenaSpot.Value + Vector2.Right.Rotated(slot * 2.1f) * (slot == 0 ? 0f : 26f);
+        return Raster.Walkable(Field.CellOf(spot)) ? spot : _arenaSpot.Value;
+    }
+
+    /// <summary>A banner on this screen and, co-op host, on every participant's.</summary>
+    private void AnnounceAll(string title, string subtitle, Color color)
+    {
+        EmitSignal(SignalName.Announced, title, subtitle, color);
+        NetHost?.BannerAll(title, subtitle, color);
     }
 
     private void SetGate(bool closed)
@@ -556,39 +832,74 @@ public partial class RealityController : Node2D, IPickupHandler
     private void OnMonsterKilled(Enemy enemy)
     {
         Kills++;
-        bool byPlayer = enemy.Health.LastHitSource == Player;
         Sfx.Play(this, "death", -6f);
-        if (byPlayer)
+        if (!Coop)
         {
-            CharacterBuild.Of(Player)?.GrantExperience(RunState.CharacterExperienceFor(enemy) * (1f + Jewels[JewelStat.Experience]));
-            if (Profile.Get(this) is { } profile)
+            if (enemy.Health.LastHitSource == Player)
             {
-                profile.Active.TotalKills++;
+                RewardKill(enemy, Party.Players[0]);
             }
 
-            float lifeOnKill = Player.Stats.Get(StatId.LifeOnKill).Value;
-            if (lifeOnKill > 0f)
-            {
-                Player.Health?.Heal(lifeOnKill);
-            }
+            DropLoot(enemy, null);
+            return;
+        }
 
-            float manaOnKill = Player.Stats.Get(StatId.ManaOnKill).Value;
-            if (manaOnKill > 0f && Player.Stats.Mana is { } mana)
-            {
-                mana.Current = Mathf.Min(mana.Max, mana.Current + manaOnKill);
-            }
+        // Co-op: the killer gets the on-kill effects; every participant the full
+        // character experience and their own drops (docs/design/endgame.md -> "Co-op realities").
+        if (Party.PlayerOf(enemy.Health.LastHitSource) is { } killer)
+        {
+            RewardKill(enemy, killer);
+        }
 
-            if (BuildQuery.Any(Player, b => b.ChainReaction))
+        foreach (RunPlayer rp in Party.Players)
+        {
+            DropLoot(enemy, rp.IsLocal ? null : rp.Player);
+        }
+    }
+
+    /// <summary>A player's kill: the party's character experience, then that player's on-kill effects.</summary>
+    private void RewardKill(Enemy enemy, RunPlayer killer)
+    {
+        float xp = RunState.CharacterExperienceFor(enemy) * (1f + Jewels[JewelStat.Experience]);
+        foreach (RunPlayer rp in Party.Players)
+        {
+            if (rp.IsLocal)
             {
-                var hit = new HitProfile { Damage = (enemy.Stats.Life?.Max ?? 0f) * 0.2f, Type = DamageType.Fire, Source = Player, Faction = Faction.Player, Tags = SkillTags.Fire | SkillTags.Area, KnockbackForce = 80f };
-                AreaBurst.SpawnOnKill(this, enemy.GlobalPosition, 70f * enemy.Scale.X, new Color(1f, 0.5f, 0.15f), hit);
+                CharacterBuild.Of(rp.Player!)?.GrantExperience(xp);
+            }
+            else
+            {
+                rp.PendingCharacterExperience += xp; // RealityHost sends it to that player's machine
             }
         }
 
-        DropLoot(enemy);
+        Player player = killer.Player!;
+        if (killer.IsLocal && Profile.Get(this) is { } profile)
+        {
+            profile.Active.TotalKills++;
+        }
+
+        float lifeOnKill = player.Stats.Get(StatId.LifeOnKill).Value;
+        if (lifeOnKill > 0f)
+        {
+            player.Health?.Heal(lifeOnKill);
+        }
+
+        float manaOnKill = player.Stats.Get(StatId.ManaOnKill).Value;
+        if (manaOnKill > 0f && player.Stats.Mana is { } mana)
+        {
+            mana.Current = Mathf.Min(mana.Max, mana.Current + manaOnKill);
+        }
+
+        if (BuildQuery.Any(player, b => b.ChainReaction))
+        {
+            var hit = new HitProfile { Damage = (enemy.Stats.Life?.Max ?? 0f) * 0.2f, Type = DamageType.Fire, Source = player, Faction = Faction.Player, Tags = SkillTags.Fire | SkillTags.Area, KnockbackForce = 80f };
+            AreaBurst.SpawnOnKill(this, enemy.GlobalPosition, 70f * enemy.Scale.X, new Color(1f, 0.5f, 0.15f), hit);
+        }
     }
 
-    private void DropLoot(Enemy enemy)
+    /// <summary>One loot roll of a kill, for <paramref name="owner"/> (null = this machine's player).</summary>
+    private void DropLoot(Enemy enemy, Player? owner)
     {
         Vector2 at = enemy.GlobalPosition;
         float q = 1f + _quantity;
@@ -612,7 +923,7 @@ public partial class RealityController : Node2D, IPickupHandler
                     MonsterRarity.Unique => DropSource.UniqueMonster,
                     _ => DropSource.NormalMonster,
                 };
-                Loot.Add(LootQueue.ItemCost, () => DropItem(p, source));
+                Loot.Add(LootQueue.ItemCost, () => DropItem(p, source, 0f, owner));
             }
         }
 
@@ -620,21 +931,21 @@ public partial class RealityController : Node2D, IPickupHandler
         if (_rng.Randf() < gem * q)
         {
             Vector2 p = at + Jitter(20f);
-            Loot.Add(LootQueue.PickupCost, () => DropGem(p));
+            Loot.Add(LootQueue.PickupCost, () => DropGem(p, owner));
         }
 
         if (_rng.Randf() < shard * q)
         {
             Vector2 p = at + Jitter(20f);
             int tier = Tier;
-            Loot.Add(LootQueue.PickupCost, () => DropShard(p, tier));
+            Loot.Add(LootQueue.PickupCost, () => DropShard(p, tier, owner));
         }
 
         if (_rng.Randf() < gold * q)
         {
             float amount = Mathf.Round((2 + Tier) * (enemy.Rarity >= MonsterRarity.Rare ? 6 : 1) * (1f + Jewels[JewelStat.Gold]));
             Vector2 p = at + Jitter(12f);
-            Loot.Add(LootQueue.PickupCost, () => Pickup.Spawn(this, PickupKind.Gold, amount, p));
+            Loot.Add(LootQueue.PickupCost, () => Party.Spawned(Pickup.Spawn(this, PickupKind.Gold, amount, p), owner));
         }
 
         // Crafting orbs (docs/design/crafting.md -> "Where orbs come from").
@@ -644,7 +955,7 @@ public partial class RealityController : Node2D, IPickupHandler
             if (_rng.Randf() < roll)
             {
                 Vector2 p = at + Jitter(24f);
-                Loot.Add(LootQueue.PickupCost, () => DropCurrency(p));
+                Loot.Add(LootQueue.PickupCost, () => DropCurrency(p, owner));
             }
         }
 
@@ -653,7 +964,7 @@ public partial class RealityController : Node2D, IPickupHandler
         if (_rng.Randf() < orb)
         {
             Vector2 p = at + Jitter(10f);
-            Loot.Add(LootQueue.PickupCost, () => Pickup.Spawn(this, PickupKind.Life, 0.2f, p));
+            Loot.Add(LootQueue.PickupCost, () => Party.Spawned(Pickup.Spawn(this, PickupKind.Life, 0.2f, p), owner));
         }
     }
 
@@ -663,7 +974,9 @@ public partial class RealityController : Node2D, IPickupHandler
     /// (docs/design/items.md -> "Drop tables (cascade)"), every chance scaled by the
     /// reality's increased rarity (shard modifiers, jewels, <paramref name="extraRarity"/>)
     /// and its tier.</summary>
-    public EquipmentItem? DropItem(Vector2 at, DropSource source, float extraRarity = 0f)
+    /// <remarks>Co-op: an item for a remote <paramref name="owner"/> is rolled here, sent to
+    /// their machine and freed (it never lands in the host's world); null is returned then.</remarks>
+    public EquipmentItem? DropItem(Vector2 at, DropSource source, float extraRarity = 0f, Player? owner = null)
     {
         IReadOnlyList<BaseItemDefinition> bases = ItemFactory.Bases;
         if (bases.Count == 0)
@@ -672,14 +985,26 @@ public partial class RealityController : Node2D, IPickupHandler
         }
 
         EquipmentItem item = ItemFactory.NewBlank();
-        AddChild(item);
-        item.GlobalPosition = at;
+        bool remote = owner is { IsLocal: false };
+        if (!remote)
+        {
+            AddChild(item);
+            item.GlobalPosition = at;
+        }
+
         Rarity rarity = DropTables.RollRarity(source, DropTables.RealityMultiplier(_rarityBonus + extraRarity, Tier), _rng);
         item.Initialize(bases[_rng.RandiRange(0, bases.Count - 1)], rarity, Mathf.Clamp(MonsterLevel, 1, 100), ItemFactory.Affixes.Entries, _rng);
+        if (remote)
+        {
+            Party.ItemForRemote(owner!, item, at);
+            item.QueueFree();
+            return null;
+        }
+
         return item;
     }
 
-    public void DropGem(Vector2 at)
+    public void DropGem(Vector2 at, Player? owner = null)
     {
         bool support = _rng.Randf() < 0.6f;
         string id = support
@@ -689,60 +1014,93 @@ public partial class RealityController : Node2D, IPickupHandler
         gem.GemId = id;
         gem.GemSupport = support;
         gem.QueueRedraw();
+        Party.Spawned(gem, owner);
     }
 
-    public void DropCurrency(Vector2 at)
+    public void DropCurrency(Vector2 at, Player? owner = null)
     {
         Pickup orb = Pickup.Spawn(this, PickupKind.Currency, 1f, at);
         orb.CurrencyKey = DropTables.RollOrb(_rng, DropTables.RealityMultiplier(_rarityBonus, Tier)).Id;
         orb.QueueRedraw();
+        Party.Spawned(orb, owner);
     }
 
     private int JewelsOnFloor() => GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>().Count(p => p.Kind == PickupKind.Jewel);
 
-    public void DropShard(Vector2 at, int tier) => Pickup.Spawn(this, PickupKind.Shard, Mathf.Clamp(tier, 1, RealityTiers.MaxTier), at);
+    public void DropShard(Vector2 at, int tier, Player? owner = null) =>
+        Party.Spawned(Pickup.Spawn(this, PickupKind.Shard, Mathf.Clamp(tier, 1, RealityTiers.MaxTier), at), owner);
 
     public void OnPickup(Pickup pickup, Player player)
     {
+        if (!player.IsLocal)
+        {
+            // Co-op host: somebody else's drop. Only what the simulation needs happens
+            // here (their flask, their copy's wallet); the reward itself goes to their
+            // machine (RealityHost → RealityClient → ApplyReward), never into this profile.
+            if (pickup.Kind == PickupKind.Life)
+            {
+                Flasks.CollectOrb(player, pickup.Value);
+            }
+
+            Party.Collected(pickup, player, pickup.Kind == PickupKind.Gem && pickup.GemSupport ? 1 : 0);
+            return;
+        }
+
+        ApplyReward(player, pickup.Kind, pickup.Value, pickup.Kind == PickupKind.Gem ? pickup.GemId : pickup.CurrencyKey, pickup.GemSupport, fromHost: false);
+    }
+
+    /// <summary>
+    /// What a collected drop gives this machine's player: the wallet, the character and
+    /// the account (shards, jewels, gems). Solo and the host call it from
+    /// <see cref="OnPickup"/>; a co-op client when the host says one of its drops was
+    /// collected (<paramref name="fromHost"/>: the flask charges come with the snapshots).
+    /// </summary>
+    public void ApplyReward(Player player, PickupKind kind, float value, string key, bool support, bool fromHost)
+    {
         CharacterData? c = Profile.Get(this)?.Active;
-        switch (pickup.Kind)
+        switch (kind)
         {
             case PickupKind.Life:
                 Sfx.Play(this, "pickup");
-                Flasks.CollectOrb(player, pickup.Value);
+                if (!fromHost)
+                {
+                    Flasks.CollectOrb(player, value);
+                }
+
                 break;
             case PickupKind.Gold:
                 Sfx.Play(this, "pickup");
-                player.Wallet.Add(Profile.GoldId, (long)pickup.Value);
+                player.Wallet.Add(Profile.GoldId, (long)value);
                 break;
             case PickupKind.Shard when c is not null:
-                int tier = Mathf.RoundToInt(pickup.Value);
+                int tier = Mathf.Clamp(Mathf.RoundToInt(value), 1, RealityTiers.MaxTier);
                 c.AddShards(tier);
                 Sfx.Play(this, "levelup", -4f);
                 EmitSignal(SignalName.Toast, $"Mirror Shard (tier {tier})", RealityTiers.ShardColor(tier));
                 GameEvents.Raise(GameEvents.ShardFound, tier);
                 break;
             case PickupKind.Jewel when Profile.Get(this) is { } account:
-                account.Jewels.Found++;
+                // Co-op: the host rolls jewels from its own progress; never past the tree's sockets.
+                account.Jewels.Found = Mathf.Min(account.Jewels.Found + 1, Mathf.Max(account.Jewels.Found, JewelTree.Sockets));
                 account.Save();
                 Sfx.Play(this, "levelup", -2f);
                 EmitSignal(SignalName.Toast, $"Mirror Jewel ({account.Jewels.Found}/{JewelTree.Sockets}) — socket it at the Mirror", new Color(0.85f, 0.6f, 1f));
                 GameEvents.Raise(GameEvents.JewelFound, account.Jewels.Found);
                 break;
-            case PickupKind.Currency when Crafting.Find(pickup.CurrencyKey) is { } currency:
+            case PickupKind.Currency when Crafting.Find(key) is { } currency:
                 Sfx.Play(this, "pickup", -2f);
-                player.Wallet.Add(currency.Id, Mathf.Max(1, Mathf.RoundToInt(pickup.Value)));
+                player.Wallet.Add(currency.Id, Mathf.Clamp(Mathf.RoundToInt(value), 1, 1000));
                 EmitSignal(SignalName.Toast, currency.Name, currency.Color);
                 break;
-            case PickupKind.Gem when c is not null:
+            case PickupKind.Gem when c is not null && (!fromHost || UpgradeCatalog.Skills.Any(g => g.Id == key) || UpgradeCatalog.Supports.Any(g => g.Id == key)):
                 Sfx.Play(this, "levelup", -6f);
-                (string text, long gold) = GemLoot.Collect(c, pickup.GemId, pickup.GemSupport);
+                (string text, long gold) = GemLoot.Collect(c, key, support);
                 if (gold > 0)
                 {
                     player.Wallet.Add(Profile.GoldId, gold);
                 }
 
-                EmitSignal(SignalName.Toast, text, pickup.GemSupport ? new Color(0.45f, 1f, 0.55f) : new Color(1f, 0.6f, 0.35f));
+                EmitSignal(SignalName.Toast, text, support ? new Color(0.45f, 1f, 0.55f) : new Color(1f, 0.6f, 0.35f));
                 break;
         }
     }
@@ -754,11 +1112,41 @@ public partial class RealityController : Node2D, IPickupHandler
         Completed = true;
         BossFightActive = false;
         SetGate(false);
+        NetHost?.Gate(false);
         Vector2 at = boss.GlobalPosition;
+        if (!Coop)
+        {
+            BossLoot(at, null);
+        }
+        else
+        {
+            // A full set for every participant, the guaranteed shard included.
+            foreach (RunPlayer rp in Party.Players)
+            {
+                BossLoot(at, rp.IsLocal ? null : rp.Player);
+            }
+        }
+
+        if (Profile.Get(this) is { } profile)
+        {
+            ApplyClear(profile.Active);
+        }
+
+        NetHost?.Cleared(Tier);
+        BuildExitPortal(at + new Vector2(0f, 90f));
+        NetHost?.Exit(_exitPortal!.GlobalPosition);
+        Sfx.Play(this, "victory");
+        Sfx.Music(this, "music_menu");
+        AnnounceAll(IsTutorial ? "Guardian defeated" : "Reality stabilised", "Collect your loot — press E at the portal to go home", new Color(1f, 0.85f, 0.4f));
+    }
+
+    /// <summary>The boss's drops for <paramref name="owner"/> (null = this machine's player).</summary>
+    private void BossLoot(Vector2 at, Player? owner)
+    {
         int items = 3 + (_quantity > 0.3f ? 1 : 0) + Mathf.RoundToInt(Jewels[JewelStat.BossItems]);
         for (int i = 0; i < items; i++)
         {
-            DropItem(at + Jitter(60f), DropSource.Boss, Jewels[JewelStat.BossRarity]);
+            DropItem(at + Jitter(60f), DropSource.Boss, Jewels[JewelStat.BossRarity], owner);
         }
 
         // A boss always drops a shard (endgame.md -> "Mirror Shards"); jewels can
@@ -769,69 +1157,81 @@ public partial class RealityController : Node2D, IPickupHandler
             shard = Mathf.Min(RealityTiers.MaxTier, shard + 1);
         }
 
-        DropShard(at + Jitter(30f), shard);
+        DropShard(at + Jitter(30f), shard, owner);
         if (_rng.Randf() < RealityTiers.BonusShardChance * (1f + _quantity) + Jewels[JewelStat.ShardChance])
         {
-            DropShard(at + Jitter(30f), Tier);
+            DropShard(at + Jitter(30f), Tier, owner);
         }
 
-        // Mirror jewels (endgame.md -> "Mirror jewels").
+        // Mirror jewels (endgame.md -> "Mirror jewels"). Co-op: rolled from the host's progress.
         if (!IsTutorial && Profile.Get(this) is { } jewelProfile
             && _rng.Randf() < JewelTree.DropChance(jewelProfile.Jewels.Found + JewelsOnFloor(), Tier))
         {
-            Pickup.Spawn(this, PickupKind.Jewel, 1f, at + Jitter(30f));
+            Party.Spawned(Pickup.Spawn(this, PickupKind.Jewel, 1f, at + Jitter(30f)), owner);
         }
 
         if (_rng.Randf() < 0.7f)
         {
-            DropGem(at + Jitter(40f));
+            DropGem(at + Jitter(40f), owner);
         }
 
-        Pickup.Spawn(this, PickupKind.Gold, Mathf.Round((10 + Tier * 4) * 5 * (1f + Jewels[JewelStat.Gold] + Jewels[JewelStat.BossGold])), at + Jitter(30f));
+        Party.Spawned(Pickup.Spawn(this, PickupKind.Gold, Mathf.Round((10 + Tier * 4) * 5 * (1f + Jewels[JewelStat.Gold] + Jewels[JewelStat.BossGold])), at + Jitter(30f)), owner);
         for (int i = 0; i < 2 + Tier / 4; i++)
         {
-            DropCurrency(at + Jitter(50f));
+            DropCurrency(at + Jitter(50f), owner);
+        }
+    }
+
+    /// <summary>The clear on this machine's character: count, best tier, ascendancy
+    /// points and the quests they open (co-op: each participant on its own machine).</summary>
+    private void ApplyClear(CharacterData c)
+    {
+        c.RealitiesCleared++;
+        c.HighestTierCleared = Mathf.Max(c.HighestTierCleared, Tier);
+        if (Tier >= AscendancyCatalog.Tier1Unlock && c.AscendancyPoints < AscendancyCatalog.FirstPoints)
+        {
+            // The quest toast ("New quest: Choose an ascendancy") announces it.
+            c.AscendancyPoints = AscendancyCatalog.FirstPoints;
         }
 
-        if (Profile.Get(this) is { } profile)
+        if (Tier >= AscendancyCatalog.Tier2Unlock && c.AscendancyPoints < AscendancyCatalog.FirstPoints + AscendancyCatalog.SecondPoints)
         {
-            CharacterData c = profile.Active;
-            c.RealitiesCleared++;
-            c.HighestTierCleared = Mathf.Max(c.HighestTierCleared, Tier);
-            if (Tier >= AscendancyCatalog.Tier1Unlock && c.AscendancyPoints < AscendancyCatalog.FirstPoints)
-            {
-                // The quest toast ("New quest: Choose an ascendancy") announces it.
-                c.AscendancyPoints = AscendancyCatalog.FirstPoints;
-            }
+            c.AscendancyPoints = AscendancyCatalog.FirstPoints + AscendancyCatalog.SecondPoints;
+            EmitSignal(SignalName.Toast, "Second ascendancy trial complete: +2 ascendancy points.", new Color(1f, 0.85f, 0.4f));
+        }
 
-            if (Tier >= AscendancyCatalog.Tier2Unlock && c.AscendancyPoints < AscendancyCatalog.FirstPoints + AscendancyCatalog.SecondPoints)
-            {
-                c.AscendancyPoints = AscendancyCatalog.FirstPoints + AscendancyCatalog.SecondPoints;
-                EmitSignal(SignalName.Toast, "Second ascendancy trial complete: +2 ascendancy points.", new Color(1f, 0.85f, 0.4f));
-            }
+        if (!IsTutorial)
+        {
+            // After the tier record and the ascendancy points: unlocks the quests they open.
+            GameEvents.Raise(GameEvents.BossKilled, Tier);
+        }
+    }
 
-            if (!IsTutorial)
-            {
-                // After the tier record and the ascendancy points: unlocks the quests they open.
-                GameEvents.Raise(GameEvents.BossKilled, Tier);
-            }
+    private void BuildExitPortal(Vector2 at)
+    {
+        if (_exitPortal is not null)
+        {
+            return;
         }
 
         _exitPortal = new Portal { ZIndex = -1 };
         AddChild(_exitPortal);
-        _exitPortal.GlobalPosition = at + new Vector2(0f, 90f);
+        _exitPortal.GlobalPosition = at;
         _exitPrompt = UiTheme.Label("[E] Return to the hideout", 16, UiTheme.Gold, HorizontalAlignment.Center);
         _exitPrompt.Size = new Vector2(260f, 22f);
         _exitPrompt.Position = new Vector2(-130f, -78f);
         _exitPrompt.Visible = false;
         _exitPortal.AddChild(_exitPrompt);
-        Sfx.Play(this, "victory");
-        Sfx.Music(this, "music_menu");
-        EmitSignal(SignalName.Announced, IsTutorial ? "Guardian defeated" : "Reality stabilised", "Collect your loot — press E at the portal to go home", new Color(1f, 0.85f, 0.4f));
     }
 
-    private async void OnPlayerDied()
+    private async void OnPlayerDied(Player who)
     {
+        if (Coop)
+        {
+            OnPartyMemberDied(who);
+            return;
+        }
+
         if (Profile.Get(this) is { } profile)
         {
             profile.Active.Deaths++;
@@ -844,12 +1244,7 @@ public partial class RealityController : Node2D, IPickupHandler
 
         if (BossFightActive)
         {
-            BossFightActive = false;
-            SetGate(false);
-            if (Boss is not null && IsInstanceValid(Boss))
-            {
-                Boss.Dormant = true;
-            }
+            ResetBossFight();
         }
 
         if (PortalsLeft <= 0)
@@ -869,19 +1264,145 @@ public partial class RealityController : Node2D, IPickupHandler
             return;
         }
 
-        Player.GlobalPosition = RasterLayout.World(Raster.Entrance);
-        Player.Health!.Revive();
-        Player.Health.GrantInvulnerability(2.5f);
-        if (Player.Stats.Mana is { } mana)
+        Respawn(Party.Players[0], RasterLayout.World(Raster.Entrance));
+    }
+
+    private void ResetBossFight()
+    {
+        BossFightActive = false;
+        SetGate(false);
+        NetHost?.Gate(false);
+        if (Boss is not null && IsInstanceValid(Boss))
+        {
+            Boss.Dormant = true;
+        }
+    }
+
+    /// <summary>Test hook: a shard of this tier and an item at <paramref name="owner"/>'s feet, theirs.</summary>
+    public void ForceDropForTest(Player owner)
+    {
+        Player? who = owner.IsLocal ? null : owner;
+        DropShard(owner.GlobalPosition + new Vector2(6f, 0f), Tier, who);
+        DropItem(owner.GlobalPosition + new Vector2(-30f, 0f), DropSource.RareMonster, 0f, who);
+    }
+
+    /// <summary>Test hook: the shared pool set outright (a collapse on the next death).</summary>
+    public void SetPortalsForTest(int portals) => PortalsLeft = portals;
+
+    /// <summary>
+    /// Co-op host (docs/design/endgame.md -> "Co-op realities"): one shared pool of
+    /// portals. Every death costs one and the player comes back after 1.5 s: inside
+    /// the arena while someone is still fighting, else at the entrance (the fight
+    /// resets only once everyone in it has fallen). The death that empties the pool
+    /// collapses the reality for everyone, exactly like the solo rule.
+    /// </summary>
+    private async void OnPartyMemberDied(Player who)
+    {
+        if (Completed || Collapsed || Party.Ended || Party.PlayerOf(who) is not { } rp)
+        {
+            return;
+        }
+
+        if (who.IsLocal && Profile.Get(this) is { } profile)
+        {
+            profile.Active.Deaths++;
+        }
+
+        PortalsLeft--;
+        string name = CoopHost.NameOf(rp);
+        bool fighting = BossFightActive && Party.Players.Any(o => o != rp && !o.Downed && o.Player is { } op && Raster.BossRegion.Contains(Field.CellOf(op.GlobalPosition)));
+        if (BossFightActive && !fighting)
+        {
+            ResetBossFight();
+        }
+
+        if (PortalsLeft <= 0)
+        {
+            Collapse();
+            return;
+        }
+
+        string left = $"{PortalsLeft} portal{(PortalsLeft == 1 ? "" : "s")} left for the party";
+        if (who.IsLocal)
+        {
+            EmitSignal(SignalName.Announced, "You have fallen", left, new Color(1f, 0.4f, 0.35f));
+        }
+        else
+        {
+            NetHost?.BannerTo(rp.PeerId, "You have fallen", left, new Color(1f, 0.4f, 0.35f));
+        }
+
+        NetHost?.ToastAll($"{name} has fallen — {left}", new Color(1f, 0.45f, 0.4f));
+        await ToSignal(GetTree().CreateTimer(1.5), SceneTreeTimer.SignalName.Timeout);
+        if (!IsInstanceValid(this) || Collapsed || Party.Ended || Party.PlayerOf(who) is null || !IsInstanceValid(who))
+        {
+            return;
+        }
+
+        bool stillFighting = BossFightActive && Party.Players.Any(o => o != rp && !o.Downed);
+        Respawn(rp, stillFighting ? ArenaSpot(1) : SpawnSpot(Party.Players.ToList().IndexOf(rp)));
+    }
+
+    private void Respawn(RunPlayer rp, Vector2 at)
+    {
+        if (rp.Player is not { } p)
+        {
+            return;
+        }
+
+        MovePlayer(rp, at);
+        p.Health!.Revive();
+        p.Health.GrantInvulnerability(2.5f);
+        if (p.Stats.Mana is { } mana)
         {
             mana.Current = mana.Max;
         }
     }
 
+    /// <summary>Co-op host: the pool is empty: the reality collapses for everyone.</summary>
+    private async void Collapse()
+    {
+        Collapsed = true;
+        Party.Ended = true;
+        Sfx.Play(this, "defeat");
+        AnnounceAll("The reality collapses", "The party's portals are spent — the shard is lost", new Color(1f, 0.3f, 0.3f));
+        NetHost?.End(RealityProtocol.EndCollapsed);
+        await ToSignal(GetTree().CreateTimer(3.0), SceneTreeTimer.SignalName.Timeout);
+        if (IsInstanceValid(this))
+        {
+            Leave();
+        }
+    }
+
+    /// <summary>Co-op host: a participant went home or dropped.</summary>
+    public void OnParticipantLeft()
+    {
+        if (BossFightActive && !Party.Players.Any(o => !o.Downed))
+        {
+            ResetBossFight();
+        }
+    }
+
     private void Abandon()
     {
-        EmitSignal(SignalName.Announced, IsTutorial ? "Introduction skipped" : "Reality abandoned", "", new Color(0.8f, 0.8f, 0.8f));
+        EmitSignal(SignalName.Announced, IsTutorial ? "Introduction skipped" : !Coop ? "Reality abandoned" : IsHostSide ? "Reality closed" : "You left the reality", "", new Color(0.8f, 0.8f, 0.8f));
         Leave();
+    }
+
+    private ulong _confirmCloseUntil;
+
+    /// <summary>E at the exit portal. The co-op host with friends still inside asks first
+    /// (a second E within a few seconds closes the reality for everyone).</summary>
+    private void UseExitPortal()
+    {
+        if (IsHostSide && Party.Players.Count > 1 && Time.GetTicksMsec() > _confirmCloseUntil)
+        {
+            _confirmCloseUntil = Time.GetTicksMsec() + 4000;
+            EmitSignal(SignalName.Announced, "Your friends are still inside", "Press E again to close the reality for everyone", new Color(1f, 0.75f, 0.4f));
+            return;
+        }
+
+        Finish();
     }
 
     private void Finish()
@@ -893,6 +1414,12 @@ public partial class RealityController : Node2D, IPickupHandler
 
     private void Leave()
     {
+        if (_left)
+        {
+            return;
+        }
+
+        _left = true;
         _leaving = true;
         Player.Stats.RemoveModifiersFromSource(ModifierSource);
         if (IsTutorial && Profile.Get(this) is { } profile)
@@ -902,7 +1429,142 @@ public partial class RealityController : Node2D, IPickupHandler
         }
 
         Profile.Get(this)?.CaptureFrom(Player);
-        Scenes.Go(this, Scenes.Hideout);
+        if (Session is { Active: true } party)
+        {
+            // Co-op (docs/design/endgame.md -> "Co-op realities"): home to the party's hideout.
+            // The host closes the reality for everyone still inside; a client leaves alone
+            // (the host drops its player) and keeps everything it collected.
+            if (party.IsHost && !Party.Ended)
+            {
+                Party.Ended = true;
+                NetHost?.End(RealityProtocol.EndHostClosed);
+            }
+
+            party.ReturnToHideout();
+            Scenes.Go(this, Scenes.Hideout);
+            return;
+        }
+
+        // The host left a co-op reality: guests go to the main menu, which says why.
+        Scenes.Go(this, Session is { Active: false, MenuNotice: not null } ? Scenes.MainMenu : Scenes.Hideout);
+    }
+
+    private bool _left;
+
+    // --- co-op client: what the host says --------------------------------------------
+
+    /// <summary>The reality's numbers from a snapshot.</summary>
+    public void ApplyShared(int kills, int total, int portals, bool bossFight)
+    {
+        Kills = kills;
+        MonstersTotal = total;
+        PortalsLeft = portals;
+        if (bossFight != BossFightActive)
+        {
+            OnRemoteGate(bossFight);
+        }
+    }
+
+    /// <summary>The replica the host says is the boss: the HUD's bar and the gate.</summary>
+    public void AdoptBossReplica(Enemy boss)
+    {
+        if (boss is BossEnemy b)
+        {
+            Boss = b;
+            if (BossFightActive)
+            {
+                EmitSignal(SignalName.BossStarted, b);
+            }
+        }
+    }
+
+    public void OnRemoteGate(bool closed)
+    {
+        if (!IsClientSide || closed == BossFightActive)
+        {
+            return;
+        }
+
+        BossFightActive = closed;
+        SetGate(closed);
+        if (closed)
+        {
+            Sfx.Play(this, "boss_warn");
+            Sfx.Music(this, "music_boss");
+            if (Boss is not null && IsInstanceValid(Boss))
+            {
+                EmitSignal(SignalName.BossStarted, Boss);
+            }
+        }
+    }
+
+    public void OnRemoteCleared(int tier)
+    {
+        if (!IsClientSide || Completed)
+        {
+            return;
+        }
+
+        Completed = true;
+        BossFightActive = false;
+        SetGate(false);
+        Sfx.Play(this, "victory");
+        Sfx.Music(this, "music_menu");
+        if (Profile.Get(this) is { } profile)
+        {
+            ApplyClear(profile.Active);
+        }
+    }
+
+    public void OnRemoteExit(Vector2 at)
+    {
+        if (IsClientSide)
+        {
+            BuildExitPortal(at);
+        }
+    }
+
+    /// <summary>The reality is over for everyone (collapsed, or the host closed it): home in 3 s.</summary>
+    public async void OnRemoteEnd(byte reason)
+    {
+        if (!IsClientSide || Party.Ended)
+        {
+            return;
+        }
+
+        Party.Ended = true;
+        if (reason == RealityProtocol.EndCollapsed)
+        {
+            Collapsed = true;
+            Sfx.Play(this, "defeat");
+        }
+        else
+        {
+            EmitSignal(SignalName.Announced, $"{Session?.HostName ?? "The host"} closed the reality", "Back to the hideout — you keep everything you collected", new Color(1f, 0.75f, 0.4f));
+        }
+
+        await ToSignal(GetTree().CreateTimer(3.0), SceneTreeTimer.SignalName.Timeout);
+        if (IsInstanceValid(this))
+        {
+            Leave();
+        }
+    }
+
+    /// <summary>The host is gone: this player keeps what it collected, then the main menu says why.</summary>
+    public async void OnHostLost(string reason)
+    {
+        if (Party.Ended)
+        {
+            return;
+        }
+
+        Party.Ended = true;
+        EmitSignal(SignalName.Announced, "The host left", reason, new Color(1f, 0.6f, 0.4f));
+        await ToSignal(GetTree().CreateTimer(3.0), SceneTreeTimer.SignalName.Timeout);
+        if (IsInstanceValid(this))
+        {
+            Leave();
+        }
     }
 
     /// <summary>Bars drawn across the boss gate while it is closed.</summary>

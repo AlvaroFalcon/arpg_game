@@ -223,6 +223,89 @@ public partial class CoopUiTestDriver : CoopTestDriver
         await Frames(2);
         Check("CANCEL-STOPS", connecting && !session.Active && dead.Current == CoopPanel.View.Choose, $"was connecting={connecting} active={session.Active} view={dead.Current}");
         Close(dead);
+
+        await MenuChecks(profile, session);
+    }
+
+    private string Focused() => GetViewport().GuiGetFocusOwner() is Button b ? b.Text : GetViewport().GuiGetFocusOwner()?.Name ?? "nothing";
+
+    /// <summary>
+    /// The title screen's Play (docs/design/menus.md -> "Main menu"): Solo / With friends,
+    /// the character list for each, a new character's introduction question, focus coming
+    /// back to the button that opened each screen, and the notice a lost party leaves.
+    /// </summary>
+    private async Task MenuChecks(Profile profile, NetSession session)
+    {
+        while (profile.Characters.Count > 0)
+        {
+            profile.DeleteCharacter(0);
+        }
+
+        profile.CreateTestCharacter("Veteran", "warrior");
+        Characters.CharacterData rookie = profile.CreateCharacter("Rookie", "rogue");
+        int veteran = 0;
+        int fresh = 1;
+
+        // A party that ended out in the world leaves its reason for the next main menu, once.
+        session.MenuNotice = "Ana closed the party.";
+        MainMenu first = await NewMenu();
+        MainMenu second = await NewMenu();
+        Check("MENU-NOTICE", first.NoticeText == "Ana closed the party." && session.MenuNotice is null && second.NoticeText is null,
+            $"first menu '{first.NoticeText}', session cleared={session.MenuNotice is null}, second menu '{second.NoticeText}'");
+        first.QueueFree();
+        await Frames(2);
+        MainMenu menu = second;
+
+        menu.OpenPlayChooser();
+        await Frames(3);
+        bool chooser = menu.ChooserOpen && Focused() == "Solo";
+        menu.PressSolo();
+        await Frames(3);
+        CharacterSelect? solo = menu.OpenCharacterSelect;
+        bool soloList = solo is { Purpose: CharacterSelect.PlayPurpose.Solo, TitleText: "Choose your hero" } && !menu.ChooserOpen;
+        solo?.PressBack();
+        await Frames(3);
+        string afterSolo = Focused();
+        menu.PressWithFriends();
+        await Frames(3);
+        CharacterSelect? coop = menu.OpenCharacterSelect;
+        bool coopList = coop is { Purpose: CharacterSelect.PlayPurpose.Coop, TitleText: "Choose who plays with friends" };
+        coop?.Play(veteran);
+        await Frames(3);
+        CoopPanel? panel = menu.OpenCoopPanel;
+        Check("MENU-PLAY-CHOOSER", chooser && soloList && afterSolo == "Solo" && coopList && panel is { Current: CoopPanel.View.Choose } && profile.ActiveIndex == veteran,
+            $"chooser open={menu.ChooserOpen} first focus Solo={chooser}; Solo → '{solo?.TitleText}' ({solo?.Purpose}), back focuses '{afterSolo}'; With friends → '{coop?.TitleText}' → pick → co-op screen {panel?.Current}");
+
+        panel?.PressBack();
+        await Frames(3);
+        string afterCoop = Focused();
+        menu.BackToMenu();
+        await Frames(3);
+        string afterChooser = Focused();
+        Check("MENU-FOCUS", afterCoop == "With friends" && afterChooser == "Play",
+            $"Back from the co-op screen focuses '{afterCoop}', Back from the chooser focuses '{afterChooser}'");
+
+        menu.OpenPlayChooser();
+        menu.PressWithFriends();
+        await Frames(3);
+        CharacterSelect? pick = menu.OpenCharacterSelect;
+        pick?.Play(fresh);
+        await Frames(3);
+        bool asked = pick is { TutorialPromptShowing: true } && pick.TitleText == "Rookie hasn't played the introduction" && menu.OpenCoopPanel is null;
+        pick?.SkipTutorial();
+        await Frames(3);
+        Check("MENU-TUTORIAL-PROMPT", asked && rookie.TutorialDone && menu.OpenCoopPanel is not null,
+            $"prompt shown={asked} ('{pick?.TitleText}'), skipped → tutorial done={rookie.TutorialDone}, co-op screen open={menu.OpenCoopPanel is not null}");
+        menu.QueueFree();
+        await Frames(2);
+    }
+
+    private async Task<MainMenu> NewMenu()
+    {
+        MainMenu menu = GD.Load<PackedScene>(Scenes.MainMenu).Instantiate<MainMenu>();
+        AddChild(menu);
+        await Frames(3);
+        return menu;
     }
 
     private async Task<CoopPanel> Open(NetSession? session)

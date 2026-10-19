@@ -5,6 +5,7 @@ using System.Linq;
 using Godot;
 using ArpgGame.Characters;
 using ArpgGame.Core;
+using ArpgGame.Net;
 using ArpgGame.Quests;
 using ArpgGame.Stats;
 using ArpgGame.UI;
@@ -27,12 +28,28 @@ public partial class Hideout : Node2D
     public const string EditAction = "edit_hideout";
 
     public HideoutTown Town { get; private set; } = null!;
+
+    /// <summary>The town on screen: the account's own, or the host's when visiting a friend's party.</summary>
     public HideoutData Data { get; private set; } = null!;
+
+    /// <summary>This account's own town (storage, purchases, the guide flag). The same object as
+    /// <see cref="Data"/> unless this machine is a guest (docs/design/hideout.md -> "Co-op: whose town").</summary>
+    public HideoutData OwnTown { get; private set; } = null!;
+
+    /// <summary>A guest in the host's town: nothing here is saved as this account's layout.</summary>
+    public bool IsGuest { get; private set; }
+
+    public PauseMenu Pause { get; private set; } = null!;
+
+    /// <summary>The party hooks (presence, puppets); idle offline.</summary>
+    public HideoutParty Party { get; private set; } = null!;
     public Player Player => _player;
     public HideoutEditor? Editor { get; private set; }
     public bool Editing => Editor is not null;
 
     private Player _player = null!;
+    private NetSession? _session;
+    private bool _inPortal;
     private Node2D _portal = null!;
     private bool _leaving;
     private MirrorPanel _mirror = null!;
@@ -61,8 +78,12 @@ public partial class Hideout : Node2D
         _portal = GetNode<Node2D>("Portal");
 
         Profile? profile = Profile.Get(this);
-        Data = profile?.Hideout ?? new HideoutData();
-        HideoutCatalog.EnsureDefaults(Data);
+        OwnTown = profile?.Hideout ?? new HideoutData();
+        HideoutCatalog.EnsureDefaults(OwnTown);
+        _session = NetSession.Get(this);
+        IsGuest = _session is { IsClient: true };
+        // A guest walks the host's town (a copy: it is never written back to this account).
+        Data = IsGuest ? CopyOf(_session!.HostLayout) : OwnTown;
         Town = new HideoutTown { Data = Data };
         AddChild(Town);
         MoveChild(Town, 0);
@@ -79,21 +100,29 @@ public partial class Hideout : Node2D
         _player.GetNode<PlayerSkillInput>("PlayerSkillInput").Mode = PlayerSkillInput.CastMode.Bound;
         Sfx.Music(this, "music_menu");
 
-        AddChild(new PauseMenu
+        Pause = new PauseMenu
         {
             LeaveText = "Character select",
-            OnLeave = () => Leave(Scenes.MainMenu),
-            ExtraText = "Edit hideout",
-            OnExtra = OpenEditor,
-        });
+            LeaveTextNow = LeaveLabel,
+            OnLeave = OnPauseLeave,
+            NoPause = _session is { Active: true },
+            Extras =
+            {
+                // Owner decision 2026-10-18: inviting lives only here, in the hideout's menu.
+                new PauseMenu.Entry { Text = "Invite friends", LiveText = PartyEntryLabel, OnPress = OpenPartyOverlay },
+                new PauseMenu.Entry { Text = "Edit hideout", LiveText = () => EditBlockedReason is null ? "Edit hideout" : null, OnPress = OpenEditor },
+            },
+        };
+        AddChild(Pause);
         AddChild(new CharacterPanels { Player = _player, Name = "CharacterPanels" });
-        _mirror = new MirrorPanel { Player = _player, Travel = Leave, Name = "MirrorPanel" };
+        _mirror = new MirrorPanel { Player = _player, Travel = Travel, Propose = ProposeRift, InParty = () => _session is { Active: true }, Name = "MirrorPanel" };
         _altar = new AscendancyPanel { Player = _player, Name = "AscendancyPanel" };
         _stash = new StashPanel { Player = _player, Name = "StashPanel" };
         _merchant = new MerchantPanel { Player = _player, Name = "MerchantPanel" };
         _artificer = new ArtificerPanel { Player = _player, Name = "ArtificerPanel" };
-        _shop = new DecorShopPanel { Player = _player, Data = Data, Name = "DecorShopPanel" };
-        _guide = new TownGuidePanel { Data = Data, ShowMe = WalkTo, Name = "TownGuide" };
+        // Purchases always go to this account's own storage, even in a friend's town.
+        _shop = new DecorShopPanel { Player = _player, Data = OwnTown, HostName = IsGuest ? _session!.HostName : null, Name = "DecorShopPanel" };
+        _guide = new TownGuidePanel { Data = Data, SeenOn = OwnTown, ShowMe = WalkTo, Name = "TownGuide" };
         _dealer = new ShardVendorPanel { Player = _player, Name = "ShardVendorPanel" };
         _questDialog = new QuestDialog { Name = "QuestDialog" };
         foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer, _questDialog })
@@ -125,7 +154,21 @@ public partial class Hideout : Node2D
         _hud = new HideoutHud { Hideout = this, Name = "HideoutHud" };
         AddChild(_hud);
 
-        if (!Data.GuideSeen && profile is not null)
+        Party = new HideoutParty { Hideout = this };
+        AddChild(Party);
+        if (_session is not null)
+        {
+            _session.LayoutChanged += OnHostLayoutChanged;
+            _session.Launching += OnLaunching;
+            _session.EditGranted += OnEditGranted;
+            _session.EditEnded += OnEditEnded;
+            _session.LayoutSubmitted += ApplyGuestEdit;
+            _session.LocalCharacter = CaptureCharacter;
+            // Read only while hosting (also when hosting starts here, from "Invite friends").
+            _session.LayoutSource = () => Data;
+        }
+
+        if (!OwnTown.GuideSeen && profile is not null)
         {
             // First visit on this account: the guide explains the town. The quests open behind it
             // (queued after it, so their toast waits for the guide to close).
@@ -140,12 +183,246 @@ public partial class Hideout : Node2D
             int pending = profile?.Overflow.Count ?? 0;
             string line = pending > 0
                 ? $"{pending} reward{(pending == 1 ? " is" : "s are")} waiting in the stash — the Pending tab"
+                : IsGuest ? "Your friends are here — everything you use is your own"
                 : "Your town between realities — ? opens the guide";
-            _hud.ShowBanner("Hideout", QuestBanner(line, pending > 0));
+            _hud.ShowBanner(IsGuest ? $"{_session!.HostName}'s hideout" : "Hideout", QuestBanner(line, pending > 0));
         }
     }
 
     public HideoutHud Hud => _hud;
+
+    public override void _ExitTree()
+    {
+        if (_session is not null)
+        {
+            _session.LayoutChanged -= OnHostLayoutChanged;
+            _session.Launching -= OnLaunching;
+            _session.EditGranted -= OnEditGranted;
+            _session.EditEnded -= OnEditEnded;
+            _session.LayoutSubmitted -= ApplyGuestEdit;
+            if (_session.LocalCharacter == CaptureCharacter)
+            {
+                _session.LocalCharacter = null;
+            }
+
+            if (_session.LayoutSource is not null)
+            {
+                // Late joiners while the host is away get the saved town (SaveLayout ran on the way out).
+                _session.LayoutSource = null;
+            }
+        }
+    }
+
+    /// <summary>A toast under the menu bar (party arrivals, refusals).</summary>
+    public void Toast(string text, Color colour) => _hud.ShowToast(text, colour);
+
+    private static HideoutData CopyOf(HideoutData? source)
+    {
+        var copy = new HideoutData { Initialized = true, GuideSeen = true };
+        if (source is not null)
+        {
+            copy.Props.AddRange(source.Props.Select(p => new PlacedProp { Uid = p.Uid, Kind = p.Kind, Position = p.Position }));
+            foreach ((string key, string style) in source.Floors)
+            {
+                copy.Floors[key] = style;
+            }
+
+            foreach ((string id, int n) in source.Stock)
+            {
+                copy.Stock[id] = n;
+            }
+        }
+
+        HideoutCatalog.EnsureDefaults(copy);
+        return copy;
+    }
+
+    /// <summary>Guest: the host's town changed (an edit): rebuild what stands here.</summary>
+    private void OnHostLayoutChanged()
+    {
+        if (IsGuest && _session?.HostLayout is { } layout && !Editing)
+        {
+            ReplaceLayout(CopyOf(layout));
+            _onCopy = false;
+        }
+    }
+
+    /// <summary>
+    /// Shows another layout of the same town: every prop is rebuilt and the floors
+    /// repainted (the walls and the canal never change). The player stays where they are.
+    /// </summary>
+    public void ReplaceLayout(HideoutData data)
+    {
+        foreach ((string uid, Node2D node) in _props)
+        {
+            if (node == _portal)
+            {
+                // The scene's own portal node is reused: only what SpawnProp added to it goes.
+                if (node.GetNodeOrNull("Label") is { } label)
+                {
+                    node.RemoveChild(label);
+                    label.QueueFree();
+                }
+
+                continue;
+            }
+
+            RemoveChild(node);
+            node.QueueFree();
+        }
+
+        _props.Clear();
+        _highlighted = null;
+        Data = data;
+        if (!IsGuest)
+        {
+            OwnTown = data;
+            _shop.Data = data;
+        }
+
+        _guide.Data = data;
+        Town.Data = data;
+        Town.Repaint();
+        foreach (PlacedProp prop in Data.Props.ToList())
+        {
+            SpawnProp(prop);
+        }
+
+        InvalidatePaths();
+    }
+
+    // --- the party's ways out ---------------------------------------------------------------
+
+    private PartyOverlay? _overlay;
+
+    /// <summary>The party overlay, created the first time it is needed (tests, captures).</summary>
+    public PartyOverlay PartyOverlay
+    {
+        get
+        {
+            if (_overlay is null || !IsInstanceValid(_overlay))
+            {
+                _overlay = new PartyOverlay { BeforeHost = SaveLayout, LeaveParty = LeaveParty, Name = "PartyOverlay" };
+                AddChild(_overlay);
+                // Nothing pauses behind it (hosting may start while it is open): hold the player instead.
+                _overlay.Closed += () => _player.ControlsEnabled = !_leaving;
+            }
+
+            return _overlay;
+        }
+    }
+
+    public bool PartyOverlayOpen => _overlay is { IsOpen: true } o && IsInstanceValid(o);
+
+    /// <summary>The pause menu's party entry: "Invite friends" alone, "Party & invite" hosting, "Party" as a guest.</summary>
+    private string PartyEntryLabel() => _session switch
+    {
+        { IsHost: true } => "Party & invite",
+        { IsClient: true } => "Party",
+        _ => "Invite friends",
+    };
+
+    public void OpenPartyOverlay()
+    {
+        if (!Editing && !_leaving)
+        {
+            PartyOverlay.Open();
+            _player.ControlsEnabled = false;
+            _player.StopAutoWalk();
+        }
+    }
+
+    /// <summary>A guest leaves the party on purpose: back to their own town, alone (D12).</summary>
+    public void LeaveParty()
+    {
+        if (_session is { IsClient: true } guest)
+        {
+            Party.Detach();
+            Leave(Scenes.Hideout, () => guest.Leave());
+        }
+    }
+
+    private string LeaveLabel() => _session switch
+    {
+        { IsHost: true } => "Close the party",
+        { IsClient: true } => "Leave the party",
+        _ => "Character select",
+    };
+
+    private void OnPauseLeave()
+    {
+        if (_session is { IsHost: true } host)
+        {
+            // Closing the party sends every friend to the main menu (owner rule); the host goes there too.
+            Leave(Scenes.MainMenu, () => host.Leave());
+            return;
+        }
+
+        if (_session is { IsClient: true })
+        {
+            LeaveParty();
+            return;
+        }
+
+        Leave(Scenes.MainMenu);
+    }
+
+    /// <summary>The Mirror's travel: solo as before (in a party the Mirror proposes instead).</summary>
+    private void Travel(string scene)
+    {
+        if (_session is { Active: true })
+        {
+            Toast("In a party, rifts open for everyone: choose one at the Mirror or walk into the portal", UiTheme.Ember);
+            return;
+        }
+
+        Leave(scene);
+    }
+
+    /// <summary>The player as they are now, saved into the profile (what a rift will build).</summary>
+    private CharacterData? CaptureCharacter()
+    {
+        SaveLayout();
+        return Profile.Get(this)?.Active;
+    }
+
+    /// <summary>The party is setting off and this machine goes too: save first, like any exit.</summary>
+    private void OnLaunching()
+    {
+        if (!_leaving)
+        {
+            _discardEdit = IsGuest; // a guest's half-done edit isn't sent on the way out
+            Editor?.Close();
+            _leaving = true;
+            SaveLayout();
+        }
+    }
+
+    /// <summary>
+    /// Opens a rift for the party (docs/design/multiplayer.md -> "Proposals"): the
+    /// host asks everyone in the hideout. Refusals come back as a toast.
+    /// </summary>
+    public void ProposeRift(RiftSpec spec)
+    {
+        if (_session is not { Active: true } s)
+        {
+            return;
+        }
+
+        if (s.PartyPhase != SessionPhase.Hideout)
+        {
+            Toast("The party is in a rift — wait for them to return", UiTheme.Ember);
+            return;
+        }
+
+        if (s.OpenProposal is { } open)
+        {
+            Toast($"{open.ProposerName} is already opening a rift", UiTheme.Ember);
+            return;
+        }
+
+        s.Propose(spec);
+    }
 
     private void EnterEvent() => GameEvents.Raise(GameEvents.HideoutEntered);
 
@@ -419,6 +696,15 @@ public partial class Hideout : Node2D
 
     // --- edit mode -------------------------------------------------------------------
 
+    /// <summary>Why this player can't edit the town now (null: they can). Offline and
+    /// for the host always null; a guest needs the host's permission.</summary>
+    public string? EditBlockedReason => IsGuest && _session is { } s && !s.CanEditOf(s.LocalPeerId)
+        ? $"Only {s.HostName} can edit this town — ask them to allow it (their Party menu)"
+        : null;
+
+    private bool _askedToEdit;
+    private bool _discardEdit;
+
     public void OpenEditor()
     {
         if (Editing || _leaving)
@@ -426,23 +712,124 @@ public partial class Hideout : Node2D
             return;
         }
 
+        if (IsGuest)
+        {
+            // docs/design/hideout.md -> "Edit permission": the host's lock, the host's town.
+            if (EditBlockedReason is { } why)
+            {
+                Toast(why, UiTheme.Ember);
+                return;
+            }
+
+            if (!_askedToEdit)
+            {
+                _askedToEdit = true;
+                _session!.RequestEdit();
+                Toast($"Asking {_session.HostName} for the editor…", UiTheme.TextDim);
+            }
+
+            return;
+        }
+
+        if (_session is { IsHost: true } host && !host.TryHostEditLock(out string holder))
+        {
+            Toast($"{holder} is editing the town — wait until they're done", UiTheme.Ember);
+            return;
+        }
+
+        StartEditor();
+    }
+
+    private void StartEditor()
+    {
         GetTree().Paused = false;
         Editor = new HideoutEditor { Hideout = this, Name = "HideoutEditor" };
         _player.StopAutoWalk();
         Editor.Closed += () =>
         {
             Editor = null;
-            SaveLayout();
             InvalidatePaths();
+            if (IsGuest)
+            {
+                // The host checks the result and publishes it (or refuses and resends its own).
+                if (!_discardEdit)
+                {
+                    _session?.SubmitLayout(Data);
+                }
+
+                _discardEdit = false;
+                return;
+            }
+
+            SaveLayout();
+            _session?.PublishLayout();
+            _session?.ReleaseHostEditLock();
         };
         AddChild(Editor);
+    }
+
+    /// <summary>Guest: the lock is ours; edit a copy of the host's town with its storage.</summary>
+    private void OnEditGranted(HideoutData copy)
+    {
+        _askedToEdit = false;
+        if (Editing || _leaving)
+        {
+            _session?.CancelEdit();
+            return;
+        }
+
+        ReplaceLayout(copy);
+        _onCopy = true;
+        StartEditor();
+    }
+
+    /// <summary>Guest: the town on screen is the editor's copy (with the host's storage), not the visitor's view.</summary>
+    private bool _onCopy;
+
+    /// <summary>Guest: refused or revoked; any open editor closes without sending, and the host's town shows again.</summary>
+    private void OnEditEnded(string why)
+    {
+        _askedToEdit = false;
+        Toast(why, UiTheme.Ember);
+        if (Editing)
+        {
+            _discardEdit = true;
+            Editor!.Close();
+        }
+
+        if (_onCopy && _session?.HostLayout is { } layout)
+        {
+            ReplaceLayout(CopyOf(layout));
+            _onCopy = false;
+        }
+    }
+
+    /// <summary>Host: a friend's edit passed the checks: it becomes this town, saved.</summary>
+    private void ApplyGuestEdit(HideoutData edited)
+    {
+        if (IsGuest || _leaving)
+        {
+            return;
+        }
+
+        ReplaceLayout(edited);
+        if (Profile.Get(this) is { } profile)
+        {
+            profile.Hideout = Data;
+            profile.Save();
+        }
     }
 
     public void SaveLayout()
     {
         if (Profile.Get(this) is { } profile)
         {
-            profile.Hideout = Data;
+            // A guest shows the host's town: writing it back would replace this account's own.
+            if (!IsGuest)
+            {
+                profile.Hideout = Data;
+            }
+
             profile.CaptureFrom(_player);
         }
     }
@@ -702,7 +1089,7 @@ public partial class Hideout : Node2D
             return;
         }
 
-        if (!GetTree().Paused && Input.IsActionJustPressed("interact") && NearestStation() is { } near && UseOf(near.Def.Id) is not null)
+        if (!GetTree().Paused && !PanelStack.HasOpen && Input.IsActionJustPressed("interact") && NearestStation() is { } near && UseOf(near.Def.Id) is not null)
         {
             Interact(near.Def.Id);
         }
@@ -800,13 +1187,25 @@ public partial class Hideout : Node2D
     public override void _PhysicsProcess(double delta)
     {
         UpdateWalks();
-        if (!_leaving && !Editing && _player.GlobalPosition.DistanceTo(_portal.GlobalPosition) < PortalRadius)
+        bool inPortal = !_leaving && !Editing && _player.GlobalPosition.DistanceTo(_portal.GlobalPosition) < PortalRadius;
+        if (inPortal && !_inPortal)
         {
-            Leave(Scenes.Run);
+            if (_session is { Active: true })
+            {
+                Party.Popup.Confirm("Open the Survival Rift for the party?",
+                    $"Everyone in the hideout is asked to join; you set off with whoever does, within {PartyRules.ProposalSeconds:0} s.",
+                    "Open it", () => ProposeRift(RiftSpec.SurvivalRift()));
+            }
+            else
+            {
+                Leave(Scenes.Run);
+            }
         }
+
+        _inPortal = inPortal;
     }
 
-    private void Leave(string scene)
+    private void Leave(string scene, Action? before = null)
     {
         if (_leaving)
         {
@@ -815,6 +1214,7 @@ public partial class Hideout : Node2D
 
         _leaving = true;
         SaveLayout();
+        before?.Invoke();
         Scenes.Go(this, scene);
     }
 

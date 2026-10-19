@@ -118,13 +118,21 @@ public partial class PlayerSkillInput : Node
             return;
         }
 
-        Vector2 aimDirection = _caster.GlobalPosition.DirectionTo(_caster.GetGlobalMousePosition());
-
-        foreach ((SkillSlotId slot, string action) in Bindings)
+        // Co-op host: a remote player's copy casts from that player's buttons and cursor
+        // (Net.PlayerCommand), never from this machine's keyboard and mouse.
+        Net.PlayerCommand? command = (_caster as Player)?.Command;
+        if (command is null && _caster is Player { IsLocal: false })
         {
-            bool pressed = _mouseGates.TryGetValue(action, out MouseActionGate? gate)
-                ? gate.Poll()
-                : Input.IsActionPressed(action);
+            return;
+        }
+
+        Vector2 aimPoint = command?.Aim ?? _caster.GetGlobalMousePosition();
+        Vector2 aimDirection = _caster.GlobalPosition.DirectionTo(aimPoint);
+
+        for (int i = 0; i < Bindings.Length; i++)
+        {
+            (SkillSlotId slot, string action) = Bindings[i];
+            bool pressed = command is not null ? (command.HeldSlots & (1 << i)) != 0 : PollBinding(action);
             if (!pressed)
             {
                 continue;
@@ -137,13 +145,44 @@ public partial class PlayerSkillInput : Node
             // skills land under the cursor); each button only ever fires its own slot.
             if (Mode == CastMode.Bound)
             {
-                _skillUser.TryCast(slot, aimDirection, _caster.GetGlobalMousePosition());
+                _skillUser.TryCast(slot, aimDirection, aimPoint);
             }
             else
             {
                 _skillUser.TryCast(slot, aimDirection);
             }
         }
+    }
+
+    private bool PollBinding(string action) =>
+        _mouseGates.TryGetValue(action, out MouseActionGate? gate) ? gate.Poll() : Input.IsActionPressed(action);
+
+    /// <summary>The skill slots in the bit order of <see cref="Net.PlayerCommand.HeldSlots"/>.</summary>
+    public static IEnumerable<SkillSlotId> BoundSlots
+    {
+        get
+        {
+            foreach ((SkillSlotId slot, _) in Bindings)
+            {
+                yield return slot;
+            }
+        }
+    }
+
+    /// <summary>Co-op client in a reality: the skill buttons held now, one bit per
+    /// <see cref="BoundSlots"/> entry (sent to the host, which casts).</summary>
+    public byte HeldMask()
+    {
+        int mask = 0;
+        for (int i = 0; i < Bindings.Length; i++)
+        {
+            if (PollBinding(Bindings[i].Action))
+            {
+                mask |= 1 << i;
+            }
+        }
+
+        return (byte)mask;
     }
 
     /// <summary>

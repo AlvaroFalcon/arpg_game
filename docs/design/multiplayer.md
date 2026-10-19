@@ -1,6 +1,6 @@
 # Multiplayer (co-op)
 
-Status: **Survival Rift co-op implemented** (phases 1–2 of the owner's plan, 2026-10-15). Co-op level-ups (one party bar, rounds that pause everyone, a 10 s timer) 2026-10-17. Realities are next.
+Status: **Survival Rift co-op implemented** (phases 1–2 of the owner's plan, 2026-10-15). Co-op level-ups (one party bar, rounds that pause everyone, a 10 s timer) 2026-10-17. **Party session 2026-10-18/19** (phase A): the party lives in the host's hideout between rifts, anyone home proposes a rift with a 30 s popup, "Invite friends" from the hideout's pause menu, edit permission for the host's town, and a loot bonus for playing together. See "Party session". Co-op Altered Realities are phase B.
 
 ## What it is
 
@@ -16,6 +16,8 @@ Owner decision (2026-10-16, "option 3"): direct-IP hosting should work without a
 
 - `scripts/Net/RiftHost.cs` (host) watches the game and tells clients what they need. It also applies their inputs, runs the party's level-up rounds (`RiftHost.Rounds.cs`, see "Level-ups"), runs the revive rule, waits for everyone to load, and handles disconnects.
 - `scripts/Net/RiftClient.cs` (client) shows the host's game. Nothing simulated on a client can deal damage: `NetMode.ClientSide` makes `Health` ignore every hit. Every number the player sees comes from the host.
+
+**Replication layers (2026-10-19).** The shared part lives in two abstract bases, `scripts/Net/CoopHost.cs` and `scripts/Net/CoopClient.cs`: snapshots, event batches, the string table, monster/projectile/effect capture and replay, inputs and reconciliation, instanced drops, boss tracking, the load handshake, disconnects. They talk to the activity through `ICoopWorld` (players, ended, toasts, the loot hooks). Each mode adds a thin subclass: `RiftHost`/`RiftClient` (the run's numbers, run level, director banners and portal, level-up and cash-out rounds, revives) and `RealityHost`/`RealityClient` (see "Co-op realities"). The split was a pure move: the Rift's bytes on the wire are unchanged and `CoopSmokeTest` passed untouched. Neither base is ever instantiated from a scene.
 
 Offline play doesn't change. Without an active session, no net node is added, `Coop` is false, and every single-player rule applies. All 11 pre-existing suites still pass.
 
@@ -44,6 +46,9 @@ Offline play doesn't change. Without an active session, no net node is added, `C
 | Banners, toasts, boss spawned / phase / attack name / callouts, exit portal, run begin/end | event | reliable |
 | Damage numbers for the client's own hits | event, to that client only | reliable |
 | Client → host: input (move, aim, sprint, choosing, dodge/flask counters, sequence) | input packet | every physics frame, unreliable |
+| Realities: kills, monsters total, the shared portal pool, boss fight / cleared / collapsed flags, the receiver's mana | snapshot header (instead of the Rift's) | 20 Hz, unreliable |
+| Realities: a gem drop's kind (`PickupExtra` 64), teleports (65), the end for everyone (66), the gate (67), the clear (68), the exit portal (69) | event (`RealityProtocol`) | reliable |
+| Client → host, realities only: the six skill buttons held (one byte at the end of the input) | input packet | every physics frame, unreliable |
 | Client → host: ready; the row on screen in a round (keys, on open and per reroll); the card picked (round id + `UpgradeOffer.Key`) | event | reliable |
 
 Notes:
@@ -66,13 +71,92 @@ Notes:
 `scripts/Net/NetSession.cs` is an autoload (`/root/NetSession` on every machine, so its RPCs resolve whatever scene is loaded). It owns the peer, the lobby, starting the run, and every RPC.
 
 - `NetTransport` is **the one place that creates the peer** (`ENetMultiplayerPeer`, default port 7777). A Steam or EOS relay only has to return its own `MultiplayerPeer` from `Host`/`Join`.
-- Main menu → **Co-op (Survival Rift)** (`UI/CoopPanel`, redesigned 2026-10-16, see `menus.md` → "Co-op"): *Host a game* or *Join a friend*. Joining needs **both** the host's address (it finds their PC) and the **join code** (it lets you in; the address alone is never enough). The host's lobby shows the address and the code in large type with Copy, **Copy invite** (`203.0.113.7:7777 K7Q-29M`, which a friend pastes into the address field to fill both), the router (UPnP) state, other LAN/VPN addresses, and **four party slots** with the free ones marked. The host gets Start run; everyone gets Leave. Each player plays their *active* character; without one, the screen offers to create one.
+- Main menu → **Play → With friends** → character (`UI/CoopPanel`, redesigned 2026-10-16, see `menus.md` → "Co-op" and "Main menu"): *Host a game* or *Join a friend*. Joining needs **both** the host's address (it finds their PC) and the **join code** (it lets you in; the address alone is never enough). The host's lobby shows the address and the code in large type with Copy, **Copy invite** (`203.0.113.7:7777 K7Q-29M`, which a friend pastes into the address field to fill both), the router (UPnP) state, other LAN/VPN addresses, and **four party slots** with the free ones marked. The host gets **Go to the hideout** (it used to be Start run); everyone gets Leave. Each player plays the character they chose in Play → With friends ("Playing as X · Change"); without one, the screen offers to create one.
   - **Which address goes in the invite** (best first): the router's public address when UPnP opened the port; a VPN address (Tailscale 100.x, Radmin 26.x, Hamachi 25.x); the public IP the host looked up; otherwise this PC's local address. The local address is labelled in orange as *local network only — not your internet address*, because the owner tried inviting with a 192.168 address (2026-10-16). When the router didn't open the port and no VPN is running, the lobby offers **Find my public IP**. It asks `api.ipify.org`, only when pressed, and the result is labelled as reachable only once UDP 7777 is forwarded to this PC. CG-NAT connections have a public IP no forwarding can reach; for those the VPN is the way.
 - **Join progress and failures.** `NetSession.Phase` tells the screen where a join is (`Connecting` → `CheckingCode` → `Joining` → `InLobby`) and `LastEnd` (`SessionEnd`) why the last session ended: unreachable, wrong code, version, party full, run started, character refused, not accepted (dropped before the code was read, e.g. a blocked address), host closed, host left the run. The host's refusal texts are the constants in `JoinRefusal`; the client classifies the reason it receives (the protocol number is checked first, so both ends run the same build). Nothing about what the host checks or how often changed.
 - **Connect timeout: 12 s** (`NetSession.ConnectTimeout`). ENet alone keeps trying a dead address for ~30 s. The client now gives ENet a fixed 12 s maximum on the server peer right after `CreateClient` (`NetTransport.ShortenConnectTimeout`: `ENetPacketPeer.SetTimeout(32, 12000, 12000)`, which applies to the connect request because ENet computes its retry limit when the request is first sent, on the next poll), and the session has its own 12 s watchdog whatever the transport does. As soon as the host answers (the auth step starts) the peer goes back to ENet's defaults (32, 5 s, 30 s), so a stall mid-run doesn't drop a player sooner than before. Measured on loopback to an unused port: the failure card appears after 12.0 s.
-- On connect, the client first sends the join code in the engine's authentication step (see "Security"). Once it is accepted, the client sends its hello: its character (save-file JSON), its window size and a protocol number. The host turns away a wrong code, a mismatched build, a full party, a run already in progress (no late join), or a character that fails the sanity checks.
-- Start: everyone loads `Run.tscn`. The host holds the clock and the director until every client reports ready (clients repeat "ready" until the host answers), or 20 s pass.
-- A session lasts one run. Leaving the results screen leaves the party.
+- On connect, the client first sends the join code in the engine's authentication step (see "Security"). Once it is accepted, the client sends its hello: its character (save-file JSON), its window size and a protocol number. The host turns away a wrong code, a mismatched build, a full party, or a character that fails the sanity checks. Since protocol 5 a running rift no longer turns anyone away: the newcomer lands in the hideout and waits there (see "Party session").
+- A rift's start: its participants load `Run.tscn`. The host holds the clock and the director until every participant reports ready (clients repeat "ready" until the host answers), or 20 s pass.
+- ~~A session lasts one run.~~ Since 2026-10-18 the session lasts until the host closes it: results → Hideout goes home with the party (see "Party session").
+
+## Party session (2026-10-18, phase A)
+
+Owner decisions (2026-10-18, binding): "Rift N" means an **Altered Reality of tier N** (co-op realities are phase B; the proposal already carries kind and tier). **The host always takes part**: the host declining, or not answering a friend's proposal in time, cancels the rift for everyone. **"Invite friends" lives only in the hideout's pause menu.** **The host leaving sends friends to the main menu with a notice.**
+
+### State
+
+- **Phase** (host-authoritative, in every `Roster`): `Lobby` (the main-menu lobby) → `Hideout` → `Run` (a rift runs on the host) → `Returning` (the host's results) → `Hideout`. Hosting from the hideout ("Invite friends") starts in `Hideout`.
+- **Place** per member (each machine reports its own: `NetSession.ReportPlace`): `Menu`, `Loading`, `Hideout`, `Run`. A participant whose place leaves `Run` has left the rift: the host drops them from it (`RiftHost.OnPeerLeft`, the same path as a disconnect) and they stay in the party.
+- **The rift** (`PartyRun`): id, `RiftSpec` (kind, tier, layout, seed, modifiers), participants, proposer. `NetSession.StartRift(spec, participants, proposer)` sends `StartRift` to the participants only; `StartRun()` is the lobby's "everyone" wrapper (tools, tests, `--coop-autostart` still enters the hideout).
+- `InRun` now means "this machine takes part in the running rift". The router port stays open after a run (friends can still join the hideout); it closes when hosting stops.
+
+### Shared hideout
+
+Every machine runs its own `Hideout.tscn` with its own player, wallet, inventory, panels and quests. What is shared:
+- **The host's town.** The host sends its layout (props and floors, no storage) as JSON (`RpcHideoutLayout`, ≤ 96 K characters) when a member joins or comes home and after every edit. Guests check it like any host data (`HideoutLayoutRules.SanitizeReceived`: ≤ 400 known props, unique ids, each station once under its own id, inside the town; floors only on walkable cells with known styles; missing stations added back) and show a copy. **A guest never saves the host's town as its own**: `Hideout.Data` is the town on screen, `Hideout.OwnTown` the account's; `SaveLayout` on a guest only captures the player. Ysolde's purchases go to the guest's own storage ("You're in Ana's town: …"), and the guide flag is the guest's own. Tested with guests whose scratch saves really write (`HIDEOUT-GUEST-SAVE-SAFE`).
+- **Presence.** Each machine sends where its player stands and three flags (moving, sprinting, dodging) at 10 Hz (`PartyRules.PresenceHz`); the host relays everyone home to everyone home, whatever scene the host shows (it lives in the `NetSession` autoload, so friends who stayed home keep seeing each other while the host runs a rift). Puppets (`HideoutParty`, built by `PartySpawner` like Rift puppets, no collision, no input) are drawn 150 ms behind with the Rift's interpolation (`NetTrack`). About 230 B/s per guest. **Presence is sent reliably**: unreliable presence was tried first and ENet's packet throttle dropped 30–70 % of the guests' packets on loopback (ENet's own loss counter at 0; the throttle drops unreliable packets whenever round trips vary, as they do when the socket is serviced once per frame). Presence is tiny, so reliability costs nothing; the Rift's unreliable inputs and snapshots probably meet the same throttle (open question).
+- **Nothing pauses in a party** (D13): `ModalPanel` doesn't pause while a session is active and the pause menu runs with `NoPause`; the hideout holds the local player still while a panel, the menu or the party overlay is open.
+- **Late join** (D2): allowed whenever the party has room, also during a rift; the newcomer lands in the hideout (the host serves its saved town while away).
+- **Leaving**: the host's "Close the party" (pause menu) or Stop hosting ends it for everyone; a guest's "Leave the party" (D12) goes back to their own hideout, alone. The host leaving sends guests to the main menu, which shows why once (`NetSession.MenuNotice`, "Ana closed the party.").
+
+### Proposals
+
+- Anyone home proposes: the Mirror's "Enter the Survival Rift" or walking into the portal (a confirm card first). The host arbitrates one proposal at a time on its clock (`RiftProposal`, pure and unit-checked) and asks everyone whose place is `Hideout`.
+- Everyone asked has **30 s** (`PartyRules.ProposalSeconds`); not answering counts as staying. The host declining or not answering in time cancels it for everyone ("Ana's rift was cancelled — the host declined"); the proposer can cancel; a proposer who leaves cancels it. Otherwise it starts once everyone answered, or when the time runs out, with the proposer, the host and whoever joined (`PartyRules.ProposalCooldownSeconds` = 3 s between a cancel and the same player's next proposal).
+- A "yes" (and a proposal) re-sends the player's current character (`RpcCharacterUpdate`, checked like a hello, at most one per 2 s, the old one kept when it fails), so the host builds what they wear after shopping in the hideout. Every machine saves its player just before it loads the rift (`NetSession.Launching`).
+- Decliners stay home and see "Ana's party is in the Survival Rift · 3:12"; they get no snapshots or events (they are not linked in `RiftHost`). When the host's rift ends, participants come home through the results, still in the party.
+- The shard of a reality is the proposer's, spent when the rift starts (D8, wired for phase B). The Mirror's "Step through the Mirror" is disabled in a party until co-op realities exist (`PartyRules.CoopRealities`), with a tooltip saying so.
+
+### Invite friends (hideout pause menu)
+
+`PauseMenu` takes a list of entries with live labels. Solo: "Invite friends", "Edit hideout", leave "Character select". Hosting: "Party & invite", "Edit hideout", leave "Close the party". Guest: "Party", "Edit hideout" (only with permission), leave "Leave the party". The entry opens `PartyOverlay`: the co-op screen in its Invite purpose over the running hideout. Offline it has one card, **Open my hideout to friends**, which hosts in place (phase `Hideout`, no scene change, UPnP as in the lobby); hosting shows the invite card, the slots with **Allow editing** per friend, and **Stop hosting** (friends to the main menu, the host stays home alone); a guest sees the slots and **Leave the party**. Close and Esc never end anything.
+
+### Edit permission (D10)
+
+Per friend, toggled by the host, this session only (never saved), revocable. **One editor at a time**, the host included: the lock (`NetSession.EditHolder`) is granted when the guest may edit, nobody holds it, and both are home. The guest edits a copy with the host's storage; closing the editor sends the whole layout back (`RpcLayoutSubmit`, lock holder only, ≤ 96 K characters). The host checks it (`HideoutLayoutRules.ValidateEdit`: the same stations, every moved or new prop on open ground, kinds kept, and for every decoration and floor tile placed + stored unchanged), then applies, saves and publishes it; a refused edit shows the guest why and the host's town comes back (no kick). The lock is freed on submit, cancel, revoke (the guest's editor closes), the editor or the host leaving the hideout, a disconnect, or a rift starting. A guest can't buy for the host: Ysolde's purchases go to their own storage. Without permission the H chip is greyed with "ask them to allow it".
+
+### Protocol 5
+
+All on transfer channel 0. Byte messages are written with `NetWriter` (`scripts/Net/SessionProtocol.cs`).
+
+| RPC | Mode | Limit on the host |
+|---|---|---|
+| `RpcPartyToClient(byte[])` | Authority, reliable | client sanitises |
+| `RpcPartyToHost(byte[])` | AnyPeer, reliable | 2048 bytes (`PartyMessageBytes`), member only |
+| `RpcPresenceToHost(byte[])` / `RpcPresenceToClients(byte[])` | reliable (see above) | 32 bytes, sender must be home |
+| `RpcHideoutLayout(string)` / `RpcEditCopy(string)` | Authority, reliable | client: 96 K characters, sanitised |
+| `RpcLayoutSubmit(string)` | AnyPeer, reliable | 96 K characters (kick), lock holder only |
+| `RpcCharacterUpdate(string)` | AnyPeer, reliable | 256 K characters, one per 2 s, `CheckMember` |
+
+Host → client kinds: Roster (phase, the rift, edit holder, every member's place and edit right), Proposal, ProposalStatus, ProposalClosed, StartRift (to participants only; replaces `RpcStartRun`), EditRefused / EditRevoked, Notice, TestAsk. Client → host: Place, Propose, Answer, CancelProposal, EditRequest, EditCancel, TestAnswer. `TestAsk`/`TestAnswer` only run when `NetSession.TestHooks` is set (tests). `RiftSpec` is sanitised on both ends: known kind, tier 1–20 for a reality (0 for the Rift), at most 3 known distinct modifiers, a known layout or none. The plan's separate `RiftOver` message wasn't needed: the roster's phase says it.
+
+### Decisions 2026-10-18
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Where decliners wait | In their own `Hideout.tscn` showing the host's town; presence relayed by the host's autoload; a standing line "Ana's party is in …"; proposals refused until the rift ends |
+| D2 | Late join | Allowed whenever there's room, also during a rift (lands in the hideout); joining a running rift is refused (they're asked next time) |
+| D3 | Loot bonus | +15 % item quantity and +10 % item rarity per extra participant (see "Party rules"; a proposal) |
+| D4–D7, D9 | Co-op realities | Phase B (difficulty, shared portal pool, boss gate, per-player loot and clears, leaving) |
+| D8 | The shard | The proposer's, spent when the rift starts, never on a cancel |
+| D10 | Edit permission | Per friend, session only, one editor at a time, guests can't buy for the host |
+| D11 | New characters with friends | "X hasn't played the introduction": Play it first (solo) / Skip it and play with friends (`tutorial.md`) |
+| D12 | A guest leaves on purpose | Back to their own hideout, alone |
+| D13 | Pausing | Nothing pauses in a party; panels hold the player still instead |
+
+## Co-op realities (2026-10-19, phase B)
+
+An Altered Reality of tier N ("Rift 20" = a tier-20 reality) is proposed from the Mirror in the hideout with the same 30 s popup as the Survival Rift ("Ana is opening an Altered Reality — Tier 20"). The host always takes part; the host declining or not answering cancels it for everyone; whoever doesn't join waits in the hideout (D1). The proposer's shard is spent on the proposer's machine when the reality starts, never on a cancel (D8). Design rules: `docs/design/endgame.md` → "Co-op realities".
+
+How it runs (`RealityController` + `RealityHost`/`RealityClient`):
+- **Same cavern everywhere.** The host draws the seed when the proposal starts (`StartRift` carries it); every participant builds the layout from it (`LayoutBuilder.Rasterize`/`BuildScene` use only the seeded RNG). `CoopRealityTest` compares a hash of the cavern on both machines.
+- **Only the host** spawns packs and the boss, simulates monsters, resolves damage and rolls loot. Clients show replicas (`NetMode.ClientSide`). The host's `RealityHost` is added before the packs spawn so it sees every monster appear; a client that loads later gets them all, plus which replica is the boss, the gate and the exit portal (`CatchUp`).
+- **Sleeping packs** far from a client's player are not re-sent in snapshots (`SkipFarDormant`); their spawn record places them. Awake or near ones go at the usual rates.
+- **Casting is pressed, not automatic.** A reality client sends the six skill buttons it holds (`PlayerCommand.HeldSlots`) with its input; the host casts for that player's copy at that player's cursor (`PlayerSkillInput` reads the command and never the host's keyboard for a remote copy). The client doesn't cast locally (no prediction of casts); its mana comes from the snapshot.
+- **Monsters chase the nearest living player** along the walls: `FlowField.Update(targets)` is one breadth-first pass from every living player's cell.
+- **Rewards on each player's own machine.** The host never writes a remote player's pickups into its own profile: shards, jewels, gems, orbs and gold are applied by the owner's client when the host says the drop was collected (`RealityController.ApplyReward`, shared by solo and client). Deaths, kills and the clear (`RealitiesCleared`, best tier, ascendancy points, `GameEvents.BossKilled`) are recorded on each machine for its own player (`RealityCleared` event). No slow motion on deaths in co-op.
+- **Leaving.** A client's E at the exit portal or "Leave the reality" goes home alone and stays in the party (the host drops its player and drops). The host's E with friends inside asks for a second E within 4 s ("Your friends are still inside"); the host leaving, the pause menu's "Close the reality for everyone", or a collapse sends `RealityEnd` and everyone goes home after 3 s, keeping what they collected. The host disconnecting sends guests to the main menu with the notice.
+- **Nothing pauses** (D13): the pause menu and panels don't stop the tree in a session.
 
 ## Security (direct IP without a VPN, 2026-10-16)
 
@@ -82,7 +166,7 @@ Hosting by IP over the open internet means anyone who finds the address and port
 
 - When the lobby opens, `NetSession.Host` starts `PortMapper.Open(port)`. Discovery and mapping are HTTP calls to the router that can take seconds. They run on **one background worker that runs every router call in order** (a chained `Task`). The main thread only sees a state (`Off`, `Working`, `Open`, `Failed`) and a message, which `Poll()` updates every frame from a result queue. The game never freezes. The only blocking call is at quit (below).
 - The mapping is **UDP `port` → this PC**, description "ARPG co-op", with a **2 h lease**, renewed every hour while hosting. A refused renewal turns the lobby's line into the manual-forwarding advice. If the game crashes, the router drops it on its own when the lease runs out. Some older routers only accept leases with no expiry (`OnlyPermanentLeaseSupported`, or another error code on some models: any refused lease is retried once with none). Then the mapper maps with no lease, which stays until removed, and says so in the lobby.
-- **Removed** when the lobby or session closes (Leave, Back, End, the host leaving the run from the pause menu), when **the host's run ends** (`RiftHost.OnRunEnded` → `ReleasePortMapping`; nobody can join a finished run), and on **quit**. On quit, `NOTIFICATION_WM_CLOSE_REQUEST` and the autoload's `_ExitTree` both call `ReleaseOnExit`, which runs once (a window close followed by `_ExitTree` doesn't wait twice) and waits up to 1.5 s for the router. Because the calls are strictly ordered, a removal issued while discovery is running is queued behind it, and the open checks a cancellation flag after discovery: a lobby closed while the router is still being looked for maps nothing at all, so quitting never waits for a discovery. A test pins this: close during a slow discovery gives only `discover`. `GetTree().Quit()` (menu Quit, pause menu) sends no close request; `_ExitTree` covers it.
+- **Removed** when the lobby or session closes (Leave, Back, End, the host leaving the run from the pause menu), and on **quit**. (Until 2026-10-18 it was also removed when the host's run ended; the party now lives on in the hideout and friends may still join, so it stays while hosting.) On quit, `NOTIFICATION_WM_CLOSE_REQUEST` and the autoload's `_ExitTree` both call `ReleaseOnExit`, which runs once (a window close followed by `_ExitTree` doesn't wait twice) and waits up to 1.5 s for the router. Because the calls are strictly ordered, a removal issued while discovery is running is queued behind it, and the open checks a cancellation flag after discovery: a lobby closed while the router is still being looked for maps nothing at all, so quitting never waits for a discovery. A test pins this: close during a slow discovery gives only `discover`. `GetTree().Quit()` (menu Quit, pause menu) sends no close request; `_ExitTree` covers it.
 - **Fallback.** No router answered, UPnP is turned off, the router refused, or the router's external address is not public. A non-public address is private, `100.64.0.0/10` CG-NAT, loopback, link-local or empty: a provider or second router shares it, so forwarding wouldn't work either. In that case nothing stays mapped and the lobby says: *"Your router didn't open the port automatically — forward UDP 7777 manually or use a VPN like Tailscale/Radmin."*, followed by the reason. Hosting keeps working for LAN and VPN friends either way.
 - Not detected: a router that reports a public address while a second NAT sits in front of it (double NAT with a public-looking address). Spotting it would need an outside service to tell us our address, and we add no services. In that case the lobby shows an address friends can't reach, and the advice is the same: VPN.
 - The lobby shows **"Friends join with: <external-ip>:<port>"** and Copy (`DisplayServer.ClipboardSet`), plus **"Same network / VPN:"** with this PC's LAN and VPN addresses (`IP.GetLocalAddresses`; 192.168/10/172.16 first, then 100.x Tailscale and 26.x Radmin).
@@ -136,6 +220,7 @@ Clients trust the host's *game*, not its bytes. A friend's host may be modified 
 - **Node budget:** nothing new is spawned from host events once the run scene has 6 000 children (a late wave is under 2 000). 20 000 never-ending effects in one batch are tested: 14 000 are refused.
 - The host can't remove the client's own player (`PlayerLeft` with the client's id is ignored). A malformed batch costs the rest of that batch, never the run. Strings are kept up to 512 characters, banner and toast texts up to 200.
 - **Level-up rounds:** an unknown round kind is ignored; chosen/total are clamped to the party size, the level to 0–999, the deadline must be finite (0–60 s from now, else the countdown shows 0). A card the host applies is applied once per round and only if its key is at most 64 characters. The run's end always closes a round, and the client's own results screen follows. Accepted: a host can hold the pause for as long as it likes (as it could stop sending anything at all); the client can still close the game. Tested in `SecuritySmokeTest` (hostile host).
+- **Co-op realities (2026-10-19):** the shared rules above apply to `RealityClient` (it inherits them from `CoopClient`). A teleport or an exit portal must land on a walkable cell of the cavern this machine built (a teleport into the void is ignored: `REALITY-HOSTILE-TELEPORT`); a shard's tier is clamped to 1–20; a collected gem must be a known skill or support id (a made-up id would otherwise be written into the character's gems); a collected orb stack is clamped to 1–1000; a jewel never takes `Found` past the tree's sockets; mana from the snapshot is clamped to the player's own maximum; an unknown end reason counts as "the host closed it". On the host, a client's extra input byte (held skill buttons) only has meaning for the six slots and is covered by the input size cap; a client that isn't a participant has no link, so its inputs are dropped; a proposal may pin a seed and layout (harmless: the layout must exist and the host draws its own seed only when none is given).
 - **Accepted:** a host can still give a client rewards (gold, orbs, gear, experience within the bounds above). Friends could already edit their own saves, and loot is the host's to decide; the bounds only keep the numbers valid. A host can also send as much data as its bandwidth allows (memory grows with what is received, not faster).
 
 ### Still trusted, still exposed
@@ -156,12 +241,14 @@ UPnP fails on many networks: CG-NAT is common on mobile and fibre ISPs, and some
 
 ## Party rules (`scripts/Net/PartyRules.cs`, one table, proposals)
 
-| players | spawn rate | enemy cap | monster life | boss life | xp / drop share | party xp to level |
-|---|---|---|---|---|---|---|
-| 1 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1 |
-| 2 | ×1.50 | ×1.15 | ×1.50 | ×1.70 | ×0.67 | ×2 |
-| 3 | ×2.00 | ×1.30 | ×2.00 | ×2.40 | ×0.50 | ×3 |
-| 4 | ×2.50 | ×1.45 | ×2.50 | ×3.10 | ×0.40 | ×4 |
+| players | spawn rate | enemy cap | monster life | boss life | xp / drop share | party xp to level | item quantity | item rarity | reality packs | reality portals (shared pool) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1 | +0 % | +0 % | ×1.0 | the tier's |
+| 2 | ×1.50 | ×1.15 | ×1.50 | ×1.70 | ×0.67 | ×2 | +15 % | +10 % | ×1.2 | +1 |
+| 3 | ×2.00 | ×1.30 | ×2.00 | ×2.40 | ×0.50 | ×3 | +30 % | +20 % | ×1.4 | +2 |
+| 4 | ×2.50 | ×1.45 | ×2.50 | ×3.10 | ×0.40 | ×4 | +45 % | +30 % | ×1.6 | +3 |
+
+**Loot bonus (D3, 2026-10-18, a proposal for the owner to tune).** Loot is instanced and the share brings each player back to about solo, so playing together paid nothing extra. In the Survival Rift the chance-based gold, orb and elite gear rolls are multiplied by 1 + item quantity (after the share; life orbs aren't loot and keep their chance; bosses' fixed drops unchanged), and gear rarity rolls with the Rift's multiplier × (1 + item rarity) (`RunState.DropChances`, `LootQuantity`, `LootRarity`). A party of one gets exactly the old numbers in the same order. Realities add both to their own quantity and rarity (with the shard modifiers and jewels); there every participant rolls the full solo loot of every kill (no share), so the bonus is on top of solo. In a reality monster and boss life use the same columns as the Rift, packs are bigger by the "reality packs" column (rounded per pack), and the party shares one portal pool of the tier's portals plus one per extra player. The proposal popup and the Rift's start banner show "+30 % item quantity · +20 % item rarity".
 
 Level-up numbers (same file):
 
@@ -262,13 +349,17 @@ The game itself:
 
 It judges by its RESULT line, mirrored to `user://test_results/CoopSmokeTest.txt`.
 
-**Co-op screen:** `./scripts/run_all_tests.sh CoopUiSmokeTest` (about 25 s). Real `CoopPanel`s on the autoload session (host) and on in-process friend sessions, each with its own panel: the no-character state; empty fields, a malformed code and a bad port show inline errors and start nothing; the invite pastes back into address + code (also from a chat line with the code in two halves); the host lobby lists 4 slots with 3 free and the invite holds the code; a friend's panel goes Connecting → Lobby and both sides show 2 free slots; a wrong code ends on the *Wrong join code* card (`SessionEnd.WrongCode`); a fifth player ends on *The party is full*; the run-started and version reasons classify to their cards; closing the lobby shows *The host closed the lobby* on the friend's side; a join to an unused local port shows Connecting and fails within 12 ± 3 s on *Couldn't reach the host*; Cancel while connecting stops the session.
+**Party session:** `./scripts/run_all_tests.sh HideoutCoopTest` (about 60–90 s). This process hosts and starts guest processes on loopback (`ana`, `bo`; later `cy` and `dee`), each with a scratch save that really writes; it asks them over the party channel (`TestHooks`) and judges everything. Pure checks first: `PROPOSAL-UNIT`, `PARTY-RULES-*`, `RIFT-QUANTITY-APPLIED`, `EDIT-RULES`. Then: everyone enters the host's hideout from the lobby, sees two puppets, presence follows a walking guest (< 24 px within 1.5 s) and is delivered (≥ 90 % each way), the guest shows the host's town, a guest's H opens nothing, a gem bought at Odran costs only the guest's gold, a panel open on a guest pauses nothing and holds the player, presence stays under 1 KB/s per guest, a guest's save keeps its own town; edit permission (allowed, lock, grant, a forged edit refused without a kick, revoke); proposals (popup texts, the host declining, a start for two with one guest waiting home, a late joiner during the rift, everyone home after the results, an unanswered host timing out); the host leaving (every guest at the main menu with the notice); then the host, alone at home, uses Invite friends, a new guest lands next to it, the pause entries for solo/host/guest, and Stop hosting leaves the host alone in the same town. Mirrored to `user://test_results/HideoutCoopTest.txt`.
 
-**Load bench:** `./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350]` runs a full party of four at a late wave, then a Cataclysm. Output goes to `user://bench/coop_bench.txt`. It sets `RiftHost.AutoPickAll`: every round, the start pick included, is decided at once with the first cards, so the bench measures the fight and not the pauses.
+**Co-op screen:** `./scripts/run_all_tests.sh CoopUiSmokeTest` (about 25 s). Real `CoopPanel`s on the autoload session (host) and on in-process friend sessions, each with its own panel: the no-character state; empty fields, a malformed code and a bad port show inline errors and start nothing; the invite pastes back into address + code (also from a chat line with the code in two halves); the host lobby lists 4 slots with 3 free and the invite holds the code; a friend's panel goes Connecting → Lobby and both sides show 2 free slots; a wrong code ends on the *Wrong join code* card (`SessionEnd.WrongCode`); a fifth player ends on *The party is full*; the run-started and version reasons classify to their cards; closing the lobby shows *The host closed the lobby* on the friend's side; a join to an unused local port shows Connecting and fails within 12 ± 3 s on *Couldn't reach the host*; Cancel while connecting stops the session. Since 2026-10-18 it also drives real main menus: `MENU-NOTICE` (a lost party's reason shows once), `MENU-PLAY-CHOOSER` (Play → Solo / With friends → the character list for each → the co-op screen), `MENU-FOCUS` (Back focuses the button that opened each screen), `MENU-TUTORIAL-PROMPT` (a new character with friends is asked about the introduction; Skip sets `TutorialDone`).
+
+**Co-op realities:** `./scripts/run_all_tests.sh CoopRealityTest` (about 60 s). The host and one guest process (scratch save that really writes) go to the hideout; the host proposes a tier-3 reality with a pinned seed from the session's proposal path and the guest joins. Pure checks first (`FLOWFIELD-MULTI`, `PARTY-RULES-REALITY`). Then: the same cavern hash on both, two players on each side, every monster replicated, the shared pool and the boss known on the client; the guest walks and holds its skill buttons and the host's copy follows and casts; a kill gives both characters experience; a forced shard and item for the guest land in the guest's profile and floor while the host's shard count stays put and nothing of the guest's shows on the host; the host's pause menu stops nothing; a death costs the pool one and the guest is teleported back; a forged teleport outside the cavern is ignored; the host entering the arena pulls the guest in and closes the gate on both; the boss falls and the guest's clear is recorded on its machine with an exit portal; the guest goes home alone (its own save file has the clear) while the host plays on; the host closes it; a second reality collapses on the last portal and both are home. Mirrored to `user://test_results/CoopRealityTest.txt`.
+
+**Load bench:** `./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350]` runs a full party of four at a late wave, then a Cataclysm. Output goes to `user://bench/coop_bench.txt`. It sets `RiftHost.AutoPickAll`: every round, the start pick included, is decided at once with the first cards, so the bench measures the fight and not the pauses. `-- --mode=reality [--tier=10]` measures a co-op Altered Reality instead (exploring, the boss fight, a pack wipe) into `user://bench/coop_bench_reality.txt`. Both modes log snapshot delivery per client and input loss per client.
 
 ### Testing it yourself
 
-1. **One PC:** run `./scripts/coop_local.sh`. It builds, opens a host window with the lobby on port 7777, then a second window that joins 127.0.0.1. Press Start in the host window. `COOP_CLIENTS=3` opens four windows. The joining windows play a throwaway copy of your profile (`--profile-readonly`), so the two windows never overwrite each other's save. Both use your active character.
+1. **One PC:** run `./scripts/coop_local.sh`. It builds, opens a host window with the lobby on port 7777, then a second window that joins 127.0.0.1. Press Go to the hideout in the host window. `COOP_CLIENTS=3` opens four windows. The joining windows play a throwaway copy of your profile (`--profile-readonly`), so the two windows never overwrite each other's save. Both use your active character.
 2. **With friends:** everyone needs the same build and a character. The host presses **Copy invite** and sends it; friends paste it into the address field (it fills the code too) and press Join.
    - **Direct (UPnP):** the host presses Host lobby. After a second or two the router line turns green ("Internet: ready") and the address shown is the public one. If the operating system asks, allow the game through the firewall. If the line is ember ("Internet: not reachable yet"), use one of the next two options.
    - **Tailscale / Radmin VPN / ZeroTier:** everyone joins the same network. The lobby then puts the VPN address (`100.x` / `26.x`) in the invite, e.g. `100.101.102.103:7777`.
@@ -297,11 +388,18 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 - **The heavy part is the monster count.** A first table with the enemy cap ×2.05 for four put 535 monsters on the host and pushed its physics step to 129 ms. The cap now grows slowly (×1.45). Extra pressure comes from spawn rate and life instead.
 - The host's whole-game physics step is still well above 16 ms on this shared container. That comes from per-monster simulation, which is already 29 ms solo here. Measure it on a real PC.
 
+### Co-op realities and the refactor (measured 2026-10-19)
+
+See `performance.md` → "Co-op Altered Realities". In short: the `CoopHost`/`CoopClient` split costs nothing (same bytes, same 0.3 ms step); a tier-10 reality with four players sends 16 KB/s per client while exploring, 8 KB/s in the boss fight and 4 KB/s after a 143-monster wipe, with a replication step under 0.5 ms. Snapshots arrive 98–100 % on loopback; 3–10 % of client inputs are lost to ENet's throttle, which is harmless because every input carries the full state and presses are counters.
+
 ## Known limitations
 
-- Survival Rift only. Realities, the hideout and the tutorial are single-player.
+- The tutorial (The Threshold) is single-player.
+- Co-op realities: a client doesn't predict its own casts (they show after the round trip plus 100 ms); its skill bar doesn't show cooldowns (casts happen on the host); Nereth's mirror reflections (cosmetic sprites) aren't shown on clients, though the attacks they telegraph are; jewels and their drop chance come from the host's Mirror for everyone (a jewel past the tree's sockets is ignored by the client); a client's `TotalKills` isn't counted for its kills in a co-op reality.
+- Hideout presence carries position and three flags: puppets face where they move, not where their player aims; no skills, dodge trails or emotes are shown. The training dummies are local.
+- A host playing alone while hosting gets co-op rules for a party of one in the Rift (all scaling ×1, but the pause menu doesn't pause).
 - Not replicated: shadow clones and consecrated ground (the host's ascendancy effects still work there), boss cast bars (attack names and callouts are), dodge afterimages of other players, other players' aim-based facing (a puppet faces where it moves), and the sound of hits that land on other players' monsters.
-- No late join, no rejoin after a drop, and no lobby between runs: host again.
+- No joining a rift in progress (a newcomer waits in the hideout), and no rejoin after a drop.
 - Remote characters are trusted beyond the host's sanity checks (friends only, by decision; see "Security").
 - Clients predict only their own movement. Monsters and projectiles show 100 ms in the past plus latency, so a projectile can look like it misses at high ping.
 - `--profile-readonly` windows on one PC share the same active character.
@@ -310,7 +408,15 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 
 ## Next steps
 
-- **Realities:** the same host/client split. `RealityController` gets the `RunState` treatment (per-player loot and portals), clients build the cavern from the seed (`CaveGenerator` is already seeded), `FlowField` follows several players (a multi-source field), and the boss arena gate waits for the party.
 - **Steam/EOS:** a `NetTransport` branch returning a Steam/EOS `MultiplayerPeer`, a lobby invite instead of an IP and code, and a relay with no port forwarding (see "Security" → "Why relays").
 - Bandwidth, if needed: delta-encode monster positions against the last acked snapshot, and send far monsters at a lower rate still.
-- A lobby that persists between runs, and rejoin by name after a drop.
+- Rejoin by name after a drop.
+
+## Open questions (party session)
+
+- Per-player Mirror jewels in a co-op reality (D7 uses the host's).
+- Joining a rift already running (`RiftHost.MarkReady` has a partial catch-up).
+- Two rifts at once (impossible while one process runs one scene).
+- A guest buying decorations for the host's town.
+- ENet's packet throttle: measured 2026-10-19 (`CoopBench`): snapshots 98–100 % delivered, inputs 3–10 % lost on loopback, harmless by design (full-state inputs, counters for presses). Re-measure over a real internet link before touching `ThrottleConfigure`.
+- Should a host alone in the Rift play by solo rules (pausing menu) rather than co-op rules for a party of one?

@@ -23,6 +23,22 @@ The arena, bosses and enemies drawn behind the title (the camera drifts), the me
 and a line of lifetime records once there are any (runs, victories, best time, best
 level, gold). Keyboard/gamepad focus works on every button.
 
+**Play → Solo / With friends (2026-10-18).** Play opens a two-way choice in place of
+the menu: **Solo** (your hideout, your rifts) and **With friends** (host a party or
+join one), each with a line saying what it is, and Back (Esc). Solo opens character
+select as before. With friends opens it titled "Choose who plays with friends"; the
+chosen character goes on to the co-op screen ("Playing as X · Change"). A character
+that hasn't played The Threshold is asked first (docs/design/tutorial.md -> "With
+friends"). The old "Co-op (Survival Rift)" entry is gone (`--coop-host`/`--coop-join`
+still open the co-op screen directly). Focus comes back to the button that opened
+each screen (Back from the co-op screen focuses With friends, from the chooser
+Play); the menu keeps references to its buttons instead of child indices, which a
+notice card above them would shift (the same fix in the pause menu).
+
+**The party-ended notice.** A guest whose party ended out in the world (the host
+closed it, the connection dropped) lands here with a gold-bordered card "The party
+ended — Ana closed the party." and OK, shown once (`NetSession.MenuNotice`).
+
 ## Characters
 
 **Play** opens character select: each character with portrait (class or
@@ -95,6 +111,37 @@ handshake, so `PanelStack` now records the frame it closed something
 opens over a screen that already owns the pause (level-up, results). It shows the
 current build in a run, and offers Resume, Settings, Abandon run (→ results, gear
 kept) and Quit.
+
+Extra entries are a list with live labels (2026-10-18). The hideout's: **Invite
+friends** (hosting: "Party & invite"; a guest: "Party"), **Edit hideout** (hidden for
+a guest without permission), and the leave button "Character select" / "Close the
+party" (host) / "Leave the party" (guest). In a party the menu doesn't pause.
+
+### Party overlay (hideout) **[IMPLEMENTED 2026-10-18]**
+
+`UI/PartyOverlay.cs`, layer 35, joins `PanelStack` (Esc closes it, not the pause
+menu). It holds the co-op screen in its Invite purpose: offline, one card **Open my
+hideout to friends** (port, router note) that hosts in place; hosting, the invite
+card (address, code, Copy invite, router state, LAN/VPN addresses, Find my public
+IP), the four slots with **Allow editing** per friend, and **Stop hosting** (with a
+tooltip: everyone else goes back to their main menu, you stay here alone); as a
+guest, the slots and **Leave the party**. Close never ends anything.
+
+### Rift proposal popup **[IMPLEMENTED 2026-10-18]**
+
+`UI/RiftProposalPopup.cs`, layer 40, a card at the top of the hideout over a game
+that keeps running. **Asked**: "Ana is opening the Survival Rift", what it is (with
+the party's loot bonus and monster life for the party), **Join** / **Stay in the
+hideout** — the host's second button reads **Decline (cancels it for everyone)**
+with "You are the host: the rift runs on your game, so it only opens if you join."
+— and a 0:30 countdown that turns red with a tick every second from 5 s, only for
+someone who still has to answer. **Waiting** (the proposer, or after answering):
+"Waiting for the party — 1/3 joined · 1 staying" and Cancel for the proposer.
+**Confirm** (walking into the portal): "Open the Survival Rift for the party?" with
+Open it / Not now. Its buttons take no keyboard focus (Space dodges). Outcomes are
+toasts under the menu bar ("Ana's rift was cancelled — the host declined", "The
+party set off without you…"), and a standing gold line while the party is away:
+"Ana's party is in the Survival Rift · 3:12 — wait here, you're asked next time".
 
 ## Settings
 

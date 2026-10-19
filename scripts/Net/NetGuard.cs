@@ -26,6 +26,19 @@ public static class NetLimits
     /// <summary>One batch of client events (ready, card pick, test answers).</summary>
     public const int ClientEventBytes = 4096;
 
+    /// <summary>One party-session message (place, proposal, answer, edit lock, test answer; under 100 bytes).</summary>
+    public const int PartyMessageBytes = 2048;
+
+    /// <summary>One hideout presence packet (sequence, position, flags: 7 bytes).</summary>
+    public const int PresenceBytes = 32;
+
+    /// <summary>A hideout layout as JSON (the default town is about 6 K characters with every
+    /// prop; 400 props and a fully repaved town stay under this).</summary>
+    public const int LayoutChars = 96 * 1024;
+
+    /// <summary>A member may resend their character (gear changed in the hideout) at most this often.</summary>
+    public const double CharacterUpdateSeconds = 2.0;
+
     /// <summary>Messages per peer: a token bucket refilled at <see cref="MessagesPerSecond"/>,
     /// holding up to <see cref="MessageBurst"/> (inputs arrive at 60/s, bunched after a lag spike).</summary>
     public const float MessagesPerSecond = 150f;

@@ -151,6 +151,23 @@ public partial class HideoutTown : Node2D
         BuildNavigation();
     }
 
+    /// <summary>Repaints every cell from <see cref="Data"/> (another layout of the same town).</summary>
+    public void Repaint()
+    {
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                SetTile(new Vector2I(x, y));
+            }
+        }
+
+        foreach (TileMap map in _maps.Values)
+        {
+            MapChanged?.Invoke(map);
+        }
+    }
+
     private void SetTile(Vector2I c)
     {
         FloorStyle style = HideoutCatalog.Floor(StyleAt(c));

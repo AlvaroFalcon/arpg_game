@@ -23,6 +23,15 @@ public partial class MirrorPanel : ModalPanel
     /// <summary>Called with the scene to travel to (the hideout saves first).</summary>
     public Action<string>? Travel { get; set; }
 
+    /// <summary>In a co-op party: the rift is proposed to everyone instead of travelled to
+    /// (docs/design/multiplayer.md -> "Proposals").</summary>
+    public Action<Net.RiftSpec>? Propose { get; set; }
+
+    /// <summary>Whether this machine is in a party right now.</summary>
+    public Func<bool>? InParty { get; set; }
+
+    private bool Party => InParty?.Invoke() == true && Propose is not null;
+
     protected override string Title => "Mirror of Realities";
 
     public override string? StationUid => "mirror";
@@ -99,7 +108,10 @@ public partial class MirrorPanel : ModalPanel
         right.AddChild(_open);
         right.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill });
         right.AddChild(UiTheme.Label("Survival Rift: the endless arena — gear, gold and character experience.", 15, UiTheme.TextDim));
-        right.AddChild(UiTheme.Button("Enter the Survival Rift", () => Leave(Scenes.Run), 18, 320f));
+        right.AddChild(UiTheme.Button("Enter the Survival Rift", EnterRift, 18, 320f));
+        UiTheme.InstantTooltip(_open, () => Party && !Net.PartyRules.CoopRealities
+            ? "Altered Realities with friends arrive in the next update. The Survival Rift already opens for the whole party."
+            : "");
         ShowTab(false);
     }
 
@@ -253,7 +265,7 @@ public partial class MirrorPanel : ModalPanel
         _gold.Text = $"Gold: {Gold}";
         _empower.Text = _mods.Count == 0 ? $"Empower ({cost} gold)" : $"Re-roll modifiers ({cost} gold)";
         _empower.Disabled = Gold < cost;
-        _open.Disabled = c is not null && t2 > 1 && c.ShardCount(t2) <= 0;
+        _open.Disabled = (c is not null && t2 > 1 && c.ShardCount(t2) <= 0) || (Party && !Net.PartyRules.CoopRealities);
     }
 
     public void Select(int tier)
@@ -279,8 +291,34 @@ public partial class MirrorPanel : ModalPanel
         Refresh();
     }
 
+    private void EnterRift()
+    {
+        if (Party)
+        {
+            Close();
+            Propose!(Net.RiftSpec.SurvivalRift());
+            return;
+        }
+
+        Leave(Scenes.Run);
+    }
+
     private void OpenReality()
     {
+        if (Party)
+        {
+            // The shard is the proposer's, spent only once the rift starts (never on a cancel).
+            if (!Net.PartyRules.CoopRealities)
+            {
+                return;
+            }
+
+            Close();
+            Propose!(Net.RiftSpec.Reality(_selected, _mods));
+            _mods = new List<string>();
+            return;
+        }
+
         if (Character is { } c && !c.TrySpendShard(_selected))
         {
             return;

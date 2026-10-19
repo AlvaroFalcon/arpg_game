@@ -113,8 +113,12 @@ public partial class NetSession : Node
     /// <summary>Bumped whenever the wire format changes: a mismatched build is turned away.
     /// 2: the join code travels in the engine's authentication step.
     /// 3: co-op level-up rounds (PartyRound, PickApplied, ClientOffers; ClientPick carries the round).
-    /// 4: the cash-out round (PartyRound kind 3; ClientPick carries "leave" or "stay").</summary>
-    public const int Protocol = 4;
+    /// 4: the cash-out round (PartyRound kind 3; ClientPick carries "leave" or "stay").
+    /// 5: party session (hideout, proposals, presence, edit lock, co-op realities):
+    /// RpcStartRun replaced by the StartRift party message, to the participants only.
+    /// 6: co-op Altered Realities (RealityProtocol events 64-69, a reality's snapshot
+    /// header, the held skill buttons at the end of a reality client's input).</summary>
+    public const int Protocol = 6;
 
     /// <summary>First bytes of the authentication message ("ARPG").</summary>
     private static readonly byte[] AuthMagic = { 0x41, 0x52, 0x50, 0x47 };
@@ -139,7 +143,7 @@ public partial class NetSession : Node
     /// <summary>A client is connected and listed in the host's lobby.</summary>
     public bool Joined { get; private set; }
 
-    /// <summary>The run has started (no one may join any more).</summary>
+    /// <summary>This machine takes part in the party's running rift (the host: a rift runs).</summary>
     public bool InRun { get; private set; }
 
     public long LocalPeerId => Active ? _api.GetUniqueId() : 0;
@@ -287,6 +291,12 @@ public partial class NetSession : Node
     public override void _Process(double delta)
     {
         Ports.Poll(Time.GetTicksMsec());
+        if (IsHost)
+        {
+            RelayPresence(delta);
+            TickProposal();
+        }
+
         if (IsClient && Phase == JoinPhase.Connecting && Clock - PhaseSince > ConnectTimeout)
         {
             End(UnreachableMessage(), SessionEnd.Unreachable);
@@ -403,6 +413,8 @@ public partial class NetSession : Node
         _me.PeerId = 1;
         Members.Clear();
         Members.Add(_me);
+        ResetParty();
+        _places[1] = MemberPlace.Menu;
         LastEnd = SessionEnd.None;
         JoinStarted = Clock;
         SetPhase(JoinPhase.InLobby);
@@ -452,6 +464,7 @@ public partial class NetSession : Node
         InRun = false;
         _me = MemberFor(character, ViewSize());
         Members.Clear();
+        ResetParty();
         Status = $"Connecting to {address}:{port}…";
         LobbyChanged?.Invoke();
         return Error.Ok;
@@ -481,6 +494,7 @@ public partial class NetSession : Node
         _authAnswered.Clear();
         _kicked.Clear();
         _pending.Clear();
+        ResetParty();
         _me = null;
         if (peer is not null and not OfflineMultiplayerPeer)
         {
@@ -494,29 +508,20 @@ public partial class NetSession : Node
     private void End(string reason, SessionEnd why)
     {
         bool wasActive = Active;
+        bool wasClient = IsClient;
+        bool wasInWorld = LocalPlace != MemberPlace.Menu;
         IRunLink? run = Run;
         Leave();
         if (wasActive)
         {
+            // A guest out in the world goes back to the main menu, which shows why.
+            MenuNotice = wasClient && wasInWorld ? reason : null;
             LastEnd = why;
             Status = reason;
             run?.OnHostLost(reason);
             Ended?.Invoke(reason);
             LobbyChanged?.Invoke();
         }
-    }
-
-    /// <summary>Host: everyone loads the Survival Rift. Nobody can join after this.</summary>
-    public void StartRun()
-    {
-        if (!IsHost || InRun)
-        {
-            return;
-        }
-
-        InRun = true;
-        Rpc(MethodName.RpcStartRun);
-        Core.Scenes.Go(this, Core.Scenes.Run);
     }
 
     // --- engine callbacks ----------------------------------------------------------
@@ -556,10 +561,14 @@ public partial class NetSession : Node
         _kicked.Remove(id);
 
         int removed = Members.RemoveAll(m => m.PeerId == id);
+        _places.Remove(id);
+        CurrentRun?.Participants.Remove(id);
         Run?.OnPeerLeft(id);
         if (removed > 0)
         {
             BroadcastLobby();
+            OnMemberLeft(id);
+            BroadcastRoster();
         }
     }
 
@@ -583,7 +592,12 @@ public partial class NetSession : Node
 
     private void OnConnectionFailed() => End(UnreachableMessage(), SessionEnd.Unreachable);
 
-    private void OnServerDisconnected() => End(InRun ? "The host left — the run is over." : "The host closed the session.", InRun ? SessionEnd.HostLeftRun : SessionEnd.HostClosed);
+    private void OnServerDisconnected()
+    {
+        string host = HostName == "someone" ? "The host" : HostName;
+        End(InRun ? $"{host} left — the run is over." : LocalPlace != MemberPlace.Menu ? $"{host} closed the party." : "The host closed the session.",
+            InRun ? SessionEnd.HostLeftRun : SessionEnd.HostClosed);
+    }
 
     // --- authentication: the join code (engine auth step, before any RPC) ------------
 
@@ -637,9 +651,11 @@ public partial class NetSession : Node
         }
 
         _pending[id] = address;
-        if (InRun || Members.Count >= PartyRules.MaxPlayers)
+        // Joining is open whenever the party has room (docs/design/multiplayer.md -> "Party session"):
+        // a newcomer lands in the hideout, even while a rift runs (they wait for it there).
+        if (Members.Count >= PartyRules.MaxPlayers)
         {
-            Refuse(id, InRun ? JoinRefusal.RunStarted : JoinRefusal.Full);
+            Refuse(id, JoinRefusal.Full);
         }
     }
 
@@ -871,7 +887,6 @@ public partial class NetSession : Node
         }
 
         string? reason = protocol != Protocol ? JoinRefusal.Version
-            : InRun ? JoinRefusal.RunStarted
             : Members.Count >= PartyRules.MaxPlayers ? JoinRefusal.Full
             : null;
         LobbyMember? member = null;
@@ -901,7 +916,10 @@ public partial class NetSession : Node
 
         member!.PeerId = sender;
         Members.Add(member);
+        _places[sender] = MemberPlace.Menu;
         BroadcastLobby();
+        OnMemberJoined(sender);
+        BroadcastRoster();
     }
 
     /// <summary>Host: is a joining player's lobby entry and character sane
@@ -1022,18 +1040,6 @@ public partial class NetSession : Node
     {
         string cut = Cut(reason, 200);
         End(cut, JoinRefusal.Classify(cut));
-    }
-
-    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
-    private void RpcStartRun()
-    {
-        if (!IsClient || InRun)
-        {
-            return;
-        }
-
-        InRun = true;
-        Core.Scenes.Go(this, Core.Scenes.Run);
     }
 
     // --- RPCs: the run ---------------------------------------------------------------

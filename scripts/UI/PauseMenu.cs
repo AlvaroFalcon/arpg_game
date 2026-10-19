@@ -1,5 +1,7 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace ArpgGame.UI;
@@ -25,10 +27,43 @@ public partial class PauseMenu : CanvasLayer
     /// (the Rift's "Abandon run" becomes "Leave with reward" once the Colossus is down).</summary>
     public Func<string>? LeaveTextNow { get; set; }
 
-    /// <summary>An extra entry above the leave button (the hideout's "Edit hideout").</summary>
+    /// <summary>One extra entry above "Send feedback" (the hideout's "Invite friends", "Edit hideout").</summary>
+    public sealed class Entry
+    {
+        public string Text { get; init; } = "";
+        public Action? OnPress { get; init; }
+
+        /// <summary>Asked each time the menu opens: the label now, or null to hide the entry.</summary>
+        public Func<string?>? LiveText { get; init; }
+    }
+
+    /// <summary>Extra entries, in order (set before adding).</summary>
+    public List<Entry> Extras { get; } = new();
+
+    /// <summary>Compatibility: a single extra entry (added first to <see cref="Extras"/>).</summary>
     public string? ExtraText { get; set; }
 
     public Action? OnExtra { get; set; }
+
+    /// <summary>The extra entries' labels as last shown, hidden ones left out (tests).</summary>
+    public IEnumerable<string> ExtraTexts => _extras.Where(e => e.Button.Visible).Select(e => e.Button.Text);
+
+    /// <summary>Presses the extra entry showing <paramref name="text"/> (tests).</summary>
+    public bool PressExtra(string text)
+    {
+        foreach ((Entry _, Button button) in _extras)
+        {
+            if (button.Visible && button.Text == text)
+            {
+                button.EmitSignal(BaseButton.SignalName.Pressed);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private readonly List<(Entry Entry, Button Button)> _extras = new();
 
     public bool IsOpen { get; private set; }
 
@@ -48,6 +83,8 @@ public partial class PauseMenu : CanvasLayer
     private Control _center = null!;
     private ulong _settingsClosedFrame = ulong.MaxValue;
     private Button _editHud = null!;
+    private Button _resume = null!;
+    private Button _settings = null!;
     private Button _leave = null!;
 
     public override void _Ready()
@@ -65,13 +102,23 @@ public partial class PauseMenu : CanvasLayer
         _summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summary.CustomMinimumSize = new Vector2(420f, 0f);
         _menu.AddChild(_summary);
-        _menu.AddChild(UiTheme.Button("Resume", Close));
-        _menu.AddChild(UiTheme.Button("Settings", OpenSettings));
+        _resume = UiTheme.Button("Resume", Close);
+        _menu.AddChild(_resume);
+        _settings = UiTheme.Button("Settings", OpenSettings);
+        _menu.AddChild(_settings);
         _editHud = UiTheme.Button("Edit HUD", OpenHudEditor);
         _menu.AddChild(_editHud);
         if (ExtraText is not null)
         {
-            _menu.AddChild(UiTheme.Button(ExtraText, () => { Close(); OnExtra?.Invoke(); }));
+            Extras.Insert(0, new Entry { Text = ExtraText, OnPress = OnExtra });
+        }
+
+        foreach (Entry entry in Extras)
+        {
+            Entry e = entry;
+            Button b = UiTheme.Button(e.Text, () => { Close(); e.OnPress?.Invoke(); });
+            _menu.AddChild(b);
+            _extras.Add((e, b));
         }
 
         _menu.AddChild(UiTheme.Button("Send feedback", () => OpenFeedback()));
@@ -123,12 +170,19 @@ public partial class PauseMenu : CanvasLayer
             _leave.Text = LeaveTextNow();
         }
 
+        foreach ((Entry entry, Button button) in _extras)
+        {
+            string? text = entry.LiveText is null ? entry.Text : entry.LiveText();
+            button.Visible = text is not null;
+            button.Text = text ?? entry.Text;
+        }
+
         _summary.Text = Summary?.Invoke() ?? "";
         _summary.Visible = _summary.Text.Length > 0;
         _editHud.Visible = GetTree().GetNodesInGroup(HudLayout.Group).Count > 0;
         _menu.Visible = true;
         _root.Visible = true;
-        ((Button)_menu.GetChild(2)).CallDeferred(Control.MethodName.GrabFocus);
+        _resume.CallDeferred(Control.MethodName.GrabFocus);
     }
 
     public void Close()
@@ -178,7 +232,7 @@ public partial class PauseMenu : CanvasLayer
         {
             _settingsClosedFrame = Engine.GetProcessFrames();
             _menu.GetParent<Control>().Visible = true;
-            ((Button)_menu.GetChild(3)).CallDeferred(Control.MethodName.GrabFocus);
+            _settings.CallDeferred(Control.MethodName.GrabFocus);
         };
     }
 }

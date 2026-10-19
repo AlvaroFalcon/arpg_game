@@ -631,3 +631,38 @@ The owner's answers to the quest/cash-out questions:
 - **Deaths:** solo, death ends the run with the reward reached. In co-op, a downed player now gets back up on their own after **10 s** at half life, where they fell. An ally standing by for 3 s still revives sooner, at 40%. The run ends only when everyone is down at once, paying the reward reached.
 
 The rule is a pure `PartyRules.StepRevive`. The snapshot's revive byte now carries whichever progress is further, so the ring fills over 10 s by itself and faster with help, with no protocol change. Tests: RiftProgressionTest `DOWNED-*` checks the rule; CoopSmokeTest `DOWNED-RESPAWNS-IN-10S` downs the host away from the clients, sees it still down at 5 s with the ring at 0.50, and back up at 50% life before 11 s.
+
+## 2026-10-18/19 — Co-op party session: the shared hideout, rift proposals, Invite friends
+
+The owner wanted co-op to feel like a party rather than one run: play with friends from Play, meet in the host's hideout, anyone proposes a rift and everyone gets a 30 s popup, invite friends from the hideout's pause menu, and only edit the host's town with permission. Phase A (this entry) does all of that for the Survival Rift; co-op Altered Realities ("Rift 20" = a tier-20 reality) are phase B, and the proposal already carries the kind and tier.
+
+- **Session plumbing (protocol 5).** The session now has a phase (lobby, hideout, run, returning) and each member a place; a rift has participants, and only they get `StartRift` (it replaces `RpcStartRun`). Results → Hideout keeps the party; a client's "Leave the run" leaves the rift, not the party; the router port stays open between rifts; joining is open whenever there's room (a newcomer lands in the hideout, even mid-rift).
+- **Shared hideout.** Each machine runs its own hideout with its own panels and wallet; the host's town layout and everyone's presence are shared through the `NetSession` autoload, so friends who stayed home keep seeing each other while the host runs a rift. The scary bug class here was a guest saving the host's town over their own: the hideout now keeps the town on screen and the account's own town apart, and the test uses guest saves that really write.
+- **Proposals.** A pure `RiftProposal` on the host: the host declining or not answering cancels it (owner rule); otherwise it starts with whoever joined. A "yes" re-sends the character so the host builds what you bought in the hideout.
+- **Invite friends** hosts in place from the hideout's pause menu (`PartyOverlay`); Stop hosting leaves the host alone in the same town and friends at the main menu with a notice.
+- **Play → Solo / With friends**, with a question for new characters that haven't played the introduction (play it first, or skip it). Focus in the main and pause menus is kept by reference now; the old child-index lookups would have broken with the notice card.
+- **Edit permission**: per friend, one editor at a time, the guest's whole layout checked on the host (stations kept, nothing on walls, every decoration and tile conserved).
+- **Loot bonus**: +15 % item quantity and +10 % rarity per extra player, a proposal in `PartyRules`' table.
+
+Two things that bit:
+- **ENet's packet throttle** dropped 30–70 % of the guests' *unreliable* presence on loopback while ENet's own loss counter said 0: the throttle drops unreliable packets whenever round trips vary, and a game that services the socket once per frame varies a lot. Presence is a few bytes at 10 Hz, so it's reliable now. The Rift's unreliable inputs probably meet the same throttle; logged as an open question to measure.
+- **Idle C# compiler servers** (several `VBCSCompiler` processes, about 1 GB each, some busy) starved the multi-process tests until guests ran at 1 fps; `run_all_tests.sh` now shuts the build server down after building.
+
+Tests: new `HideoutCoopTest` (host + up to four guest processes, about 40 checks: hideout, presence, saves, NPCs, no-pause, edit permission, proposals, late join, run return, timeouts, host leaving, invite, stop hosting), `CoopUiSmokeTest` `MENU-*`, `SecuritySmokeTest` for the new RPCs. Needs a real test with friends: the popup and puppets at 100–200 ms ping, UPnP while hosting from the hideout, and a guest editing the host's town over the internet.
+
+## 2026-10-19 — Co-op Altered Realities ("Rift 20" with friends)
+
+Phase B of the party session: a party in the hideout can now open an Altered Reality of any tier together. Whoever proposes it from the Mirror pays the shard (only when it starts); the 30 s popup is the same as the Survival Rift's; the host always goes; whoever says no waits in the hideout.
+
+- **The replication became reusable first, as a pure move.** `RiftHost`/`RiftClient` were 2,500 lines typed to the Rift. The shared part (snapshots, events, string table, capture and replay of monsters/projectiles/effects, prediction and reconciliation, instanced drops, boss tracking, load handshake, disconnects) moved into abstract `CoopHost`/`CoopClient` over a small `ICoopWorld` interface. The Rift's subclasses keep only the run's numbers, rounds, revives and director hooks. The snapshot bytes are identical: `CoopSmokeTest` passed untouched and the bench read the same 0.3 ms step.
+- **Same cavern on every machine** from the host's seed; only the host spawns and simulates. The `RealityHost` goes into the tree *before* the packs spawn, because capture is driven by `SceneTree.NodeAdded`; a client that loads later gets every monster, plus which replica is the boss (a bug the test caught: the boss record went out before anyone was ready).
+- **Realities cast on press.** The Rift auto-casts, so its input never carried buttons. A reality client now sends the six skill buttons it holds, and the host casts for its copy at its cursor. Found on the way: in `CastMode.Bound`, a remote copy on the host would have read the *host's* keyboard and mouse. It now reads only its command.
+- **The save-safety fix.** In solo, `RealityController.OnPickup` writes shards, jewels and gems straight into the active profile. In co-op that would have put every friend's drops into the host's account. Remote pickups now only tell the owner's machine, which applies them through the same `ApplyReward` the solo path uses. Clears, ascendancy points and quest events are recorded per machine.
+- **Party rules** (proposals, one table): monster life ×1.5/2/2.5, boss ×1.7/2.4/3.1, packs ×1.2/1.4/1.6, +15 %/+10 % quantity/rarity per extra player, one shared portal pool (tier's + 1 per extra), the boss arena pulls everyone in, every participant gets the kill's experience and a full loot table of their own.
+- **Monsters chase the nearest player** through one multi-source flow field.
+
+Measured (`CoopBench --mode=reality --tier=10`, four players): 16 KB/s per client exploring, 8 KB/s in the boss fight, 4 KB/s after a 143-monster wipe, replication under 0.5 ms. The phase-A question about ENet's throttle: snapshots arrive 98–100 % on loopback, inputs lose 3–10 %, which is harmless (full-state inputs, counters for presses), so nothing was changed.
+
+Tests: new `CoopRealityTest` (host + guest process, 20 checks: same cavern hash, replicas, input and casting, shared XP, instanced loot that lands in the guest's save and not the host's, no pause, the portal pool and respawn teleport, a forged teleport refused, the boss pull-in and gate, the clear on the guest's machine, a guest leaving alone, the host closing, a collapse). 18/18 suites.
+
+Needs a real test with friends: a reality boss fight at 100–200 ms ping (casts show after the round trip, there's no cast prediction), four players' frame time on real PCs, and a guest's drops/clears over the internet.

@@ -14,7 +14,7 @@ set -uo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FILTER="${1:-}"
-TIMEOUT_S="${TEST_TIMEOUT_S:-90}"
+TIMEOUT_S="${TEST_TIMEOUT_S:-180}"
 LOG_DIR="${TEST_LOG_DIR:-${TMPDIR:-/tmp}/pte-tests}"
 mkdir -p "${LOG_DIR}"
 
@@ -29,6 +29,9 @@ if ! build_out="$(cd "${PROJECT_DIR}" && dotnet build ArpgGame.csproj -nologo -v
   echo "build failed" >&2
   exit 1
 fi
+# The compiler server stays resident (about 1 GB each, sometimes busy) after a build;
+# the multi-process co-op tests need the CPU and memory for their Godot processes.
+(cd "${PROJECT_DIR}" && dotnet build-server shutdown > /dev/null 2>&1) || true
 
 pkill -9 -f "Godot.*--headless" 2>/dev/null || true
 

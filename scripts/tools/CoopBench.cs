@@ -15,6 +15,9 @@ namespace ArpgGame.Tools;
 /// <summary>
 /// Co-op load bench — docs/design/multiplayer.md -> "Performance". Headless:
 ///   ./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350] [--measure=20]
+///   ./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- --mode=reality [--tier=10] [--clients=3]
+/// The reality mode measures an Altered Reality instead: exploring (packs asleep),
+/// the boss fight with the whole party pulled in, and a pack wipe (the spike).
 /// The host starts N client processes on localhost (a full party of four by
 /// default), jumps the Rift to a late wave, lets the arena fill, then measures
 /// for a window and finishes with a Cataclysm (a mass kill) to catch the
@@ -42,6 +45,8 @@ public partial class CoopBench : Node
                 Clients = args.GetValueOrDefault("clients", "3").ToInt(),
                 StartAt = args.GetValueOrDefault("run-time", "350").ToFloat(),
                 Measure = args.GetValueOrDefault("measure", "20").ToInt(),
+                Mode = args.GetValueOrDefault("mode", "rift"),
+                Tier = args.GetValueOrDefault("tier", "10").ToInt(),
             };
         driver.Name = "CoopBenchDriver";
         GetTree().Root.CallDeferred(Node.MethodName.AddChild, driver);
@@ -65,8 +70,10 @@ public partial class CoopBenchHost : CoopTestDriver
     public int Clients { get; set; } = 3;
     public float StartAt { get; set; } = 350f;
     public int Measure { get; set; } = 20;
+    public string Mode { get; set; } = "rift";
+    public int Tier { get; set; } = 10;
 
-    protected override string LogPath => "user://bench/coop_bench.txt";
+    protected override string LogPath => Mode == "reality" ? "user://bench/coop_bench_reality.txt" : "user://bench/coop_bench.txt";
 
     protected override string Tag => "BENCH";
 
@@ -85,13 +92,19 @@ public partial class CoopBenchHost : CoopTestDriver
             string[] a =
             {
                 "--headless", "--path", ProjectSettings.GlobalizePath("res://"), "res://scenes/tools/CoopBench.tscn", "--quit-after", "100000",
-                "--", "--coop-role=client", $"--coop-port={port}", $"--coop-name={classes[i % 3]}{i}", $"--measure={Measure}",
+                "--", "--coop-role=client", $"--coop-port={port}", $"--coop-name={classes[i % 3]}{i}", $"--measure={Measure}", $"--mode={Mode}",
             };
             _pids.Add(OS.CreateProcess(OS.GetExecutablePath(), a));
         }
 
         await WaitFor(() => session.Members.Count == Clients + 1, 90f);
         Log($"lobby: {session.Members.Count} players");
+        if (Mode == "reality")
+        {
+            await RealityBench(session);
+            return;
+        }
+
         // Level-up rounds pause the whole party; the bench measures the fight, so every
         // round (the start pick included) is decided at once with the first card.
         RiftHost.AutoPickAll = true;
@@ -191,6 +204,11 @@ public partial class CoopBenchHost : CoopTestDriver
         probe.Recording = false;
         Log($"  host physics step (monitor): {CoopBench.Stats(spikePhys, " ms")}; replication step: {CoopBench.Stats(spikeStep, " ms")}");
         Log($"  host frame wall time: {CoopBench.Stats(spikeWall, " ms")}; physics scripts per step: {CoopBench.Stats(probe.ScriptMs, " ms")}");
+        foreach (LobbyMember m in session.Members.Where(m => m.PeerId != 1))
+        {
+            (long got, long lost) = host.InputsFrom(m.PeerId);
+            Log(string.Create(CultureInfo.InvariantCulture, $"  inputs from {m.Name}: {got} arrived, {lost} lost ({(got + lost > 0 ? 100.0 * lost / (got + lost) : 0):0.0} %)"));
+        }
 
         await Seconds(4f);
         foreach (string f in DirAccess.GetFilesAt("user://bench").Where(f => f.StartsWith("coop_bench_client_")).OrderBy(f => f))
@@ -208,7 +226,138 @@ public partial class CoopBenchHost : CoopTestDriver
         GetTree().Quit();
     }
 
-    private static (long Snapshots, long Events) Payload(RiftHost host, NetSession session)
+    /// <summary>
+    /// A co-op Altered Reality for the whole party (docs/design/multiplayer.md -> "Performance"):
+    /// exploring with the packs asleep, the boss fight (the host walks in, everyone is pulled
+    /// in), and a pack wipe. Bytes per client, the host's steps, and what was lost on the way.
+    /// </summary>
+    private async Task RealityBench(NetSession session)
+    {
+        World.RealityLaunch.Reset();
+        RiftSpec spec = RiftSpec.Reality(Mathf.Clamp(Tier, 1, World.RealityTiers.MaxTier));
+        spec.Seed = 777;
+        session.StartRift(spec, session.Members.Select(m => m.PeerId));
+        await WaitFor(() => GetTree().CurrentScene is World.RealityController { NetHost: { } h } && h.ReadyPeers == Clients, 90f);
+        if (GetTree().CurrentScene is not World.RealityController { NetHost: { } host } reality)
+        {
+            Log("the reality never loaded");
+            Log("=== RESULT: FAIL ===");
+            return;
+        }
+
+        foreach (RunPlayer rp in reality.Party.Players)
+        {
+            rp.Player!.Health!.IgnoreDamage = true;
+        }
+
+        Log($"reality tier {reality.Tier} ({reality.Layout.Id}), party of {reality.Party.Players.Count}, {reality.MonstersTotal} monsters");
+        await Seconds(4f);
+        await MeasureWindow(session, host, "exploring (packs asleep, the party at the entrance)", Measure / 2);
+
+        // The boss fight: the host walks into the arena; everyone is pulled in and the boss wakes.
+        reality.Player.GlobalPosition = World.RasterLayout.World(reality.Raster.BossCell) + new Vector2(0f, 80f);
+        await WaitFor(() => reality.BossFightActive, 5f);
+        await Seconds(2f);
+        await MeasureWindow(session, host, "boss fight (everyone in the arena)", Measure / 2);
+
+        // A pack wipe: every monster within 1800 px of a player dies on the same frame.
+        reality.Player.GlobalPosition = World.RasterLayout.World(reality.Raster.Entrance);
+        foreach (RunPlayer rp in reality.Party.Players)
+        {
+            rp.Player!.GlobalPosition = reality.Player.GlobalPosition;
+        }
+
+        await Seconds(2f);
+        var near = GetTree().GetNodesInGroup(CombatQuery.EnemyGroup).OfType<Enemies.Enemy>()
+            .Where(e => !e.IsBoss && !e.Health.IsDead && e.GlobalPosition.DistanceTo(reality.Player.GlobalPosition) < 1800f).ToList();
+        foreach (Enemies.Enemy e in near)
+        {
+            e.Dormant = false;
+        }
+
+        await Seconds(1f);
+        var spikeStep = new List<double>();
+        var spikeWall = new List<double>();
+        NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
+        ulong spikeLast = Time.GetTicksUsec();
+        foreach (Enemies.Enemy e in near)
+        {
+            if (IsInstanceValid(e) && !e.Health.IsDead)
+            {
+                e.Health.ApplyResolvedDamage(1e12f, reality.Player);
+            }
+        }
+
+        ulong spikeUntil = Time.GetTicksMsec() + 2000;
+        while (Time.GetTicksMsec() < spikeUntil)
+        {
+            await Frames(1);
+            ulong nowUs = Time.GetTicksUsec();
+            spikeWall.Add((nowUs - spikeLast) / 1000.0);
+            spikeLast = nowUs;
+            spikeStep.Add(host.LastStepMicros / 1000.0);
+        }
+
+        (long spikeSent, _) = NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
+        Log($"pack wipe: {near.Count} killed at once (every participant rolls their own loot)");
+        Log(string.Create(CultureInfo.InvariantCulture, $"  next 2 s wire upload per client: {spikeSent / 1024.0 / Clients / 2.0:0.0} KB/s"));
+        Log($"  host frame wall time: {CoopBench.Stats(spikeWall, " ms")}; replication step: {CoopBench.Stats(spikeStep, " ms")}");
+        foreach (LobbyMember m in session.Members.Where(m => m.PeerId != 1))
+        {
+            (long got, long lost) = host.InputsFrom(m.PeerId);
+            Log(string.Create(CultureInfo.InvariantCulture, $"  inputs from {m.Name}: {got} arrived, {lost} lost ({(got + lost > 0 ? 100.0 * lost / (got + lost) : 0):0.0} %)"));
+        }
+
+        await Seconds(6f);
+        foreach (string f in DirAccess.GetFilesAt("user://bench").Where(f => f.StartsWith("coop_bench_client_")).OrderBy(f => f))
+        {
+            using FileAccess? file = FileAccess.Open($"user://bench/{f}", FileAccess.ModeFlags.Read);
+            Log(file?.GetAsText().Trim() ?? "");
+        }
+
+        foreach (int pid in _pids)
+        {
+            OS.Kill(pid);
+        }
+
+        Log("=== RESULT: PASS ===");
+        GetTree().Quit();
+    }
+
+    private async Task MeasureWindow(NetSession session, CoopHost host, string what, int seconds)
+    {
+        var kbPerClient = new List<double>();
+        var stepUs = new List<double>();
+        var wallMs = new List<double>();
+        var enemies = new List<double>();
+        NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
+        (long snap0, long ev0) = Payload(host, session);
+        ulong lastFrame = Time.GetTicksUsec();
+        for (int s = 0; s < seconds; s++)
+        {
+            ulong until = Time.GetTicksMsec() + 1000;
+            while (Time.GetTicksMsec() < until)
+            {
+                await Frames(1);
+                ulong nowUs = Time.GetTicksUsec();
+                wallMs.Add((nowUs - lastFrame) / 1000.0);
+                lastFrame = nowUs;
+                stepUs.Add(host.LastStepMicros);
+            }
+
+            (long sent, _) = NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
+            kbPerClient.Add(sent / 1024.0 / Clients);
+            enemies.Add(GetTree().GetNodesInGroup(CombatQuery.EnemyGroup).Count);
+        }
+
+        (long snap1, long ev1) = Payload(host, session);
+        Log($"{what} ({seconds} s, {enemies.Average():0} monsters):");
+        Log($"  wire upload per client: {CoopBench.Stats(kbPerClient, " KB/s")}");
+        Log(string.Create(CultureInfo.InvariantCulture, $"  payload per client: snapshots {(snap1 - snap0) / 1024.0 / Clients / seconds:0.0} KB/s, events {(ev1 - ev0) / 1024.0 / Clients / seconds:0.0} KB/s"));
+        Log($"  host frame wall time: {CoopBench.Stats(wallMs, " ms")}; replication step: {CoopBench.Stats(stepUs.Select(u => u / 1000.0).ToList(), " ms")}");
+    }
+
+    private static (long Snapshots, long Events) Payload(CoopHost host, NetSession session)
     {
         long snap = 0;
         long ev = 0;
@@ -239,24 +388,26 @@ public partial class CoopBenchClient : CoopTestDriver
         Core.Profile profile = SetUpProfile(PlayerName, PlayerName.TrimEnd('0', '1', '2', '3'))!;
         await Frames(2);
         session.Join("127.0.0.1", Port, profile.Active, JoinCode.TestCode);
-        await WaitFor(() => Run?.NetClient is not null, 120f);
-        RiftClient client = Run!.NetClient!;
+        await WaitFor(() => session.Run is CoopClient, 120f);
+        var client = (CoopClient)session.Run!;
+        bool reality = GetTree().CurrentScene is World.RealityController;
         // Wander in a slow circle like a player kiting.
         float angle = PlayerName.GetHashCode() % 7;
-        await Seconds(30f);
+        await Seconds(reality ? 4f : 30f);
+        client.ResetDelivery();
         var frames = new List<double>();
         var replicaUs = new List<double>();
         var received = new List<double>();
         NetTransport.PopWireBytes(session.Multiplayer.MultiplayerPeer);
         int snapshots = client.Snapshots;
-        ulong end = Time.GetTicksMsec() + (ulong)(Measure * 1000 + 2500);
+        ulong end = Time.GetTicksMsec() + (ulong)(Measure * 1000 + (reality ? 12000 : 2500));
         ulong last = Time.GetTicksUsec();
         ulong nextSecond = Time.GetTicksMsec() + 1000;
         GcSample gc0 = GcSample.Now();
-        while (Time.GetTicksMsec() < end && !Run!.State.Ended)
+        while (Time.GetTicksMsec() < end && !(Run?.State.Ended ?? false) && session.Run == client)
         {
             angle += 0.01f;
-            RiftClient.TestMove = Vector2.Right.Rotated(angle) * 0.8f;
+            CoopClient.TestMove = Vector2.Right.Rotated(angle) * (reality ? 0.3f : 0.8f);
             await Frames(1);
             ulong now = Time.GetTicksUsec();
             frames.Add((now - last) / 1000.0);
@@ -270,8 +421,8 @@ public partial class CoopBenchClient : CoopTestDriver
             }
         }
 
-        RiftClient.TestMove = null;
-        Log($"client {PlayerName}: {client.EnemyCount} replicas, {client.Snapshots - snapshots} snapshot chunks, {client.Corrections} corrections");
+        CoopClient.TestMove = null;
+        Log(string.Create(CultureInfo.InvariantCulture, $"client {PlayerName}: {client.EnemyCount} replicas, {client.Snapshots - snapshots} snapshot chunks, {client.Corrections} corrections, snapshot ticks delivered {client.SnapshotDelivery * 100.0:0.0} %"));
         Log($"  frame time: {CoopBench.Stats(frames, " ms")}");
         Log($"  replica update (_Process): {CoopBench.Stats(replicaUs.Select(u => u / 1000.0).ToList(), " ms")}");
         Log($"  wire download: {CoopBench.Stats(received, " KB/s")}");

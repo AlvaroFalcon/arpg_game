@@ -513,16 +513,35 @@ public partial class SecurityTestHost : CoopTestDriver
         }
 
         // Host-only RPCs from a client: the engine refuses them (authority mode).
-        silent.RpcId(1, "RpcStartRun");
+        silent.RpcId(1, "RpcPartyToClient", NetSession.StartRiftMessage(1, RiftSpec.SurvivalRift(), new long[] { 1 }));
+        silent.RpcId(1, "RpcPartyToHost", new byte[] { SessionProtocol.Place, (byte)MemberPlace.Hideout });
+        silent.RpcId(1, "RpcPartyToHost", new byte[] { SessionProtocol.Propose, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+        silent.RpcId(1, "RpcLayoutSubmit", "{\"Props\":[],\"Floors\":{}}");
+        silent.RpcId(1, "RpcPresenceToHost", new byte[7]);
+        silent.RpcId(1, "RpcCharacterUpdate", "{}");
+        silent.RpcId(1, "RpcHideoutLayout", "{}");
+        silent.RpcId(1, "RpcEditCopy", "{}");
         silent.RpcId(1, "RpcLobby", "[]");
         silent.RpcId(1, "RpcRejected", "go away");
         silent.RpcId(1, "RpcSnapshot", new byte[64]);
         await Seconds(1f);
-        Check("NO-HELLO-TRAFFIC-IGNORED", session.Members.Count == 1 && !session.InRun && session.IsHost,
-            $"input, events and host-only RPCs before a hello: lobby={session.Members.Count}, host in run={session.InRun}, still hosting={session.IsHost}");
+        Check("NO-HELLO-TRAFFIC-IGNORED", session.Members.Count == 1 && !session.InRun && session.IsHost && session.PlaceOf(1) == MemberPlace.Menu && session.PartyPhase == SessionPhase.Lobby && session.RefusedEdits == 0 && session.EditHolder == 0,
+            $"input, events, party messages and host-only RPCs before a hello: lobby={session.Members.Count}, host in run={session.InRun}, still hosting={session.IsHost}, phase={session.PartyPhase}");
         bool timedOut = await WaitFor(() => !silent.Active, (float)NetSession.HelloTimeout + 3f);
         Check("NO-HELLO-TIMEOUT", timedOut, $"a peer with the code that never says hello is dropped after {NetSession.HelloTimeout} s: gone={timedOut}");
         await DropIntruder(silent);
+
+        // An oversized party message (even before a hello) gets the sender kicked.
+        NetSession big = await NewIntruder();
+        big.TestSkipHello = true;
+        big.Join("127.0.0.1", _port, profile.Active, JoinCode.TestCode);
+        await WaitFor(() => big.Status.Contains("joining the party") && big.Active, 6f);
+        int kicksBefore = session.SecurityLog.Count(l => l.Contains("party message of"));
+        big.RpcId(1, "RpcPartyToHost", new byte[NetLimits.PartyMessageBytes + 1]);
+        bool kicked = await WaitFor(() => !big.Active && session.SecurityLog.Count(l => l.Contains("party message of")) > kicksBefore, 6f);
+        Check("OVERSIZE-PARTY-MESSAGE-KICKED", kicked && session.IsHost && session.Members.Count == 1,
+            $"{NetLimits.PartyMessageBytes + 1}-byte party message: kicked={kicked}, last line '{session.SecurityLog.LastOrDefault()}'");
+        await DropIntruder(big);
 
         // Malformed hellos: each refused with a reason, never listed, host unharmed.
         string valid = Profile.SerializeCharacter(profile.Active);
@@ -607,7 +626,7 @@ public partial class SecurityTestHost : CoopTestDriver
         session.Run = watcher;
         session.Rpc("RpcLobby", JsonSerializer.Serialize(lobby));
         await Seconds(0.5f);
-        session.Rpc("RpcStartRun");
+        session.Rpc("RpcPartyToClient", NetSession.StartRiftMessage(1, RiftSpec.SurvivalRift(), new long[] { 1, client, 5000, 5001 }));
         bool ready = await WaitFor(() => watcher.Ready, 40f);
         if (!ready)
         {

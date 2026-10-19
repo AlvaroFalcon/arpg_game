@@ -98,6 +98,72 @@ public sealed class FlowField
         }
 
         _target = target;
+        _targets.Clear();
+        _targets.Add(target);
+        Flood(_targets);
+    }
+
+    private readonly List<Vector2I> _targets = new();
+    private readonly List<Vector2I> _incoming = new();
+
+    /// <summary>
+    /// Co-op: distances from the nearest of several targets (every living player,
+    /// docs/design/endgame.md -> "Co-op realities") — one breadth-first pass with all
+    /// of them at distance 0, so each monster walks toward whoever is closest along
+    /// the walls. Skipped when every target is still in the same cell.
+    /// </summary>
+    public void Update(IReadOnlyList<Vector2> targetsWorld)
+    {
+        if (targetsWorld.Count == 1)
+        {
+            Update(targetsWorld[0]);
+            return;
+        }
+
+        _incoming.Clear();
+        foreach (Vector2 world in targetsWorld)
+        {
+            Vector2I c = CellOf(world);
+            if (InBounds(c) && !_incoming.Contains(c))
+            {
+                _incoming.Add(c);
+            }
+        }
+
+        if (_incoming.Count == 0 || (_target == MultiTarget && SameCells(_incoming, _targets)))
+        {
+            return;
+        }
+
+        _target = MultiTarget;
+        _targets.Clear();
+        _targets.AddRange(_incoming);
+        Flood(_targets);
+    }
+
+    /// <summary>The single-target key while several targets are in use.</summary>
+    private static readonly Vector2I MultiTarget = new(-2, -2);
+
+    private static bool SameCells(List<Vector2I> a, List<Vector2I> b)
+    {
+        if (a.Count != b.Count)
+        {
+            return false;
+        }
+
+        foreach (Vector2I c in a)
+        {
+            if (!b.Contains(c))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void Flood(List<Vector2I> targets)
+    {
         for (int x = 0; x < Width; x++)
         {
             for (int y = 0; y < Height; y++)
@@ -107,8 +173,12 @@ public sealed class FlowField
         }
 
         var queue = new Queue<Vector2I>();
-        _distance[target.X, target.Y] = 0;
-        queue.Enqueue(target);
+        foreach (Vector2I target in targets)
+        {
+            _distance[target.X, target.Y] = 0;
+            queue.Enqueue(target);
+        }
+
         while (queue.Count > 0)
         {
             Vector2I c = queue.Dequeue();

@@ -90,6 +90,7 @@ public partial class HideoutHud : CanvasLayer
         BuildVitals();
         BuildPrompt();
         BuildBanner();
+        BuildParty();
         BuildBigMap();
     }
 
@@ -202,15 +203,15 @@ public partial class HideoutHud : CanvasLayer
         AddChip(row, "K", "Skills", () => Panels?.Skills.Toggle());
         AddChip(row, "P", "Passives", () => Panels?.Tree.Toggle(), () => CharacterBuild.Of(Player)?.Data.PassivePointsFree ?? 0);
         AddChip(row, "J", "Quests", () => Panels?.Quests.Toggle(), () => QuestService.Attention(Hideout));
-        AddChip(row, "H", "Edit town", Hideout.OpenEditor);
+        AddChip(row, "H", "Edit town", Hideout.OpenEditor, blocked: () => Hideout.EditBlockedReason);
         AddChip(row, "?", "Guide", Hideout.OpenGuide);
         AddChip(row, "Esc", "Menu", OpenPauseMenu);
         HudLayout.Register(bar, "hideout_menu", "Menu bar", avoid: HudAvoid.Slide);
     }
 
-    private void AddChip(HBoxContainer row, string key, string label, Action press, Func<int>? badge = null)
+    private void AddChip(HBoxContainer row, string key, string label, Action press, Func<int>? badge = null, Func<string?>? blocked = null)
     {
-        var chip = new KeyChip { Key = key, Caption = label, Pressed = press, Badge = badge };
+        var chip = new KeyChip { Key = key, Caption = label, Pressed = press, Badge = badge, Blocked = blocked };
         row.AddChild(chip);
         _chips.Add(chip);
     }
@@ -463,6 +464,7 @@ public partial class HideoutHud : CanvasLayer
 
         foreach (KeyChip chip in _chips)
         {
+            chip.Modulate = chip.Blocked?.Invoke() is null ? Colors.White : new Color(1f, 1f, 1f, 0.45f);
             chip.QueueRedraw();
         }
 
@@ -478,6 +480,68 @@ public partial class HideoutHud : CanvasLayer
             _banner.Text = "";
             _bannerSub.Text = "";
         }
+
+        if (_toastTime > 0f)
+        {
+            _toastTime -= dt;
+            _toast.Modulate = new Color(1f, 1f, 1f, Mathf.Clamp(_toastTime / 0.6f, 0f, 1f));
+            _toast.Visible = true;
+        }
+        else
+        {
+            _toast.Visible = false;
+        }
+
+        _partyBox.Visible = _partyLine.Text.Length > 0;
+    }
+
+    // --- party (docs/design/multiplayer.md -> "Shared hideout") ----------------------------
+
+    private Label _toast = null!;
+    private float _toastTime;
+    private PanelContainer _partyBox = null!;
+    private Label _partyLine = null!;
+
+    /// <summary>The last party toast while it shows (tests).</summary>
+    public string ToastText => _toastTime > 0f ? _toast.Text : "";
+
+    /// <summary>The standing party line ("Ana's party is in the Survival Rift · 3:12"), "" when hidden.</summary>
+    public string PartyLine
+    {
+        get => _partyLine.Text;
+        set => _partyLine.Text = value;
+    }
+
+    private void BuildParty()
+    {
+        _toast = UiTheme.Label("", 18, UiTheme.Text, HorizontalAlignment.Center);
+        _toast.Name = "PartyToast";
+        _toast.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _toast.AddThemeConstantOverride("outline_size", 5);
+        _toast.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.85f));
+        _root.AddChild(_toast);
+        _toast.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
+        _toast.OffsetLeft = -460f;
+        _toast.OffsetRight = 460f;
+        _toast.OffsetTop = 112f;
+        _toast.Visible = false;
+
+        _partyBox = new PanelContainer { Name = "PartyLine", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+        _partyBox.AddThemeStyleboxOverride("panel", Glass(UiTheme.Gold, 1));
+        _root.AddChild(_partyBox);
+        _partyBox.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
+        _partyBox.GrowHorizontal = Control.GrowDirection.Both;
+        _partyBox.OffsetTop = 66f;
+        _partyLine = UiTheme.Label("", 16, UiTheme.Gold, HorizontalAlignment.Center);
+        _partyBox.AddChild(_partyLine);
+    }
+
+    /// <summary>A short party message under the menu bar ("Bo is here").</summary>
+    public void ShowToast(string text, Color colour)
+    {
+        _toast.Text = text;
+        _toast.AddThemeColorOverride("font_color", colour);
+        _toastTime = 3.5f;
     }
 
     private void UpdatePlate()
@@ -522,6 +586,9 @@ public partial class HideoutHud : CanvasLayer
         public string Caption = "";
         public Action Pressed = () => { };
         public Func<int>? Badge;
+
+        /// <summary>Why the chip can't be used now (greyed, said in its tooltip), or null.</summary>
+        public Func<string?>? Blocked;
         private bool _hover;
 
         public override void _Ready()
@@ -531,7 +598,7 @@ public partial class HideoutHud : CanvasLayer
             MouseDefaultCursorShape = CursorShape.PointingHand;
             MouseEntered += () => { _hover = true; QueueRedraw(); };
             MouseExited += () => { _hover = false; QueueRedraw(); };
-            UiTheme.InstantTooltip(this, $"{Caption} ({Key})");
+            UiTheme.InstantTooltip(this, () => Blocked?.Invoke() ?? $"{Caption} ({Key})");
         }
 
         public override void _GuiInput(InputEvent e)

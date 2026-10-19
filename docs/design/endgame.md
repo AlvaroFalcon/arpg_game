@@ -471,6 +471,20 @@ modifiers and a **minimap** of explored floor (boss room in red, entrance in
 blue); the boss bar with phase markers when the gate closes; banners and a stack
 of loot/level toasts.
 
+## Co-op realities (2026-10-19)
+
+A party in the hideout (docs/design/multiplayer.md → "Party session") can open a reality together: the Mirror's "Step through the Mirror" proposes it to everyone in the hideout with the 30 s popup ("Ana is opening an Altered Reality — Tier 20"). The host always takes part; whoever declines waits in the hideout. Networking: multiplayer.md → "Co-op realities". The rules (numbers in `PartyRules`, one table, proposals for the owner to tune):
+
+- **The shard is the proposer's**, spent on their machine when the reality starts (never on a cancel). The modifiers they bought travel with the proposal.
+- **Difficulty per participant:** monster life ×`MonsterLife(n)` (1 + 0.5 per extra player), boss life ×`BossLife(n)` (1 + 0.7 per extra), packs bigger by ×`RealityPackSize(n)` (1 + 0.2 per extra, rounded per pack). Monster damage is unchanged.
+- **Loot bonus:** item quantity +15 % and rarity +10 % per extra player, added to the shard modifiers and the jewels.
+- **Instanced loot, full solo table each:** every participant rolls their own drops from every kill (no share-down, unlike the Rift), and the boss drops a full set for each player, the guaranteed shard included. Every player-credited kill gives **every** participant the kill's character experience; life/mana on kill and Chain Reaction go to the killer.
+- **One shared portal pool:** the tier's portals plus one per extra player. Every death costs one and that player is back after 1.5 s. The death that empties the pool collapses the reality for everyone (the solo rule: with 3 portals the third fall collapses it).
+- **The boss gate:** the fight starts when any living player walks into the arena; every other living participant is pulled in just inside the gate (banner "Ana started the fight"), then the gate closes. A player who falls while someone is still fighting comes back inside the arena; only when nobody standing is left in the fight does it reset (gate open, boss asleep), as in solo.
+- **Clears on each machine:** `RealitiesCleared`, the best tier, the ascendancy points and the quests they open are recorded on each participant's own character.
+- **Jewels:** the host's Mirror jewels shape the whole map (packs, drop rolls, jewel drops). Per-player jewels are an open question.
+- **Leaving:** a guest leaves alone (E at the exit portal, or "Leave the reality") and keeps everything; the host's exit closes the reality for everyone (a second E within 4 s confirms when friends are inside).
+
 ## What happened to the survivor run
 
 - **Kept** everything systemic: enemies, bosses, telegraphs, dodge, skills,

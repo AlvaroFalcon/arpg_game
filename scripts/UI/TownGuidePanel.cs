@@ -16,6 +16,10 @@ public partial class TownGuidePanel : ModalPanel
 {
     public HideoutData Data { get; set; } = null!;
 
+    /// <summary>Where "the guide has been seen" is kept: the account's own town (a guest
+    /// browses the host's town but the flag is theirs). Null: <see cref="Data"/>.</summary>
+    public HideoutData? SeenOn { get; set; }
+
     /// <summary>Walks to a station when its card's "Show me" is pressed.</summary>
     public Action<string>? ShowMe { get; set; }
 
@@ -96,6 +100,6 @@ public partial class TownGuidePanel : ModalPanel
 
     protected override void OnClosed()
     {
-        Data.GuideSeen = true;
+        (SeenOn ?? Data).GuideSeen = true;
     }
 }
