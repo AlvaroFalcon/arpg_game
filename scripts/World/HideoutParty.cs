@@ -31,6 +31,10 @@ public partial class HideoutParty : Node
     private readonly Dictionary<long, Player> _puppets = new();
     private readonly Dictionary<long, string> _builtFrom = new();
     private readonly HashSet<long> _home = new();
+    private readonly Dictionary<long, string> _failed = new();
+
+    /// <summary>The last puppet that couldn't be built, and why (diagnostics, tests).</summary>
+    public string LastError { get; private set; } = "";
     private bool _wasGuest;
     private bool _wasActive;
     private bool _leaving;
@@ -201,6 +205,11 @@ public partial class HideoutParty : Node
     {
         if (_session is not { Active: true } s || _leaving)
         {
+            if (_wasActive && !_leaving)
+            {
+                Detach(); // hosting stopped here (Stop hosting): alone in the same town
+            }
+
             if (_puppets.Count > 0)
             {
                 ClearPuppets();
@@ -225,7 +234,7 @@ public partial class HideoutParty : Node
         {
             s.SetLocalPresence(local.GlobalPosition, FlagsOf(local));
             // D13: nothing pauses in a party, so a panel or the menu holds the player still instead.
-            bool hold = PanelStack.HasOpen || Hideout.Pause is { IsOpen: true };
+            bool hold = PanelStack.HasOpen || Hideout.Pause is { IsOpen: true } || Hideout.PartyOverlayOpen;
             if (hold != _controlsHeld)
             {
                 _controlsHeld = hold;
@@ -292,7 +301,23 @@ public partial class HideoutParty : Node
 
             if (!_puppets.TryGetValue(m.PeerId, out puppet))
             {
-                puppet = Spawn(m, at);
+                if (_failed.TryGetValue(m.PeerId, out string? failedFrom) && failedFrom == m.Character)
+                {
+                    continue; // this character can't be built here; don't retry every frame
+                }
+
+                try
+                {
+                    puppet = Spawn(m, at);
+                }
+                catch (System.Exception e)
+                {
+                    _failed[m.PeerId] = m.Character;
+                    LastError = $"{m.Name}: {e.GetType().Name}: {e.Message}";
+                    GD.PushError($"Co-op: could not show {m.Name} in the hideout: {e}");
+                    continue;
+                }
+
                 _puppets[m.PeerId] = puppet;
                 _builtFrom[m.PeerId] = m.Character;
             }

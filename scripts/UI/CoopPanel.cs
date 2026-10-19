@@ -39,6 +39,24 @@ public partial class CoopPanel : PanelContainer
         Lobby,
     }
 
+    public enum PanelPurpose
+    {
+        /// <summary>The main menu's "With friends": host or join, then the lobby leads to the hideout.</summary>
+        Menu,
+
+        /// <summary>The hideout's pause menu: open this hideout to friends, see the party; closing never leaves it.</summary>
+        Invite,
+    }
+
+    /// <summary>Set before adding.</summary>
+    public PanelPurpose Purpose { get; set; }
+
+    /// <summary>Invite: runs before hosting (the hideout saves the player, so the lobby gets what they wear).</summary>
+    public Action? BeforeHost { get; set; }
+
+    /// <summary>Invite, a guest's "Leave the party".</summary>
+    public event Action? LeaveParty;
+
     public event Action? Back;
 
     /// <summary>"Create a character" from the no-character state.</summary>
@@ -96,6 +114,7 @@ public partial class CoopPanel : PanelContainer
 
     private VBoxContainer _body = null!;
     private VBoxContainer _view = null!;
+    private Label _title = null!;
     private Label _who = null!;
     private Button _change = null!;
     private Label _notice = null!;
@@ -134,7 +153,8 @@ public partial class CoopPanel : PanelContainer
         CustomMinimumSize = new Vector2(1000f, 0f);
         AddThemeStyleboxOverride("panel", UiTheme.Box(UiTheme.Panel, UiTheme.PanelBorder, 2, 8, 18));
         _body = UiTheme.VBox(this, 10);
-        _body.AddChild(UiTheme.Label("Play with friends", 32, UiTheme.Gold, HorizontalAlignment.Center));
+        _title = UiTheme.Label(Purpose == PanelPurpose.Invite ? "Invite friends" : "Play with friends", 32, UiTheme.Gold, HorizontalAlignment.Center);
+        _body.AddChild(_title);
         HBoxContainer whoRow = UiTheme.HBox(_body, 10);
         whoRow.Alignment = BoxContainer.AlignmentMode.Center;
         _who = UiTheme.Label("", 16, UiTheme.TextDim, HorizontalAlignment.Center);
@@ -213,7 +233,8 @@ public partial class CoopPanel : PanelContainer
 
     public override void _Input(InputEvent e)
     {
-        if (!IsVisibleInTree() || !e.IsActionPressed("ui_cancel"))
+        // Invite: the overlay owns Esc (it closes the overlay; nothing here ends the party).
+        if (Purpose == PanelPurpose.Invite || !IsVisibleInTree() || !e.IsActionPressed("ui_cancel"))
         {
             return;
         }
@@ -279,10 +300,17 @@ public partial class CoopPanel : PanelContainer
 
         _attempted = true;
         _lastWasHost = true;
+        BeforeHost?.Invoke();
         if (_session.Host(port, profile.Active, AutoCode, openRouterPort: !NoUpnp) != Error.Ok)
         {
             SetError(_port, _portError, _session.Status);
             return;
+        }
+
+        if (Purpose == PanelPurpose.Invite)
+        {
+            // Already home: the party's phase is the hideout from the start.
+            _session.EnterHideoutInPlace();
         }
 
         Refresh();
@@ -343,7 +371,11 @@ public partial class CoopPanel : PanelContainer
 
     private void GoBack()
     {
-        _session?.Leave();
+        if (Purpose != PanelPurpose.Invite)
+        {
+            _session?.Leave();
+        }
+
         Back?.Invoke();
     }
 
@@ -454,6 +486,13 @@ public partial class CoopPanel : PanelContainer
         _slotTexts.Clear();
         Current = Decide();
         _back.Visible = Current is not View.Lobby and not View.Connecting;
+        if (Purpose == PanelPurpose.Invite)
+        {
+            _title.Text = Current == View.Lobby ? "Your party" : "Invite friends";
+            _back.Text = "Close";
+            _back.Visible = Current is not View.Connecting;
+        }
+
         // A different character only before hosting or joining (the lobby has this one).
         _change.Visible = _who.Visible && OfferChange && Current is View.Choose or View.Failed;
         switch (Current)
@@ -463,6 +502,9 @@ public partial class CoopPanel : PanelContainer
                 break;
             case View.NoCharacter:
                 BuildNoCharacter();
+                break;
+            case View.Choose when Purpose == PanelPurpose.Invite:
+                BuildInviteChoose();
                 break;
             case View.Choose:
                 BuildChoose();
@@ -567,6 +609,29 @@ public partial class CoopPanel : PanelContainer
             "(their router opens the port by itself when it can), or a VPN both of you run — Tailscale, Radmin VPN, ZeroTier.",
             14, UiTheme.TextDim, 960f, HorizontalAlignment.Center));
         (_lastAddress.Length > 0 ? joinButton : hostButton).CallDeferred(Control.MethodName.GrabFocus);
+    }
+
+    /// <summary>Invite, not hosting yet: one card, to open this hideout to friends.</summary>
+    private void BuildInviteChoose()
+    {
+        HBoxContainer cards = UiTheme.HBox(_view, 16);
+        cards.Alignment = BoxContainer.AlignmentMode.Center;
+        VBoxContainer host = Card(cards, "Open your hideout to friends", 620f);
+        host.AddChild(Wrapped($"Up to {PartyRules.MaxPlayers - 1} friends can join you here, each with their own character, wallet and loot. "
+            + "You get an address and a join code to send them; they join from the main menu: Play → With friends → Join a friend.", 15, UiTheme.TextDim, 580f));
+        HBoxContainer portRow = UiTheme.HBox(host, 8);
+        portRow.AddChild(UiTheme.Label("Port", 15, UiTheme.TextDim));
+        _port = UiTheme.Field("7777", 100f, 16);
+        _port.Text = NetTransport.DefaultPort.ToString();
+        _port.MaxLength = 5;
+        _port.TextSubmitted += _ => PressHost();
+        _port.TextChanged += _ => SetError(_port, _portError, null);
+        portRow.AddChild(_port);
+        portRow.AddChild(UiTheme.Label("UDP · your router opens it by itself when it can", 13, UiTheme.TextDim));
+        _portError = ErrorLabel(host);
+        Button hostButton = UiTheme.PrimaryButton("Open my hideout to friends", PressHost, 20, 580f);
+        host.AddChild(hostButton);
+        hostButton.CallDeferred(Control.MethodName.GrabFocus);
     }
 
     /// <summary>A pasted invite fills both fields.</summary>
@@ -752,6 +817,12 @@ public partial class CoopPanel : PanelContainer
 
         HBoxContainer buttons = UiTheme.HBox(_view, 12);
         buttons.Alignment = BoxContainer.AlignmentMode.Center;
+        if (Purpose == PanelPurpose.Invite)
+        {
+            BuildInviteButtons(buttons, s);
+            return;
+        }
+
         if (s.IsHost)
         {
             int n = s.Members.Count;
@@ -773,6 +844,38 @@ public partial class CoopPanel : PanelContainer
             _session?.Leave();
             Refresh();
         }, 18, 180f));
+    }
+
+    /// <summary>Invite, in a party: hosting stops only on purpose; closing keeps everything going.</summary>
+    private void BuildInviteButtons(HBoxContainer buttons, NetSession s)
+    {
+        if (s.IsHost)
+        {
+            buttons.AddChild(UiTheme.Label(s.Members.Count > 1 ? "Your friends are in your town." : "Friends who join appear here in your town.", 16, UiTheme.TextDim));
+            Button stop = UiTheme.Button("Stop hosting", () =>
+            {
+                _attempted = false;
+                _session?.Leave();
+                Refresh();
+            }, 18, 200f);
+            UiTheme.InstantTooltip(stop, "Everyone else goes back to their main menu. You stay here, playing alone.");
+            buttons.AddChild(stop);
+        }
+        else
+        {
+            buttons.AddChild(UiTheme.Button("Leave the party", () => LeaveParty?.Invoke(), 18, 220f));
+        }
+    }
+
+    /// <summary>Invite: the host's "Stop hosting" (tests).</summary>
+    public void PressStopHosting()
+    {
+        if (Purpose == PanelPurpose.Invite && _session is { IsHost: true })
+        {
+            _attempted = false;
+            _session.Leave();
+            Refresh();
+        }
     }
 
     private void BuildInvite(HBoxContainer columns, NetSession s)

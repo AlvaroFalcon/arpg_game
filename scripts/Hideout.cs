@@ -105,9 +105,13 @@ public partial class Hideout : Node2D
             LeaveText = "Character select",
             LeaveTextNow = LeaveLabel,
             OnLeave = OnPauseLeave,
-            ExtraText = "Edit hideout",
-            OnExtra = OpenEditor,
             NoPause = _session is { Active: true },
+            Extras =
+            {
+                // Owner decision 2026-10-18: inviting lives only here, in the hideout's menu.
+                new PauseMenu.Entry { Text = "Invite friends", LiveText = PartyEntryLabel, OnPress = OpenPartyOverlay },
+                new PauseMenu.Entry { Text = "Edit hideout", LiveText = () => IsGuest ? null : "Edit hideout", OnPress = OpenEditor },
+            },
         };
         AddChild(Pause);
         AddChild(new CharacterPanels { Player = _player, Name = "CharacterPanels" });
@@ -157,10 +161,8 @@ public partial class Hideout : Node2D
             _session.LayoutChanged += OnHostLayoutChanged;
             _session.Launching += OnLaunching;
             _session.LocalCharacter = CaptureCharacter;
-            if (_session.IsHost)
-            {
-                _session.LayoutSource = () => Data;
-            }
+            // Read only while hosting (also when hosting starts here, from "Invite friends").
+            _session.LayoutSource = () => Data;
         }
 
         if (!OwnTown.GuideSeen && profile is not null)
@@ -197,7 +199,7 @@ public partial class Hideout : Node2D
                 _session.LocalCharacter = null;
             }
 
-            if (_session.LayoutSource is not null && _session.IsHost)
+            if (_session.LayoutSource is not null)
             {
                 // Late joiners while the host is away get the saved town (SaveLayout ran on the way out).
                 _session.LayoutSource = null;
@@ -284,6 +286,55 @@ public partial class Hideout : Node2D
 
     // --- the party's ways out ---------------------------------------------------------------
 
+    private PartyOverlay? _overlay;
+
+    /// <summary>The party overlay, created the first time it is needed (tests, captures).</summary>
+    public PartyOverlay PartyOverlay
+    {
+        get
+        {
+            if (_overlay is null || !IsInstanceValid(_overlay))
+            {
+                _overlay = new PartyOverlay { BeforeHost = SaveLayout, LeaveParty = LeaveParty, Name = "PartyOverlay" };
+                AddChild(_overlay);
+                // Nothing pauses behind it (hosting may start while it is open): hold the player instead.
+                _overlay.Closed += () => _player.ControlsEnabled = !_leaving;
+            }
+
+            return _overlay;
+        }
+    }
+
+    public bool PartyOverlayOpen => _overlay is { IsOpen: true } o && IsInstanceValid(o);
+
+    /// <summary>The pause menu's party entry: "Invite friends" alone, "Party & invite" hosting, "Party" as a guest.</summary>
+    private string PartyEntryLabel() => _session switch
+    {
+        { IsHost: true } => "Party & invite",
+        { IsClient: true } => "Party",
+        _ => "Invite friends",
+    };
+
+    public void OpenPartyOverlay()
+    {
+        if (!Editing && !_leaving)
+        {
+            PartyOverlay.Open();
+            _player.ControlsEnabled = false;
+            _player.StopAutoWalk();
+        }
+    }
+
+    /// <summary>A guest leaves the party on purpose: back to their own town, alone (D12).</summary>
+    public void LeaveParty()
+    {
+        if (_session is { IsClient: true } guest)
+        {
+            Party.Detach();
+            Leave(Scenes.Hideout, () => guest.Leave());
+        }
+    }
+
     private string LeaveLabel() => _session switch
     {
         { IsHost: true } => "Close the party",
@@ -300,11 +351,9 @@ public partial class Hideout : Node2D
             return;
         }
 
-        if (_session is { IsClient: true } guest)
+        if (_session is { IsClient: true })
         {
-            // A guest leaving on purpose goes back to their own town, alone (D12).
-            Party.Detach();
-            Leave(Scenes.Hideout, () => guest.Leave());
+            LeaveParty();
             return;
         }
 

@@ -34,6 +34,12 @@ public partial class NetSession
     /// <summary>Payload bytes of presence sent this session (host: to everyone; client: its own).</summary>
     public long PresenceBytesSent { get; private set; }
 
+    /// <summary>Presence packets sent this session (diagnostics, tests).</summary>
+    public int PresenceSent { get; private set; }
+
+    /// <summary>Presence packets received this session (diagnostics, tests).</summary>
+    public int PresenceReceived { get; private set; }
+
     /// <summary>Payload bytes of layouts sent this session.</summary>
     public long LayoutBytesSent { get; private set; }
 
@@ -48,6 +54,11 @@ public partial class NetSession
         public bool Fresh;
     }
 
+    // Presence is sent reliably. Unreliable was tried first: ENet's packet throttle (it drops a
+    // share of unreliable packets whenever round trips vary, as they do with a game servicing the
+    // socket once per frame) lost 30–70 % of the guests' presence on loopback (HideoutCoopTest,
+    // ENet's own loss counter at 0). Presence is ~7–32 bytes at 10 Hz, so reliability costs
+    // nothing worth measuring, and the sequence number still drops anything stale.
     private readonly Dictionary<long, Presence> _presence = new();
     private Vector2? _hostPresence;
     private byte _hostFlags;
@@ -223,6 +234,7 @@ public partial class NetSession
         w.U8(flags);
         byte[] data = w.ToArray();
         PresenceBytesSent += data.Length;
+        PresenceSent++;
         RpcId(1, MethodName.RpcPresenceToHost, data);
     }
 
@@ -267,7 +279,7 @@ public partial class NetSession
         p.Track.Push(time, at);
     }
 
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.UnreliableOrdered, TransferChannel = 0)]
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
     private void RpcPresenceToHost(byte[] data)
     {
         long sender = _api.GetRemoteSenderId();
@@ -276,6 +288,7 @@ public partial class NetSession
             return;
         }
 
+        PresenceReceived++;
         var r = new NetReader(data);
         ushort seq = r.U16();
         Vector2 at = r.Pos();
@@ -286,7 +299,7 @@ public partial class NetSession
         }
     }
 
-    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.UnreliableOrdered, TransferChannel = 0)]
+    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 0)]
     private void RpcPresenceToClients(byte[] data)
     {
         if (!IsClient || LocalPlace != MemberPlace.Hideout)
@@ -294,6 +307,7 @@ public partial class NetSession
             return;
         }
 
+        PresenceReceived++;
         var r = new NetReader(data);
         float hostTime = r.F32();
         if (!float.IsFinite(hostTime))
@@ -375,6 +389,7 @@ public partial class NetSession
             byte[] data = w.ToArray();
             data[countAt] = (byte)count;
             PresenceBytesSent += data.Length;
+            PresenceSent++;
             RpcId(receiver, MethodName.RpcPresenceToClients, data);
         }
     }

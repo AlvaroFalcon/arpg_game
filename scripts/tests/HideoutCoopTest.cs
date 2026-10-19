@@ -181,8 +181,8 @@ public partial class HideoutCoopHost : CoopTestDriver
         // --- everyone sees everyone -----------------------------------------------------------------
         bool hostSees = await WaitFor(() => town.Party.Puppets.Count == 2, 8f);
         await Seconds(0.5f);
-        Dictionary<string, string> anaSees = Fields(await Ask(ana.PeerId, "puppets"));
-        Dictionary<string, string> boSees = Fields(await Ask(bo.PeerId, "puppets"));
+        Dictionary<string, string> anaSees = Fields(await Ask(ana.PeerId, "puppets want=2"));
+        Dictionary<string, string> boSees = Fields(await Ask(bo.PeerId, "puppets want=2"));
         Check("HIDEOUT-SEES-PARTY", hostSees && F(anaSees, "puppets") == 2f && F(boSees, "puppets") == 2f,
             $"host puppets={town.Party.Puppets.Count}; ana: {Line(anaSees)}; bo: {Line(boSees)}");
 
@@ -193,7 +193,7 @@ public partial class HideoutCoopHost : CoopTestDriver
         Vector2 anaAt = new(F(walked, "x"), F(walked, "y"));
         bool hostFollows = await WaitFor(() => town.Party.Puppets.TryGetValue(ana.PeerId, out Player? p) && p.GlobalPosition.DistanceTo(anaAt) < 24f, 1.5f);
         float hostGap = town.Party.Puppets.TryGetValue(ana.PeerId, out Player? hp) ? hp.GlobalPosition.DistanceTo(anaAt) : -1f;
-        Dictionary<string, string> boView = Fields(await Ask(bo.PeerId, $"puppet peer={ana.PeerId}"));
+        Dictionary<string, string> boView = Fields(await Ask(bo.PeerId, $"puppet peer={ana.PeerId} x={Num(anaAt.X)} y={Num(anaAt.Y)}"));
         float boGap = new Vector2(F(boView, "x"), F(boView, "y")).DistanceTo(anaAt);
         Check("HIDEOUT-PRESENCE", F(walked, "moved") > 40f && hostFollows && boGap < 24f,
             $"ana walked {F(walked, "moved"):0} px to {Num(anaAt.X)},{Num(anaAt.Y)}; host's puppet {hostGap:0.0} px off, bo's {boGap:0.0} px off");
@@ -223,7 +223,7 @@ public partial class HideoutCoopHost : CoopTestDriver
         town.Player.Command = null;
         await Seconds(0.6f);
         Vector2 hostTo = town.Player.GlobalPosition;
-        Dictionary<string, string> boSeesHost = Fields(await Ask(bo.PeerId, "puppet peer=1"));
+        Dictionary<string, string> boSeesHost = Fields(await Ask(bo.PeerId, $"puppet peer=1 x={Num(hostTo.X)} y={Num(hostTo.Y)}"));
         float hostGapOnBo = new Vector2(F(boSeesHost, "x"), F(boSeesHost, "y")).DistanceTo(hostTo);
         Dictionary<string, string> closed = Fields(await Ask(bo.PeerId, "close_panel"));
         Check("HIDEOUT-NO-PAUSE", modal.GetValueOrDefault("open") == "1" && modal.GetValueOrDefault("paused") == "0" && hostFrom.DistanceTo(hostTo) > 40f && hostGapOnBo < 24f
@@ -233,6 +233,12 @@ public partial class HideoutCoopHost : CoopTestDriver
         // --- presence bandwidth --------------------------------------------------------------------------------
         double seconds = (Time.GetTicksMsec() - t0) / 1000.0;
         double perClient = (session.PresenceBytesSent - bytes0) / seconds / 2.0;
+        Dictionary<string, string> anaCount = Fields(await Ask(ana.PeerId, "puppets"));
+        Dictionary<string, string> boCount = Fields(await Ask(bo.PeerId, "puppets"));
+        float guestsSent = F(anaCount, "sent") + F(boCount, "sent");
+        float guestsGot = F(anaCount, "presence_in") + F(boCount, "presence_in");
+        Check("HIDEOUT-PRESENCE-DELIVERY", session.PresenceReceived >= 0.9f * guestsSent && guestsGot >= 0.9f * session.PresenceSent && guestsSent > 20f,
+            $"host got {session.PresenceReceived} of the {guestsSent} the guests sent; the guests got {guestsGot} of the host's {session.PresenceSent} (reliable: ENet's throttle drops unreliable ones)");
         Check("HIDEOUT-PRESENCE-BYTES", perClient > 0 && perClient < 1024, $"{perClient:0} B/s of presence per guest (payload) over {seconds:0.0} s");
 
         // --- a guest saving never writes the host's town into its own -------------------------------------------
@@ -248,6 +254,69 @@ public partial class HideoutCoopHost : CoopTestDriver
         bool told = await WaitFor(() => guests.All(g => ReadFile(GuestLog(g)).Contains("HOST-LEFT")), 10f);
         string[] lines = guests.Select(g => ReadFile(GuestLog(g)).Split('\n').LastOrDefault(l => l.Contains("HOST-LEFT")) ?? $"{g}: no line").ToArray();
         Check("HIDEOUT-HOST-LEFT", told && lines.All(l => l.Contains("PASS")), string.Join(" | ", lines));
+
+        await InviteChecks(session);
+    }
+
+    /// <summary>
+    /// "Invite friends" from the hideout's pause menu (docs/design/multiplayer.md -> "Invite friends"):
+    /// the host, alone in its hideout, opens it to friends without changing scene; a friend joins
+    /// and lands next to it; Stop hosting leaves the host alone in the same town and the friend at
+    /// the main menu with a notice.
+    /// </summary>
+    private async Task InviteChecks(NetSession session)
+    {
+        if (Town is not { } town)
+        {
+            Check("INVITE-FROM-HIDEOUT", false, "the host isn't in its hideout after the party closed");
+            return;
+        }
+
+        town.Pause.Open();
+        string solo = string.Join(",", town.Pause.ExtraTexts) + " / " + town.Pause.LeaveButtonText;
+        bool pressed = town.Pause.PressExtra("Invite friends");
+        await Frames(3);
+        PartyOverlay overlay = town.PartyOverlay;
+        overlay.Panel.NoUpnp = true;
+        overlay.Panel.AutoCode = JoinCode.TestCode;
+        bool offline = overlay.IsOpen && overlay.Panel.Current == CoopPanel.View.Choose && !session.Active;
+        var rng = new RandomNumberGenerator();
+        rng.Randomize();
+        for (int attempt = 0; attempt < 5 && !session.IsHost; attempt++)
+        {
+            _port = 7790 + rng.RandiRange(0, 400);
+            overlay.Panel.SetHostPort(_port);
+            overlay.Panel.PressHost();
+        }
+
+        await Frames(3);
+        bool hosting = session.IsHost && session.PartyPhase == SessionPhase.Hideout && Town == town && overlay.Panel.Current == CoopPanel.View.Lobby && town.Pause.NoPause;
+        StartGuest("dee");
+        bool deeHome = await WaitFor(() => session.Members.FirstOrDefault(m => m.Name == "dee") is { } d && session.PlaceOf(d.PeerId) == MemberPlace.Hideout, 40f);
+        LobbyMember? dee = session.Members.FirstOrDefault(m => m.Name == "dee");
+        bool seen = await WaitFor(() => town.Party.Puppets.Count == 1, 5f);
+        Dictionary<string, string> deeSees = dee is null ? new() : Fields(await Ask(dee.PeerId, "puppets want=1"));
+        overlay.Close();
+        town.Pause.Open();
+        string hostEntries = string.Join(",", town.Pause.ExtraTexts) + " / " + town.Pause.LeaveButtonText;
+        town.Pause.Close();
+        Dictionary<string, string> deeEntries = dee is null ? new() : Fields(await Ask(dee.PeerId, "pause"));
+        Check("INVITE-FROM-HIDEOUT", pressed && offline && hosting && deeHome && seen && F(deeSees, "puppets") == 1f && session.Active,
+            $"solo menu '{solo}'; overlay offline={offline} → hosting in place={hosting} (port {_port}); dee home={deeHome}, host sees {town.Party.Puppets.Count}, dee: {Line(deeSees)}");
+        Check("PAUSE-ENTRIES", solo == "Invite friends,Edit hideout / Character select" && hostEntries == "Party & invite,Edit hideout / Close the party"
+                && deeEntries.GetValueOrDefault("entries") == "Party" && deeEntries.GetValueOrDefault("leave") == "Leave_the_party",
+            $"solo '{solo}'; hosting '{hostEntries}'; guest: {Line(deeEntries)}");
+
+        // --- Stop hosting: the host stays, alone, in the same town; the friend goes to the main menu ---------
+        town.OpenPartyOverlay();
+        overlay.Panel.PressStopHosting();
+        bool told = await WaitFor(() => ReadFile(GuestLog("dee")).Contains("HOST-LEFT"), 10f);
+        await Frames(5);
+        string deeLine = ReadFile(GuestLog("dee")).Split('\n').LastOrDefault(l => l.Contains("HOST-LEFT")) ?? "no line";
+        overlay.Close();
+        Check("STOP-HOSTING", !session.Active && Town == town && town.Party.Puppets.Count == 0 && !town.Pause.NoPause && overlay.Panel.Current == CoopPanel.View.Choose
+                && town.Player.ControlsEnabled && told && deeLine.Contains("PASS"),
+            $"host active={session.Active}, same hideout={Town == town}, puppets={town.Party.Puppets.Count}, pause pauses again={!town.Pause.NoPause}, overlay view={overlay.Panel.Current}, controls={town.Player.ControlsEnabled}; {deeLine}");
     }
 
     /// <summary>
@@ -300,8 +369,8 @@ public partial class HideoutCoopHost : CoopTestDriver
         bool cyHome = await WaitFor(() => session.Members.FirstOrDefault(m => m.Name == "cy") is { } c && session.PlaceOf(c.PeerId) == MemberPlace.Hideout, 40f);
         LobbyMember? cy = session.Members.FirstOrDefault(m => m.Name == "cy");
         await Seconds(1f);
-        Dictionary<string, string> cySees = cy is null ? new() : Fields(await Ask(cy.PeerId, "puppets"));
-        Dictionary<string, string> boSeesCy = Fields(await Ask(bo.PeerId, "puppets"));
+        Dictionary<string, string> cySees = cy is null ? new() : Fields(await Ask(cy.PeerId, "puppets want=1"));
+        Dictionary<string, string> boSeesCy = Fields(await Ask(bo.PeerId, "puppets want=1"));
         Check("LATE-JOIN-DURING-RUN", cyHome && F(cySees, "puppets") == 1f && F(boSeesCy, "puppets") == 1f,
             $"cy home={cyHome}; cy: {Line(cySees)}; bo: {Line(boSeesCy)}");
 
@@ -502,7 +571,13 @@ public partial class HideoutCoopGuest : CoopTestDriver
             case "scene":
                 return $"scene={GetTree().CurrentScene?.Name} phase={session.PartyPhase} guest={(town?.IsGuest == true ? 1 : 0)}";
             case "puppets":
-                return $"puppets={town?.Party.Puppets.Count ?? -1} players={GetTree().GetNodesInGroup(Combat.CombatQuery.PlayerGroup).Count}";
+                // A guest that just loaded draws its first frames slowly: give it a moment to catch up.
+                if (f.TryGetValue("want", out string? want))
+                {
+                    await WaitFor(() => town?.Party.Puppets.Count == want.ToInt(), 6f);
+                }
+
+                return $"puppets={town?.Party.Puppets.Count ?? -1} players={GetTree().GetNodesInGroup(Combat.CombatQuery.PlayerGroup).Count} presence_in={session.PresenceReceived} sent={session.PresenceSent} place={session.LocalPlace} fps={Engine.GetFramesPerSecond()} error={town?.Party.LastError.Replace(' ', '_')}";
             case "walk":
             {
                 Player p = town!.Player;
@@ -511,11 +586,17 @@ public partial class HideoutCoopGuest : CoopTestDriver
                 await Seconds(0.6f);
                 p.Command = null;
                 await Seconds(0.2f);
-                return $"x={Num(p.GlobalPosition.X)} y={Num(p.GlobalPosition.Y)} moved={Num(from.DistanceTo(p.GlobalPosition))}";
+                return $"x={Num(p.GlobalPosition.X)} y={Num(p.GlobalPosition.Y)} moved={Num(from.DistanceTo(p.GlobalPosition))} place={session.LocalPlace}";
             }
             case "puppet":
             {
                 long peer = long.Parse(f.GetValueOrDefault("peer", "0"), CultureInfo.InvariantCulture);
+                if (f.ContainsKey("x"))
+                {
+                    var near = new Vector2(F(f, "x"), F(f, "y"));
+                    await WaitFor(() => town!.Party.Puppets.TryGetValue(peer, out Player? p) && p.GlobalPosition.DistanceTo(near) < 24f, 1.5f);
+                }
+
                 bool has = town!.Party.Puppets.TryGetValue(peer, out Player? puppet);
                 return has ? $"x={Num(puppet!.GlobalPosition.X)} y={Num(puppet.GlobalPosition.Y)} paused={(GetTree().Paused ? 1 : 0)}" : $"none=1 paused={(GetTree().Paused ? 1 : 0)}";
             }
@@ -582,6 +663,14 @@ public partial class HideoutCoopGuest : CoopTestDriver
                 bool shownDiffers = town.Data.Find("d1") is { } shown && shown.Position.DistanceTo(OwnMark) > 1f;
                 bool gemKept = _boughtGem.Length > 0 && json.Contains(_boughtGem);
                 return $"own_kept={(ownKept && shownDiffers ? 1 : 0)} gem_kept={(gemKept ? 1 : 0)} file_bytes={json.Length}";
+            }
+            case "pause":
+            {
+                town!.Pause.Open();
+                string entries = string.Join(",", town.Pause.ExtraTexts);
+                string leave = town.Pause.LeaveButtonText;
+                town.Pause.Close();
+                return $"entries={entries.Replace(' ', '_')} leave={leave.Replace(' ', '_')}";
             }
             case "propose":
                 town!.ProposeRift(RiftSpec.SurvivalRift());
