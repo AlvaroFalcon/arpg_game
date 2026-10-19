@@ -115,8 +115,10 @@ public partial class NetSession : Node
     /// 3: co-op level-up rounds (PartyRound, PickApplied, ClientOffers; ClientPick carries the round).
     /// 4: the cash-out round (PartyRound kind 3; ClientPick carries "leave" or "stay").
     /// 5: party session (hideout, proposals, presence, edit lock, co-op realities):
-    /// RpcStartRun replaced by the StartRift party message, to the participants only.</summary>
-    public const int Protocol = 5;
+    /// RpcStartRun replaced by the StartRift party message, to the participants only.
+    /// 6: co-op Altered Realities (RealityProtocol events 64-69, a reality's snapshot
+    /// header, the held skill buttons at the end of a reality client's input).</summary>
+    public const int Protocol = 6;
 
     /// <summary>First bytes of the authentication message ("ARPG").</summary>
     private static readonly byte[] AuthMagic = { 0x41, 0x52, 0x50, 0x47 };

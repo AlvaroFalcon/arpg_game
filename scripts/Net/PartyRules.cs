@@ -186,7 +186,8 @@ public static class PartyRules
     /// <summary>Hideout presence (position, moving/sprinting/dodging) per second, each way.</summary>
     public const int PresenceHz = 10;
 
-    /// <summary>Co-op Altered Realities exist (phase B). Until then a proposal for a
-    /// reality is refused and the Mirror only offers the Survival Rift in a party.</summary>
-    public const bool CoopRealities = false;
+    /// <summary>Co-op Altered Realities are on (docs/design/endgame.md -> "Co-op realities"):
+    /// the Mirror proposes a reality to the party. False refuses reality proposals and
+    /// the Mirror offers only the Survival Rift in a party.</summary>
+    public const bool CoopRealities = true;
 }

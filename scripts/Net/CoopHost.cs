@@ -45,6 +45,8 @@ public abstract partial class CoopHost : Node, IRunLink
         public long SnapshotBytes;
         public long EventBytes;
         public long SnapshotChunks;
+        public long InputsGot;
+        public long InputsLost;
     }
 
     /// <summary>The activity replicated (the Rift's run state, a reality's party).</summary>
@@ -98,6 +100,10 @@ public abstract partial class CoopHost : Node, IRunLink
     /// <summary>Payload bytes sent to <paramref name="peer"/> so far (snapshots, events).</summary>
     public (long Snapshots, long Events) BytesTo(long peer) =>
         _links.TryGetValue(peer, out Link? l) ? (l.SnapshotBytes, l.EventBytes) : (0, 0);
+
+    /// <summary>Inputs from <paramref name="peer"/> that arrived and that never did (sequence gaps: the
+    /// unreliable channel's loss, ENet's throttle included). Bench and diagnostics.</summary>
+    public (long Got, long Lost) InputsFrom(long peer) => _links.TryGetValue(peer, out Link? l) ? (l.InputsGot, l.InputsLost) : (0, 0);
 
     /// <summary>Snapshot chunks sent to <paramref name="peer"/> so far (bench: against the client's count, the loss).</summary>
     public long ChunksTo(long peer) => _links.TryGetValue(peer, out Link? l) ? l.SnapshotChunks : 0;
@@ -164,6 +170,13 @@ public abstract partial class CoopHost : Node, IRunLink
     protected virtual void ModeTick(float dt)
     {
     }
+
+    /// <summary>True: far monsters that sleep (a reality's packs before they wake) are left out of
+    /// snapshots; they stand where their spawn record put them until they wake or come near.</summary>
+    protected virtual bool SkipFarDormant => false;
+
+    /// <summary>The loaded link of <paramref name="peer"/>, or null.</summary>
+    protected Link? LinkByPeer(long peer) => _links.TryGetValue(peer, out Link? l) && l.Ready ? l : null;
 
     /// <summary>True holds every client's movement (the Rift: a level-up round is open).</summary>
     protected virtual bool HoldInputs => false;
@@ -742,15 +755,24 @@ public abstract partial class CoopHost : Node, IRunLink
         }
     }
 
+    /// <summary>The string a drop's records carry (its orb id; a reality's gem: the gem id).</summary>
+    protected virtual string PickupKey(Pickup pickup) => pickup.CurrencyKey;
+
+    /// <summary>After a drop's spawn record: anything else its owner's copy needs (a gem's kind).</summary>
+    protected virtual void WritePickupExtra(Link link, Pickup pickup)
+    {
+    }
+
     private void WritePickupSpawn(Link link, Pickup pickup)
     {
-        ushort key = Intern(pickup.CurrencyKey);
+        ushort key = Intern(PickupKey(pickup));
         link.Events.U8(RiftProtocol.PickupSpawn);
         link.Events.U32(pickup.NetId);
         link.Events.U8((byte)pickup.Kind);
         link.Events.F32(pickup.Value);
         link.Events.Pos(pickup.GlobalPosition);
         link.Events.U16(key);
+        WritePickupExtra(link, pickup);
     }
 
     private void OnPickupCollected(Pickup pickup, Player player, int detail)
@@ -766,7 +788,7 @@ public abstract partial class CoopHost : Node, IRunLink
             link.Events.U32(pickup.NetId);
         }
 
-        ushort key = Intern(pickup.CurrencyKey);
+        ushort key = Intern(PickupKey(pickup));
         link.Events.U8(RiftProtocol.Collected);
         link.Events.U8((byte)pickup.Kind);
         link.Events.F32(pickup.Value);
@@ -823,7 +845,7 @@ public abstract partial class CoopHost : Node, IRunLink
                 }
 
                 bool near = enemy.IsBoss || enemy.GlobalPosition.DistanceSquaredTo(focus) <= RiftProtocol.NearRadius * RiftProtocol.NearRadius;
-                if (!near && (_tick + enemy.NetId) % 4 != 0)
+                if (!near && (SkipFarDormant && enemy.Dormant || (_tick + enemy.NetId) % 4 != 0))
                 {
                     continue;
                 }
@@ -955,6 +977,12 @@ public abstract partial class CoopHost : Node, IRunLink
         }
 
         PlayerCommand c = link.Command;
+        if (c.ReceivedMsec != 0)
+        {
+            link.InputsLost += (ushort)(seq - c.Seq - 1);
+        }
+
+        link.InputsGot++;
         c.Seq = seq;
         c.Move = r.Dir8();
         c.Aim = r.Pos();

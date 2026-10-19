@@ -17,6 +17,8 @@ Owner decision (2026-10-16, "option 3"): direct-IP hosting should work without a
 - `scripts/Net/RiftHost.cs` (host) watches the game and tells clients what they need. It also applies their inputs, runs the party's level-up rounds (`RiftHost.Rounds.cs`, see "Level-ups"), runs the revive rule, waits for everyone to load, and handles disconnects.
 - `scripts/Net/RiftClient.cs` (client) shows the host's game. Nothing simulated on a client can deal damage: `NetMode.ClientSide` makes `Health` ignore every hit. Every number the player sees comes from the host.
 
+**Replication layers (2026-10-19).** The shared part lives in two abstract bases, `scripts/Net/CoopHost.cs` and `scripts/Net/CoopClient.cs`: snapshots, event batches, the string table, monster/projectile/effect capture and replay, inputs and reconciliation, instanced drops, boss tracking, the load handshake, disconnects. They talk to the activity through `ICoopWorld` (players, ended, toasts, the loot hooks). Each mode adds a thin subclass: `RiftHost`/`RiftClient` (the run's numbers, run level, director banners and portal, level-up and cash-out rounds, revives) and `RealityHost`/`RealityClient` (see "Co-op realities"). The split was a pure move: the Rift's bytes on the wire are unchanged and `CoopSmokeTest` passed untouched. Neither base is ever instantiated from a scene.
+
 Offline play doesn't change. Without an active session, no net node is added, `Coop` is false, and every single-player rule applies. All 11 pre-existing suites still pass.
 
 ### Players
@@ -44,6 +46,9 @@ Offline play doesn't change. Without an active session, no net node is added, `C
 | Banners, toasts, boss spawned / phase / attack name / callouts, exit portal, run begin/end | event | reliable |
 | Damage numbers for the client's own hits | event, to that client only | reliable |
 | Client → host: input (move, aim, sprint, choosing, dodge/flask counters, sequence) | input packet | every physics frame, unreliable |
+| Realities: kills, monsters total, the shared portal pool, boss fight / cleared / collapsed flags, the receiver's mana | snapshot header (instead of the Rift's) | 20 Hz, unreliable |
+| Realities: a gem drop's kind (`PickupExtra` 64), teleports (65), the end for everyone (66), the gate (67), the clear (68), the exit portal (69) | event (`RealityProtocol`) | reliable |
+| Client → host, realities only: the six skill buttons held (one byte at the end of the input) | input packet | every physics frame, unreliable |
 | Client → host: ready; the row on screen in a round (keys, on open and per reroll); the card picked (round id + `UpgradeOffer.Key`) | event | reliable |
 
 Notes:
@@ -139,6 +144,20 @@ Host → client kinds: Roster (phase, the rift, edit holder, every member's plac
 | D12 | A guest leaves on purpose | Back to their own hideout, alone |
 | D13 | Pausing | Nothing pauses in a party; panels hold the player still instead |
 
+## Co-op realities (2026-10-19, phase B)
+
+An Altered Reality of tier N ("Rift 20" = a tier-20 reality) is proposed from the Mirror in the hideout with the same 30 s popup as the Survival Rift ("Ana is opening an Altered Reality — Tier 20"). The host always takes part; the host declining or not answering cancels it for everyone; whoever doesn't join waits in the hideout (D1). The proposer's shard is spent on the proposer's machine when the reality starts, never on a cancel (D8). Design rules: `docs/design/endgame.md` → "Co-op realities".
+
+How it runs (`RealityController` + `RealityHost`/`RealityClient`):
+- **Same cavern everywhere.** The host draws the seed when the proposal starts (`StartRift` carries it); every participant builds the layout from it (`LayoutBuilder.Rasterize`/`BuildScene` use only the seeded RNG). `CoopRealityTest` compares a hash of the cavern on both machines.
+- **Only the host** spawns packs and the boss, simulates monsters, resolves damage and rolls loot. Clients show replicas (`NetMode.ClientSide`). The host's `RealityHost` is added before the packs spawn so it sees every monster appear; a client that loads later gets them all, plus which replica is the boss, the gate and the exit portal (`CatchUp`).
+- **Sleeping packs** far from a client's player are not re-sent in snapshots (`SkipFarDormant`); their spawn record places them. Awake or near ones go at the usual rates.
+- **Casting is pressed, not automatic.** A reality client sends the six skill buttons it holds (`PlayerCommand.HeldSlots`) with its input; the host casts for that player's copy at that player's cursor (`PlayerSkillInput` reads the command and never the host's keyboard for a remote copy). The client doesn't cast locally (no prediction of casts); its mana comes from the snapshot.
+- **Monsters chase the nearest living player** along the walls: `FlowField.Update(targets)` is one breadth-first pass from every living player's cell.
+- **Rewards on each player's own machine.** The host never writes a remote player's pickups into its own profile: shards, jewels, gems, orbs and gold are applied by the owner's client when the host says the drop was collected (`RealityController.ApplyReward`, shared by solo and client). Deaths, kills and the clear (`RealitiesCleared`, best tier, ascendancy points, `GameEvents.BossKilled`) are recorded on each machine for its own player (`RealityCleared` event). No slow motion on deaths in co-op.
+- **Leaving.** A client's E at the exit portal or "Leave the reality" goes home alone and stays in the party (the host drops its player and drops). The host's E with friends inside asks for a second E within 4 s ("Your friends are still inside"); the host leaving, the pause menu's "Close the reality for everyone", or a collapse sends `RealityEnd` and everyone goes home after 3 s, keeping what they collected. The host disconnecting sends guests to the main menu with the notice.
+- **Nothing pauses** (D13): the pause menu and panels don't stop the tree in a session.
+
 ## Security (direct IP without a VPN, 2026-10-16)
 
 Hosting by IP over the open internet means anyone who finds the address and port can try to connect. Friends only, no anti-cheat, still holds: the aim is that a stranger can't get in, and that a broken or hostile client can't crash or stall the host. It is not about stopping a friend from cheating.
@@ -221,14 +240,14 @@ UPnP fails on many networks: CG-NAT is common on mobile and fibre ISPs, and some
 
 ## Party rules (`scripts/Net/PartyRules.cs`, one table, proposals)
 
-| players | spawn rate | enemy cap | monster life | boss life | xp / drop share | party xp to level | item quantity | item rarity | reality packs (B) | reality portals (B) |
+| players | spawn rate | enemy cap | monster life | boss life | xp / drop share | party xp to level | item quantity | item rarity | reality packs | reality portals (shared pool) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 1 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1.00 | ×1 | +0 % | +0 % | ×1.0 | the tier's |
 | 2 | ×1.50 | ×1.15 | ×1.50 | ×1.70 | ×0.67 | ×2 | +15 % | +10 % | ×1.2 | +1 |
 | 3 | ×2.00 | ×1.30 | ×2.00 | ×2.40 | ×0.50 | ×3 | +30 % | +20 % | ×1.4 | +2 |
 | 4 | ×2.50 | ×1.45 | ×2.50 | ×3.10 | ×0.40 | ×4 | +45 % | +30 % | ×1.6 | +3 |
 
-**Loot bonus (D3, 2026-10-18, a proposal for the owner to tune).** Loot is instanced and the share brings each player back to about solo, so playing together paid nothing extra. In the Survival Rift the chance-based gold, orb and elite gear rolls are multiplied by 1 + item quantity (after the share; life orbs aren't loot and keep their chance; bosses' fixed drops unchanged), and gear rarity rolls with the Rift's multiplier × (1 + item rarity) (`RunState.DropChances`, `LootQuantity`, `LootRarity`). A party of one gets exactly the old numbers in the same order. Realities will add both to their own quantity and rarity (phase B). The proposal popup and the Rift's start banner show "+30 % item quantity · +20 % item rarity".
+**Loot bonus (D3, 2026-10-18, a proposal for the owner to tune).** Loot is instanced and the share brings each player back to about solo, so playing together paid nothing extra. In the Survival Rift the chance-based gold, orb and elite gear rolls are multiplied by 1 + item quantity (after the share; life orbs aren't loot and keep their chance; bosses' fixed drops unchanged), and gear rarity rolls with the Rift's multiplier × (1 + item rarity) (`RunState.DropChances`, `LootQuantity`, `LootRarity`). A party of one gets exactly the old numbers in the same order. Realities add both to their own quantity and rarity (with the shard modifiers and jewels); there every participant rolls the full solo loot of every kill (no share), so the bonus is on top of solo. In a reality monster and boss life use the same columns as the Rift, packs are bigger by the "reality packs" column (rounded per pack), and the party shares one portal pool of the tier's portals plus one per extra player. The proposal popup and the Rift's start banner show "+30 % item quantity · +20 % item rarity".
 
 Level-up numbers (same file):
 
@@ -333,6 +352,8 @@ It judges by its RESULT line, mirrored to `user://test_results/CoopSmokeTest.txt
 
 **Co-op screen:** `./scripts/run_all_tests.sh CoopUiSmokeTest` (about 25 s). Real `CoopPanel`s on the autoload session (host) and on in-process friend sessions, each with its own panel: the no-character state; empty fields, a malformed code and a bad port show inline errors and start nothing; the invite pastes back into address + code (also from a chat line with the code in two halves); the host lobby lists 4 slots with 3 free and the invite holds the code; a friend's panel goes Connecting → Lobby and both sides show 2 free slots; a wrong code ends on the *Wrong join code* card (`SessionEnd.WrongCode`); a fifth player ends on *The party is full*; the run-started and version reasons classify to their cards; closing the lobby shows *The host closed the lobby* on the friend's side; a join to an unused local port shows Connecting and fails within 12 ± 3 s on *Couldn't reach the host*; Cancel while connecting stops the session. Since 2026-10-18 it also drives real main menus: `MENU-NOTICE` (a lost party's reason shows once), `MENU-PLAY-CHOOSER` (Play → Solo / With friends → the character list for each → the co-op screen), `MENU-FOCUS` (Back focuses the button that opened each screen), `MENU-TUTORIAL-PROMPT` (a new character with friends is asked about the introduction; Skip sets `TutorialDone`).
 
+**Co-op realities:** `./scripts/run_all_tests.sh CoopRealityTest` (about 60 s). The host and one guest process (scratch save that really writes) go to the hideout; the host proposes a tier-3 reality with a pinned seed from the session's proposal path and the guest joins. Pure checks first (`FLOWFIELD-MULTI`, `PARTY-RULES-REALITY`). Then: the same cavern hash on both, two players on each side, every monster replicated, the shared pool and the boss known on the client; the guest walks and holds its skill buttons and the host's copy follows and casts; a kill gives both characters experience; a forced shard and item for the guest land in the guest's profile and floor while the host's shard count stays put and nothing of the guest's shows on the host; the host's pause menu stops nothing; a death costs the pool one and the guest is teleported back; a forged teleport outside the cavern is ignored; the host entering the arena pulls the guest in and closes the gate on both; the boss falls and the guest's clear is recorded on its machine with an exit portal; the guest goes home alone (its own save file has the clear) while the host plays on; the host closes it; a second reality collapses on the last portal and both are home. Mirrored to `user://test_results/CoopRealityTest.txt`.
+
 **Load bench:** `./scripts/run_headless.sh res://scenes/tools/CoopBench.tscn -- [--clients=3] [--run-time=350]` runs a full party of four at a late wave, then a Cataclysm. Output goes to `user://bench/coop_bench.txt`. It sets `RiftHost.AutoPickAll`: every round, the start pick included, is decided at once with the first cards, so the bench measures the fight and not the pauses.
 
 ### Testing it yourself
@@ -368,7 +389,8 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 
 ## Known limitations
 
-- Rifts with friends: the Survival Rift only. Realities (phase B) and the tutorial are single-player; in a party the Mirror's reality button is disabled.
+- The tutorial (The Threshold) is single-player.
+- Co-op realities: a client doesn't predict its own casts (they show after the round trip plus 100 ms); its skill bar doesn't show cooldowns (casts happen on the host); Nereth's mirror reflections (cosmetic sprites) aren't shown on clients, though the attacks they telegraph are; jewels and their drop chance come from the host's Mirror for everyone (a jewel past the tree's sockets is ignored by the client); a client's `TotalKills` isn't counted for its kills in a co-op reality.
 - Hideout presence carries position and three flags: puppets face where they move, not where their player aims; no skills, dodge trails or emotes are shown. The training dummies are local.
 - A host playing alone while hosting gets co-op rules for a party of one in the Rift (all scaling ×1, but the pause menu doesn't pause).
 - Not replicated: shadow clones and consecrated ground (the host's ascendancy effects still work there), boss cast bars (attack names and callouts are), dodge afterimages of other players, other players' aim-based facing (a puppet faces where it moves), and the sound of hits that land on other players' monsters.
@@ -381,7 +403,6 @@ Bench: a party of 4 (host plus 3 headless clients) on a 4-core cloud container. 
 
 ## Next steps
 
-- **Realities:** the same host/client split. `RealityController` gets the `RunState` treatment (per-player loot and portals), clients build the cavern from the seed (`CaveGenerator` is already seeded), `FlowField` follows several players (a multi-source field), and the boss arena gate waits for the party.
 - **Steam/EOS:** a `NetTransport` branch returning a Steam/EOS `MultiplayerPeer`, a lobby invite instead of an IP and code, and a relay with no port forwarding (see "Security" → "Why relays").
 - Bandwidth, if needed: delta-encode monster positions against the last acked snapshot, and send far monsters at a lower rate still.
 - Rejoin by name after a drop.

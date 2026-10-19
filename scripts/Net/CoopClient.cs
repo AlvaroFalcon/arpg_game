@@ -120,6 +120,32 @@ public abstract partial class CoopClient : Node, IRunLink
     /// <summary>Snapshots received (diagnostics).</summary>
     public int Snapshots { get; private set; }
 
+    private uint _firstTick;
+    private uint _lastTick;
+    private long _ticksSeen;
+
+    /// <summary>Snapshot ticks that arrived (their first chunk) out of those the host sent
+    /// since the first one seen: 1 = no loss (bench: ENet's throttle drops unreliable packets).</summary>
+    public double SnapshotDelivery => _ticksSeen == 0 ? 0 : _ticksSeen / (double)(_lastTick - _firstTick + 1);
+
+    /// <summary>Starts a fresh delivery count (bench windows).</summary>
+    public void ResetDelivery() => _ticksSeen = 0;
+
+    private void CountTick(uint tick)
+    {
+        if (_ticksSeen == 0)
+        {
+            _firstTick = tick;
+            _lastTick = tick;
+        }
+        else if (tick > _lastTick)
+        {
+            _lastTick = tick;
+        }
+
+        _ticksSeen++;
+    }
+
     /// <summary>The last local physics step's cost in microseconds (perf measurement).</summary>
     public double LastProcessMicros { get; private set; }
 
@@ -402,7 +428,7 @@ public abstract partial class CoopClient : Node, IRunLink
     public void OnSnapshot(byte[] data)
     {
         var r = new NetReader(data);
-        r.U32();
+        uint tick = r.U32();
         double hostTime = r.F32();
         byte part = r.U8();
         if (!double.IsFinite(hostTime) || hostTime < 0 || hostTime > 1e7)
@@ -413,6 +439,11 @@ public abstract partial class CoopClient : Node, IRunLink
 
         ObserveHostTime(hostTime);
         Snapshots++;
+        if (part == 0)
+        {
+            CountTick(tick);
+        }
+
         if (part == 0)
         {
             ReadModeShared(r, hostTime);
@@ -851,6 +882,11 @@ public abstract partial class CoopClient : Node, IRunLink
                 pickup.Cosmetic = true;
                 pickup.NetId = id;
                 pickup.CurrencyKey = key;
+                if (kind == PickupKind.Gem)
+                {
+                    pickup.GemId = key; // a reality's gem drop: the key is the gem id
+                }
+
                 pickup.QueueRedraw();
                 _pickups[id] = pickup;
                 return true;
@@ -1062,6 +1098,20 @@ public abstract partial class CoopClient : Node, IRunLink
     public virtual void OnHostLost(string reason)
     {
         FlushQueuedEvents();
+    }
+
+    /// <summary>This player's drop <paramref name="id"/> shown here, or null.</summary>
+    protected Pickup? PickupById(uint id) => _pickups.TryGetValue(id, out Pickup? p) && IsInstanceValid(p) ? p : null;
+
+    /// <summary>The host moved this player (a respawn, the boss arena's pull-in): snap there and
+    /// forget the predictions made before, so reconciliation doesn't pull it back.</summary>
+    protected void SnapLocal(Vector2 at)
+    {
+        Local.GlobalPosition = at;
+        for (int i = 0; i < _history.Length; i++)
+        {
+            _history[i] = (_history[i].Seq, at);
+        }
     }
 
     /// <summary>Applies every event batch still waiting for its moment.</summary>
