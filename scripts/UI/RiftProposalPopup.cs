@@ -228,7 +228,7 @@ public partial class RiftProposalPopup : CanvasLayer
     private string Describe(ProposalView view)
     {
         int players = Math.Max(2, view.Accepted + view.Pending);
-        string party = $"Monsters get tougher with each player (life ×{PartyRules.MonsterLife(players):0.0} for {players})";
+        string party = $"With {players} players: {PartyRules.LootBonusText(players)} · monster life ×{PartyRules.MonsterLife(players):0.0}";
         if (view.Spec.Kind == RiftKind.Reality)
         {
             int tier = view.Spec.Tier;

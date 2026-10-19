@@ -9,12 +9,16 @@ namespace ArpgGame.Net;
 /// untouched. These are proposals for the owner to tune, not settled balance.
 ///
 /// <code>
-/// players  spawn rate  enemy cap  monster life  boss life  xp/loot share  party xp to level
-///    1        ×1.00      ×1.00       ×1.00        ×1.00       ×1.00            ×1
-///    2        ×1.50      ×1.15       ×1.50        ×1.70       ×0.67            ×2
-///    3        ×2.00      ×1.30       ×2.00        ×2.40       ×0.50            ×3
-///    4        ×2.50      ×1.45       ×2.50        ×3.10       ×0.40            ×4
+/// players  spawn rate  enemy cap  monster life  boss life  xp/loot share  party xp to level  item quantity  item rarity  reality packs  reality portals
+///    1        ×1.00      ×1.00       ×1.00        ×1.00       ×1.00            ×1               +0%           +0%          ×1.0           tier's
+///    2        ×1.50      ×1.15       ×1.50        ×1.70       ×0.67            ×2              +15%          +10%          ×1.2           tier's +1
+///    3        ×2.00      ×1.30       ×2.00        ×2.40       ×0.50            ×3              +30%          +20%          ×1.4           tier's +2
+///    4        ×2.50      ×1.45       ×2.50        ×3.10       ×0.40            ×4              +45%          +30%          ×1.6           tier's +3
 /// </code>
+///
+/// The item quantity and rarity columns (2026-10-18, a proposal for the owner to tune) are
+/// the reward for playing together: loot stays instanced, so without them a party member
+/// finds about what they would alone. Realities and packs/portals are phase B.
 ///
 /// More enemies and tougher enemies, because two to four builds kill much faster
 /// than one. The enemy cap grows slowly on purpose: the host simulates every
@@ -47,6 +51,26 @@ public static class PartyRules
 
     /// <summary>Multiplier on boss life: everybody focuses the boss.</summary>
     public static float BossLife(int players) => 1f + 0.7f * Extra(players);
+
+    /// <summary>Item quantity bonus for playing together (0.15 per extra player): the
+    /// Survival Rift multiplies its chance-based gold, orb and gear rolls by 1 + this;
+    /// a reality adds it to its item quantity. A proposal for the owner to tune.</summary>
+    public static float ItemQuantity(int players) => 0.15f * Extra(players);
+
+    /// <summary>Item rarity bonus for playing together (0.10 per extra player): the Rift's
+    /// gear rarity roll is multiplied by 1 + this; a reality adds it to its item rarity.</summary>
+    public static float ItemRarity(int players) => 0.10f * Extra(players);
+
+    /// <summary>Co-op realities (phase B): pack sizes ×(1 + 0.2 per extra player), rounded per pack.</summary>
+    public static float RealityPackSize(int players) => 1f + 0.2f * Extra(players);
+
+    /// <summary>Co-op realities (phase B): one shared pool of portals, the tier's plus one per extra player.</summary>
+    public static int RealityPortals(int tier, int players) => World.RealityTiers.Portals(tier) + Extra(players);
+
+    /// <summary>"+30% item quantity · +20% item rarity" for a party of <paramref name="players"/> ("" alone).</summary>
+    public static string LootBonusText(int players) => players > 1
+        ? $"+{ItemQuantity(players) * 100f:0}% item quantity · +{ItemRarity(players) * 100f:0}% item rarity"
+        : "";
 
     /// <summary>Each player's share of a kill's experience and of the chance-based
     /// drops of ordinary monsters (1 / spawn rate, so levelling pace and loot per

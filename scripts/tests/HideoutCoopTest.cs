@@ -140,6 +140,7 @@ public partial class HideoutCoopHost : CoopTestDriver
         }
 
         ProposalUnitChecks();
+        PartyRuleChecks();
         profile.Hideout = new HideoutData();
         HideoutCatalog.EnsureDefaults(profile.Hideout);
         profile.Hideout.GuideSeen = true;
@@ -504,6 +505,51 @@ public partial class HideoutCoopHost : CoopTestDriver
         Check("EDIT-REVOKE", again.GetValueOrDefault("editing") == "1" && revoked.GetValueOrDefault("editing") == "0" && revoked.GetValueOrDefault("toast", "").Contains("took_back")
                 && session.EditHolder == 0 && !session.CanEditOf(ana.PeerId) && LayoutKey(town.Data) == layoutBefore,
             $"editing before={again.GetValueOrDefault("editing")}; after the revoke: {Line(revoked)}; lock {session.EditHolder}");
+    }
+
+    /// <summary>The party loot bonus in the one table (docs/design/multiplayer.md -> "Party rules").</summary>
+    private void PartyRuleChecks()
+    {
+        bool solo = PartyRules.ItemQuantity(1) == 0f && PartyRules.ItemRarity(1) == 0f && PartyRules.RealityPackSize(1) == 1f
+            && PartyRules.RealityPortals(5, 1) == RealityTiers.Portals(5) && PartyRules.LootBonusText(1) == "";
+        Check("PARTY-RULES-SOLO-ONE", solo, "a party of one gets +0% quantity, +0% rarity, ×1 packs and the tier's portals");
+        string table = string.Join(" ", new[] { 2, 3, 4 }.Select(n => $"{n}:{PartyRules.ItemQuantity(n):0.00}/{PartyRules.ItemRarity(n):0.00}/{PartyRules.RealityPackSize(n):0.0}/{PartyRules.RealityPortals(5, n) - RealityTiers.Portals(5)}"));
+        Check("PARTY-RULES-TABLE", table == "2:0.15/0.10/1.2/1 3:0.30/0.20/1.4/2 4:0.45/0.30/1.6/3" && PartyRules.LootBonusText(3) == "+30% item quantity · +20% item rarity",
+            $"quantity/rarity/packs/extra portals: {table}; '{PartyRules.LootBonusText(3)}'");
+
+        // Seeded rolls through the Rift's own chances: a party of three with the bonus against
+        // the same party without it (the share already brings each player back to solo).
+        var rng = new RandomNumberGenerator { Seed = 42 };
+        float share = PartyRules.Share(3);
+        int goldWith = 0, goldWithout = 0, orbWith = 0, orbWithout = 0, lifeWith = 0, lifeWithout = 0;
+        for (int i = 0; i < 200_000; i++)
+        {
+            foreach (bool bonus in new[] { true, false })
+            {
+                (float life, float lifeOrGold, float orb, _) = global::ArpgGame.Run.RunState.DropChances(false, share, bonus ? 1f + PartyRules.ItemQuantity(3) : 1f);
+                float roll = rng.Randf();
+                bool gotLife = roll < life;
+                bool gotGold = !gotLife && roll < lifeOrGold;
+                bool gotOrb = rng.Randf() < orb;
+                if (bonus)
+                {
+                    (lifeWith, goldWith, orbWith) = (lifeWith + (gotLife ? 1 : 0), goldWith + (gotGold ? 1 : 0), orbWith + (gotOrb ? 1 : 0));
+                }
+                else
+                {
+                    (lifeWithout, goldWithout, orbWithout) = (lifeWithout + (gotLife ? 1 : 0), goldWithout + (gotGold ? 1 : 0), orbWithout + (gotOrb ? 1 : 0));
+                }
+            }
+        }
+
+        float goldRatio = goldWith / (float)Math.Max(1, goldWithout);
+        float orbRatio = orbWith / (float)Math.Max(1, orbWithout);
+        float lifeRatio = lifeWith / (float)Math.Max(1, lifeWithout);
+        (float soloLife, float soloLifeOrGold, float soloOrb, float soloGear) = global::ArpgGame.Run.RunState.DropChances(false, 1f, 1f);
+        (_, _, _, float eliteGear) = global::ArpgGame.Run.RunState.DropChances(true, 1f, 1f);
+        bool unchanged = Mathf.IsEqualApprox(soloLife, 0.012f) && Mathf.IsEqualApprox(soloLifeOrGold, 0.05f) && Mathf.IsEqualApprox(soloOrb, global::ArpgGame.Run.RunState.OrbChance) && soloGear == 0f && Mathf.IsEqualApprox(eliteGear, 0.3f);
+        Check("RIFT-QUANTITY-APPLIED", Mathf.Abs(goldRatio - 1.3f) < 0.13f && Mathf.Abs(orbRatio - 1.3f) < 0.13f && Mathf.Abs(lifeRatio - 1f) < 0.1f && unchanged,
+            $"party of 3 over 200 000 kills: gold ×{goldRatio:0.00}, orbs ×{orbRatio:0.00}, life orbs ×{lifeRatio:0.00} with the bonus; solo chances unchanged={unchanged}");
     }
 
     /// <summary>The proposal's rules without a network (docs/design/multiplayer.md -> "Proposals").</summary>

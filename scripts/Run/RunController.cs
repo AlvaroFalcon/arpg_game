@@ -410,7 +410,10 @@ public partial class RunController : Node2D
     private void BeginRun()
     {
         Director.Spawning = !NetSessionIsClient;
-        Hud.ShowBanner("Survival Rift", Coop ? $"A party of {State.PartySize} — reach the Ember Colossus and break it" : "Reach the Ember Colossus — and break it", UiTheme.Gold);
+        string bonus = Net.PartyRules.LootBonusText(State.PartySize);
+        Hud.ShowBanner("Survival Rift", Coop
+            ? $"A party of {State.PartySize}{(bonus.Length > 0 ? $" · {bonus}" : "")} — reach the Ember Colossus and break it"
+            : "Reach the Ember Colossus — and break it", UiTheme.Gold);
     }
 
     public override void _Process(double delta)
