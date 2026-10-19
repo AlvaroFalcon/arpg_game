@@ -27,11 +27,10 @@ Posts are published on https://alvarofalcon.github.io/devlogs/, built from the s
 [AlvaroFalcon/devlogs](https://github.com/AlvaroFalcon/devlogs); that's the only place new posts go
 (`docs/devlog/posts/` here keeps just the first six as history). Read that repo's `CLAUDE.md` first: it holds the rules.
 
-**When you run:** automatically on every PR merged into `main` (`.github/workflows/devlog.yml` checks the devlogs
-repo out at `./devlogs` and hands you the PR, its journal diff and its screenshots), or by hand when asked.
-A merged PR is a milestone; write about it unless it's too small to stand alone, in which case say so and stop.
+**When you run:** after a PR is merged into `main`. Read the PR, the journal entries it added and the screenshots
+it added. A merged PR is a milestone: write about it, unless it's too small to stand alone. In that case, say so and stop.
 
-1. Get the repo: in CI it's at `./devlogs`; in a cloud session attach it with `add_repo` (push access) and clone it to `/home/user/devlogs`; locally, use its existing checkout.
+1. Get the repo: in a cloud session attach it with `add_repo` (push access) and clone it to `/home/user/devlogs`; locally, use its existing checkout.
 2. Write `src/content/posts/arpg-game/<slug>.md`:
    - Frontmatter: `title`, `date`, a plain one- or two-sentence `summary`, and `cover` set to the most representative screenshot.
    - Copy only the screenshots the post uses from `docs/devlog/screenshots/` into `src/content/posts/arpg-game/images/`; link them as `./images/x.png`.
