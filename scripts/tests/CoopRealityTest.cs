@@ -256,6 +256,8 @@ public partial class CoopRealityHost : CoopTestDriver
         Dictionary<string, string> after = Fields(await Ask(ana.PeerId, "stats"));
         Check("REALITY-XP-SHARED", victim is not null && (F(after, "xp") > F(before, "xp") || F(after, "level") > F(before, "level")) && (Xp(host) > hostXp || Lvl(host) > hostLevel),
             $"ana xp {F(before, "xp")} → {F(after, "xp")} (level {F(before, "level")} → {F(after, "level")}), host xp {hostXp} → {Xp(host)} (level {hostLevel} → {Lvl(host)}), victim level {victim?.MonsterLevel}");
+        Check("REALITY-CLIENT-DROPS-DRAWN-LIKE-HOST", F(after, "items") > F(before, "items") && F(after, "drawn") == F(after, "items"),
+            $"ana's floor: {F(after, "items")} items, {F(after, "drawn")} with their icon and label (names {after.GetValueOrDefault("names")}); before the fix a client's gear drop was the grey placeholder square with no label");
         Check("REALITY-KILL-INSTANCED", shardSent && F(after, "shards") == F(before, "shards") + 1 && profile.Active.ShardCount(3) == hostShards && hiddenOnHost == 0 && F(after, "items") > F(before, "items"),
             $"ana tier-3 shards {F(before, "shards")} → {F(after, "shards")}, host's {hostShards} → {profile.Active.ShardCount(3)}; ana's drops visible on the host: {hiddenOnHost}; ana's items on her floor {F(before, "items")} → {F(after, "items")}");
 
@@ -472,8 +474,11 @@ public partial class CoopRealityGuest : CoopTestDriver
                 CharacterData c = _profile.Active;
                 float xp = Reality is { } rr ? CoopRealityHost.Xp(rr.Player) : c.Experience;
                 int level = Reality is { } rl ? CoopRealityHost.Lvl(rl.Player) : c.Level;
-                int items = GetTree().CurrentScene?.GetChildren().OfType<Items.EquipmentItem>().Count() ?? 0;
-                return $"xp={xp.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} level={level} shards={c.ShardCount(3)} cleared={c.RealitiesCleared} items={items} portal={(Reality?.ExitPortal is not null ? 1 : 0)}";
+                var floor = GetTree().CurrentScene?.GetChildren().OfType<Items.EquipmentItem>().ToList() ?? new List<Items.EquipmentItem>();
+                // Drawn like the host's drops: the item's icon (not the grey placeholder square) and its filtered label.
+                int drawn = floor.Count(i => i.GetNodeOrNull<Sprite2D>("Icon") is { Visible: true, Texture: not null } && i.GetNodeOrNull<Polygon2D>("Visual") is not { Visible: true } && i.HasGroundLabel);
+                string names = string.Join("|", floor.Select(i => i.Descriptor.DisplayName.Replace(' ', '_')));
+                return $"xp={xp.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} level={level} shards={c.ShardCount(3)} cleared={c.RealitiesCleared} items={floor.Count} drawn={drawn} names={names} portal={(Reality?.ExitPortal is not null ? 1 : 0)}";
             }
 
             case "leave":

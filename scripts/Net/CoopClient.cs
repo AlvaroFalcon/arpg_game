@@ -964,6 +964,9 @@ public abstract partial class CoopClient : Node, IRunLink
                 {
                     Scene.AddChild(item);
                     item.GlobalPosition = at;
+                    // The icon and the filtered rarity label, as on the host (a restored item
+                    // has neither: it showed as the grey placeholder square).
+                    item.ShowOnGround();
                 }
 
                 return true;
