@@ -11,6 +11,7 @@ using ArpgGame.Core;
 using ArpgGame.Enemies;
 using ArpgGame.Net;
 using ArpgGame.Run;
+using ArpgGame.Skills;
 using ArpgGame.UI;
 
 namespace ArpgGame.Tests;
@@ -265,6 +266,9 @@ public partial class CoopTestHost : CoopTestDriver
                 answer ?? "no answer");
         }
 
+
+        await SkillEffectChecks(run, alpha, beta);
+
         await WaitFor(() => _lobbyReports == 2, 5f);
         Check("LOBBY-REPORTED-BY-BOTH-CLIENTS", _lobbyReports == 2, $"{_lobbyReports} of 2 clients reported the lobby");
 
@@ -506,6 +510,98 @@ public partial class CoopTestHost : CoopTestDriver
                 && F(alphaSecond, "round") == secondId && F(alphaSecond, "chosen") == 0f && F(alphaSecond, "paused") == 1f,
             $"rounds {firstId}→{secondId}, paused between={pausedThroughout}, resumed={done}, level {level}→{run.State.PartyLevel}, alpha saw round {alphaSecond.GetValueOrDefault("round")} (chosen={alphaSecond.GetValueOrDefault("chosen")})");
         await BuildsMatch("LEVEL-UP-SAME-BUILD-BOTH-SIDES", run, alpha, beta);
+    }
+
+    /// <summary>The 13 run skills and the visual each one leaves: (resource, kind, how many).</summary>
+    private static readonly (string Skill, string Kind, int Count)[] RunSkills =
+    {
+        ("cleave", "slash", 1), ("double_strike", "slash", 2), ("glacial_hammer", "slash", 1), ("storm_strike", "slash", 1),
+        ("sunder", "line", 1), ("frost_nova", "burst", 1), ("ground_slam", "burst", 1), ("meteor", "burst", 1),
+        ("blades", "orbit", 1), ("fireball", "projectile", 1), ("frost_shards", "projectile", 1), ("spark", "projectile", 1),
+        ("throwing_knives", "projectile", 1),
+    };
+
+    /// <summary>
+    /// Every skill's visual reaches the clients (the owner's report 2026-10-23: "my
+    /// friend was a warrior and the slash showed for me, but not for him"). The host's
+    /// copy of alpha casts each of the 13 run skills through its real SkillUser, and the
+    /// host casts Cleave: alpha must replay its own casts, beta alpha's, and both the
+    /// host's, each swing at its real arc (it used to arrive clamped to 6.3°).
+    /// </summary>
+    private async Task SkillEffectChecks(RunController run, LobbyMember alpha, LobbyMember beta)
+    {
+        Player a = run.State.PlayerByPeer(alpha.PeerId)!.Player!;
+        Player host = run.Player;
+        var before = new Dictionary<long, Dictionary<string, string>>();
+        foreach (LobbyMember m in new[] { alpha, beta })
+        {
+            before[m.PeerId] = Fields(await Ask(m.PeerId, "effects") ?? "");
+        }
+
+        SkillInstance? saved = a.SkillUser.GetSkill(SkillSlotId.Slot4);
+        var expected = new Dictionary<string, int>();
+        var cast = new List<string>();
+        foreach ((string skill, string kind, int count) in RunSkills)
+        {
+            if (ResourceLoader.Load($"res://resources/skills/run/{skill}.tres") is not SkillDefinition def)
+            {
+                continue;
+            }
+
+            a.SkillUser.EquipSkill(SkillSlotId.Slot4, new SkillInstance(def));
+            CastFailure? failure = a.SkillUser.TryCast(SkillSlotId.Slot4, Vector2.Right, a.GlobalPosition + new Vector2(120f, 0f));
+            if (failure is null)
+            {
+                cast.Add(skill);
+                expected[kind] = expected.GetValueOrDefault(kind) + count;
+            }
+
+            await Seconds(0.15f);
+        }
+
+        if (saved is not null)
+        {
+            a.SkillUser.EquipSkill(SkillSlotId.Slot4, saved);
+        }
+        else
+        {
+            a.SkillUser.ClearSlot(SkillSlotId.Slot4);
+        }
+
+        // The host's own swing (another player's cast, for both clients).
+        SkillInstance? hostSaved = host.SkillUser.GetSkill(SkillSlotId.Slot4);
+        var cleave = (SkillDefinition)ResourceLoader.Load("res://resources/skills/run/cleave.tres");
+        host.SkillUser.EquipSkill(SkillSlotId.Slot4, new SkillInstance(cleave));
+        bool hostCast = host.SkillUser.TryCast(SkillSlotId.Slot4, Vector2.Left) is null;
+        if (hostSaved is not null)
+        {
+            host.SkillUser.EquipSkill(SkillSlotId.Slot4, hostSaved);
+        }
+        else
+        {
+            host.SkillUser.ClearSlot(SkillSlotId.Slot4);
+        }
+
+        await Seconds(0.8f);
+        Check("SKILLS-CAST-ON-HOST", cast.Count == RunSkills.Length && hostCast, $"alpha's copy cast {cast.Count}/{RunSkills.Length} ({string.Join(",", cast)}); host cast cleave={hostCast}");
+        foreach (LobbyMember m in new[] { alpha, beta })
+        {
+            Dictionary<string, string> after = Fields(await Ask(m.PeerId, "effects") ?? "");
+            var missing = new List<string>();
+            foreach ((string kind, int count) in expected)
+            {
+                int need = count + (kind == "slash" ? 1 : 0); // + the host's cleave
+                float got = F(after, kind) - F(before[m.PeerId], kind);
+                if (got < need)
+                {
+                    missing.Add($"{kind} {got}/{need}");
+                }
+            }
+
+            string who = m == alpha ? "OWN-AND-OTHERS" : "OTHERS";
+            Check($"SKILL-VISUALS-ON-CLIENT-{m.Name.ToUpperInvariant()}-{who}", missing.Count == 0 && F(after, "arc") >= 140f,
+                $"{string.Join(" ", after.Select(kv => $"{kv.Key}={kv.Value}"))}; missing: {(missing.Count == 0 ? "none" : string.Join(", ", missing))}; last swing {after.GetValueOrDefault("arc")}° (the host's cleave: {(cleave is MeleeSkillDefinition md ? md.ArcDegrees : 0f)}°)");
+        }
     }
 
     private async Task<Error> HostOnFreePort(NetSession session, Profile profile)
@@ -916,6 +1012,12 @@ public partial class CoopTestClient : CoopTestDriver
 
             case "where":
                 return $"x={Num(run.Player.GlobalPosition.X)} y={Num(run.Player.GlobalPosition.Y)}";
+            case "effects":
+            {
+                string counts = string.Join(" ", new[] { "slash", "line", "burst", "bullet", "orbit", "projectile" }.Select(k => $"{k}={client.Replayed.GetValueOrDefault(k)}"));
+                return $"{counts} arc={Num(client.LastSlashArc)}";
+            }
+
             case "check_kill":
             {
                 bool cosmetic = GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>().All(p => p.Cosmetic);

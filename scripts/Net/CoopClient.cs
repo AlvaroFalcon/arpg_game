@@ -72,6 +72,17 @@ public abstract partial class CoopClient : Node, IRunLink
     /// <summary>Host events skipped by the limits above (tests, diagnostics).</summary>
     public int Refused { get; private set; }
 
+    /// <summary>Effects replayed here from host events, by kind ("slash", "line", "burst",
+    /// "bullet", "orbit", "projectile"): tests check every skill's visual reaches clients.</summary>
+    public IReadOnlyDictionary<string, int> Replayed => _replayed;
+
+    private readonly Dictionary<string, int> _replayed = new();
+
+    /// <summary>The arc (degrees) of the last swing replayed here (tests).</summary>
+    public float LastSlashArc { get; private set; }
+
+    private void CountReplay(string kind) => _replayed[kind] = _replayed.GetValueOrDefault(kind) + 1;
+
     /// <summary>Test hook: when set, the local player walks this way (both locally and on the host).</summary>
     public static Vector2? TestMove { get; set; }
 
@@ -721,6 +732,7 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 AreaBurst.Spawn(Scene, at, radius, delay, tint, new HitProfile { Faction = (flags & 1) != 0 ? Faction.Player : Faction.Enemy }, inner, (flags & 2) != 0);
+                CountReplay("burst");
                 return true;
             }
 
@@ -740,6 +752,7 @@ public abstract partial class CoopClient : Node, IRunLink
 
                 LineStrike line = LineStrike.Spawn(Scene, at, Vector2.Right.Rotated(angle), length, width, delay, new HitProfile { Faction = (flags & 1) != 0 ? Faction.Player : Faction.Enemy });
                 line.Harmless = (flags & 2) != 0;
+                CountReplay("line");
                 return true;
             }
 
@@ -761,6 +774,7 @@ public abstract partial class CoopClient : Node, IRunLink
                 BossBullet bullet = BossBullet.Spawn(Scene, at, velocity, new HitProfile { Faction = player ? Faction.Player : Faction.Enemy }, frames, scale);
                 bullet.AngularVelocity = angular;
                 bullet.Range = range;
+                CountReplay("bullet");
                 return true;
             }
 
@@ -769,7 +783,9 @@ public abstract partial class CoopClient : Node, IRunLink
                 Vector2 at = r.Pos();
                 float angle = r.Angle();
                 float range = Sane(r.F32(), 0f, 4000f);
-                float arc = Sane(r.F32(), 0f, Mathf.Tau);
+                // Degrees on the wire (SlashEffect.ArcDegrees). This used to be clamped to
+                // Tau as if it were radians: every swing showed as a sliver of at most 6.3°.
+                float arc = Sane(r.F32(), 0f, 360f);
                 Color tint = r.Colour();
                 if (!Room)
                 {
@@ -778,6 +794,10 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 SlashEffect.Spawn(Scene, at, Vector2.Right.Rotated(angle), range, arc, tint);
+                LastSlashArc = arc;
+                CountReplay("slash");
+                // The swing's sound, as the caster's machine plays it (SkillUser.Strike).
+                Core.Sfx.Play(this, "hit", -4f);
                 return true;
             }
 
@@ -794,6 +814,7 @@ public abstract partial class CoopClient : Node, IRunLink
                     var blades = new OrbitBlades { Anchor = anchor, Count = count, Radius = radius, Duration = duration, AngularSpeed = speed, Frames = frames, Hit = new HitProfile { Faction = Faction.Player } };
                     Scene.AddChild(blades);
                     blades.GlobalPosition = anchor.GlobalPosition;
+                    CountReplay("orbit");
                 }
 
                 return true;
@@ -826,6 +847,7 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 _projectiles[id] = projectile;
+                CountReplay("projectile");
                 projectile.TreeExiting += () =>
                 {
                     if (_projectiles.TryGetValue(id, out Projectile? current) && current == projectile)
