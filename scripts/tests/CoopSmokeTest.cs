@@ -481,6 +481,7 @@ public partial class CoopTestHost : CoopTestDriver
             $"fell={fell}, still down at 5 s={stillDown} (ring {ring:0.00}), back up={up} at {lifeShare:P0} life, run ended={run.State.Ended}");
         hostPlayer.Health.IgnoreDamage = true;
         slime.QueueFree();
+        await ClientDownedChecks(run, alpha, beta);
 
         // A burst of two levels: two rounds back to back, never unpaused between them.
         level = run.State.PartyLevel;
@@ -602,6 +603,56 @@ public partial class CoopTestHost : CoopTestDriver
             Check($"SKILL-VISUALS-ON-CLIENT-{m.Name.ToUpperInvariant()}-{who}", missing.Count == 0 && F(after, "arc") >= 140f,
                 $"{string.Join(" ", after.Select(kv => $"{kv.Key}={kv.Value}"))}; missing: {(missing.Count == 0 ? "none" : string.Join(", ", missing))}; last swing {after.GetValueOrDefault("arc")}° (the host's cleave: {(cleave is MeleeSkillDefinition md ? md.ArcDegrees : 0f)}°)");
         }
+    }
+
+    /// <summary>
+    /// A client's player is downed (the owner's report 2026-10-23: "allies respawn
+    /// instantly"): it stays down about <see cref="PartyRules.RespawnSeconds"/> on the
+    /// host, on its own machine and on the other client, then gets back up at half life.
+    /// Alpha is moved away from everyone so nobody revives it sooner.
+    /// </summary>
+    private async Task ClientDownedChecks(RunController run, LobbyMember alpha, LobbyMember beta)
+    {
+        RunPlayer alphaRp = run.State.PlayerByPeer(alpha.PeerId)!;
+        Player a = alphaRp.Player!;
+        Vector2 others = run.State.Players.Where(rp => rp != alphaRp && rp.Player is not null).Select(rp => rp.Player!.GlobalPosition).Aggregate(Vector2.Zero, (s, b) => s + b) / Mathf.Max(1, run.State.Players.Count - 1);
+        Vector2 away = (a.GlobalPosition - others).LengthSquared() > 1f ? (a.GlobalPosition - others).Normalized() : Vector2.Right;
+        a.GlobalPosition = run.Arena.Clamp(others + away * 520f, 60f);
+        await Seconds(0.5f);
+        float nearest = run.State.Players.Where(rp => rp != alphaRp && rp.Player is not null).Select(rp => rp.Player!.GlobalPosition.DistanceTo(a.GlobalPosition)).DefaultIfEmpty(9999f).Min();
+        // Life regeneration (a passive, a card, gear): a downed player's life used to refill
+        // while down, so the ally looked back up at once and the revive dropped them to half.
+        var regen = new Stats.StatModifier(Stats.ModifierType.Flat, 400f, "coop_test_regen");
+        a.Stats.Get(Stats.StatId.LifeRegen).AddModifier(regen);
+        a.Health!.IgnoreDamage = false;
+        a.Health.ApplyResolvedDamage(float.MaxValue / 4f, null);
+        a.Health.IgnoreDamage = true;
+        ulong downAt = Time.GetTicksMsec();
+        bool fell = alphaRp.Downed && !run.State.Ended;
+        await Seconds(1.5f);
+        Dictionary<string, string> alphaEarly = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        Dictionary<string, string> betaEarly = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        await WaitFor(() => Time.GetTicksMsec() - downAt >= 6000, 6f);
+        bool hostLate = alphaRp.Downed;
+        float hostLifeLate = a.Stats.Life!.Current;
+        bool hostLying = a.ShowsDowned;
+        Dictionary<string, string> alphaLate = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        Dictionary<string, string> betaLate = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        bool up = await WaitFor(() => !alphaRp.Downed, 7f);
+        float upAfter = (Time.GetTicksMsec() - downAt) / 1000f;
+        a.Stats.Get(Stats.StatId.LifeRegen).RemoveModifier(regen);
+        await Seconds(0.4f);
+        Dictionary<string, string> alphaUp = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        Dictionary<string, string> betaUp = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        string D(Dictionary<string, string> f) => $"dead={f.GetValueOrDefault("dead")} lying={f.GetValueOrDefault("lying")} ring={f.GetValueOrDefault("ring")} life={f.GetValueOrDefault("life")}";
+        Check("CLIENT-DOWNED-HOLDS-ON-HOST", fell && hostLate && hostLying && hostLifeLate == 0f && up && upAfter is >= 9.5f and <= 11.5f && !run.State.Ended,
+            $"alpha fell={fell} ({nearest:0} px from the nearest ally), still down at 6 s={hostLate} (lying={hostLying}, life {hostLifeLate:0} with +400 life regen), back up={up} after {upAfter:0.0} s");
+        Check("CLIENT-DOWNED-HOLDS-ON-ITS-OWN-MACHINE", F(alphaEarly, "dead") == 1f && F(alphaLate, "dead") == 1f && F(alphaLate, "ring") is > 0.45f and < 0.8f
+                && F(alphaLate, "life") == 0f && F(alphaLate, "lying") == 1f && F(alphaUp, "dead") == 0f && F(alphaUp, "lying") == 0f && F(alphaUp, "life") is > 0.4f and <= 0.6f,
+            $"alpha sees itself: 1.5 s {D(alphaEarly)}; 6 s {D(alphaLate)}; up {D(alphaUp)}");
+        Check("CLIENT-DOWNED-HOLDS-ON-OTHER-CLIENT", F(betaEarly, "dead") == 1f && F(betaLate, "dead") == 1f && F(betaLate, "life") == 0f && F(betaLate, "lying") == 1f
+                && F(betaUp, "dead") == 0f && F(betaUp, "lying") == 0f,
+            $"beta sees alpha: 1.5 s {D(betaEarly)}; 6 s {D(betaLate)}; up {D(betaUp)}");
     }
 
     private async Task<Error> HostOnFreePort(NetSession session, Profile profile)
@@ -1018,6 +1069,19 @@ public partial class CoopTestClient : CoopTestDriver
                 return $"{counts} arc={Num(client.LastSlashArc)}";
             }
 
+            case "downed":
+            {
+                // How this machine shows player `peer`: down or up, the ring, its life share.
+                long peer = long.TryParse(f.GetValueOrDefault("peer"), out long id) ? id : 0;
+                Player? p = run.State.PlayerByPeer(peer)?.Player;
+                if (p is null)
+                {
+                    return "dead=-1";
+                }
+
+                float share = p.Stats.Life is { Max: > 0f } life ? life.Current / life.Max : -1f;
+                return $"dead={(p.Health is { IsDead: true } ? 1 : 0)} ring={p.ReviveProgress.ToString("0.00", CultureInfo.InvariantCulture)} life={share.ToString("0.00", CultureInfo.InvariantCulture)} local={(p.IsLocal ? 1 : 0)} lying={(p.ShowsDowned ? 1 : 0)}";
+            }
             case "check_kill":
             {
                 bool cosmetic = GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>().All(p => p.Cosmetic);

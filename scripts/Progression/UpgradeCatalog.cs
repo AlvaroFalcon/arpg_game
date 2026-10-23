@@ -289,7 +289,7 @@ public static class UpgradeCatalog
             {
                 s.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Flat, 15f * m, src));
                 s.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Increased, 5f * m, src));
-                if (s.Life is { } life) life.Current += 15f * m;
+                if (s.Life is { } life && !s.OwnerDead) life.Current += 15f * m;
             },
         },
         StatPassive("life_regen", "Regeneration", StatId.LifeRegen, ModifierType.Flat, 1.5f, m => $"+{1.5f * m:0.#} Life regenerated per second"),

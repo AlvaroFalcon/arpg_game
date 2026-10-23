@@ -102,6 +102,12 @@ public partial class ActorStats : Node
             : null;
     }
 
+    private Health? _health;
+
+    /// <summary>True while the actor is dead (a downed co-op player): no regeneration, and
+    /// nothing that "refills" life (a character level, a Vitality card) brings it back.</summary>
+    public bool OwnerDead => (_health ??= GetParent()?.GetNodeOrNull<Health>("Health")) is { IsDead: true };
+
     public override void _PhysicsProcess(double delta)
     {
         float dt = (float)delta;
@@ -110,7 +116,13 @@ public partial class ActorStats : Node
         // fix Current's clamp first so regen never has to reason about a stale
         // ceiling. See ResourcePool.ClampToMax's doc comment.
         Life?.ClampToMax();
-        Life?.Regen(dt);
+        // The dead don't regenerate: a downed co-op player (docs/design/multiplayer.md ->
+        // "Deaths") whose life refilled while down looked as if they had got back up at
+        // once, and the revive then dropped them to half (owner's report 2026-10-23).
+        if (!OwnerDead)
+        {
+            Life?.Regen(dt);
+        }
 
         Mana?.ClampToMax();
         Mana?.Regen(dt);

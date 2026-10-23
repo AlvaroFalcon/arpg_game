@@ -221,7 +221,7 @@ public partial class CharacterBuild : Node, IBuildContext
         {
             float life = Stats.Life?.Current ?? 0f;
             Rebuild();
-            if (Stats.Life is { } pool)
+            if (Stats.Life is { } pool && !Stats.OwnerDead)
             {
                 pool.Current = Mathf.Max(life, pool.Max);
             }

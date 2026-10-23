@@ -244,18 +244,30 @@ public partial class Player : CharacterBody2D
     public override void _Draw()
     {
         // Co-op: a downed player shows how far an ally's revive has come.
-        if (Health is { IsDead: true } && !IsLocalOffline)
+        if (ShowsDowned)
         {
             DrawArc(new Vector2(0f, -4f), 22f, 0f, Mathf.Tau, 32, new Color(0f, 0f, 0f, 0.5f), 4f, true);
             if (ReviveProgress > 0f)
             {
                 DrawArc(new Vector2(0f, -4f), 22f, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * ReviveProgress, 32, new Color(0.45f, 1f, 0.55f), 4f, true);
             }
+
+            Font font = ThemeDB.FallbackFont;
+            const string down = "DOWN";
+            float w = font.GetStringSize(down, HorizontalAlignment.Left, -1, 12).X;
+            var at = new Vector2(-w / 2f, -32f);
+            DrawStringOutline(font, at, down, HorizontalAlignment.Left, -1, 12, 4, new Color(0f, 0f, 0f, 0.85f));
+            DrawString(font, at, down, HorizontalAlignment.Left, -1, 12, new Color(1f, 0.5f, 0.45f));
         }
     }
 
     /// <summary>True outside co-op (nothing to draw for a downed player there).</summary>
     private bool IsLocalOffline => IsLocal && PeerId == 0;
+
+    /// <summary>Co-op: this player is down (docs/design/multiplayer.md -> "Deaths") and is drawn
+    /// so: lying on the ground (the 2D sprite and its voxel body, <see cref="View3D.VoxelActor"/>),
+    /// greyed, with the revive ring and "DOWN" over it.</summary>
+    public bool ShowsDowned => Health is { IsDead: true } && !IsLocalOffline;
 
     /// <summary>
     /// The item a click asked for while it was out of reach. Set by
@@ -480,9 +492,11 @@ public partial class Player : CharacterBody2D
             QueueRedraw();
         }
 
-        if (Health is { IsDead: true } && !IsLocalOffline)
+        // Co-op: downed, waiting for a revive — lying on the ground (it used to stand there,
+        // only faded, and read as a player already back up).
+        _sprite.Rotation = ShowsDowned ? Mathf.Pi / 2f : 0f;
+        if (ShowsDowned)
         {
-            // Co-op: downed, waiting for a revive.
             _sprite.Modulate = new Color(0.45f, 0.45f, 0.55f, 0.6f);
         }
         else if (_hurtFlash > 0f)
