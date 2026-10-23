@@ -54,6 +54,9 @@ public partial class RunHud : CanvasLayer
     private float _rwFlash;
     private int _rwTier;
 
+    /// <summary>Co-op: the party minimap (hidden solo).</summary>
+    public RiftMinimap PartyMap { get; private set; } = null!;
+
     /// <summary>The reward panel's lines, for tests and captures.</summary>
     public bool RewardPanelVisible => _rewardPanel.Visible;
     public string ToastText => _toast.Text;
@@ -94,6 +97,10 @@ public partial class RunHud : CanvasLayer
 
         BuildRewardPanel(root);
 
+        // --- co-op: where the party is (docs/design/multiplayer.md -> "Allies on the maps") ---
+        PartyMap = new RiftMinimap { State = State, Director = Director, Player = Player, Name = "PartyMap", Position = new Vector2(16f, 50f) };
+        root.AddChild(PartyMap);
+
         // --- boss bar ---
         _target = new TargetFrame { Player = Player, Boss = () => _boss, Name = "TargetFrame" };
         root.AddChild(_target);
@@ -111,6 +118,7 @@ public partial class RunHud : CanvasLayer
         HudLayout.Register(_killsLabel, "kills", "Kills");
         HudLayout.Register(_rewardPanel, "rift_reward", "Rift reward", PreviewReward);
         HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview, HudAvoid.Slide);
+        HudLayout.Register(PartyMap, "party_map", "Party minimap (co-op)", on => PartyMap.HudEditing = on);
         HudLayout.Register(bar, "vitals", "Life & flask");
         HudLayout.Register(_skillRow, "skills", "Skills");
 

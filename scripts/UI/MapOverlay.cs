@@ -55,6 +55,9 @@ public partial class MapOverlay : Control
         }
     }
 
+    /// <summary>The party members this map shows, named (none offline; tests).</summary>
+    public System.Collections.Generic.List<AllyMarker> Allies() => PartyMarkers.Allies(Reality, Reality.Player);
+
     /// <summary>Screen position of a world point, with the player at the centre.</summary>
     private Vector2 ToScreen(Vector2 world) =>
         Size / 2f + (world - Reality.Player.GlobalPosition) / RasterLayout.CellPx * CellPx;
@@ -120,6 +123,15 @@ public partial class MapOverlay : Control
                 _ => new Color(0.95f, 0.3f, 0.25f, 0.9f),
             };
             DrawCircle(ToScreen(e.GlobalPosition), size, color);
+        }
+
+        // Allies (docs/design/multiplayer.md -> "Allies on the maps"): wherever they are, explored
+        // or not; one beyond the edge of the screen sits at the edge, in their direction.
+        foreach (AllyMarker ally in Allies())
+        {
+            Vector2 at = ToScreen(ally.Position);
+            bool off = !screen.Grow(-24f).HasPoint(at);
+            PartyMarkers.Draw(this, off ? PartyMarkers.ClampInto(screen, at, 24f) : at, ally, 6f, label: true);
         }
 
         // The player, at the centre: a bright arrow in the facing direction.

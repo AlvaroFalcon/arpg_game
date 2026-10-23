@@ -226,6 +226,13 @@ public partial class CoopRealityHost : CoopTestDriver
             $"host {hostHash} ({reality.Layout.Id}, {reality.Raster.Width}x{reality.Raster.Height} cells), ana {view.GetValueOrDefault("cavern")}; seed {reality.Seed}");
         Check("REALITY-PLAYERS", reality.Party.Players.Count == 2 && anaCopy is not null && F(view, "players") == 2f && reality.PartySize == 2,
             $"host party {reality.Party.Players.Count}, ana sees {F(view, "players")}");
+        // The minimap and the Tab map show the ally (owner's report 2026-10-23).
+        List<UI.AllyMarker> hostMini = reality.Hud.MinimapAllies();
+        var hostOverlay = (UI.MapOverlay)reality.Hud.FindChild("MapOverlay", true, false);
+        Dictionary<string, string> anaMap = Fields(await Ask(ana.PeerId, "map"));
+        Check("REALITY-MAPS-SHOW-ALLIES", hostMini.Count == 1 && hostMini[0].PeerId == ana.PeerId && hostMini[0].Name == "ana" && hostMini[0].Position.DistanceTo(anaCopy!.GlobalPosition) < 1f
+                && hostOverlay.Allies().Count == 1 && anaMap.GetValueOrDefault("minimap") == session.Members[0].Name && anaMap.GetValueOrDefault("overlay") == session.Members[0].Name && F(anaMap, "gap") < 1f,
+            $"host's minimap: {string.Join(",", hostMini.Select(a => $"{a.Name}@{a.Position.DistanceTo(anaCopy!.GlobalPosition):0}px"))}, overlay {hostOverlay.Allies().Count}; ana's: {Line(anaMap)}");
         int hostEnemies = GetTree().GetNodesInGroup(Combat.CombatQuery.EnemyGroup).Count;
         Check("REALITY-MONSTERS-ON-CLIENT", reality.MonstersTotal >= 20 && Math.Abs(F(view, "enemies") - hostEnemies) <= 2 && F(view, "total") == reality.MonstersTotal,
             $"host {hostEnemies} monsters alive of {reality.MonstersTotal}; ana {F(view, "enemies")} replicas, total {F(view, "total")}");
@@ -274,11 +281,12 @@ public partial class CoopRealityHost : CoopTestDriver
         // --- a death costs the party a portal; ana comes back at the entrance -------------------------------
         int pool = reality.PortalsLeft;
         Kill(anaCopy);
+        bool markedDown = reality.Hud.MinimapAllies().Any(a => a.PeerId == ana.PeerId && a.Downed);
         bool respawned = await WaitFor(() => anaCopy.Health is { IsDead: false }, 4f);
         await Seconds(0.6f); // the teleport is replayed at its moment on ana's machine
         Dictionary<string, string> fell = Fields(await Ask(ana.PeerId, "view"));
-        Check("REALITY-DEATH-POOL", respawned && reality.PortalsLeft == pool - 1 && F(fell, "portals") == pool - 1 && F(fell, "teleports") >= 1f,
-            $"pool {pool} → {reality.PortalsLeft} (ana {F(fell, "portals")}); ana back up={respawned}, teleports {F(fell, "teleports")}");
+        Check("REALITY-DEATH-POOL", respawned && reality.PortalsLeft == pool - 1 && F(fell, "portals") == pool - 1 && F(fell, "teleports") >= 1f && markedDown,
+            $"pool {pool} → {reality.PortalsLeft} (ana {F(fell, "portals")}); ana back up={respawned} (realities: back after 1.5 s for a portal, by design), teleports {F(fell, "teleports")}; down on the host's minimap={markedDown}");
 
         // --- a broken or hostile host: a teleport into the void is ignored by the client ------------------
         reality.NetHost!.Teleport(ana.PeerId, new Vector2(-4000f, -4000f));
@@ -455,6 +463,19 @@ public partial class CoopRealityGuest : CoopTestDriver
                 return $"cavern={CoopRealityTest.CavernHash(r.Raster)} players={r.Party.Players.Count} enemies={r.NetClient?.EnemyCount ?? -1} total={r.MonstersTotal} portals={r.PortalsLeft} "
                     + $"clientside={(NetMode.ClientSide ? 1 : 0)} boss={(r.Boss is not null ? 1 : 0)} snapshots={r.NetClient?.Snapshots ?? 0} teleports={r.NetClient?.Teleports ?? 0} "
                     + $"fight={(r.BossFightActive ? 1 : 0)} inside={(inside ? 1 : 0)} gate={(gate ? 1 : 0)}";
+            }
+
+            case "map":
+            {
+                if (Reality is not { } r)
+                {
+                    return "scene=" + GetTree().CurrentScene?.Name;
+                }
+
+                List<UI.AllyMarker> mini = r.Hud.MinimapAllies();
+                var overlay = (UI.MapOverlay)r.Hud.FindChild("MapOverlay", true, false);
+                float gap = mini.Select(a => r.Party.ByPeer(a.PeerId)?.Player is { } pp ? pp.GlobalPosition.DistanceTo(a.Position) : 99f).DefaultIfEmpty(99f).First();
+                return $"minimap={string.Join(",", mini.Select(a => a.Name))} overlay={string.Join(",", overlay.Allies().Select(a => a.Name))} gap={Num(gap)}";
             }
 
             case "walk":

@@ -235,7 +235,8 @@ public partial class Player : CharacterBody2D
             ZIndex = 5,
         };
         tag.AddThemeFontSizeOverride("font_size", 13);
-        tag.AddThemeColorOverride("font_color", new Color(0.75f, 0.9f, 1f));
+        // The party colour, as on every map (docs/design/multiplayer.md -> "Allies on the maps").
+        tag.AddThemeColorOverride("font_color", UI.PartyMarkers.ColorOf(this, PeerId));
         tag.AddThemeColorOverride("font_outline_color", Colors.Black);
         tag.AddThemeConstantOverride("outline_size", 4);
         AddChild(tag);

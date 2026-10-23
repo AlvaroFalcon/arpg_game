@@ -303,10 +303,18 @@ public partial class RealityHud : CanvasLayer
         }
     }
 
-    /// <summary>Explored floor, the player, the boss room and the exit, PoE-style.</summary>
+    /// <summary>The minimap (tests read its allies).</summary>
+    public Control MinimapControl => _minimap;
+
+    /// <summary>The party members on the minimap (none offline; tests).</summary>
+    public List<AllyMarker> MinimapAllies() => _minimap.Allies();
+
+    /// <summary>Explored floor, the player, the allies, the boss room and the exit, PoE-style.</summary>
     private sealed partial class Minimap : Control
     {
         public RealityController Reality = null!;
+
+        public List<AllyMarker> Allies() => PartyMarkers.Allies(Reality, Reality.Player);
 
         public override void _Draw()
         {
@@ -324,6 +332,13 @@ public partial class RealityHud : CanvasLayer
                 }
 
                 DrawRect(new Rect2(origin + new Vector2(c.X, c.Y) * px, Vector2.One * px), r.BossRegion.Contains(c) ? boss : floor);
+            }
+
+            // Allies (docs/design/multiplayer.md -> "Allies on the maps"), under your own dot.
+            foreach (AllyMarker ally in Allies())
+            {
+                Vector2I a = Reality.Field.CellOf(ally.Position);
+                PartyMarkers.Draw(this, origin + (new Vector2(a.X, a.Y) + Vector2.One * 0.5f) * px, ally, Mathf.Max(2.5f, px * 0.8f), label: false);
             }
 
             Vector2I p = Reality.Field.CellOf(Reality.Player.GlobalPosition);

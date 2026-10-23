@@ -264,8 +264,15 @@ public partial class CoopTestHost : CoopTestDriver
             Dictionary<string, string> f = Fields(answer ?? "");
             Check($"PLAYERS-ON-CLIENT-{m.Name.ToUpperInvariant()}", F(f, "players") == 3f && F(f, "local") == m.PeerId && F(f, "puppets") == 2f,
                 answer ?? "no answer");
+            string others = string.Join(",", session.Members.Where(o => o.PeerId != m.PeerId).Select(o => o.Name).OrderBy(n => n, StringComparer.Ordinal));
+            Check($"RIFT-PARTY-MAP-{m.Name.ToUpperInvariant()}", F(f, "partymap") == 2f && F(f, "partymap_shown") == 1f && f.GetValueOrDefault("partymap_names") == others,
+                $"{m.Name}'s party minimap: {f.GetValueOrDefault("partymap")} allies ({f.GetValueOrDefault("partymap_names")}; want {others}), shown={f.GetValueOrDefault("partymap_shown")}");
         }
 
+        List<AllyMarker> hostMap = run.Hud.PartyMap.Allies();
+        Check("RIFT-PARTY-MAP-HOST", hostMap.Count == 2 && run.Hud.PartyMap.Party && hostMap.Select(a => a.Name).OrderBy(n => n).SequenceEqual(new[] { "alpha", "beta" })
+                && hostMap.All(a => run.State.PlayerByPeer(a.PeerId)?.Player is { } p && p.GlobalPosition.DistanceTo(a.Position) < 1f),
+            $"host's party minimap: {string.Join(", ", hostMap.Select(a => $"{a.Name} {a.Color.ToHtml(false)}"))}, shown={run.Hud.PartyMap.Party}");
 
         await SkillEffectChecks(run, alpha, beta);
 
@@ -635,7 +642,7 @@ public partial class CoopTestHost : CoopTestDriver
         await WaitFor(() => Time.GetTicksMsec() - downAt >= 6000, 6f);
         bool hostLate = alphaRp.Downed;
         float hostLifeLate = a.Stats.Life!.Current;
-        bool hostLying = a.ShowsDowned;
+        bool hostLying = a.ShowsDowned && run.Hud.PartyMap.Allies().Any(m => m.PeerId == alpha.PeerId && m.Downed);
         Dictionary<string, string> alphaLate = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
         Dictionary<string, string> betaLate = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
         bool up = await WaitFor(() => !alphaRp.Downed, 7f);
@@ -646,7 +653,7 @@ public partial class CoopTestHost : CoopTestDriver
         Dictionary<string, string> betaUp = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
         string D(Dictionary<string, string> f) => $"dead={f.GetValueOrDefault("dead")} lying={f.GetValueOrDefault("lying")} ring={f.GetValueOrDefault("ring")} life={f.GetValueOrDefault("life")}";
         Check("CLIENT-DOWNED-HOLDS-ON-HOST", fell && hostLate && hostLying && hostLifeLate == 0f && up && upAfter is >= 9.5f and <= 11.5f && !run.State.Ended,
-            $"alpha fell={fell} ({nearest:0} px from the nearest ally), still down at 6 s={hostLate} (lying={hostLying}, life {hostLifeLate:0} with +400 life regen), back up={up} after {upAfter:0.0} s");
+            $"alpha fell={fell} ({nearest:0} px from the nearest ally), still down at 6 s={hostLate} (lying and hollow on the party map={hostLying}, life {hostLifeLate:0} with +400 life regen), back up={up} after {upAfter:0.0} s");
         Check("CLIENT-DOWNED-HOLDS-ON-ITS-OWN-MACHINE", F(alphaEarly, "dead") == 1f && F(alphaLate, "dead") == 1f && F(alphaLate, "ring") is > 0.45f and < 0.8f
                 && F(alphaLate, "life") == 0f && F(alphaLate, "lying") == 1f && F(alphaUp, "dead") == 0f && F(alphaUp, "lying") == 0f && F(alphaUp, "life") is > 0.4f and <= 0.6f,
             $"alpha sees itself: 1.5 s {D(alphaEarly)}; 6 s {D(alphaLate)}; up {D(alphaUp)}");
@@ -1040,7 +1047,9 @@ public partial class CoopTestClient : CoopTestDriver
             {
                 int players = GetTree().GetNodesInGroup(CombatQuery.PlayerGroup).Count;
                 int puppets = GetTree().GetNodesInGroup(CombatQuery.PlayerGroup).OfType<Player>().Count(p => p.Puppet);
-                return $"players={players} local={session.LocalPeerId} puppets={puppets} local_is_mine={run.Player.IsLocal && !run.Player.Puppet}";
+                List<AllyMarker> map = run.Hud.PartyMap.Allies();
+                return $"players={players} local={session.LocalPeerId} puppets={puppets} local_is_mine={run.Player.IsLocal && !run.Player.Puppet} "
+                    + $"partymap={map.Count} partymap_shown={(run.Hud.PartyMap.Party ? 1 : 0)} partymap_names={string.Join(",", map.Select(a => a.Name).OrderBy(n => n, StringComparer.Ordinal))}";
             }
 
             case "check_enemy":

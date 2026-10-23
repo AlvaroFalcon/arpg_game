@@ -199,6 +199,19 @@ public partial class HideoutCoopHost : CoopTestDriver
         Check("HIDEOUT-PRESENCE", F(walked, "moved") > 40f && hostFollows && boGap < 24f,
             $"ana walked {F(walked, "moved"):0} px to {Num(anaAt.X)},{Num(anaAt.Y)}; host's puppet {hostGap:0.0} px off, bo's {boGap:0.0} px off");
 
+        // --- the town map shows the allies (owner's report 2026-10-23: "can we see the other players on the minimap?") ---
+        List<UI.AllyMarker> hostSmall = town.Hud.Minimap.Allies();
+        List<UI.AllyMarker> hostBig = town.Hud.BigMap.Allies();
+        string hostName = session.Members[0].Name;
+        Dictionary<string, string> anaMap = Fields(await Ask(ana.PeerId, $"map peer={bo.PeerId}"));
+        bool hostNames = hostSmall.Select(a => a.Name).OrderBy(n => n).SequenceEqual(new[] { "ana", "bo" }) && hostBig.Count == 2;
+        bool hostAtPuppet = hostSmall.All(a => town.Party.Puppets.TryGetValue(a.PeerId, out Player? pp) && pp.GlobalPosition.DistanceTo(a.Position) < 1f);
+        bool coloursDistinct = hostSmall.Select(a => a.Color).Distinct().Count() == 2 && !hostSmall.Any(a => a.Color == UI.PartyMarkers.Palette[0]);
+        Check("HIDEOUT-MAP-SHOWS-ALLIES", hostNames && hostAtPuppet && coloursDistinct
+                && anaMap.GetValueOrDefault("small") == $"{hostName},bo" && anaMap.GetValueOrDefault("big") == $"{hostName},bo" && F(anaMap, "gap") < 1f
+                && anaMap.GetValueOrDefault("colours") == "2" && anaMap.GetValueOrDefault("host_colour") == "0",
+            $"host's map: {string.Join(", ", hostSmall.Select(a => $"{a.Name} {a.Color.ToHtml(false)}"))} (big {hostBig.Count}), on their puppets={hostAtPuppet}; ana's: {Line(anaMap)}");
+
         // --- the guests show the host's town, not their own -----------------------------------------------
         string hostLayout = LayoutKey(town.Data);
         Dictionary<string, string> anaLayout = Fields(await Ask(ana.PeerId, "layout"));
@@ -728,6 +741,20 @@ public partial class HideoutCoopGuest : CoopTestDriver
                 }
 
                 return $"puppets={town?.Party.Puppets.Count ?? -1} players={GetTree().GetNodesInGroup(Combat.CombatQuery.PlayerGroup).Count} presence_in={session.PresenceReceived} sent={session.PresenceSent} place={session.LocalPlace} fps={Engine.GetFramesPerSecond()} error={town?.Party.LastError.Replace(' ', '_')}";
+            case "map":
+            {
+                // The allies this guest's town maps show (small and big), sorted by name;
+                // gap: how far bo's marker is from bo's puppet; host_colour: the host's slot colour index.
+                long peer = long.Parse(f.GetValueOrDefault("peer", "0"), CultureInfo.InvariantCulture);
+                List<UI.AllyMarker> small = town!.Hud.Minimap.Allies();
+                List<UI.AllyMarker> big = town.Hud.BigMap.Allies();
+                float gap = small.Where(a => a.PeerId == peer).Select(a => town.Party.Puppets.TryGetValue(peer, out Player? pp) ? pp.GlobalPosition.DistanceTo(a.Position) : 99f).DefaultIfEmpty(99f).First();
+                UI.AllyMarker? host = small.Where(a => a.PeerId == session.Members[0].PeerId).Select(a => (UI.AllyMarker?)a).FirstOrDefault();
+                int hostColour = host is { } h ? System.Array.IndexOf(UI.PartyMarkers.Palette, h.Color) : -1;
+                return $"small={string.Join(",", small.Select(a => a.Name).OrderBy(n => n, System.StringComparer.Ordinal))} big={string.Join(",", big.Select(a => a.Name).OrderBy(n => n, System.StringComparer.Ordinal))} "
+                    + $"gap={Num(gap)} colours={small.Select(a => a.Color).Distinct().Count()} host_colour={hostColour}";
+            }
+
             case "walk":
             {
                 Player p = town!.Player;
