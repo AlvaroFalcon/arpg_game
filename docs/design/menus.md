@@ -520,6 +520,10 @@ The corner minimap stays. `UI/MapOverlay.cs`; the key comes in through `_Input`
 (the overlay is hidden most of the time).
 **M** opens it too (2026-10-16), the same key as the hideout's big town map
 (docs/design/hideout.md -> "Town map").
+In co-op (2026-10-23) the overlay and the corner minimap show the allies as dots in
+their party colour (named on the overlay, held at the screen's edge when beyond it), and
+the Survival Rift gets a small party minimap of the arena, co-op only
+(multiplayer.md -> "Allies on the maps").
 
 
 ## Target frame **[IMPLEMENTED 2026-10-12]**

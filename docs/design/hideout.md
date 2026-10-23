@@ -108,6 +108,9 @@ from the plaza, into E range, never into the portal) and
   Decorations show as dots. Hovering a station puts what it does in the header,
   and **clicking it closes the map and starts the walk**. M, Tab or Esc closes
   it, and the town keeps going underneath.
+- **Friends (2026-10-23):** in a party, both maps show everyone home with you
+  as a dot in their party colour, named on the big map (multiplayer.md ->
+  "Allies on the maps").
 
 Code: `UI/TownMap.cs`. The ground is drawn as one texture, one pixel per tile.
 M was also added to the map key everywhere, so it opens the overlay map in
