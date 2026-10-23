@@ -602,6 +602,65 @@ public partial class QuestSmokeTest : Node2D
         await Frames(3);
         bool walking = !log.IsOpen && hideout.WalkingTo == "altar";
         hideout.Player.StopAutoWalk();
+
+        // Walk there must actually arrive, for every quest's turn-in station.
+        var walkNotes = new List<string>();
+        bool allArrive = true;
+        foreach (QuestDef def in QuestCatalog.All)
+        {
+            (def.Scope == QuestScope.Account ? profile.Quests : hero.Quests)[def.Id] = new QuestProgress { Status = QuestStatus.Active };
+            log.Open();
+            log.OpenOn(def.Id);
+            await Process(1);
+            if (log.SelectedId != def.Id)
+            {
+                allArrive = false;
+                walkNotes.Add($"{def.Id}:NOT SELECTABLE");
+                log.Close();
+                continue;
+            }
+
+            log.WalkThere();
+            int frames = 0;
+            await Frames(2);
+            while (hideout.WalkingTo is not null && frames < 60 * 40)
+            {
+                await Frames(1);
+                frames++;
+            }
+
+            bool arrived = hideout.NearestStation()?.Prop.Uid == def.Station;
+            allArrive &= arrived;
+            walkNotes.Add($"{def.Id}->{def.Station}:{(arrived ? "ok" : "MISSED")}({frames}f, {hideout.Player.GlobalPosition.DistanceTo(hideout.Data.Find(def.Station)!.Position):0}px, nearest {hideout.NearestStation()?.Prop.Uid})");
+        }
+
+        // The real thing: a mouse click on the button (GUI path), then arrive.
+        hero.Quests[QuestCatalog.AscendId] = new QuestProgress { Status = QuestStatus.Active };
+        hideout.Player.GlobalPosition = new Vector2(1300, 900);
+        await Frames(3);
+        log.Open();
+        log.OpenOn(QuestCatalog.AscendId);
+        await Process(6);
+        Vector2 click = log.WalkButtonRect.GetCenter();
+        GetViewport().PushInput(new InputEventMouseMotion { Position = click, GlobalPosition = click }, true);
+        await Process(1);
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = click, GlobalPosition = click }, true);
+        Input.ActionPress("skill_slot_lmb");
+        await Process(1);
+        Input.ActionRelease("skill_slot_lmb");
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = click, GlobalPosition = click }, true);
+        await Frames(3);
+        bool clicked = !log.IsOpen && hideout.WalkingTo == "altar";
+        int clickFrames = 0;
+        while (hideout.WalkingTo is not null && clickFrames < 60 * 40)
+        {
+            await Frames(1);
+            clickFrames++;
+        }
+
+        bool clickArrived = hideout.NearestStation()?.Prop.Uid == "altar";
+        Check("QUEST-LOG-CLICK-WALKS", clicked && clickArrived, $"a mouse click at {click} (button rect {log.WalkButtonRect}) on Walk there closed the log={!log.IsOpen} and started the walk={clicked} (walking {hideout.WalkingTo}); arrived at the altar={clickArrived} ({clickFrames} frames)");
+        Check("QUEST-LOG-WALK-ARRIVES", allArrive, string.Join(", ", walkNotes));
         Check("QUEST-LOG", empty && sections && walkable && walking, $"J opens the log (by the real key={viaKey}); empty state={empty}; sections [{string.Join(" | ", log.Listing)}] selected '{log.SelectedId}'; Walk there closed the log and the hideout is walking to '{hideout.WalkingTo}'");
         await LeaveHideout(hideout);
     }

@@ -666,3 +666,8 @@ Measured (`CoopBench --mode=reality --tier=10`, four players): 16 KB/s per clien
 Tests: new `CoopRealityTest` (host + guest process, 20 checks: same cavern hash, replicas, input and casting, shared XP, instanced loot that lands in the guest's save and not the host's, no pause, the portal pool and respawn teleport, a forged teleport refused, the boss pull-in and gate, the clear on the guest's machine, a guest leaving alone, the host closing, a collapse). 18/18 suites.
 
 Needs a real test with friends: a reality boss fight at 100–200 ms ping (casts show after the round trip, there's no cast prediction), four players' frame time on real PCs, and a guest's drops/clears over the internet.
+
+## 2026-10-23: hideout dummies and the quest log's Walk there
+
+- **Dummies:** the hideout's training dummies were the same `TargetDummy.tscn` as the sandbox's (5,000 life), with a `DropSpawner` and `EquipmentDropSpawner` on `Died`, so a big enough hit killed one and it dropped gold or gear. Now `TargetDummy.Immortal` heals inside the `Damaged` handler (before `Health` checks death) and `Hideout.Dummy()` frees both spawners. No `GameEvents` kill bus exists for dummies; only `Died` could have fed one. Training Grounds dummies stay mortal. Test: `HIDEOUT-DUMMIES-IMMORTAL`.
+- **Walk there:** the walk itself was fine (every quest station arrives from every start we tried). The button sat at the bottom of the detail's scroll area, 100 px below the visible part when the explanation was long, so a click hit nothing. It now lives in a fixed footer. Tests: `QUEST-LOG-CLICK-WALKS` (real mouse events; viewport pushes need `PushInput(ev, true)` in headless runs because the window is 64 px) and `QUEST-LOG-WALK-ARRIVES` (all quests).

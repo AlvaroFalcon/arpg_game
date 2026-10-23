@@ -1,5 +1,6 @@
 #nullable enable
 using Godot;
+using ArpgGame.Stats;
 
 namespace ArpgGame.Combat;
 
@@ -15,6 +16,12 @@ public partial class TargetDummy : Area2D
 {
     [Export]
     public PackedScene? DamageNumberScene;
+
+    /// <summary>The hideout's training dummies: a hit never takes them below full life, so
+    /// they never die, give no kill events and cannot drop anything. The Training Grounds
+    /// dummies stay mortal (docs/design/hideout.md -> "Training dummies").</summary>
+    [Export]
+    public bool Immortal;
 
     private Health _health = null!;
     private Polygon2D? _visual;
@@ -65,6 +72,13 @@ public partial class TargetDummy : Area2D
     private void OnDamaged(float amount)
     {
         _flashTimer = 0.1f;
+
+        // Raised before Health checks for death, so a hit of any size leaves them standing.
+        if (Immortal && GetNodeOrNull<ActorStats>("Stats")?.Life is { } life)
+        {
+            life.Current = life.Max;
+        }
+
         if (_visual is not null)
         {
             _visual.Color = Colors.White;
@@ -80,6 +94,12 @@ public partial class TargetDummy : Area2D
 
     private void OnDied()
     {
+        if (Immortal)
+        {
+            _health.Revive();
+            return;
+        }
+
         QueueFree();
     }
 

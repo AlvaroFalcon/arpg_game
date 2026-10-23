@@ -113,6 +113,18 @@ Code: `UI/TownMap.cs`. The ground is drawn as one texture, one pixel per tile.
 M was also added to the map key everywhere, so it opens the overlay map in
 realities too, alongside Tab.
 
+### Training dummies **[IMPLEMENTED 2026-10-23]**
+
+The town's dummies are punching bags (owner report: they could die and drop loot).
+`TargetDummy.Immortal` (set by `Hideout.Dummy()`) tops their life back up inside the
+`Damaged` handler, before `Health` checks for death, so no hit of any size kills one;
+`Died` never fires, so there is no kill event, XP or revive. The hideout also removes
+their `DropSpawner`/`EquipmentDropSpawner`, so nothing can drop even if that changes.
+Damage numbers and the hit flash still show. In co-op every machine builds its own
+dummies and only the host resolves damage, so the same flag covers the shared town.
+The Training Grounds sandbox and the drop tests use the scene's default (mortal) dummy.
+Test: `EndgameSmokeTest` `HIDEOUT-DUMMIES-IMMORTAL`.
+
 ## Props and stations
 
 Everything standing in town is a **prop** with an id, a kind and a position: eight

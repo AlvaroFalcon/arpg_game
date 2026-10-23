@@ -1380,6 +1380,31 @@ public partial class EndgameSmokeTest : Node2D
         Check("HIDEOUT-STATIONS", stations && inPlaza && inSmithy,
             $"Mirror and Odran in the plaza, the forge in the smithy ({forgeCell}), stash, altar and Ysolde's shop in town");
 
+        // The town's training dummies are punching bags: huge hits (and a dozen of them) never kill
+        // one, and nothing drops, kills or grants anything. The Training Grounds' dummy stays mortal.
+        var dummies = hideout.FindChildren("*", "Area2D", true, false).OfType<TargetDummy>().ToList();
+        int kills = 0;
+        foreach (TargetDummy dummy in dummies)
+        {
+            dummy.GetNode<Health>("Health").Died += () => kills++;
+            for (int i = 0; i < 12; i++)
+            {
+                dummy.GetNode<Health>("Health").TakeDamage(new DamagePayload(1_000_000f, DamageType.Physical, null, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit));
+            }
+        }
+
+        await Frames(3);
+        bool standing = dummies.Count == 3 && dummies.All(d => GodotObject.IsInstanceValid(d) && d.IsInsideTree()
+            && !d.GetNode<Health>("Health").IsDead && d.GetNode<ActorStats>("Stats").Life!.Current >= d.GetNode<ActorStats>("Stats").Life!.Max - 0.01f);
+        bool noLoot = dummies.All(d => d.GetNodeOrNull("DropSpawner") is null && d.GetNodeOrNull("EquipmentDropSpawner") is null)
+            && !GetTree().Root.FindChildren("*", "Area2D", true, false).Any(n => n is CurrencyDrop)
+            && !GetTree().Root.FindChildren("*", "Node2D", true, false).Any(n => n is EquipmentItem);
+        var grounds = GD.Load<PackedScene>("res://scenes/combat/TargetDummy.tscn").Instantiate<TargetDummy>();
+        bool groundsMortal = !grounds.Immortal;
+        grounds.Free();
+        Check("HIDEOUT-DUMMIES-IMMORTAL", standing && kills == 0 && noLoot && groundsMortal,
+            $"{dummies.Count} dummies, all standing at full life after 12 hits of 1,000,000={standing}, kill events={kills}, no loot spawners or drops={noLoot}; the Training Grounds dummy stays mortal={groundsMortal}");
+
         // The HUD explains the town: a directory of every station, an E prompt naming
         // the one you stand next to, and a click in the directory walks you there.
         UI.HideoutHud hud = hideout.Hud;

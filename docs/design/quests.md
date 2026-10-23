@@ -362,7 +362,10 @@ fight and the cards). New input action `toggle_quests` (physical J) in
   one is under way) at 300×190, the quarter and distance, and the primary **Walk
   there**.
 - **Walk there** closes the log and calls `Hideout.WalkTo(uid)`, the station walk
-  the directory uses. In a reality the map is replaced by "In your hideout: the
+  the directory uses. The turn-in strip (map and button) sits in a footer outside the detail's
+  scroll, so the button is always on screen: inside the scroll a long explanation pushed
+  it below the fold and a click could not reach it (fixed 2026-10-23; `QUEST-LOG-CLICK-WALKS`
+  clicks it for real and `QUEST-LOG-WALK-ARRIVES` walks to every quest's station). In a reality the map is replaced by "In your hideout: the
   Temple" and the button is disabled with "Back in your hideout".
 - Checkboxes, the section arrow and check marks are drawn (`_Draw`), not typed:
   the theme's fallback font has no ☐ ☑ ▸ ✓ glyphs (the same reason `UI/Spinner` is
