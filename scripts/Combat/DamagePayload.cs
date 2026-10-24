@@ -90,6 +90,10 @@ public sealed class DamagePayload
 
     public float IgniteDamageMultiplier = 1f;
 
+    /// <summary>The skill that dealt the hit, when one did. Presentation only: damage
+    /// numbers show its icon (docs/design/menus.md -> "Damage numbers"); no rule reads it.</summary>
+    public Skills.SkillDefinition? Skill;
+
     /// <summary>Optional knockback impulse (px/s) applied to a target that can be
     /// knocked back. Zero for most hits.</summary>
     public Vector2 Knockback;

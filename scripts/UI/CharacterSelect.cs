@@ -139,7 +139,7 @@ public partial class CharacterSelect : PanelContainer
                 h.AddChild(delete);
                 if (index == profile.ActiveIndex)
                 {
-                    play.CallDeferred(Control.MethodName.GrabFocus);
+                    UiTheme.FocusLater(play);
                     // Keep the last-played row in view when the list scrolls.
                     scroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, row);
                 }
@@ -155,7 +155,7 @@ public partial class CharacterSelect : PanelContainer
         buttons.AddChild(UiTheme.Button("Back", () => Back?.Invoke(), 18, 160f));
         if (profile is null || !profile.HasCharacters)
         {
-            create.CallDeferred(Control.MethodName.GrabFocus);
+            UiTheme.FocusLater(create);
         }
     }
 
@@ -206,7 +206,7 @@ public partial class CharacterSelect : PanelContainer
         buttons.AddChild(first);
         buttons.AddChild(skip);
         buttons.AddChild(UiTheme.Button("Back", ShowList, 18, 140f));
-        skip.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(skip);
     }
 
     /// <summary>"Skip it and play with friends" (tests press it).</summary>
@@ -308,7 +308,7 @@ public partial class CharacterSelect : PanelContainer
                 ShowList();
             }
         }, 18, 160f));
-        _name.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(_name);
     }
 
     private static Label Wrapped(string text, int size, Color color)

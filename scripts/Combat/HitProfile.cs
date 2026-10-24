@@ -23,6 +23,9 @@ public sealed class HitProfile
     public float KnockbackForce;
     public float IgniteDamageMultiplier = 1f;
 
+    /// <summary>The casting skill, for the damage number's icon (presentation only).</summary>
+    public Skills.SkillDefinition? Skill;
+
     public DamagePayload BuildPayload(Vector2 knockbackDirection)
     {
         Node2D? source = Source is not null && GodotObject.IsInstanceValid(Source) ? Source : null;
@@ -34,6 +37,7 @@ public sealed class HitProfile
             CanInflictAilments = CanInflictAilments,
             IgniteDamageMultiplier = IgniteDamageMultiplier,
             Knockback = knockbackDirection * KnockbackForce,
+            Skill = Skill,
         };
     }
 

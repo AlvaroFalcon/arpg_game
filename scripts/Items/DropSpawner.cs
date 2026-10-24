@@ -72,18 +72,34 @@ public partial class DropSpawner : Node
         // GlobalPosition here is still valid regardless of which Died handler ran
         // first.)
         var origin = GetParent<Node2D>().GlobalPosition;
+        Node scene = GetTree().CurrentScene;
         var drop = DropScene.Instantiate<CurrencyDrop>();
-        GetTree().CurrentScene.AddChild(drop);
-
-        drop.GlobalPosition = origin + new Vector2(
+        Vector2 scatter = new(
             _rng.RandfRange(-ScatterRadiusPx, ScatterRadiusPx),
             _rng.RandfRange(-ScatterRadiusPx, ScatterRadiusPx));
+        int amount = _rng.RandiRange(MinAmount, MaxAmount);
+        CurrencyDefinition currency = Currency;
 
-        // AddChild first, then Initialize: _Ready runs on AddChild with Currency
-        // still null, which CurrencyDrop.RegisterLabel treats as "no label yet".
-        // Initialize then computes the one real descriptor and registers the label.
-        // The drop is never observed carrying the placeholder descriptor, which is
-        // what "immutable after drop" requires.
-        drop.Initialize(Currency, _rng.RandiRange(MinAmount, MaxAmount));
+        // Died is raised from inside a physics callback (a projectile's overlap signal), where
+        // adding the drop's Area2D and shape is refused ("can't change this state while
+        // flushing queries"): add it at the end of the frame instead.
+        Callable.From(() =>
+        {
+            if (!IsInstanceValid(scene))
+            {
+                drop.Free();
+                return;
+            }
+
+            scene.AddChild(drop);
+            drop.GlobalPosition = origin + scatter;
+
+            // AddChild first, then Initialize: _Ready runs on AddChild with Currency
+            // still null, which CurrencyDrop.RegisterLabel treats as "no label yet".
+            // Initialize then computes the one real descriptor and registers the label.
+            // The drop is never observed carrying the placeholder descriptor, which is
+            // what "immutable after drop" requires.
+            drop.Initialize(currency, amount);
+        }).CallDeferred();
     }
 }

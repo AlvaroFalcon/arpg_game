@@ -343,7 +343,7 @@ public partial class CoopPanel : PanelContainer
         SetError(_code, _codeError, codeWrong);
         if (addressWrong is not null || codeWrong is not null)
         {
-            (addressWrong is not null ? _address : _code).GrabFocus();
+            UiTheme.FocusLater(addressWrong is not null ? _address : _code);
             return;
         }
 
@@ -544,7 +544,7 @@ public partial class CoopPanel : PanelContainer
         Button create = UiTheme.PrimaryButton("Create a character", () => CreateCharacter?.Invoke(), 20, 320f);
         create.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         box.AddChild(create);
-        create.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(create);
     }
 
     private void BuildChoose()
@@ -594,7 +594,7 @@ public partial class CoopPanel : PanelContainer
         {
             if (_code!.Text.Trim().Length == 0)
             {
-                _code.GrabFocus();
+                UiTheme.FocusLater(_code);
             }
             else
             {
@@ -608,7 +608,7 @@ public partial class CoopPanel : PanelContainer
             $"Same PC: 127.0.0.1:{NetTransport.DefaultPort}.  Same Wi-Fi: the host's 192.168… address.  Over the internet: the address the host's lobby shows " +
             "(their router opens the port by itself when it can), or a VPN both of you run — Tailscale, Radmin VPN, ZeroTier.",
             14, UiTheme.TextDim, 960f, HorizontalAlignment.Center));
-        (_lastAddress.Length > 0 ? joinButton : hostButton).CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(_lastAddress.Length > 0 ? joinButton : hostButton);
     }
 
     /// <summary>Invite, not hosting yet: one card, to open this hideout to friends.</summary>
@@ -631,7 +631,7 @@ public partial class CoopPanel : PanelContainer
         _portError = ErrorLabel(host);
         Button hostButton = UiTheme.PrimaryButton("Open my hideout to friends", PressHost, 20, 580f);
         host.AddChild(hostButton);
-        hostButton.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(hostButton);
     }
 
     /// <summary>A pasted invite fills both fields.</summary>
@@ -679,7 +679,7 @@ public partial class CoopPanel : PanelContainer
         Button cancel = UiTheme.Button("Cancel", PressCancel, 18, 200f);
         cancel.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         box.AddChild(cancel);
-        cancel.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(cancel);
         UpdateConnecting();
     }
 
@@ -741,7 +741,7 @@ public partial class CoopPanel : PanelContainer
         Button retry = UiTheme.PrimaryButton("Try again", Retry, 18, 220f);
         buttons.AddChild(retry);
         buttons.AddChild(UiTheme.Button(_lastWasHost ? "Back to co-op" : "Change address or code", ShowForm, 18, 280f));
-        retry.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(retry);
     }
 
     /// <summary>The failure card for each way a session ends: a title in the
@@ -829,7 +829,7 @@ public partial class CoopPanel : PanelContainer
             Button start = UiTheme.PrimaryButton(n > 1 ? $"Go to the hideout — {n} players" : "Go to the hideout", () => _session?.EnterHideout(), 20, 360f);
             UiTheme.InstantTooltip(start, "Everyone goes to your hideout. Friends can still join from there, and anyone can open a rift for the party.");
             buttons.AddChild(start);
-            start.CallDeferred(Control.MethodName.GrabFocus);
+            UiTheme.FocusLater(start);
         }
         else
         {

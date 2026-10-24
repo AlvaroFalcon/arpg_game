@@ -67,7 +67,8 @@ public partial class SettingsPanel : PanelContainer
         VBoxContainer gameplay = Tab(tabs, "Gameplay");
         AddToggle(gameplay, "Life and mana bars over your character", settings?.OverheadBars ?? true, v => settings?.SetOverheadBars(v));
         AddToggle(gameplay, "Screen shake", settings?.ScreenShake ?? true, v => settings?.SetScreenShake(v));
-        AddToggle(gameplay, "Damage numbers", settings?.DamageNumbers ?? true, v => settings?.SetDamageNumbers(v));
+        AddOptions(gameplay, "Damage numbers", new[] { "Full: tags, skill icons, big-hit flash", "Compact: numbers only", "Off" },
+            (int)(settings?.DamageNumberMode ?? DamageNumberMode.Full), i => settings?.SetDamageNumberMode((DamageNumberMode)i));
         AddToggle(gameplay, "Admin mode (testing: max-level test characters)", settings?.AdminMode ?? false, v => settings?.SetAdminMode(v));
         Label controls = UiTheme.Label(
             "WASD move · Mouse aim · LMB/RMB/1-4 skills · Space dodge · Shift sprint · Q/R flasks\nI inventory · C character · K skills · P passive tree · J quests · Esc menu",
@@ -78,7 +79,7 @@ public partial class SettingsPanel : PanelContainer
         Button back = UiTheme.Button("Back", Close);
         back.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         root.AddChild(back);
-        back.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(back);
     }
 
     private static string AspectLabel(Vector2I v) => (v.X / (float)v.Y) switch { > 3f => "  (32:9)", > 2f => "  (21:9)", _ => "" };

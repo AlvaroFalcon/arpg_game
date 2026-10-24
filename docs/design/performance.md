@@ -33,7 +33,7 @@ everything else that runs per death:
 
 | Per death | Where |
 |---|---|
-| damage number (a `DamageNumber` scene instance: Node2D + Label) | `Enemy.OnDamaged` |
+| damage number (a `DamageNumber` scene instance: Node2D + Label; since 2026-10-24 a pooled self-drawn line in a column) | `Enemy.OnDamaged` (now `Enemy.OnHitPresented`) |
 | loot, XP, sfx, Chain Reaction check | `RealityController.OnMonsterKilled` / `RunState.OnEnemyKilled` |
 | voxel crumble (`VoxelDebris`) | `VoxelStage.OnEnemyKilled` (voxel view only) |
 | `AreaBurst` (volatile), `DeathPuff`, `QueueFree` of the monster (~8 nodes) | `Enemy.OnDied` |
@@ -172,7 +172,9 @@ there should be larger than the CPU number suggests.
 - **GPUParticles3D for debris.** It would be a different look and new shader
   compiles, and the batched MultiMesh is already one draw.
 - **A cap on damage numbers alive.** It would hide feedback, and pooling already
-  made them cheap.
+  made them cheap. *Revisited 2026-10-24* with the column redesign (below): merging
+  keeps the information while cutting lines, so a per-frame budget now drops only the
+  overflow of small hits, never a crit.
 - **Deferring monster teardown** (hide now, free a few per frame). Many systems
   rely on a dead monster being freed (`IsInstanceValid` checks, packs, targets,
   voxel actors). That risk is too high for ~7 ms per 60.
@@ -276,6 +278,22 @@ Possible next steps, measured but not proposed yet:
 - A per-frame budget on chain-reaction *deaths* (see item 1).
 - `RunState.SpawnExperience` calls `GetNodesInGroup` (which allocates an array)
   for every gem, to check the 300-gem cap. A counter would remove that.
+
+### Damage numbers as columns (2026-10-24)
+
+The redesign (docs/design/menus.md -> "Damage numbers") replaced the pooled
+Label scene with one `DamageNumberLayer` per scene that owns self-drawn line nodes
+(one `_Process` for all, a redraw only while a big hit's streak animates), merges
+rapid hits on a target, and starts at most 24 lines per frame (120 live). Same bench,
+60 Slimes, headless, median of 3:
+
+| Scenario | "hit + damageNumber" before → after | Kill call before → after | Kill frame (#0+#1) before → after |
+|---|---|---|---|
+| Reality, plain deaths | 4.1 → **0.7** | 9.6 → **5.8** | 21.7 → **17.2** |
+| Rift, volatile | 4.1 → **0.8** | 11.4 → **8.1** | 26.5 → **22.2** |
+
+GC counts stayed 0 in the measured window. The 60 one-shot kills show 24 numbers on
+the kill frame (the budget); the other small ones are skipped, while a crit would still get its line.
 
 ## Co-op (Survival Rift, 4 players) — measured 2026-10-16
 

@@ -37,6 +37,7 @@ public partial class StatsSmokeTest : Node2D
 
     private int _frame;
     private bool _failed;
+    private TargetDummy? _dummy;
 
     public override void _Ready()
     {
@@ -243,6 +244,12 @@ public partial class StatsSmokeTest : Node2D
             var dynamicStats = new ActorStats { Bases = block };
             dynamicStats.Name = "DynamicStats";
             AddChild(dynamicStats);
+
+            // Damage numbers (docs/design/menus.md -> "Damage numbers"): an immortal dummy to hit.
+            _dummy = GD.Load<PackedScene>("res://scenes/combat/TargetDummy.tscn").Instantiate<TargetDummy>();
+            _dummy.Immortal = true;
+            _dummy.Position = new Vector2(400f, 300f);
+            AddChild(_dummy);
         }
 
         if (_frame == 3)
@@ -256,6 +263,7 @@ public partial class StatsSmokeTest : Node2D
                 $"Armour={dynamicStats.Get(StatId.Armour).Value}, expected the default {ActorStats.DefaultBase(StatId.Armour)} (not in the StatBlock)");
 
             CheckCritBeforeMitigation();
+            CheckDamageNumbers();
         }
 
         if (_frame >= 10)
@@ -297,5 +305,131 @@ public partial class StatsSmokeTest : Node2D
 
         // Reset Armour so it doesn't bleed into any check that runs after this one.
         _targetStats.Get(StatId.Armour).BaseValue = 0f;
+    }
+
+    /// <summary>
+    /// Damage numbers as columns (docs/design/menus.md -> "Damage numbers"), through the
+    /// real <see cref="Health.TakeDamage"/> → <see cref="Health.HitPresented"/> path on a
+    /// training dummy: hits on one target stack in one column anchored to it, rapid
+    /// same-kind hits merge, a crit gets the CRITICAL tag and the big style, the column
+    /// caps its length, Compact drops tags and shortens columns, ticks sum into one
+    /// line, damage taken never joins a column, and finished lines are reused.
+    /// </summary>
+    private void CheckDamageNumbers()
+    {
+        if (_dummy is null)
+        {
+            Check("DMGNUM-SETUP", false, "no dummy");
+            return;
+        }
+
+        Node2D source = GetNode<Node2D>("Source");
+        Health health = _dummy.GetNode<Health>("Health");
+        Core.GameSettings? settings = Core.GameSettings.Get(this);
+        Core.DamageNumberMode modeBefore = settings?.DamageNumberMode ?? Core.DamageNumberMode.Full;
+        settings?.SetDamageNumberMode(Core.DamageNumberMode.Full);
+        _sourceStats.Get(StatId.CritChance).BaseValue = 0f;
+
+        DamagePayload Hit(DamageType type, float amount = 10f)
+        {
+            var p = new DamagePayload(amount, type, source, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit);
+            health.TakeDamage(p);
+            return p;
+        }
+
+        // Three hits of different types on one target: three lines, one column.
+        Hit(DamageType.Physical);
+        Hit(DamageType.Fire);
+        Hit(DamageType.Cold);
+        UI.DamageNumberLayer? layer = UI.DamageNumberLayer.Get(this, create: false);
+        System.Collections.Generic.IReadOnlyList<UI.DamageNumber> rows = layer?.RowsOf(_dummy) ?? System.Array.Empty<UI.DamageNumber>();
+        bool sameX = rows.Count == 3 && Mathf.IsEqualApprox(rows[0].GlobalPosition.X, rows[2].GlobalPosition.X);
+        bool anchored = rows.Count == 3 && rows[0].GlobalPosition.X > _dummy.GlobalPosition.X && rows[0].GlobalPosition.DistanceTo(_dummy.GlobalPosition) < 80f;
+        bool newestLowest = rows.Count == 3 && rows[0].Type == DamageType.Cold && rows[0].TargetY > rows[1].TargetY && rows[1].TargetY > rows[2].TargetY;
+        Check("DMGNUM-ONE-COLUMN-PER-TARGET", layer is not null && layer.ColumnCount == 1 && rows.Count == 3 && sameX && anchored && newestLowest,
+            $"columns={layer?.ColumnCount}, lines={rows.Count}, same x={sameX}, anchored right of the dummy={anchored}, newest at the bottom={newestLowest}");
+
+        // Another player's hit shows no number at all (owner decision): the column is untouched.
+        var ally = new Player { IsLocal = false };
+        int linesBeforeAlly = rows.Count;
+        health.TakeDamage(new DamagePayload(30f, DamageType.Physical, ally, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit));
+        UI.DamageNumber? allyLine = UI.DamageNumberLayer.ShowHit(_dummy, new DamagePayload(30f, DamageType.Physical, ally, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit), 30f, null, 0f, 0f, Vector2.Zero);
+        Check("DMGNUM-ALLY-HIT-NO-LINE", allyLine is null && rows.Count == linesBeforeAlly && health.LastHitSource == ally,
+            $"ally line={(allyLine is null ? "none" : "drawn")}, lines {linesBeforeAlly} -> {rows.Count}, the hit still landed={health.LastHitSource == ally}");
+        ally.Free();
+
+        // A second cold hit right away merges into the newest line (its sum), no new line.
+        float first = rows.Count > 0 ? rows[0].Amount : 0f;
+        Hit(DamageType.Cold);
+        Check("DMGNUM-RAPID-HITS-MERGE", rows.Count == 3 && rows[0].Merged == 2 && Approx(rows[0].Amount, first * 2f) && rows[0].Text == UI.DamageNumber.Format(first * 2f),
+            $"lines={rows.Count}, newest merged={rows[0].Merged}, text={rows[0].Text} (expected 2 hits of {first} summed)");
+
+        // A crit: CRITICAL on the tag line and the big style.
+        _sourceStats.Get(StatId.CritChance).BaseValue = 1f;
+        Hit(DamageType.Physical);
+        UI.DamageNumber crit = rows[0];
+        Check("DMGNUM-CRIT-TAG-AND-BIG", crit.Big && crit.TagText.StartsWith("CRITICAL") && (crit.Tags & UI.HitTag.Critical) != 0,
+            $"big={crit.Big}, tags='{crit.TagText}'");
+
+        // Many crits (never merged): the column stops at its cap, the overflow leaves.
+        for (int i = 0; i < 12; i++)
+        {
+            Hit(DamageType.Physical);
+        }
+
+        float height = 0f;
+        foreach (UI.DamageNumber row in rows)
+        {
+            height += row.Height;
+        }
+
+        Check("DMGNUM-COLUMN-CAPS", rows.Count >= 3 && rows.Count <= UI.DamageNumberLayer.FullCap && height <= UI.DamageNumberLayer.MaxColumnHeight && layer!.ColumnCount == 1,
+            $"lines={rows.Count} after 17 hits (cap {UI.DamageNumberLayer.FullCap} lines / {UI.DamageNumberLayer.MaxColumnHeight} px), height={height}, columns={layer?.ColumnCount}");
+
+        // Damage that was already resolved (an ignite tick): one small line that sums.
+        int before = rows.Count;
+        health.ApplyResolvedDamage(5f, source);
+        health.ApplyResolvedDamage(7f, source);
+        UI.DamageNumber tick = rows[0];
+        Check("DMGNUM-TICKS-SUM", tick.Kind == UI.DamageNumberKind.Tick && tick.Text == "12" && rows.Count <= UI.DamageNumberLayer.FullCap,
+            $"newest kind={tick.Kind}, text={tick.Text} (expected 12), lines {before} -> {rows.Count}");
+
+        // Damage taken floats on its own, never in a column.
+        UI.DamageNumber? taken = UI.DamageNumberLayer.ShowIncoming(source, 9f, 100f);
+        Check("DMGNUM-INCOMING-NOT-IN-COLUMN", taken is { Kind: UI.DamageNumberKind.Incoming } && layer!.ColumnCount == 1 && !System.Linq.Enumerable.Contains(rows, taken),
+            $"kind={taken?.Kind}, columns={layer?.ColumnCount}");
+
+        // Pooling: let every line finish, then hit again: no new node is made.
+        layer!._Process(5.0);
+        int created = UI.DamageNumberLayer.Created;
+        int reused = UI.DamageNumberLayer.Reused;
+        int idle = layer.IdleCount;
+        Hit(DamageType.Fire);
+        Hit(DamageType.Lightning);
+        Check("DMGNUM-POOLED-NODES-REUSED", layer.LiveCount == 2 && UI.DamageNumberLayer.Created == created && UI.DamageNumberLayer.Reused == reused + 2 && idle >= 2,
+            $"live={layer.LiveCount}, created {created} -> {UI.DamageNumberLayer.Created}, reused {reused} -> {UI.DamageNumberLayer.Reused}, idle before={idle}");
+
+        // Compact: shorter column, no tag line, no icon, crits a medium line.
+        if (settings is not null)
+        {
+            layer._Process(5.0);
+            settings.SetDamageNumberMode(Core.DamageNumberMode.Compact);
+            for (int i = 0; i < 6; i++)
+            {
+                Hit(DamageType.Physical);
+            }
+
+            rows = layer.RowsOf(_dummy);
+            Check("DMGNUM-COMPACT", rows.Count == UI.DamageNumberLayer.CompactCap && rows[0].TagText == "" && !rows[0].Big && rows[0].Medium,
+                $"lines={rows.Count} (cap {UI.DamageNumberLayer.CompactCap}), tags='{rows[0].TagText}', big={rows[0].Big}, medium={rows[0].Medium}");
+
+            layer._Process(5.0);
+            settings.SetDamageNumberMode(Core.DamageNumberMode.Off);
+            Hit(DamageType.Physical);
+            Check("DMGNUM-OFF", layer.LiveCount == 0, $"live lines with numbers off={layer.LiveCount}");
+            settings.SetDamageNumberMode(modeBefore);
+        }
+
+        _sourceStats.Get(StatId.CritChance).BaseValue = 0f;
     }
 }

@@ -457,6 +457,7 @@ public partial class SkillUser : Node
             CanInflictAilments = context.CanInflictAilments,
             IgniteDamageMultiplier = context.IgniteDamageMultiplier,
             KnockbackForce = knockback,
+            Skill = instance.Definition,
         };
     }
 
@@ -486,7 +487,7 @@ public partial class SkillUser : Node
             LineStrike lane = LineStrike.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, aim, length, definition.LineWidth * Mathf.Sqrt(area), definition.LineDelay, hit);
             lane.Impacted += () =>
             {
-                if (IsInstanceValid(this))
+                if (IsInstanceValid(this) && IsInstanceValid(_caster))
                 {
                     ReportHit(_caster, hit.Damage);
                 }

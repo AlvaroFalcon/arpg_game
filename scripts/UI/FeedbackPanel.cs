@@ -95,7 +95,7 @@ public partial class FeedbackPanel : PanelContainer
         box.AddChild(_status);
 
         SetKind(FeedbackKind.Bug);
-        _title.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(_title);
     }
 
     public void SetKind(FeedbackKind kind)
