@@ -175,8 +175,8 @@ through the tabs and compares sizes (it read 600 → 728 → 600 px before the f
   2560×1080 across menus, town, panels, realities and the HUD editor; the one
   panel placed at a fixed x (the inventory, at 848 = 1280 − 432) is now anchored
   to the right edge. Screenshots: `ultrawide-inventory.png`, `ultrawide-reality.png`.
-- **Gameplay**: overhead bars, screen shake, damage numbers, admin mode, and the
-  controls reminder. (Auto-aim and auto-cast stay internal: the Survival Rift
+- **Gameplay**: overhead bars, screen shake, damage numbers (**Full / Compact / Off**,
+  see "Damage numbers" below), admin mode, and the controls reminder. (Auto-aim and auto-cast stay internal: the Survival Rift
   always auto-aims, realities aim with the mouse.)
 - **Show FPS** (2026-10-15, also **F3** anywhere): a readout in the top-left corner
   (`UI/FpsOverlay.cs`, a layer under the settings autoload so it survives scene
@@ -634,3 +634,122 @@ reality generating its cavern and building the voxel world — is never seen. It
 lives on the tree root, waits for the new scene to run a few frames, holds at least
 0.45 s so it never flickers, and fades out in 0.35 s. The main menu and the sandbox
 load directly.
+
+## Damage numbers **[IMPLEMENTED 2026-10-24]**
+
+Owner's reference: a 10 s clip of a combat MMO hitting a training scarecrow. What it
+does well, and what we took: numbers don't scatter around the target, they **stack in a
+column** beside it; each hit can carry a **tag line in caps** above the number; **big
+hits are huge** with a golden horizontal streak, small hits are compact lines; the
+**skill's icon** sits next to the number. Before, every hit was a 20 px gold label
+rising 24 px from a random spot over the target for 0.6 s, the same for a crit, a
+tick or an ally's hit, and in the town it drew *under* the dummies' sprites.
+
+Screenshots: `damage-numbers-before.png` / `damage-numbers-after.png` (town dummies),
+`damage-numbers-before-horde.png` / `damage-numbers-horde.png` (Survival Rift).
+Capture: `RunCapture -- --only=damage` (`--damage-prefix=before` for a baseline).
+
+**The column.** One per target, anchored just right of its head (`Enemy.NumberOffset`;
+dummies a little higher), following it while it lives and staying put when it dies.
+The newest line is at the bottom; older ones are pushed up and the oldest fades out at
+the top. A column holds 6 lines and at most 250 px (about four big crits); pushed-out
+lines slide above the stack while they fade, never through it. Lines last 1.0 s (big
+1.35 s) and fade over the last 0.3 s. Sizes are in **screen pixels** whatever the
+camera zoom (the layer scales by 1/zoom), so the town's close camera and the Rift's
+wide one read the same.
+
+**Tags.** Only qualities the game already resolves per hit: **CRITICAL**
+(`DamagePayload.IsCrit`), and the ailments that hit actually applied: **IGNITE**,
+**SHOCK**, **FREEZE**, and **CHILL** when it newly chills (every cold hit chills, so
+tagging each refresh would be noise). `Ailments.LastHitApplied` records them; the
+number is built from `Health.HitPresented`, a presentation-only event raised after
+every gameplay listener, so the roll is already known. No damage-type tag: the colour
+says it, and a "FIRE" on every fireball hit would bury the tags that matter. No block
+tag on monsters (they have none); a block or evasion by the player says **AVOIDED**.
+
+**Size by importance.** Big (40 px slanted bold, a 0.16 s punch from 1.8×, a golden
+streak that flashes and settles over 0.7 s): a crit, a hit of ≥ 8 % of a boss's or
+unique's life or ≥ 30 % of a rare's, or 2.5× the recent average of your hits (an
+exponential average over your own hits). Normal: 22 px. In Compact, and for a trash
+monster's crit in a crowd, a crit is a 24–28 px gold line with no streak. At most 5
+flashes start per 0.3 s (2 in a crowd); later ones are medium.
+
+**Icon.** The skill's own icon (`SkillDefinition.Icon`, the one the skill bar shows),
+carried as `DamagePayload.Skill` from `HitProfile` (presentation only: no rule reads
+it). Hits with no skill (an explosion, thorns) have none.
+
+**Colours** (`UiTheme`): physical warm gold, fire orange, cold ice blue, lightning
+lavender (yellow was too close to the gold), poison green for its ticks, crits a
+brighter orange-gold, damage taken red. Tags take their element's colour, CRITICAL
+gold. Text is the default font emboldened with a dark outline, so it reads on the
+dark caves and on the bright town floor.
+
+**Who dealt it.**
+- *Your hits:* everything above.
+- *Another player's hits:* **no number, for anyone** (owner decision, 2026-10-24). The
+  first version drew a co-op ally's hits dimmed on the host; that style is gone. Each
+  player sees only their own hits (and the damage they take); a hit someone else dealt
+  is skipped in `DamageNumberLayer.ShowHit`, and clients are only sent their own.
+- *Damage over time and explosions* (`Health.ApplyResolvedDamage`): one small 16 px
+  line per target in the ailment's colour that **sums its ticks** for up to 3 s,
+  instead of a number every 0.5 s.
+- *Damage you take:* red, 22 px (28 px for ≥ 10 % of your life), floating up just
+  left of your character and never in a column, so incoming and outgoing never mix.
+  Hits within 0.12 s sum. Only the local player's (an ally's shows on their screen).
+
+**Hordes.** The Rift kills dozens at once, so the presentation degrades on purpose:
+- More than 6 columns alive (or 90 lines) is a *crowd*: columns hold 3 lines, small
+  lines are 19 px, trash crits lose the streak (elites and bosses keep it).
+- Rapid same-kind hits on one target (orbit blades, multistrike, a projectile
+  volley) merge into the newest line and show the sum (within 0.12 s, 0.35 s in a
+  crowd, for at most 0.4 s / 0.9 s).
+- At most 24 new lines start per frame and 120 live at once; past that, only crits
+  and big hits get a line, and nothing past 144.
+- One `DamageNumberLayer` per scene (a child of the current scene at z 90, so above
+  every sprite and y-sorted prop) owns every line. One `_Process` moves them all; a
+  line is one `Node2D` that draws itself (`_Draw`: icon, streak, outlined text) and
+  redraws only while its streak animates. Finished lines hide and are reused (24
+  pre-made, up to 160 kept); columns are pooled too.
+
+Measured with `ExplosionBench` (60 Slimes killed in one frame, headless, median of 3):
+the kill call's "hit + damage number" share went from 4.1 ms to 0.7 ms in a reality
+and from 4.1 to 0.8 ms in the Rift; the whole kill call from 9.6 to 5.8 ms and from
+11.4 to 8.1 ms (docs/design/performance.md).
+
+**Co-op.** The host sends a client's own hits as before, plus one byte of qualities
+(crit, type, ignite/chill/shock/freeze applied, heavy) and the skill's loadout slot,
+which the client turns back into its own icon (protocol 8). A client's line is the
+same as the host's would be.
+
+**Setting.** Settings → Gameplay → Damage numbers: **Full** (all of the above),
+**Compact** (numbers only: no tags, no icons, no streak, 3-line columns, crits a
+gold medium line) or **Off**. Old settings files' on/off flag maps to Full/Off.
+
+Tests (`StatsSmokeTest`, through the real `Health.TakeDamage` path on a dummy):
+`DMGNUM-ONE-COLUMN-PER-TARGET`, `DMGNUM-RAPID-HITS-MERGE`, `DMGNUM-CRIT-TAG-AND-BIG`,
+`DMGNUM-COLUMN-CAPS`, `DMGNUM-TICKS-SUM`, `DMGNUM-INCOMING-NOT-IN-COLUMN`,
+`DMGNUM-POOLED-NODES-REUSED`, `DMGNUM-COMPACT`, `DMGNUM-OFF`.
+
+*Rejected.*
+- **Numbers scattered around the target** (the old random offset, most ARPGs): with
+  several skills hitting one boss they overlap into noise; the column is readable at
+  a glance and shows the rhythm of a rotation.
+- **One label scene per hit** (the old way): a Label per number costs theme lookups
+  and a Control per hit; one self-drawn node is cheaper and pools the same.
+- **Hiding numbers past a hard cap** (rejected in performance.md for the old pool):
+  merging keeps the information (the sum) while cutting lines; only the overflow past
+  the per-frame budget is dropped, and never a crit.
+- **A damage-type tag** and **"overkill"/"kill" tags**: in a horde every hit kills.
+- **Icons on the right of the number** (as in the clip): on the left they line up
+  in a column, so the eye scans icons and numbers separately.
+
+*Open questions.*
+- ~~Should clients see allies' numbers?~~ Closed (2026-10-24): nobody sees them. The
+  host's dimmed ally style was removed; `DMGNUM-ALLY-HIT-NO-LINE` checks it.
+- A client's own damage taken shows no red number (clients never resolve damage; the
+  host would have to send it). Owner's call.
+- Overlap between neighbouring columns in a dense pack is accepted (the crowd rules
+  keep it short); a smarter layout (nudging columns apart) could come later.
+- Needs a human playtest: readability at 1080p/1440p and ultrawide, Compact in the
+  Rift at high density, and co-op at internet latency.
+

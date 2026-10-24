@@ -42,7 +42,8 @@ public partial class Sfx : Node
     {
         LastRequested = name;
         Requested[name] = Requested.GetValueOrDefault(name) + 1;
-        if (!context.IsInsideTree())
+        // A delayed callback can outlive its node: a freed context just stays silent.
+        if (!IsInstanceValid(context) || !context.IsInsideTree())
         {
             return;
         }
@@ -52,7 +53,7 @@ public partial class Sfx : Node
 
     public static void Music(Node context, string name)
     {
-        if (!context.IsInsideTree())
+        if (!IsInstanceValid(context) || !context.IsInsideTree())
         {
             return;
         }

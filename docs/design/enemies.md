@@ -14,7 +14,7 @@ Status: **implemented** (first roster). All art drawn with EasyPixel
   (0.8 s) per enemy.
 - **Knockback** from hits that carry it (projectiles 40, novas 260, meteors 160),
   reduced by `KnockbackResistance`; bosses are immovable.
-- Hit flash, floating damage numbers (toggle in settings), ailment tint (orange
+- Hit flash, damage numbers in a column by the target (Full / Compact / Off in settings; menus.md -> "Damage numbers"), ailment tint (orange
   ignite, yellow shock, blue chill), a dust puff on death.
 - Base stats come from exports (`BaseLife`, `BaseSpeed`, `BaseArmour`), not a
   StatBlock per enemy; attributes are zeroed so Strength's derived life does not

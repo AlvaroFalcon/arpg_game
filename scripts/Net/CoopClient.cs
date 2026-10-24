@@ -1055,9 +1055,11 @@ public abstract partial class CoopClient : Node, IRunLink
             {
                 ushort id = r.U16();
                 float amount = Sane(r.F32(), 0f, 1e12f);
+                byte flags = r.U8();
+                byte slot = r.U8();
                 if (_enemies.TryGetValue(id, out Enemy? e) && IsInstanceValid(e) && Room)
                 {
-                    e.ReplicaDamageNumber(amount);
+                    e.ReplicaDamageNumber(amount, flags, slot);
                 }
 
                 return true;

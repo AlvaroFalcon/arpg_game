@@ -77,7 +77,7 @@ public partial class MainMenu : Node2D
 		version.OffsetTop = -34f;
 		version.OffsetRight = -16f;
 
-		play.CallDeferred(Control.MethodName.GrabFocus);
+		UiTheme.FocusLater(play);
 
 		// scripts/coop_local.sh: --coop-host[=port] / --coop-join=address:port open the lobby at once
 		// (with --coop-code=CODE, and --coop-no-upnp for one PC).
@@ -177,7 +177,7 @@ public partial class MainMenu : Node2D
 		Button back = UiTheme.Button("Back", BackToMenu, 18, 160f);
 		back.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
 		_chooser.AddChild(back);
-		_soloButton.CallDeferred(Control.MethodName.GrabFocus);
+		UiTheme.FocusLater(_soloButton);
 	}
 
 	private Button ChoiceButton(string text, string blurb, System.Action press)
@@ -211,14 +211,14 @@ public partial class MainMenu : Node2D
 	{
 		CloseChooser();
 		_menu.Visible = true;
-		_playButton.CallDeferred(Control.MethodName.GrabFocus);
+		UiTheme.FocusLater(_playButton);
 	}
 
 	/// <summary>Back from a screen opened from the chooser: the chooser, its button focused.</summary>
 	private void BackToChooser(CharacterSelect.PlayPurpose purpose)
 	{
 		OpenPlayChooser();
-		(purpose == CharacterSelect.PlayPurpose.Coop ? _friendsButton : _soloButton)!.CallDeferred(Control.MethodName.GrabFocus);
+		UiTheme.FocusLater((purpose == CharacterSelect.PlayPurpose.Coop ? _friendsButton : _soloButton)!);
 	}
 
 	public override void _Input(InputEvent e)
@@ -330,7 +330,7 @@ public partial class MainMenu : Node2D
 		panel.Closed += () =>
 		{
 			_menu.Visible = true;
-			_settingsButton.CallDeferred(Control.MethodName.GrabFocus);
+			UiTheme.FocusLater(_settingsButton);
 		};
 	}
 

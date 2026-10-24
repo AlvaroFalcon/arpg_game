@@ -737,9 +737,14 @@ public abstract partial class CoopHost : Node, IRunLink
 
         if (LinkOf(source) is { } link)
         {
+            // Its qualities too (crit, type, ailments applied, big share of an elite's life)
+            // and the skill's slot, so the client shows the same column line the host would.
+            (byte flags, byte slot) = UI.DamageNumberLayer.Encode(payload, taken, enemy.Ailments, enemy.Stats.Life?.Max ?? 0f, UI.DamageNumberLayer.HeavyShareFor(enemy));
             link.Events.U8(RiftProtocol.DamageNumber);
             link.Events.U16(enemy.NetId);
             link.Events.F32(taken);
+            link.Events.U8(flags);
+            link.Events.U8(slot);
         }
     }
 

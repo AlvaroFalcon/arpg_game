@@ -708,3 +708,31 @@ Owner decision: "When a friend dies, they get back up after a 10 s delay, or an 
 - **The client's own HUD was right.** It showed 502.83 / 502.83 like the host, 30 % at 30 %, and full after the kills.
 - **The other client's view of that ally was wrong.** Snapshots always carried every player's maximum life, but clients discarded it and clamped the host's life to their local stat. A client never applies another player's run cards to its copy, so beta drew alpha as 151/420 (36 %) instead of 151/503 (30 %), and as full at 420. That is a stale maximum and a clamp to an old max, in the replication of current life without its max.
 - Fix: `Health.SetNetState(life, dead, max)` and `ResourcePool.NetMax`. On a client, every player's pool uses the host's maximum. No wire change, so no protocol bump. New check `PACT-VITALITY-ALLY-BAR-ON-OTHER-CLIENT` failed before (max 420) and passes after. The two own-HUD checks pass either way.
+
+## 2026-10-24: damage numbers as columns (presentation only)
+
+The owner sent a clip of a combat MMO hitting a training scarecrow: hits stack in a column beside the target, each with a caps tag line ("BACK CRITICAL"), big hits huge with a golden streak, the skill's icon next to the number. Ours were a 20 px gold label rising from a random spot for 0.6 s, the same for everything, and in the town they drew *under* the dummies' sprites.
+
+- **Columns.** `DamageNumberLayer` (one per scene, z 90) keeps one column per target just right of its head: newest line at the bottom, the oldest fading out at the top, 6 lines / 250 px at most. Sizes are screen pixels at any camera zoom.
+- **Tags** use only what a hit already resolves: CRITICAL, and IGNITE / SHOCK / FREEZE / CHILL when the hit applied them (`Ailments.LastHitApplied`, read from a new presentation-only `Health.HitPresented` event that fires after every gameplay listener). No invented BACK or PERFECT, and no damage-type tag (the colour says it).
+- **Size by importance:** crits, a big share of a boss's or rare's life, or 2.5× your recent average are 40 px slanted bold with a punch and a golden streak; the rest are compact lines. Colours by element from `UiTheme` (gold, orange, ice blue, lavender), crits orange-gold.
+- **Icon:** the skill bar's icon, carried as `DamagePayload.Skill` (presentation only).
+- **Who:** an ally's hits are small and dim; ignite and poison ticks sum into one small line per target; damage you take is red on the other side of your character, never in a column; a block or evasion says AVOIDED.
+- **Hordes:** past 6 columns, columns hold 3 lines and trash crits lose the streak; rapid same-kind hits merge into one line with their sum; at most 24 new lines per frame and 120 alive. Self-drawn pooled lines instead of a Label scene per hit: ExplosionBench's "hit + damage number" share went from 4.1 to 0.7 ms per 60 kills (kill call 9.6 → 5.8 ms).
+- **Co-op:** the client's own-hit event carries one byte of qualities and the skill's slot (protocol 8), so clients draw the same line as the host.
+- **Setting:** Damage numbers is now Full / Compact / Off (the old on/off maps over).
+- Tests: nine `DMGNUM-*` checks in `StatsSmokeTest`. Design: `docs/design/menus.md` -> "Damage numbers".
+
+![Before: town dummies](screenshots/damage-numbers-before.png)
+![After: town dummies](screenshots/damage-numbers-after.png)
+![Before: the Rift](screenshots/damage-numbers-before-horde.png)
+![After: the Rift](screenshots/damage-numbers-horde.png)
+
+Needs a human playtest: readability at 1080p/1440p/ultrawide, Compact in a dense Rift, co-op at internet latency.
+
+## 2026-10-24: log cleanup (boss slam, flushing queries, grab_focus) and no ally damage numbers
+
+- **Boss slam `ObjectDisposedException`.** `BossEnemy.Slam`/`Lane` callbacks (`AreaBurst.Impacted`, `LineStrike.Impacted`) called `Sfx.Play(this, ...)` after the boss was freed. They now check `IsInstanceValid(this)`, `Sfx.Play`/`Music` tolerate a freed context, the phase transition no longer touches `Sprite` after a freed boss, and the ascendancy lane callback checks its caster.
+- **"Can't change this state while flushing queries".** Not a toggled `Disabled`: `DropSpawner`/`EquipmentDropSpawner` added the drop's Area2D inside `Health.Died`, which fires in a projectile's overlap signal. Found by bracketing `ResolveHit` with prints. The drop is now added at the end of the frame (the position and roll are fixed first).
+- **`grab_focus` outside the tree.** Deferred focus calls ran after the co-op view was rebuilt. All of them go through `UiTheme.FocusLater` (checks the control is valid and in the tree when it runs).
+- **Damage numbers: allies' hits dropped** (owner decision). `DamageNumberKind.Ally` and its style are gone; `ShowHit` skips hits from a non-local player. Protocol 8's extra bytes stay (a client's own hits use them). New check `DMGNUM-ALLY-HIT-NO-LINE`.

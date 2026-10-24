@@ -120,8 +120,11 @@ public partial class NetSession : Node
     /// header, the held skill buttons at the end of a reality client's input).
     /// 7: revives (docs/design/multiplayer.md -> "Deaths and revives"): every player in a
     /// snapshot carries the get-up timer and whom they revive (two more bytes), and clients
-    /// send ClientRevive (start/stop a 5 s channel on a downed ally).</summary>
-    public const int Protocol = 7;
+    /// send ClientRevive (start/stop a 5 s channel on a downed ally).
+    /// 8: damage numbers (docs/design/menus.md -> "Damage numbers"): the DamageNumber event
+    /// carries the hit's qualities (crit, type, ailments applied, heavy) and the skill's
+    /// loadout slot, two more bytes.</summary>
+    public const int Protocol = 8;
 
     /// <summary>First bytes of the authentication message ("ARPG").</summary>
     private static readonly byte[] AuthMagic = { 0x41, 0x52, 0x50, 0x47 };

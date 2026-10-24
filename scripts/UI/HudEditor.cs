@@ -95,7 +95,7 @@ public partial class HudEditor : CanvasLayer
         row.AddChild(UiTheme.Button("Reset layout", ResetLayout, 15, 150f));
         Button done = UiTheme.Button("Done", Finish, 15, 110f);
         row.AddChild(done);
-        done.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(done);
         PlaceFrames();
     }
 

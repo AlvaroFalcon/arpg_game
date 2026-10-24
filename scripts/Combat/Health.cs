@@ -119,6 +119,19 @@ public partial class Health : Node
     /// </summary>
     public static event System.Action<Health, DamagePayload, float>? AnyHitResolved;
 
+    /// <summary>
+    /// Presentation only (damage numbers, docs/design/menus.md -> "Damage numbers"):
+    /// raised after every gameplay listener of <see cref="HitResolved"/> and
+    /// <see cref="AnyHitResolved"/> has run, so what the hit applied (an ignite, a
+    /// chill — <see cref="Ailments.LastHitApplied"/>) is already known.
+    /// </summary>
+    public event System.Action<DamagePayload, float>? HitPresented;
+
+    /// <summary>The hit being resolved while <see cref="Damaged"/> is raised, null for
+    /// already-resolved damage (an ignite tick, an explosion). Lets a
+    /// <see cref="Damaged"/> handler tell the two apart.</summary>
+    public DamagePayload? ResolvingHit { get; private set; }
+
     /// <summary>A hit that invulnerability (a dodge) or a hook (block, evasion) negated.</summary>
     public static event System.Action<Health, DamagePayload, bool>? AnyHitNegated;
 
@@ -337,9 +350,12 @@ public partial class Health : Node
         ResourcePool life = _stats.Life!;
         float lifeBefore = life.Current;
         life.Current = Mathf.Max(0f, life.Current - totalTaken);
+        ResolvingHit = payload;
         EmitSignal(SignalName.Damaged, totalTaken);
         HitResolved?.Invoke(payload, totalTaken);
         AnyHitResolved?.Invoke(this, payload, totalTaken);
+        ResolvingHit = null;
+        HitPresented?.Invoke(payload, totalTaken);
         ApplyLeech(payload, Mathf.Min(totalTaken, lifeBefore), sourceStats);
 
         if (life.Current <= 0f)

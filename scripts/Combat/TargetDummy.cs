@@ -47,6 +47,7 @@ public partial class TargetDummy : Area2D
         AddToGroup(CombatQuery.EnemyGroup);
 
         _health.Damaged += OnDamaged;
+        _health.HitPresented += OnHitPresented;
         _health.Died += OnDied;
     }
 
@@ -103,16 +104,23 @@ public partial class TargetDummy : Area2D
         QueueFree();
     }
 
+    private void OnHitPresented(DamagePayload payload, float taken)
+    {
+        if (DamageNumberScene is not null)
+        {
+            UI.DamageNumberLayer.ShowHit(this, payload, taken, GetNodeOrNull<Ailments>("Ailments"), 0f, 0f, NumberOffset);
+        }
+    }
+
+    /// <summary>Damage that was already resolved (ticks, explosions): hits come through <see cref="OnHitPresented"/>.</summary>
     private void SpawnDamageNumber(float amount)
     {
-        if (DamageNumberScene is null)
+        if (DamageNumberScene is not null && _health.ResolvingHit is null)
         {
-            return;
+            UI.DamageNumberLayer.ShowTick(this, amount, GetNodeOrNull<Ailments>("Ailments"), NumberOffset);
         }
-
-        var instance = DamageNumberScene.Instantiate<UI.DamageNumber>();
-        GetTree().CurrentScene.AddChild(instance);
-        instance.GlobalPosition = GlobalPosition + new Vector2(0f, -20f);
-        instance.Display(amount);
     }
+
+    /// <summary>The column starts just right of the dummy's head (the town dummy's sprite is taller).</summary>
+    private Vector2 NumberOffset => _sprite is not null ? new Vector2(22f, -46f) : new Vector2(18f, -18f);
 }
