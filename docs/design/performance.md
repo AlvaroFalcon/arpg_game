@@ -529,3 +529,29 @@ more monsters in these runs (286 against 245). These I0 numbers are the referenc
 images (AE 0 at fuzz 2 %): the set is deterministic, so any later difference is real. RunCapture
 `--only=caves` and `--only=town` were captured at `--fixed-fps 60` for the terrain increments.
 
+### I1: allocation-free `Stat.ComputeFormula` (C5), plus the `IsInGroup` string (C13a)
+
+- **Cause.** `Stat.ComputeFormula` walked its `IReadOnlyList<StatModifier>` with `foreach`, which boxes
+  `List<T>.Enumerator`: 40 B per stat read, ~45 KB/frame in the Rift. `Enemy.DirectionToTarget` asked
+  `Target.IsInGroup(CombatQuery.PlayerGroup)`, a `string` turned into a new `StringName` on every call
+  (16 KB/frame).
+- **Fix.** Indexed loops (a `List<T>` fast path, the interface indexer otherwise), same order of operations,
+  so the results are bit-identical. `Target is Player` instead of the group test: only `Player._Ready` joins
+  that group, so it is the same set. *C13a is a one-line extra outside the owner's C1–C11 list.*
+- **Check:** `StatsSmokeTest` `PERF-STAT-FORMULA-NO-ALLOC` (10 000 calls over 6 modifiers allocate 0 B; the
+  old formula's results for Flat/Increased/More mixes at three added-damage effectivenesses, through a list
+  and an array).
+- **Follow-up, not done here:** `ActorStats.GetModifiers(ModifierQuery)` builds a new `List` per call (one
+  per cast in `SkillUser`, plus `RunController`, `RealityController`, `AscendancyEffects`). A different, colder
+  path; worth a pooled list if a skill-heavy bench shows it.
+
+PerfBench Rift, 3 runs each (I0 baseline above → I1):
+
+| | Monsters | Frame avg (ms) | p99 | Scripts / step | **Alloc KB/frame** | `Enemy._PhysicsProcess` alloc |
+|---|---|---|---|---|---|---|
+| I0 | 374 / 325 / 374 | 14.54 / 12.02 / 14.30 | 18.7 | 9.77 | **80.2** [72.6–80.3] | 15.8 KB/frame |
+| I1 | 374 / 335 / 326 | 13.70 / 12.20 / 12.04 | 15.1 | 8.28 | **20.5** [20.0–20.9] | 2.5 KB/frame |
+
+Threshold (≤ 25 KB/frame with C13a; frame not worse than baseline + 0.5 ms): **met** (at 374 monsters
+14.30–14.54 → 13.70 ms).
+

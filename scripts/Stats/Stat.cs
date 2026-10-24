@@ -59,23 +59,41 @@ public sealed class Stat
         float increasedSum = 0f;
         float moreProduct = 1f;
 
-        foreach (StatModifier modifier in modifiers)
+        // Indexed loops: a foreach over the interface boxes List<T>'s enumerator, 40 B
+        // per stat read, which was half of a Rift frame's garbage
+        // (docs/design/performance.md -> "Frame budget pass").
+        if (modifiers is List<StatModifier> list)
         {
-            switch (modifier.Type)
+            for (int i = 0; i < list.Count; i++)
             {
-                case ModifierType.Flat:
-                    flatSum += modifier.Value;
-                    break;
-                case ModifierType.Increased:
-                    increasedSum += modifier.Value;
-                    break;
-                case ModifierType.More:
-                    moreProduct *= 1f + modifier.Value / 100f;
-                    break;
+                Accumulate(list[i], ref flatSum, ref increasedSum, ref moreProduct);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                Accumulate(modifiers[i], ref flatSum, ref increasedSum, ref moreProduct);
             }
         }
 
         return (baseValue + flatSum * flatEffectiveness) * (1f + increasedSum / 100f) * moreProduct;
+    }
+
+    private static void Accumulate(StatModifier modifier, ref float flatSum, ref float increasedSum, ref float moreProduct)
+    {
+        switch (modifier.Type)
+        {
+            case ModifierType.Flat:
+                flatSum += modifier.Value;
+                break;
+            case ModifierType.Increased:
+                increasedSum += modifier.Value;
+                break;
+            case ModifierType.More:
+                moreProduct *= 1f + modifier.Value / 100f;
+                break;
+        }
     }
 
     public void AddModifier(StatModifier modifier)

@@ -54,6 +54,7 @@ public partial class StatsSmokeTest : Node2D
         CheckResistanceCapAndOvercap();
         CheckNegativeResistanceFloor();
         CheckPenetrationEatsOvercapFirst();
+        CheckFormulaNoAlloc();
 
         // Deferred to _PhysicsProcess: exercises AddChild -> _Ready timing for a
         // node built entirely at runtime, so it needs at least one frame to
@@ -70,6 +71,71 @@ public partial class StatsSmokeTest : Node2D
     }
 
     private static bool Approx(float a, float b, float epsilon = 0.01f) => Mathf.Abs(a - b) <= epsilon;
+
+    /// <summary>The formula as it was written before the allocation-free loop
+    /// (docs/design/performance.md -> "Frame budget pass", I1): the reference.</summary>
+    private static float OldFormula(float baseValue, System.Collections.Generic.IEnumerable<StatModifier> modifiers, float flatEffectiveness = 1f)
+    {
+        float flat = 0f, increased = 0f, more = 1f;
+        foreach (StatModifier m in modifiers)
+        {
+            switch (m.Type)
+            {
+                case ModifierType.Flat: flat += m.Value; break;
+                case ModifierType.Increased: increased += m.Value; break;
+                case ModifierType.More: more *= 1f + m.Value / 100f; break;
+            }
+        }
+
+        return (baseValue + flat * flatEffectiveness) * (1f + increased / 100f) * more;
+    }
+
+    /// <summary>PERF-STAT-FORMULA-NO-ALLOC: Stat.ComputeFormula is read for every stat on
+    /// every frame; it must not allocate (a foreach over the interface boxed the
+    /// enumerator), and it must give the old results for any Flat/Increased/More mix.</summary>
+    private void CheckFormulaNoAlloc()
+    {
+        var mods = new System.Collections.Generic.List<StatModifier>
+        {
+            new(ModifierType.Flat, 12f), new(ModifierType.Increased, 35f), new(ModifierType.More, 20f),
+            new(ModifierType.Flat, -4f), new(ModifierType.Increased, -10f), new(ModifierType.More, -15f),
+        };
+        var mixes = new[]
+        {
+            mods,
+            new System.Collections.Generic.List<StatModifier> { new(ModifierType.Flat, 10f), new(ModifierType.Increased, 100f) },
+            new System.Collections.Generic.List<StatModifier> { new(ModifierType.More, 50f), new(ModifierType.More, 50f) },
+            new System.Collections.Generic.List<StatModifier>(),
+        };
+        bool same = true;
+        string detail = "";
+        foreach (var mix in mixes)
+        {
+            foreach (float eff in new[] { 1f, 0.5f, 2.5f })
+            {
+                float now = Stat.ComputeFormula(10f, mix, eff);
+                float viaArray = Stat.ComputeFormula(10f, mix.ToArray(), eff);
+                float old = OldFormula(10f, mix, eff);
+                if (now != old || viaArray != old)
+                {
+                    same = false;
+                    detail += $" [{mix.Count} mods x{eff}: {now} / {viaArray} vs {old}]";
+                }
+            }
+        }
+
+        Stat.ComputeFormula(10f, mods, 0.5f);
+        long before = System.GC.GetAllocatedBytesForCurrentThread();
+        float sink = 0f;
+        for (int i = 0; i < 10000; i++)
+        {
+            sink += Stat.ComputeFormula(10f, mods, 0.5f);
+        }
+
+        long allocated = System.GC.GetAllocatedBytesForCurrentThread() - before;
+        Check("PERF-STAT-FORMULA-NO-ALLOC", allocated == 0 && same,
+            $"10000 calls over 6 modifiers allocated {allocated} B (sum {sink:0}); same results as the old formula for {mixes.Length} mixes x 3 effectivenesses{detail}");
+    }
 
     /// <summary>Registry get/set, and that the named accessors
     /// (docs/design/stats.md -> "The registry") are thin wrappers over the exact

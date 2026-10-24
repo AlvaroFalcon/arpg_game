@@ -512,7 +512,9 @@ public partial class Enemy : CharacterBody2D
                 return Vector2.Zero;
             }
 
-            if (World.FlowField.Current is { } field && Target.IsInGroup(CombatQuery.PlayerGroup) && GlobalPosition.DistanceSquaredTo(Target.GlobalPosition) > 60f * 60f)
+            // Target is Player: only players join CombatQuery.PlayerGroup (Player._Ready), and the
+            // group test turned a string into a StringName on every call (16 KB a frame).
+            if (World.FlowField.Current is { } field && Target is Player && GlobalPosition.DistanceSquaredTo(Target.GlobalPosition) > 60f * 60f)
             {
                 Vector2 d = field.Direction(GlobalPosition);
                 if (d != Vector2.Zero)
