@@ -12,8 +12,8 @@ namespace ArpgGame.Net;
 /// lives in <see cref="CoopHost"/>; this adds what only the Rift has: the run's
 /// numbers in every snapshot (time, kills, elites, bosses, surge/Colossus flags),
 /// the party's run level, the director's banners and portal, the party's level-up
-/// rounds (RiftHost.Rounds.cs: one bar, everyone picks, the game paused), the
-/// revive rule and the begin-when-everyone-has-loaded handshake.
+/// rounds (RiftHost.Rounds.cs: one bar, everyone picks, the game paused) and the
+/// begin-when-everyone-has-loaded handshake. Deaths and revives are shared (CoopHost.Revives).
 /// </summary>
 public partial class RiftHost : CoopHost
 {
@@ -86,13 +86,8 @@ public partial class RiftHost : CoopHost
 
     protected override bool HoldInputs => _round is not null;
 
-    protected override void ModeTick(float dt)
-    {
-        if (_round is null)
-        {
-            Revives(dt);
-        }
-    }
+    /// <summary>A level-up round pauses the game: nobody gets up meanwhile (docs/design/multiplayer.md -> "Level-ups").</summary>
+    protected override bool RevivesHeld => _round is not null;
 
     /// <summary>The run starts: clock, director, and every client told.</summary>
     private void Begin()
@@ -106,54 +101,6 @@ public partial class RiftHost : CoopHost
         State.ClockRunning = true;
         _onBegin?.Invoke();
         Broadcast(w => w.U8(RiftProtocol.RunBegin));
-    }
-
-    /// <summary>
-    /// docs/design/multiplayer.md -> "Deaths": a downed player gets back up on their
-    /// own after <see cref="PartyRules.RespawnSeconds"/>, or sooner when an ally stands
-    /// within <see cref="PartyRules.ReviveRadius"/> for <see cref="PartyRules.ReviveTime"/>
-    /// seconds (that progress drains when they step away). The ring over the downed
-    /// player shows whichever is further (<see cref="PartyRules.StepRevive"/>).
-    /// </summary>
-    private void Revives(float dt)
-    {
-        if (State.Ended)
-        {
-            return;
-        }
-
-        foreach (RunPlayer rp in State.Players)
-        {
-            if (rp.Player is not { } downed || !rp.Downed)
-            {
-                rp.DownedFor = 0f;
-                rp.ReviveHelp = 0f;
-                continue;
-            }
-
-            bool helped = false;
-            foreach (RunPlayer other in State.Players)
-            {
-                if (other != rp && !other.Downed && other.Player is { Warded: false } ally
-                    && ally.GlobalPosition.DistanceTo(downed.GlobalPosition) <= PartyRules.ReviveRadius)
-                {
-                    helped = true;
-                    break;
-                }
-            }
-
-            (rp.ReviveHelp, rp.DownedFor, PartyRules.ReviveOutcome outcome, float shown) = PartyRules.StepRevive(rp.ReviveHelp, rp.DownedFor, helped, dt);
-            downed.ReviveProgress = shown;
-            if (outcome == PartyRules.ReviveOutcome.StillDown)
-            {
-                continue;
-            }
-
-            bool byAlly = outcome == PartyRules.ReviveOutcome.RevivedByAlly;
-            downed.Health!.Revive(byAlly ? PartyRules.ReviveLife : PartyRules.RespawnLife);
-            downed.Health.GrantInvulnerability(PartyRules.ReviveGrace);
-            ToastAll(byAlly ? $"{NameOf(rp)} is back on their feet!" : $"{NameOf(rp)} gets back up!", new Color(0.5f, 1f, 0.6f));
-        }
     }
 
     /// <summary>The run's level and bar for this player (the party's, mirrored on every <see cref="RunPlayer"/>).</summary>

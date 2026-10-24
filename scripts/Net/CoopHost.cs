@@ -47,6 +47,9 @@ public abstract partial class CoopHost : Node, IRunLink
         public long SnapshotChunks;
         public long InputsGot;
         public long InputsLost;
+
+        /// <summary>Revive intents (NetLimits.ReviveIntentsPerSecond).</summary>
+        public readonly PeerBudget ReviveBudget = new(NetLimits.ReviveIntentsPerSecond, NetLimits.ReviveIntentBurst);
     }
 
     /// <summary>The activity replicated (the Rift's run state, a reality's party).</summary>
@@ -130,6 +133,7 @@ public abstract partial class CoopHost : Node, IRunLink
         World.Magnetized += OnMagnetized;
         World.RemoteItemDropped += OnRemoteItem;
         Health.AnyHitResolved += OnAnyHit;
+        HookRevives();
         ModeReady();
     }
 
@@ -142,6 +146,7 @@ public abstract partial class CoopHost : Node, IRunLink
         World.Magnetized -= OnMagnetized;
         World.RemoteItemDropped -= OnRemoteItem;
         Health.AnyHitResolved -= OnAnyHit;
+        UnhookRevives();
         ModeExit();
         if (_session.Run == this)
         {
@@ -166,7 +171,7 @@ public abstract partial class CoopHost : Node, IRunLink
     {
     }
 
-    /// <summary>After inputs are applied (the Rift: revives).</summary>
+    /// <summary>After inputs are applied, before the downed rule (CoopHost.Revives).</summary>
     protected virtual void ModeTick(float dt)
     {
     }
@@ -212,6 +217,7 @@ public abstract partial class CoopHost : Node, IRunLink
         CapturePending();
         ApplyCommands();
         ModeTick(dt);
+        StepRevives(dt);
         TrackBoss();
         Progress(dt);
         _snapshotClock += dt;
@@ -919,7 +925,11 @@ public abstract partial class CoopHost : Node, IRunLink
             }
 
             w.U8(flags);
-            w.U8((byte)Mathf.RoundToInt((p?.ReviveProgress ?? 0f) * 255f));
+            // Deaths and revives (protocol 7): an ally's channel on this player, their way to
+            // getting up alone, and whom this player is reviving (an index in this list, 255 none).
+            w.U8((byte)Mathf.RoundToInt(Mathf.Clamp(p?.ReviveProgress ?? 0f, 0f, 1f) * 255f));
+            w.U8((byte)Mathf.RoundToInt(Mathf.Clamp(p?.GetUpProgress ?? 0f, 0f, 1f) * 255f));
+            w.U8(RevivingIndex(rp));
         }
 
         // The receiver's own extras: input ack, flask charges, cast timers.
@@ -1017,6 +1027,18 @@ public abstract partial class CoopHost : Node, IRunLink
                 case RiftProtocol.ClientTest:
                     TestMessage?.Invoke(peer, r.Str());
                     break;
+                case RiftProtocol.ClientRevive:
+                {
+                    // Start (1) or stop (0) a revive on the downed player of that peer.
+                    bool start = r.U8() == 1;
+                    long target = r.I32();
+                    if (link.Ready)
+                    {
+                        OnClientRevive(link, start, target);
+                    }
+
+                    break;
+                }
                 default:
                     if (!OnModeClientEvent(link, type, r))
                     {
@@ -1077,6 +1099,7 @@ public abstract partial class CoopHost : Node, IRunLink
 
         RunPlayer rp = link.Player;
         string name = NameOf(rp);
+        RevivesPeerLeft(rp);
         World.RemovePlayer(rp);
 
         if (rp.Player is { } p && IsInstanceValid(p))

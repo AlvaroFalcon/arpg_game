@@ -150,6 +150,158 @@ public partial class CoopRealityHost : CoopTestDriver
             $"packs ×{PartyRules.RealityPackSize(1)}/{PartyRules.RealityPackSize(2)}/{PartyRules.RealityPackSize(4)}, portals {PartyRules.RealityPortals(3, 1)}/{PartyRules.RealityPortals(3, 2)}");
     }
 
+    /// <summary>A walkable spot about <paramref name="distance"/> px from <paramref name="from"/>.</summary>
+    private static Vector2 Spot(RealityController r, Vector2 from, float distance)
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            Vector2 at = from + Vector2.Right.Rotated(i * Mathf.Tau / 16f) * distance;
+            if (r.Field.IsWalkable(r.Field.CellOf(at)))
+            {
+                return at;
+            }
+        }
+
+        return from;
+    }
+
+    /// <summary>
+    /// docs/design/multiplayer.md -> "Deaths and revives" in a co-op reality: a fall costs the
+    /// shared pool a portal and the player stays down where they fell (no more 1.5 s respawn at the
+    /// entrance), getting up alone after 10 s; the host (this machine's own player, the local path)
+    /// holds E next to them and revives them in about 5 s; moving or dodging stops that; forged
+    /// intents are refused; the whole party down brings everyone back at the entrance.
+    /// Returns ana's last view (its teleport count).
+    /// </summary>
+    private async Task<Dictionary<string, string>> DeathAndReviveChecks(RealityController reality, LobbyMember ana, Player anaCopy)
+    {
+        Player host = reality.Player;
+        RealityHost net = reality.NetHost!;
+        RunPlayer anaRp = reality.Party.ByPeer(ana.PeerId)!;
+        RunPlayer hostRp = reality.Party.Players.First(rp => rp.IsLocal);
+        string D(Dictionary<string, string> f) => string.Join(" ", f.Select(kv => $"{kv.Key}={kv.Value}"));
+
+        // Forged intents first, while everyone stands: a revive on someone standing, on nobody.
+        int refused0 = net.RefusedRevives;
+        await Ask(ana.PeerId, "revive_forge up=1 unknown=999");
+        await Seconds(0.5f);
+        Check("REALITY-REVIVE-FORGED-REFUSED", net.RefusedRevives >= refused0 + 2 && net.ReviveRefusals.GetValueOrDefault(PartyRules.ReviveStop.TargetUp) >= 1
+                && net.ReviveRefusals.GetValueOrDefault(PartyRules.ReviveStop.Unknown) >= 1 && hostRp.Reviver is null,
+            $"refused {net.RefusedRevives - refused0} ({string.Join(", ", net.ReviveRefusals.Select(kv => $"{kv.Key} {kv.Value}"))})");
+
+        // 1. Ana falls, nobody near: a portal spent, down in place, up alone after 10 s.
+        reality.SetPortalsForTest(8); // five falls below: none of them may collapse it
+        await Seconds(0.2f);
+        int pool = reality.PortalsLeft;
+        Dictionary<string, string> before = Fields(await Ask(ana.PeerId, "view"));
+        Vector2 fellAt = anaCopy.GlobalPosition;
+        host.GlobalPosition = Spot(reality, fellAt, 320f);
+        await Seconds(0.3f);
+        Kill(anaCopy);
+        ulong downAt = Time.GetTicksMsec();
+        bool markedDown = reality.Hud.MinimapAllies().Any(m => m.PeerId == ana.PeerId && m.Downed);
+        await Seconds(3f);
+        bool stillDown = anaRp.Downed && anaCopy.GlobalPosition.DistanceTo(fellAt) < 2f;
+        Dictionary<string, string> down3 = Fields(await Ask(ana.PeerId, $"downed peer={ana.PeerId}"));
+        bool upAlone = await WaitFor(() => !anaRp.Downed, 9f);
+        float upAfter = (Time.GetTicksMsec() - downAt) / 1000f;
+        float share = anaCopy.Stats.Life!.Current / Mathf.Max(1f, anaCopy.Stats.Life.Max);
+        await Seconds(0.5f);
+        Dictionary<string, string> up = Fields(await Ask(ana.PeerId, $"downed peer={ana.PeerId}"));
+        Check("REALITY-DEATH-POOL", reality.PortalsLeft == pool - 1 && F(down3, "portals") == pool - 1 && markedDown && stillDown && F(down3, "dead") == 1f && F(down3, "lying") == 1f
+                && F(down3, "teleports") == F(before, "teleports") && down3.GetValueOrDefault("prompt", "").StartsWith("Getting_up_in_"),
+            $"pool {pool} → {reality.PortalsLeft} (ana {F(down3, "portals")}); at 3 s still down where she fell={stillDown} (no 1.5 s respawn any more), down on the host's minimap={markedDown}; ana: {D(down3)}");
+        Check("REALITY-SELF-REVIVE-10S", upAlone && upAfter is >= 9.5f and <= 11.5f && share is >= 0.45f and <= 0.6f && F(up, "dead") == 0f && F(up, "life") is >= 0.45f and <= 0.6f
+                && anaCopy.GlobalPosition.DistanceTo(fellAt) < 2f,
+            $"up alone={upAlone} after {upAfter:0.0} s at {share:P0} life, where she fell; ana: {D(up)}");
+
+        // 2. The host revives her: hold E next to her, stand still, about 5 s.
+        await WaitFor(() => anaCopy.Health!.InvulnerableTime <= 0f, 3f);
+        Kill(anaCopy);
+        host.GlobalPosition = Spot(reality, anaCopy.GlobalPosition, 40f);
+        await Seconds(0.3f);
+        int revives = net.AllyRevives;
+        Input.ActionPress("interact");
+        bool started = await WaitFor(() => anaRp.Reviver == hostRp, 2f);
+        await Seconds(2f);
+        string hostPrompt = reality.Revive?.PromptText ?? "";
+        Dictionary<string, string> mid = Fields(await Ask(ana.PeerId, $"downed peer={ana.PeerId}"));
+        bool revived = await WaitFor(() => !anaRp.Downed, 5f);
+        Input.ActionRelease("interact");
+        float took = net.LastReviveSeconds;
+        float share2 = anaCopy.Stats.Life!.Current / Mathf.Max(1f, anaCopy.Stats.Life.Max);
+        Check("REALITY-ALLY-REVIVE-5S", started && revived && net.AllyRevives == revives + 1 && took is >= 4.6f and <= 5.8f && share2 is >= 0.45f and <= 0.6f
+                && reality.PortalsLeft == pool - 2 && hostPrompt.StartsWith("Reviving ana") && mid.GetValueOrDefault("prompt", "").Contains("is_reviving_you") && F(mid, "reviver") == 1f && F(mid, "channel") > 0.2f,
+            $"the host held E: started={started}, ana up={revived} after {took:0.00} s at {share2:P0} life; pool {reality.PortalsLeft} (two falls); the host's screen '{hostPrompt}'; ana: {D(mid)}");
+
+        // 3. Moving and dodging stop it (the host's own keys: the local path).
+        await WaitFor(() => anaCopy.Health!.InvulnerableTime <= 0f, 3f);
+        Kill(anaCopy);
+        host.GlobalPosition = Spot(reality, anaCopy.GlobalPosition, 40f);
+        await Seconds(0.3f);
+        Input.ActionPress("interact");
+        bool s1 = await WaitFor(() => anaRp.Reviver == hostRp, 2f);
+        await Seconds(1f);
+        float c1 = anaRp.ReviveChannel;
+        Input.ActionPress("move_left");
+        bool moved = await WaitFor(() => anaRp.Reviver is null, 1f);
+        PartyRules.ReviveStop why1 = net.LastReviveCancel;
+        Input.ActionRelease("move_left");
+        Input.ActionRelease("interact");
+        await Seconds(0.2f);
+        host.GlobalPosition = Spot(reality, anaCopy.GlobalPosition, 40f);
+        await Seconds(0.3f);
+        Input.ActionPress("interact");
+        bool s2 = await WaitFor(() => anaRp.Reviver == hostRp, 2f);
+        await Seconds(1f);
+        float c2 = anaRp.ReviveChannel;
+        bool dodged = host.Dodge!.TryDodge(Vector2.Up);
+        bool stopped = await WaitFor(() => anaRp.Reviver is null, 1f);
+        PartyRules.ReviveStop why2 = net.LastReviveCancel;
+        Input.ActionRelease("interact");
+        await Seconds(0.3f);
+        // A pressed cast (realities cast on press) stops it too.
+        host.GlobalPosition = Spot(reality, anaCopy.GlobalPosition, 40f);
+        await Seconds(0.3f);
+        Input.ActionPress("interact");
+        bool s3 = await WaitFor(() => anaRp.Reviver == hostRp, 2f);
+        await Seconds(0.6f);
+        bool cast = false;
+        foreach (Skills.SkillSlotId slot in System.Enum.GetValues<Skills.SkillSlotId>())
+        {
+            if (!cast && host.SkillUser.TryCast(slot, Vector2.Right) is null)
+            {
+                cast = true;
+            }
+        }
+
+        bool castStopped = await WaitFor(() => anaRp.Reviver is null, 1f);
+        PartyRules.ReviveStop why3 = net.LastReviveCancel;
+        Input.ActionRelease("interact");
+        Check("REALITY-REVIVE-MOVE-DODGE-CAST-CANCEL", s1 && c1 > 0.1f && moved && why1 == PartyRules.ReviveStop.Moved && s2 && c2 > 0.1f && dodged && stopped && why2 == PartyRules.ReviveStop.Dodged
+                && s3 && cast && castStopped && why3 == PartyRules.ReviveStop.Cast && anaRp.Downed && anaRp.ReviveChannel == 0f && net.AllyRevives == revives + 1,
+            $"walking at {c1:0.00}: stopped={moved} ({why1}); dodging at {c2:0.00}: stopped={stopped} ({why2}); a pressed cast (cast={cast}): stopped={castStopped} ({why3}); ana still down={anaRp.Downed}");
+
+        // 4. The whole party down at once: everyone back at the entrance 1.5 s later (each fall paid its portal).
+        await WaitFor(() => host.Health!.InvulnerableTime <= 0f, 3f);
+        int pool2 = reality.PortalsLeft;
+        int wipes = reality.Wipes;
+        Dictionary<string, string> preWipe = Fields(await Ask(ana.PeerId, "view"));
+        Kill(host);
+        ulong wipeAt = Time.GetTicksMsec();
+        bool pending = reality.WipePending && anaRp.Downed && hostRp.Downed;
+        bool back = await WaitFor(() => !anaRp.Downed && !hostRp.Downed, 4f);
+        float backAfter = (Time.GetTicksMsec() - wipeAt) / 1000f;
+        await Seconds(0.6f);
+        Dictionary<string, string> afterWipe = Fields(await Ask(ana.PeerId, "view"));
+        Vector2 entrance = RasterLayout.World(reality.Raster.Entrance);
+        Check("REALITY-WIPE-BACK-AT-ENTRANCE", pending && back && backAfter is >= 1.3f and <= 2.6f && reality.Wipes == wipes + 1 && reality.PortalsLeft == pool2 - 1 && !reality.Collapsed
+                && host.GlobalPosition.DistanceTo(entrance) < 80f && anaCopy.GlobalPosition.DistanceTo(entrance) < 80f && F(afterWipe, "teleports") > F(preWipe, "teleports"),
+            $"ana down, then the host: wipe={pending}; everyone up={back} after {backAfter:0.0} s at the entrance (host {host.GlobalPosition.DistanceTo(entrance):0} px, ana {anaCopy.GlobalPosition.DistanceTo(entrance):0} px); pool {pool2} → {reality.PortalsLeft}; ana teleports {F(preWipe, "teleports")} → {F(afterWipe, "teleports")}");
+        await WaitFor(() => host.Health!.InvulnerableTime <= 0f && anaCopy.Health!.InvulnerableTime <= 0f, 4f);
+        return afterWipe;
+    }
+
     private async Task Scenario()
     {
         NetSession? session = NetSession.Get(this);
@@ -278,15 +430,8 @@ public partial class CoopRealityHost : CoopTestDriver
         reality.Pause.Close();
         Check("REALITY-NO-PAUSE", !paused && snaps1 > snaps0 + 5, $"host tree paused={paused}; ana's snapshots {snaps0} → {snaps1}");
 
-        // --- a death costs the party a portal; ana comes back at the entrance -------------------------------
-        int pool = reality.PortalsLeft;
-        Kill(anaCopy);
-        bool markedDown = reality.Hud.MinimapAllies().Any(a => a.PeerId == ana.PeerId && a.Downed);
-        bool respawned = await WaitFor(() => anaCopy.Health is { IsDead: false }, 4f);
-        await Seconds(0.6f); // the teleport is replayed at its moment on ana's machine
-        Dictionary<string, string> fell = Fields(await Ask(ana.PeerId, "view"));
-        Check("REALITY-DEATH-POOL", respawned && reality.PortalsLeft == pool - 1 && F(fell, "portals") == pool - 1 && F(fell, "teleports") >= 1f && markedDown,
-            $"pool {pool} → {reality.PortalsLeft} (ana {F(fell, "portals")}); ana back up={respawned} (realities: back after 1.5 s for a portal, by design), teleports {F(fell, "teleports")}; down on the host's minimap={markedDown}");
+        // --- deaths and revives (multiplayer.md -> "Deaths and revives", owner decision 2026-10-24) ---
+        Dictionary<string, string> fell = await DeathAndReviveChecks(reality, ana, anaCopy);
 
         // --- a broken or hostile host: a teleport into the void is ignored by the client ------------------
         reality.NetHost!.Teleport(ana.PeerId, new Vector2(-4000f, -4000f));
@@ -476,6 +621,35 @@ public partial class CoopRealityGuest : CoopTestDriver
                 var overlay = (UI.MapOverlay)r.Hud.FindChild("MapOverlay", true, false);
                 float gap = mini.Select(a => r.Party.ByPeer(a.PeerId)?.Player is { } pp ? pp.GlobalPosition.DistanceTo(a.Position) : 99f).DefaultIfEmpty(99f).First();
                 return $"minimap={string.Join(",", mini.Select(a => a.Name))} overlay={string.Join(",", overlay.Allies().Select(a => a.Name))} gap={Num(gap)}";
+            }
+
+            case "downed":
+            {
+                if (Reality is not { } r)
+                {
+                    return "scene=" + GetTree().CurrentScene?.Name;
+                }
+
+                long peer = long.TryParse(Fields(question).GetValueOrDefault("peer"), out long id) ? id : 0;
+                Player? p = r.Party.ByPeer(peer)?.Player;
+                if (p is null)
+                {
+                    return "dead=-1";
+                }
+
+                float share = p.Stats.Life is { Max: > 0f } life ? life.Current / life.Max : -1f;
+                Player? reviver = r.Party.Players.Select(rp => rp.Player).FirstOrDefault(o => o is not null && o.RevivingTarget == p);
+                string prompt = (r.Revive?.PromptText ?? "").Replace(' ', '_');
+                return $"dead={(p.Health is { IsDead: true } ? 1 : 0)} lying={(p.ShowsDowned ? 1 : 0)} ring={Num(p.GetUpProgress)} channel={Num(p.ReviveProgress)} life={share.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} "
+                    + $"reviver={reviver?.PeerId ?? 0} portals={r.PortalsLeft} teleports={r.NetClient?.Teleports ?? 0} prompt={prompt}";
+            }
+
+            case "revive_forge":
+            {
+                Dictionary<string, string> f = Fields(question);
+                Reality!.NetClient!.SendRevive(true, long.Parse(f["up"]));
+                Reality.NetClient.SendRevive(true, long.Parse(f["unknown"]));
+                return "sent 2 forged revive intents";
             }
 
             case "walk":

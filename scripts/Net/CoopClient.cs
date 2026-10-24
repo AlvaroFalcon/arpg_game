@@ -197,6 +197,19 @@ public abstract partial class CoopClient : Node, IRunLink
     }
 
     private readonly Dictionary<long, Player> _players = new();
+    private readonly List<Player?> _snapshotPlayers = new();
+    private readonly List<byte> _revivingIndex = new();
+
+    /// <summary>Asks the host to start (or stop) a revive on <paramref name="targetPeer"/>'s downed
+    /// player (docs/design/multiplayer.md -> "Deaths and revives"). The host decides.</summary>
+    public void SendRevive(bool start, long targetPeer)
+    {
+        _events.Clear();
+        _events.U8(RiftProtocol.ClientRevive);
+        _events.U8((byte)(start ? 1 : 0));
+        _events.I32((int)targetPeer);
+        _session.SendClientEvents(_events.ToArray());
+    }
 
     /// <summary>The host has answered (any event batch): stop repeating "ready".</summary>
     private bool _heardFromHost;
@@ -489,6 +502,8 @@ public abstract partial class CoopClient : Node, IRunLink
         int players = r.U8();
         Vector2 myHostPos = Vector2.Zero;
         bool haveMine = false;
+        _snapshotPlayers.Clear();
+        _revivingIndex.Clear();
         for (int i = 0; i < players; i++)
         {
             long peer = r.I32();
@@ -497,13 +512,19 @@ public abstract partial class CoopClient : Node, IRunLink
             r.U16();
             byte pflags = r.U8();
             float revive = r.U8() / 255f;
-            if (!_players.TryGetValue(peer, out Player? p) || !IsInstanceValid(p))
+            float getUp = r.U8() / 255f;
+            byte reviving = r.U8();
+            _players.TryGetValue(peer, out Player? p);
+            _snapshotPlayers.Add(p is not null && IsInstanceValid(p) ? p : null);
+            _revivingIndex.Add(reviving);
+            if (p is null || !IsInstanceValid(p))
             {
                 continue;
             }
 
             bool dead = (pflags & RiftProtocol.PlayerDead) != 0;
             p.ReviveProgress = revive;
+            p.GetUpProgress = getUp;
             if (p == Local)
             {
                 myHostPos = at;
@@ -523,6 +544,17 @@ public abstract partial class CoopClient : Node, IRunLink
             if (_playerTracks.TryGetValue(peer, out NetTrack? track))
             {
                 track.Push(hostTime, at);
+            }
+        }
+
+        // Who revives whom (deaths and revives): an index into this list; anything else is nobody.
+        for (int i = 0; i < _snapshotPlayers.Count; i++)
+        {
+            if (_snapshotPlayers[i] is { } reviver)
+            {
+                int at = _revivingIndex[i];
+                Player? target = at < _snapshotPlayers.Count && at != i ? _snapshotPlayers[at] : null;
+                reviver.RevivingTarget = target is { Health.IsDead: true } ? target : null;
             }
         }
 

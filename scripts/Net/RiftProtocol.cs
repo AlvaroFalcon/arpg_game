@@ -74,7 +74,7 @@ public static class RiftProtocol
     /// the row is fixed, ["leave", "stay"]; a client's <see cref="ClientPick"/> carries one of those keys.</summary>
     public const byte RoundCashOut = 3;
 
-    // client → host events (shared: ClientReady, ClientTest; Rift only: ClientPick, ClientOffers)
+    // client → host events (shared: ClientReady, ClientTest, ClientRevive; Rift only: ClientPick, ClientOffers)
     public const byte ClientReady = 1;
     /// <summary>A card chosen in a round: round id, key.</summary>
     public const byte ClientPick = 2;
@@ -82,6 +82,11 @@ public static class RiftProtocol
 
     /// <summary>The row on the client's screen in a round: round id, count, keys (sent on open and per reroll).</summary>
     public const byte ClientOffers = 4;
+
+    /// <summary>Every co-op mode (docs/design/multiplayer.md -> "Deaths and revives"): start (u8 1)
+    /// or stop (u8 0) a revive on the downed player of peer i32. The host checks range, that the
+    /// sender stands and the target is down and free, and a rate limit (NetLimits).</summary>
+    public const byte ClientRevive = 5;
 
     // snapshot player flags
     public const byte PlayerDead = 1;

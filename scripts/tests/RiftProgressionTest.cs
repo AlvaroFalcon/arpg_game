@@ -493,35 +493,45 @@ public partial class RiftProgressionTest : Node2D
         return account;
     }
 
-    /// <summary>Co-op downed rule (PartyRules.StepRevive): back up alone after 10 s,
-    /// sooner with an ally standing by; the ring shows whichever is further.</summary>
+    /// <summary>Co-op downed rule (PartyRules.StepDowned, ChannelBreak — docs/design/multiplayer.md
+    /// -> "Deaths and revives"): back up alone after 10 s; an ally's 5 s channel sooner; a stopped
+    /// channel loses its progress; what stops a channel and what doesn't.</summary>
     private void DownedRuleChecks()
     {
-        float help = 0f, down = 0f, shown = 0f;
+        float down = 0f, channel = 0f;
         Net.PartyRules.ReviveOutcome outcome = Net.PartyRules.ReviveOutcome.StillDown;
         int steps = 0;
         while (outcome == Net.PartyRules.ReviveOutcome.StillDown && steps < 2000)
         {
-            (help, down, outcome, shown) = Net.PartyRules.StepRevive(help, down, false, 0.05f);
+            (down, channel, outcome) = Net.PartyRules.StepDowned(down, channel, false, 0.05f);
             steps++;
         }
 
         Check("DOWNED-ALONE-RESPAWNS-AT-10S", outcome == Net.PartyRules.ReviveOutcome.Respawned && Mathf.Abs(steps * 0.05f - Net.PartyRules.RespawnSeconds) < 0.06f,
             $"outcome={outcome} after {steps * 0.05f:0.00} s");
 
-        help = 0f; down = 0f; outcome = Net.PartyRules.ReviveOutcome.StillDown; steps = 0;
+        down = 0f; channel = 0f; outcome = Net.PartyRules.ReviveOutcome.StillDown; steps = 0;
         while (outcome == Net.PartyRules.ReviveOutcome.StillDown && steps < 2000)
         {
-            (help, down, outcome, shown) = Net.PartyRules.StepRevive(help, down, true, 0.05f);
+            (down, channel, outcome) = Net.PartyRules.StepDowned(down, channel, true, 0.05f);
             steps++;
         }
 
-        Check("DOWNED-ALLY-REVIVES-SOONER", outcome == Net.PartyRules.ReviveOutcome.RevivedByAlly && Mathf.Abs(steps * 0.05f - Net.PartyRules.ReviveTime) < 0.06f,
-            $"outcome={outcome} after {steps * 0.05f:0.00} s");
+        Check("DOWNED-ALLY-CHANNEL-5S", outcome == Net.PartyRules.ReviveOutcome.RevivedByAlly && Mathf.Abs(steps * 0.05f - Net.PartyRules.ReviveChannelSeconds) < 0.06f
+                && Net.PartyRules.ReviveLife == Net.PartyRules.RespawnLife,
+            $"outcome={outcome} after {steps * 0.05f:0.00} s; ally revive life {Net.PartyRules.ReviveLife:P0}, alone {Net.PartyRules.RespawnLife:P0}");
 
-        (float h, float d, Net.PartyRules.ReviveOutcome o, float ring) = Net.PartyRules.StepRevive(0.1f, 6f, false, 0.05f);
-        Check("DOWNED-RING-SHOWS-FURTHEST", o == Net.PartyRules.ReviveOutcome.StillDown && Mathf.IsEqualApprox(ring, 6.05f / Net.PartyRules.RespawnSeconds) && h < 0.1f,
-            $"ring={ring:0.000}, help drained to {h:0.000}, down {d:0.00} s");
+        (float d1, float c1, _) = Net.PartyRules.StepDowned(3f, 0.6f, false, 0.05f);
+        Check("DOWNED-CHANNEL-LOST-WHEN-STOPPED", c1 == 0f && Mathf.IsEqualApprox(d1, 3.05f), $"channel 0.6 → {c1:0.00} when it stops; the get-up timer goes on ({d1:0.00} s)");
+
+        Net.PartyRules.ReviveStop Break(bool down2 = false, bool up = false, bool move = false, bool dodge = false, bool cast = false, bool stun = false, float dist = 40f) =>
+            Net.PartyRules.ChannelBreak(down2, !up, move, dodge, cast, stun, dist);
+        Check("DOWNED-CHANNEL-BREAKS", Break() == Net.PartyRules.ReviveStop.None && Break(move: true) == Net.PartyRules.ReviveStop.Moved
+                && Break(dodge: true) == Net.PartyRules.ReviveStop.Dodged && Break(cast: true) == Net.PartyRules.ReviveStop.Cast
+                && Break(stun: true) == Net.PartyRules.ReviveStop.Stunned && Break(down2: true) == Net.PartyRules.ReviveStop.ReviverDown
+                && Break(up: true) == Net.PartyRules.ReviveStop.TargetUp && Break(dist: Net.PartyRules.ReviveRadius + Net.PartyRules.ReviveRangeSlack + 1f) == Net.PartyRules.ReviveStop.TooFar
+                && Break(dist: Net.PartyRules.ReviveRadius + Net.PartyRules.ReviveRangeSlack - 1f) == Net.PartyRules.ReviveStop.None,
+            "still → goes on; move, dodge, cast, stun, going down, the target up, out of range → stops (damage is not an input: it never stops it)");
     }
 
     private void OverflowChecks()

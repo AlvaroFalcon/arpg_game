@@ -7,7 +7,7 @@ using ArpgGame.Net;
 namespace ArpgGame.UI;
 
 /// <summary>One ally as a map shows it (docs/design/multiplayer.md -> "Allies on the maps").</summary>
-public readonly record struct AllyMarker(long PeerId, string Name, Vector2 Position, Color Color, bool Downed);
+public readonly record struct AllyMarker(long PeerId, string Name, Vector2 Position, Color Color, bool Downed, float Revive = 0f);
 
 /// <summary>
 /// The other party members on every map — docs/design/multiplayer.md -> "Allies on the
@@ -63,7 +63,7 @@ public static class PartyMarkers
             }
 
             string name = p.NetName.Length > 0 ? p.NetName : "Ally";
-            allies.Add(new AllyMarker(p.PeerId, name, p.GlobalPosition, ColorOf(context, p.PeerId), p.ShowsDowned));
+            allies.Add(new AllyMarker(p.PeerId, name, p.GlobalPosition, ColorOf(context, p.PeerId), p.ShowsDowned, p.ShowsDowned ? p.ReviveProgress : 0f));
         }
 
         return allies;
@@ -76,6 +76,11 @@ public static class PartyMarkers
         if (m.Downed)
         {
             c.DrawArc(at, radius - 0.6f, 0f, Mathf.Tau, 20, m.Color with { A = 0.85f }, 2f, true);
+            if (m.Revive > 0f)
+            {
+                // An ally's revive channel on them (docs/design/multiplayer.md -> "Deaths and revives").
+                c.DrawArc(at, radius + 2.5f, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * Mathf.Min(1f, m.Revive), 20, new Color(0.45f, 1f, 0.55f), 2f, true);
+            }
         }
         else
         {
@@ -89,7 +94,7 @@ public static class PartyMarkers
         }
 
         Font font = ThemeDB.FallbackFont;
-        string text = m.Downed ? $"{m.Name} · down" : m.Name;
+        string text = m.Downed ? (m.Revive > 0f ? $"{m.Name} · being revived" : $"{m.Name} · down") : m.Name;
         const int size = 13;
         float w = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
         Vector2 p = at + new Vector2(-w / 2f, radius + 14f);

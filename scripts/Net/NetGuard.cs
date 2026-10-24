@@ -44,6 +44,13 @@ public static class NetLimits
     public const float MessagesPerSecond = 150f;
     public const float MessageBurst = 300f;
 
+    /// <summary>Revive intents (start or stop a revive: docs/design/multiplayer.md -> "Deaths and
+    /// revives") per peer: a bucket refilled at this rate, holding up to <see cref="ReviveIntentBurst"/>.
+    /// Holding E sends one start, then one again every 0.4 s at most while it is refused;
+    /// releasing sends one stop. More than this is refused and counted.</summary>
+    public const float ReviveIntentsPerSecond = 4f;
+    public const float ReviveIntentBurst = 6f;
+
     /// <summary>Wrong or malformed join codes from one address before it is ignored…</summary>
     public const int FailedAttempts = 5;
 
@@ -216,18 +223,28 @@ public sealed class AttemptLimiter
     }
 }
 
-/// <summary>A per-peer message budget (token bucket). Clock in seconds, passed in.</summary>
+/// <summary>A per-peer message budget (token bucket). Clock in seconds, passed in. By default
+/// the message budget (<see cref="NetLimits.MessagesPerSecond"/>); other limits pass their own.</summary>
 public sealed class PeerBudget
 {
-    private float _tokens = NetLimits.MessageBurst;
+    private readonly float _rate;
+    private readonly float _burst;
+    private float _tokens;
     private double _last = double.NaN;
+
+    public PeerBudget(float rate = NetLimits.MessagesPerSecond, float burst = NetLimits.MessageBurst)
+    {
+        _rate = rate;
+        _burst = burst;
+        _tokens = burst;
+    }
 
     /// <summary>Spends one message; false if the peer is over its budget.</summary>
     public bool Spend(double now)
     {
         if (!double.IsNaN(_last))
         {
-            _tokens = Math.Min(NetLimits.MessageBurst, _tokens + (float)(now - _last) * NetLimits.MessagesPerSecond);
+            _tokens = Math.Min(_burst, _tokens + (float)(now - _last) * _rate);
         }
 
         _last = now;

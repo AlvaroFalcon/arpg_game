@@ -91,6 +91,9 @@ public partial class RealityController : Node2D, IPickupHandler
     public RealityHost? NetHost { get; private set; }
     public RealityClient? NetClient { get; private set; }
 
+    /// <summary>Co-op: the revive prompt and E (docs/design/multiplayer.md -> "Deaths and revives"); null solo.</summary>
+    public ReviveControl? Revive { get; private set; }
+
     /// <summary>Participants when the reality started (the pool and the scaling use it).</summary>
     public int PartySize { get; private set; } = 1;
 
@@ -228,6 +231,12 @@ public partial class RealityController : Node2D, IPickupHandler
         {
             NetClient = new RealityClient { Name = "RealityClient", Reality = this };
             AddChild(NetClient);
+        }
+
+        if (Coop)
+        {
+            Revive = new ReviveControl { Name = "ReviveControl", Local = Player };
+            AddChild(Revive);
         }
 
         Session?.ReportPlace(MemberPlace.Run);
@@ -697,7 +706,8 @@ public partial class RealityController : Node2D, IPickupHandler
             _exitPrompt.Visible = near;
         }
 
-        if (near && !GetTree().Paused && Input.IsActionJustPressed("interact"))
+        // E next to a downed ally revives them (ReviveControl) rather than leaving.
+        if (near && !GetTree().Paused && Input.IsActionJustPressed("interact") && Revive is not { WantsInteract: true })
         {
             UseExitPortal();
         }
@@ -1290,15 +1300,19 @@ public partial class RealityController : Node2D, IPickupHandler
     public void SetPortalsForTest(int portals) => PortalsLeft = portals;
 
     /// <summary>
-    /// Co-op host (docs/design/endgame.md -> "Co-op realities"): one shared pool of
-    /// portals. Every death costs one and the player comes back after 1.5 s: inside
-    /// the arena while someone is still fighting, else at the entrance (the fight
-    /// resets only once everyone in it has fallen). The death that empties the pool
-    /// collapses the reality for everyone, exactly like the solo rule.
+    /// Co-op host (docs/design/endgame.md -> "Co-op realities", multiplayer.md -> "Deaths and
+    /// revives"): one shared pool of portals. Every fall costs
+    /// <see cref="PartyRules.RealityPortalsPerFall"/>, and the death that empties the pool
+    /// collapses the reality for everyone (the solo rule). Otherwise the player goes down where
+    /// they fell: back up alone after 10 s, or sooner with an ally's 5 s revive (CoopHost.Revives).
+    /// The boss fight resets once nobody standing is left in it. When the whole party is down
+    /// at once, everyone is back at the entrance <see cref="PartyRules.RealityWipeSeconds"/>
+    /// later (<see cref="Wipe"/>: the solo death rule, for the party). After the clear a fall
+    /// costs nothing and nobody is brought back: they get up as usual.
     /// </summary>
-    private async void OnPartyMemberDied(Player who)
+    private void OnPartyMemberDied(Player who)
     {
-        if (Completed || Collapsed || Party.Ended || Party.PlayerOf(who) is not { } rp)
+        if (Collapsed || Party.Ended || Party.PlayerOf(who) is not { } rp)
         {
             return;
         }
@@ -1308,8 +1322,14 @@ public partial class RealityController : Node2D, IPickupHandler
             profile.Active.Deaths++;
         }
 
-        PortalsLeft--;
         string name = CoopHost.NameOf(rp);
+        if (Completed)
+        {
+            NetHost?.ToastAll($"{name} is down — back in {PartyRules.RespawnSeconds:0} s, or hold E next to them to revive", new Color(1f, 0.45f, 0.4f));
+            return;
+        }
+
+        PortalsLeft -= PartyRules.RealityPortalsPerFall;
         bool fighting = BossFightActive && Party.Players.Any(o => o != rp && !o.Downed && o.Player is { } op && Raster.BossRegion.Contains(Field.CellOf(op.GlobalPosition)));
         if (BossFightActive && !fighting)
         {
@@ -1323,24 +1343,59 @@ public partial class RealityController : Node2D, IPickupHandler
         }
 
         string left = $"{PortalsLeft} portal{(PortalsLeft == 1 ? "" : "s")} left for the party";
+        bool wiped = Party.AllDown;
+        string subtitle = wiped ? $"The whole party is down — back at the entrance · {left}" : $"Back up in {PartyRules.RespawnSeconds:0} s, or an ally revives you · {left}";
         if (who.IsLocal)
         {
-            EmitSignal(SignalName.Announced, "You have fallen", left, new Color(1f, 0.4f, 0.35f));
+            EmitSignal(SignalName.Announced, "You have fallen", subtitle, new Color(1f, 0.4f, 0.35f));
         }
         else
         {
-            NetHost?.BannerTo(rp.PeerId, "You have fallen", left, new Color(1f, 0.4f, 0.35f));
+            NetHost?.BannerTo(rp.PeerId, "You have fallen", subtitle, new Color(1f, 0.4f, 0.35f));
         }
 
-        NetHost?.ToastAll($"{name} has fallen — {left}", new Color(1f, 0.45f, 0.4f));
-        await ToSignal(GetTree().CreateTimer(1.5), SceneTreeTimer.SignalName.Timeout);
-        if (!IsInstanceValid(this) || Collapsed || Party.Ended || Party.PlayerOf(who) is null || !IsInstanceValid(who))
+        NetHost?.ToastAll(wiped ? $"{name} has fallen — the whole party is down · {left}" : $"{name} is down — {left}; hold E next to them to revive", new Color(1f, 0.45f, 0.4f));
+        if (wiped)
+        {
+            Wipe();
+        }
+    }
+
+    /// <summary>Co-op host: the whole party is down and about to be brought back (revives are held meanwhile).</summary>
+    public bool WipePending { get; private set; }
+
+    /// <summary>Wipes seen (tests).</summary>
+    public int Wipes { get; private set; }
+
+    /// <summary>
+    /// Co-op host: nobody is left standing (each fall already paid its portal), so nobody can
+    /// revive anyone: after <see cref="PartyRules.RealityWipeSeconds"/> everyone is back at the
+    /// entrance with full life and mana, exactly as a solo player is after a death.
+    /// </summary>
+    private async void Wipe()
+    {
+        if (WipePending)
         {
             return;
         }
 
-        bool stillFighting = BossFightActive && Party.Players.Any(o => o != rp && !o.Downed);
-        Respawn(rp, stillFighting ? ArenaSpot(1) : SpawnSpot(Party.Players.ToList().IndexOf(rp)));
+        WipePending = true;
+        Wipes++;
+        await ToSignal(GetTree().CreateTimer(PartyRules.RealityWipeSeconds), SceneTreeTimer.SignalName.Timeout);
+        WipePending = false;
+        if (!IsInstanceValid(this) || Collapsed || Party.Ended)
+        {
+            return;
+        }
+
+        List<RunPlayer> party = Party.Players.ToList();
+        for (int i = 0; i < party.Count; i++)
+        {
+            if (party[i].Downed)
+            {
+                Respawn(party[i], SpawnSpot(i));
+            }
+        }
     }
 
     private void Respawn(RunPlayer rp, Vector2 at)
@@ -1374,12 +1429,17 @@ public partial class RealityController : Node2D, IPickupHandler
         }
     }
 
-    /// <summary>Co-op host: a participant went home or dropped.</summary>
+    /// <summary>Co-op host: a participant went home or dropped. If everyone left is down, that is a wipe.</summary>
     public void OnParticipantLeft()
     {
         if (BossFightActive && !Party.Players.Any(o => !o.Downed))
         {
             ResetBossFight();
+        }
+
+        if (!Completed && !Collapsed && !Party.Ended && Party.AllDown)
+        {
+            Wipe();
         }
     }
 

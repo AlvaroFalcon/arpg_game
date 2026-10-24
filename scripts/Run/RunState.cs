@@ -52,9 +52,14 @@ public sealed class RunPlayer
 
     public bool Downed => Player?.Health is { IsDead: true };
 
-    /// <summary>Co-op, host: seconds this player has been down, and an ally's revive progress (0–1).</summary>
+    /// <summary>Co-op, host: seconds this player has been down (they get up at
+    /// <see cref="Net.PartyRules.RespawnSeconds"/>), and an ally's revive channel (0–1).</summary>
     public float DownedFor { get; set; }
-    public float ReviveHelp { get; set; }
+    public float ReviveChannel { get; set; }
+
+    /// <summary>Co-op, host: the ally channelling a revive on this downed player (one at a
+    /// time: docs/design/multiplayer.md -> "Deaths and revives"), or null.</summary>
+    public RunPlayer? Reviver { get; set; }
 }
 
 /// <summary>
@@ -886,9 +891,13 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
         PickupCollected?.Invoke(pickup, player, detail);
     }
 
+    /// <summary>Test seam: when set and it returns true, an end of the run is recorded by the
+    /// test and swallowed (CoopSmokeTest checks the co-op wipe rule mid-run, then plays on).</summary>
+    public System.Func<bool, bool, bool>? EndRunInterceptForTest { get; set; }
+
     public void EndRun(bool victory, bool fell = false)
     {
-        if (Ended)
+        if (Ended || EndRunInterceptForTest?.Invoke(victory, fell) == true)
         {
             return;
         }

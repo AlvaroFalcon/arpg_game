@@ -95,6 +95,13 @@ public partial class CoopTestHost : CoopTestDriver
         }
     }
 
+    /// <summary>The seconds in "Getting up in 7 s…" (spaces or underscores), or -1.</summary>
+    private static int PromptSeconds(string prompt)
+    {
+        string[] words = prompt.Replace('_', ' ').Split(' ');
+        return words.Length > 3 && int.TryParse(words[3], out int secs) ? secs : -1;
+    }
+
     private static string ClientLog(string name) => $"user://test_results/CoopSmokeTest_{name}.txt";
 
     protected override async Task Main()
@@ -481,14 +488,17 @@ public partial class CoopTestHost : CoopTestDriver
         bool fell = hostPlayer.Health.IsDead && !run.State.Ended;
         await Seconds(5f);
         bool stillDown = hostPlayer.Health.IsDead && !run.State.Ended;
-        float ring = hostPlayer.ReviveProgress;
+        float ring = hostPlayer.GetUpProgress;
+        string hostPrompt = run.Revive?.PromptText ?? "";
         bool up = await WaitFor(() => !hostPlayer.Health.IsDead, 7f);
         float lifeShare = hostPlayer.Stats.Life.Current / Mathf.Max(1f, hostPlayer.Stats.Life.Max);
-        Check("DOWNED-RESPAWNS-IN-10S", fell && stillDown && ring is > 0.35f and < 0.75f && up && lifeShare is > 0.4f and <= 0.6f && !run.State.Ended,
-            $"fell={fell}, still down at 5 s={stillDown} (ring {ring:0.00}), back up={up} at {lifeShare:P0} life, run ended={run.State.Ended}");
+        Check("DOWNED-RESPAWNS-IN-10S", fell && stillDown && ring is > 0.35f and < 0.75f && up && lifeShare is > 0.4f and <= 0.6f && !run.State.Ended
+                && hostPrompt.StartsWith("Getting up in ") && hostPrompt.EndsWith("or wait for an ally") && PromptSeconds(hostPrompt) is >= 4 and <= 6,
+            $"fell={fell}, still down at 5 s={stillDown} (ring {ring:0.00}, the host's screen: '{hostPrompt}'), back up={up} at {lifeShare:P0} life, run ended={run.State.Ended}");
         hostPlayer.Health.IgnoreDamage = true;
         slime.QueueFree();
         await ClientDownedChecks(run, alpha, beta);
+        await ReviveChecks(run, host, alpha, beta);
 
         // A burst of two levels: two rounds back to back, never unpaused between them.
         level = run.State.PartyLevel;
@@ -651,10 +661,11 @@ public partial class CoopTestHost : CoopTestDriver
         await Seconds(0.4f);
         Dictionary<string, string> alphaUp = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
         Dictionary<string, string> betaUp = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
-        string D(Dictionary<string, string> f) => $"dead={f.GetValueOrDefault("dead")} lying={f.GetValueOrDefault("lying")} ring={f.GetValueOrDefault("ring")} life={f.GetValueOrDefault("life")}";
+        string D(Dictionary<string, string> f) => $"dead={f.GetValueOrDefault("dead")} lying={f.GetValueOrDefault("lying")} ring={f.GetValueOrDefault("ring")} life={f.GetValueOrDefault("life")} prompt={f.GetValueOrDefault("prompt")}";
         Check("CLIENT-DOWNED-HOLDS-ON-HOST", fell && hostLate && hostLying && hostLifeLate == 0f && up && upAfter is >= 9.5f and <= 11.5f && !run.State.Ended,
             $"alpha fell={fell} ({nearest:0} px from the nearest ally), still down at 6 s={hostLate} (lying and hollow on the party map={hostLying}, life {hostLifeLate:0} with +400 life regen), back up={up} after {upAfter:0.0} s");
         Check("CLIENT-DOWNED-HOLDS-ON-ITS-OWN-MACHINE", F(alphaEarly, "dead") == 1f && F(alphaLate, "dead") == 1f && F(alphaLate, "ring") is > 0.45f and < 0.8f
+                && alphaLate.GetValueOrDefault("prompt", "").StartsWith("Getting_up_in_") && PromptSeconds(alphaLate.GetValueOrDefault("prompt", "")) is >= 3 and <= 5
                 && F(alphaLate, "life") == 0f && F(alphaLate, "lying") == 1f && F(alphaUp, "dead") == 0f && F(alphaUp, "lying") == 0f && F(alphaUp, "life") is > 0.4f and <= 0.6f,
             $"alpha sees itself: 1.5 s {D(alphaEarly)}; 6 s {D(alphaLate)}; up {D(alphaUp)}");
         Check("CLIENT-DOWNED-HOLDS-ON-OTHER-CLIENT", F(betaEarly, "dead") == 1f && F(betaLate, "dead") == 1f && F(betaLate, "life") == 0f && F(betaLate, "lying") == 1f
@@ -1089,7 +1100,9 @@ public partial class CoopTestClient : CoopTestDriver
                 }
 
                 float share = p.Stats.Life is { Max: > 0f } life ? life.Current / life.Max : -1f;
-                return $"dead={(p.Health is { IsDead: true } ? 1 : 0)} ring={p.ReviveProgress.ToString("0.00", CultureInfo.InvariantCulture)} life={share.ToString("0.00", CultureInfo.InvariantCulture)} local={(p.IsLocal ? 1 : 0)} lying={(p.ShowsDowned ? 1 : 0)}";
+                // ring: the way to getting up alone; channel: an ally's revive; prompt: this machine's revive line.
+                return $"dead={(p.Health is { IsDead: true } ? 1 : 0)} ring={p.GetUpProgress.ToString("0.00", CultureInfo.InvariantCulture)} channel={p.ReviveProgress.ToString("0.00", CultureInfo.InvariantCulture)} "
+                    + $"life={share.ToString("0.00", CultureInfo.InvariantCulture)} local={(p.IsLocal ? 1 : 0)} lying={(p.ShowsDowned ? 1 : 0)} prompt={Prompt(run)}";
             }
             case "check_kill":
             {
@@ -1155,6 +1168,13 @@ public partial class CoopTestClient : CoopTestDriver
             case "toast":
             case "leave_panel":
                 return await CashOutAnswer(run, session, question);
+            case "revive_hold":
+            case "revive_release":
+            case "revive_move":
+            case "revive_dodge":
+            case "revive_state":
+            case "revive_forge":
+                return await ReviveAnswer(run, session, question);
             case "history":
                 return string.Join(" ", run.Build.History);
             case "leave":
