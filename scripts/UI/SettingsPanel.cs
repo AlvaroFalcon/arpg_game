@@ -79,7 +79,7 @@ public partial class SettingsPanel : PanelContainer
         Button back = UiTheme.Button("Back", Close);
         back.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         root.AddChild(back);
-        back.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(back);
     }
 
     private static string AspectLabel(Vector2I v) => (v.X / (float)v.Y) switch { > 3f => "  (32:9)", > 2f => "  (21:9)", _ => "" };

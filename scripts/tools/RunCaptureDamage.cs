@@ -73,7 +73,7 @@ public partial class RunCapture
                 player.Stats.Get(StatId.IgniteChance).AddModifier(new StatModifier(ModifierType.Flat, 0.5f, this));
                 player.Stats.Get(StatId.ShockChance).AddModifier(new StatModifier(ModifierType.Flat, 0.5f, this));
                 await HitDummies(player, dummies, main, 2.4f);
-                ShowAllyAndIncoming(player, dummies, main);
+                ShowIncoming(player);
                 await Wait(0.25f);
                 await Snap($"{prefix}-dummies.png");
                 await HitDummies(player, dummies, main, 1.2f);
@@ -98,22 +98,13 @@ public partial class RunCapture
         GetTree().Quit();
     }
 
-    /// <summary>What a co-op ally's hits and damage taken look like, next to the player's own
-    /// (a capture has no second player, so the ally lines are injected).</summary>
-    private static void ShowAllyAndIncoming(Player player, List<TargetDummy> dummies, TargetDummy main)
+    /// <summary>What the damage the player takes looks like (other players' hits show no number).</summary>
+    private static void ShowIncoming(Player player)
     {
-        if (dummies.FirstOrDefault(d => d != main) is not { } other || UI.DamageNumberLayer.Get(player) is not { } layer)
+        if (UI.DamageNumberLayer.Get(player) is not null)
         {
-            return;
+            UI.DamageNumberLayer.ShowIncoming(player, 37f, player.Stats.Life?.Max ?? 0f);
         }
-
-        foreach (float amount in new[] { 64f, 81f, 58f })
-        {
-            layer.Hit(other, new Vector2(22f, -46f), new UI.DamageHit { Amount = amount, Kind = UI.DamageNumberKind.Ally, Type = DamageType.Cold });
-        }
-
-        layer.Hit(other, new Vector2(22f, -46f), new UI.DamageHit { Amount = 173f, Kind = UI.DamageNumberKind.Ally, Tags = UI.HitTag.Critical });
-        UI.DamageNumberLayer.ShowIncoming(player, 37f, player.Stats.Life?.Max ?? 0f);
     }
 
     /// <summary>Casts every equipped skill at <paramref name="main"/> as fast as cooldowns allow.</summary>

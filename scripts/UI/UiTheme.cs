@@ -13,6 +13,17 @@ namespace ArpgGame.UI;
 /// </summary>
 public static class UiTheme
 {
+    /// <summary>Gives <paramref name="control"/> keyboard focus at the end of the frame, if it is
+    /// still in the tree then (a rebuilt view may have freed or detached it meanwhile).</summary>
+    public static void FocusLater(Control control) =>
+        Callable.From(() =>
+        {
+            if (GodotObject.IsInstanceValid(control) && control.IsInsideTree())
+            {
+                control.GrabFocus();
+            }
+        }).CallDeferred();
+
     public static readonly Color Background = new(0.07f, 0.06f, 0.1f, 0.94f);
     public static readonly Color Panel = new(0.1f, 0.085f, 0.14f, 0.96f);
     public static readonly Color PanelBorder = new(0.35f, 0.28f, 0.62f);

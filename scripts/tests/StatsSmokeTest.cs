@@ -349,6 +349,15 @@ public partial class StatsSmokeTest : Node2D
         Check("DMGNUM-ONE-COLUMN-PER-TARGET", layer is not null && layer.ColumnCount == 1 && rows.Count == 3 && sameX && anchored && newestLowest,
             $"columns={layer?.ColumnCount}, lines={rows.Count}, same x={sameX}, anchored right of the dummy={anchored}, newest at the bottom={newestLowest}");
 
+        // Another player's hit shows no number at all (owner decision): the column is untouched.
+        var ally = new Player { IsLocal = false };
+        int linesBeforeAlly = rows.Count;
+        health.TakeDamage(new DamagePayload(30f, DamageType.Physical, ally, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit));
+        UI.DamageNumber? allyLine = UI.DamageNumberLayer.ShowHit(_dummy, new DamagePayload(30f, DamageType.Physical, ally, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit), 30f, null, 0f, 0f, Vector2.Zero);
+        Check("DMGNUM-ALLY-HIT-NO-LINE", allyLine is null && rows.Count == linesBeforeAlly && health.LastHitSource == ally,
+            $"ally line={(allyLine is null ? "none" : "drawn")}, lines {linesBeforeAlly} -> {rows.Count}, the hit still landed={health.LastHitSource == ally}");
+        ally.Free();
+
         // A second cold hit right away merges into the newest line (its sum), no new line.
         float first = rows.Count > 0 ? rows[0].Amount : 0f;
         Hit(DamageType.Cold);

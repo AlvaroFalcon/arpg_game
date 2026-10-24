@@ -74,14 +74,29 @@ public partial class EquipmentDropSpawner : Node
         // same reasoning as DropSpawner.OnDied: TargetDummy.OnDied QueueFrees
         // itself, which would take a child drop down with it.
         Vector2 origin = GetParent<Node2D>().GlobalPosition;
+        Node scene = GetTree().CurrentScene;
         var drop = DropScene.Instantiate<EquipmentItem>();
-        GetTree().CurrentScene.AddChild(drop);
-
-        drop.GlobalPosition = origin + new Vector2(
+        Vector2 scatter = new(
             _rng.RandfRange(-ScatterRadiusPx, ScatterRadiusPx),
             _rng.RandfRange(-ScatterRadiusPx, ScatterRadiusPx));
+        AffixLibrary affixes = Affixes;
+        int itemLevel = ItemLevel;
+        RandomNumberGenerator rng = _rng;
 
-        drop.Initialize(baseItem, rarity, ItemLevel, Affixes.Entries, _rng);
+        // Died is raised from inside a physics callback: adding the drop's Area2D there is
+        // refused ("can't change this state while flushing queries"), so it waits for idle time.
+        Callable.From(() =>
+        {
+            if (!IsInstanceValid(scene))
+            {
+                drop.Free();
+                return;
+            }
+
+            scene.AddChild(drop);
+            drop.GlobalPosition = origin + scatter;
+            drop.Initialize(baseItem, rarity, itemLevel, affixes.Entries, rng);
+        }).CallDeferred();
     }
 
     /// <summary>

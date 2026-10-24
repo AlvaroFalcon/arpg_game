@@ -11,9 +11,6 @@ public enum DamageNumberKind : byte
     /// <summary>The local player's hit (or an unattributed one): full emphasis.</summary>
     Own,
 
-    /// <summary>A co-op ally's hit: smaller, dimmer, no tags, no icon.</summary>
-    Ally,
-
     /// <summary>Damage over time (ignite, poison) or an explosion: a small row that sums its ticks.</summary>
     Tick,
 
@@ -99,7 +96,6 @@ public partial class DamageNumber : Node2D
     internal float TargetY;
     internal bool Leaving;
     internal float LeaveAge;
-    internal float Alpha = 1f;
     internal Vector2 WorldAnchor;
 
     /// <summary>Height of the row in screen pixels (for stacking).</summary>
@@ -133,7 +129,6 @@ public partial class DamageNumber : Node2D
         {
             DamageNumberKind.Incoming => hit.Word is null ? UiTheme.DamageTaken : UiTheme.TextDim,
             DamageNumberKind.Tick => hit.Tint ?? UiTheme.DamagePhysical.Darkened(0.15f),
-            DamageNumberKind.Ally => (crit ? UiTheme.DamageCrit : UiTheme.DamageColor(hit.Type)).Lerp(new Color(0.75f, 0.73f, 0.7f), 0.45f),
             _ => crit ? UiTheme.DamageCrit : big ? UiTheme.DamageColor(hit.Type).Lightened(0.15f) : UiTheme.DamageColor(hit.Type),
         };
 
@@ -141,11 +136,9 @@ public partial class DamageNumber : Node2D
         {
             DamageNumberKind.Incoming => hit.Heavy ? 28f : hit.Word is null ? 22f : 17f,
             DamageNumberKind.Tick => 16f,
-            DamageNumberKind.Ally => crit ? 20f : 17f,
             _ => big ? 40f : Medium ? (crowd ? 24f : 28f) : crowd ? 19f : 22f,
         };
 
-        Alpha = hit.Kind == DamageNumberKind.Ally ? 0.62f : 1f;
         Life = big ? 1.35f : hit.Kind == DamageNumberKind.Tick ? 0.9f : hit.Kind == DamageNumberKind.Incoming ? 0.95f : 1.0f;
         TagText = _showTags ? TagLine(hit.Tags) : "";
         SetText(hit.Word ?? Format(hit.Amount));
@@ -262,7 +255,7 @@ public partial class DamageNumber : Node2D
         float drift = Leaving ? -10f * LeaveAge / 0.16f : Column is null ? -40f * Age / Life : 0f;
         Position = anchor + new Vector2(0f, (Y + drift) * inv);
         Scale = new Vector2(inv * punch, inv * punch);
-        Modulate = new Color(1f, 1f, 1f, Alpha * Mathf.Clamp(a, 0f, 1f));
+        Modulate = new Color(1f, 1f, 1f, Mathf.Clamp(a, 0f, 1f));
         return true;
     }
 

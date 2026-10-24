@@ -686,9 +686,10 @@ dark caves and on the bright town floor.
 
 **Who dealt it.**
 - *Your hits:* everything above.
-- *A co-op ally's hits* (seen on the host, where every hit resolves): 17 px, dimmed
-  to 62 %, desaturated, no tags, no icon, never big. Clients still receive only their
-  own hits (bandwidth; see open questions).
+- *Another player's hits:* **no number, for anyone** (owner decision, 2026-10-24). The
+  first version drew a co-op ally's hits dimmed on the host; that style is gone. Each
+  player sees only their own hits (and the damage they take); a hit someone else dealt
+  is skipped in `DamageNumberLayer.ShowHit`, and clients are only sent their own.
 - *Damage over time and explosions* (`Health.ApplyResolvedDamage`): one small 16 px
   line per target in the ailment's colour that **sums its ticks** for up to 3 s,
   instead of a number every 0.5 s.
@@ -743,8 +744,8 @@ Tests (`StatsSmokeTest`, through the real `Health.TakeDamage` path on a dummy):
   in a column, so the eye scans icons and numbers separately.
 
 *Open questions.*
-- Clients don't see allies' numbers at all (only the host sees them, dimmed). Sending
-  them would be ~7 bytes per ally hit to every client; worth it for a party of four?
+- ~~Should clients see allies' numbers?~~ Closed (2026-10-24): nobody sees them. The
+  host's dimmed ally style was removed; `DMGNUM-ALLY-HIT-NO-LINE` checks it.
 - A client's own damage taken shows no red number (clients never resolve damage; the
   host would have to send it). Owner's call.
 - Overlap between neighbouring columns in a dense pack is accepted (the crowd rules

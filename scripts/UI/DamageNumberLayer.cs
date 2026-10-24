@@ -11,7 +11,7 @@ namespace ArpgGame.UI;
 /// target joins one column anchored just right of the target's head: the newest line at
 /// the bottom, older lines pushed up, the oldest fading out at the top. A crit or a hit
 /// far above the recent average is big (huge slanted number, a punch, a golden streak
-/// behind it); ordinary hits are compact lines; a co-op ally's hits are smaller and dim;
+/// behind it); ordinary hits are compact lines; another player's hits get no number at all;
 /// damage over time sums into one small line per target; damage the player takes floats
 /// up in red on the other side of the character, never in a column.
 ///
@@ -139,7 +139,8 @@ public partial class DamageNumberLayer : Node2D
     /// <see cref="Health.HitPresented"/>.</summary>
     public static DamageNumber? ShowHit(Node2D target, DamagePayload payload, float taken, Ailments? ailments, float maxLife, float heavyShare, Vector2 offset)
     {
-        if (taken < 0.5f || Get(target) is not { } layer)
+        // Nobody sees the numbers of hits another player dealt (docs/design/menus.md -> "Damage numbers").
+        if (taken < 0.5f || payload.SourceActor is Player { IsLocal: false } || Get(target) is not { } layer)
         {
             return null;
         }
@@ -150,7 +151,7 @@ public partial class DamageNumberLayer : Node2D
             Type = MainType(payload),
             Tags = TagsOf(payload.IsCrit, ailments?.LastHitApplied ?? AilmentHit.None),
             Icon = payload.Skill?.Icon,
-            Kind = payload.SourceActor is Player { IsLocal: false } ? DamageNumberKind.Ally : DamageNumberKind.Own,
+            Kind = DamageNumberKind.Own,
             Heavy = IsHeavy(taken, maxLife, heavyShare),
             Important = heavyShare > 0f,
         };

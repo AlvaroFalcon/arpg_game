@@ -729,3 +729,10 @@ The owner sent a clip of a combat MMO hitting a training scarecrow: hits stack i
 ![After: the Rift](screenshots/damage-numbers-horde.png)
 
 Needs a human playtest: readability at 1080p/1440p/ultrawide, Compact in a dense Rift, co-op at internet latency.
+
+## 2026-10-24: log cleanup (boss slam, flushing queries, grab_focus) and no ally damage numbers
+
+- **Boss slam `ObjectDisposedException`.** `BossEnemy.Slam`/`Lane` callbacks (`AreaBurst.Impacted`, `LineStrike.Impacted`) called `Sfx.Play(this, ...)` after the boss was freed. They now check `IsInstanceValid(this)`, `Sfx.Play`/`Music` tolerate a freed context, the phase transition no longer touches `Sprite` after a freed boss, and the ascendancy lane callback checks its caster.
+- **"Can't change this state while flushing queries".** Not a toggled `Disabled`: `DropSpawner`/`EquipmentDropSpawner` added the drop's Area2D inside `Health.Died`, which fires in a projectile's overlap signal. Found by bracketing `ResolveHit` with prints. The drop is now added at the end of the frame (the position and roll are fixed first).
+- **`grab_focus` outside the tree.** Deferred focus calls ran after the co-op view was rebuilt. All of them go through `UiTheme.FocusLater` (checks the control is valid and in the tree when it runs).
+- **Damage numbers: allies' hits dropped** (owner decision). `DamageNumberKind.Ally` and its style are gone; `ShowHit` skips hits from a non-local player. Protocol 8's extra bytes stay (a client's own hits use them). New check `DMGNUM-ALLY-HIT-NO-LINE`.

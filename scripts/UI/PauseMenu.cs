@@ -182,7 +182,7 @@ public partial class PauseMenu : CanvasLayer
         _editHud.Visible = GetTree().GetNodesInGroup(HudLayout.Group).Count > 0;
         _menu.Visible = true;
         _root.Visible = true;
-        _resume.CallDeferred(Control.MethodName.GrabFocus);
+        UiTheme.FocusLater(_resume);
     }
 
     public void Close()
@@ -207,7 +207,7 @@ public partial class PauseMenu : CanvasLayer
             // The Esc that closed the editor must not also close the pause menu.
             _settingsClosedFrame = Engine.GetProcessFrames();
             _root.Visible = true;
-            _editHud.CallDeferred(Control.MethodName.GrabFocus);
+            UiTheme.FocusLater(_editHud);
         };
     }
 
@@ -232,7 +232,7 @@ public partial class PauseMenu : CanvasLayer
         {
             _settingsClosedFrame = Engine.GetProcessFrames();
             _menu.GetParent<Control>().Visible = true;
-            _settings.CallDeferred(Control.MethodName.GrabFocus);
+            UiTheme.FocusLater(_settings);
         };
     }
 }

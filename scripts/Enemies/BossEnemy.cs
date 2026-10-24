@@ -144,7 +144,11 @@ public abstract partial class BossEnemy : Enemy
         Core.Sfx.Play(this, "boss_warn");
         Core.CameraShake.Request(this, 8f);
         Sprite?.Play("windup");
-        await Wait(PhaseTransitionTime);
+        if (!await Wait(PhaseTransitionTime) && !IsInstanceValid(this))
+        {
+            return;
+        }
+
         Sprite?.Play("idle");
         AttackCooldown = 0.6f;
     }
@@ -208,7 +212,14 @@ public abstract partial class BossEnemy : Enemy
     {
         NoteTelegraph(delay);
         AreaBurst burst = AreaBurst.Spawn(GetTree().CurrentScene, at, radius, delay, new Color(1f, 0.3f, 0.2f), MakeHit(damage, type, SkillTags.Area), innerRadius);
-        burst.Impacted += _ => Core.Sfx.Play(this, "slam", -4f);
+        burst.Impacted += _ =>
+        {
+            // The boss can die (and be freed) while its slam is still pending.
+            if (IsInstanceValid(this))
+            {
+                Core.Sfx.Play(this, "slam", -4f);
+            }
+        };
         return burst;
     }
 
@@ -216,7 +227,13 @@ public abstract partial class BossEnemy : Enemy
     {
         NoteTelegraph(delay);
         LineStrike strike = LineStrike.Spawn(GetTree().CurrentScene, origin, direction, length, width, delay, MakeHit(damage, type));
-        strike.Impacted += () => Core.Sfx.Play(this, "explode", -6f);
+        strike.Impacted += () =>
+        {
+            if (IsInstanceValid(this))
+            {
+                Core.Sfx.Play(this, "explode", -6f);
+            }
+        };
         return strike;
     }
 
