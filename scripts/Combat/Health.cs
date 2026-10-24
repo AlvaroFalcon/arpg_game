@@ -81,10 +81,16 @@ public partial class Health : Node
     /// and death are written here from snapshots instead of from hits
     /// (docs/design/multiplayer.md -> "Replication"). No signals are raised.
     /// </summary>
-    public void SetNetState(float current, bool dead)
+    public void SetNetState(float current, bool dead, float max = 0f)
     {
         if (_stats?.Life is { } life)
         {
+            // The host's maximum when it sends one (players): never clamp to a stale local ceiling.
+            if (max > 0f && float.IsFinite(max))
+            {
+                life.NetMax = max;
+            }
+
             life.Current = Mathf.Clamp(current, 0f, life.Max);
         }
 

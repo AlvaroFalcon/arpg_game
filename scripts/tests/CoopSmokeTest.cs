@@ -499,6 +499,7 @@ public partial class CoopTestHost : CoopTestDriver
         slime.QueueFree();
         await ClientDownedChecks(run, alpha, beta);
         await ReviveChecks(run, host, alpha, beta);
+        await VitalityPactClientChecks(run, host, alpha, beta);
 
         // A burst of two levels: two rounds back to back, never unpaused between them.
         level = run.State.PartyLevel;
@@ -1175,6 +1176,9 @@ public partial class CoopTestClient : CoopTestDriver
             case "revive_state":
             case "revive_forge":
                 return await ReviveAnswer(run, session, question);
+            case "pick_key":
+            case "life":
+                return await VitalityAnswer(run, question);
             case "history":
                 return string.Join(" ", run.Build.History);
             case "leave":

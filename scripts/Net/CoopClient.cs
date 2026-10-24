@@ -509,7 +509,7 @@ public abstract partial class CoopClient : Node, IRunLink
             long peer = r.I32();
             Vector2 at = r.Pos();
             float life = r.U16();
-            r.U16();
+            float maxLife = r.U16(); // the host's: a client's copy of an ally never took their run cards
             byte pflags = r.U8();
             float revive = r.U8() / 255f;
             float getUp = r.U8() / 255f;
@@ -535,11 +535,11 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 _lastLife = life;
-                p.Health?.SetNetState(life, dead);
+                p.Health?.SetNetState(life, dead, maxLife);
                 continue;
             }
 
-            p.Health?.SetNetState(life, dead);
+            p.Health?.SetNetState(life, dead, maxLife);
             p.Warded = (pflags & RiftProtocol.PlayerWarded) != 0;
             if (_playerTracks.TryGetValue(peer, out NetTrack? track))
             {

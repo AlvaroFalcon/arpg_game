@@ -258,7 +258,7 @@ the Rift, so they were dead cards.
 | Shield Conduit | Lesser (Rift) | +60 energy shield | 15 % less maximum life |
 | Wind Runner | Lesser (Rift) | 20 % more movement speed, +1 dodge charge | 10 % more damage taken |
 
-**Max-life cards heal by what they add.** Vitality (+15 life, 5 % increased maximum life) raises current life by exactly the rise of the maximum, so picking it at full life leaves you full. It used to add a flat +15 to current life while the increased part raised the ceiling further, so every card left a gap; with no regeneration (Vampiric Pact) that gap stayed until a kill. Only the gain is healed, never a refill, and never while downed.
+**Max-life cards heal by what they add.** Vitality (+15 life, 5 % increased maximum life) raises current life by exactly the rise of the maximum, so picking it at full life leaves you full. It used to add a flat +15 to current life while the increased part raised the ceiling further, so every card left a gap; with no regeneration (Vampiric Pact) that gap stayed until a kill. Only the gain is healed, never a refill, and never while downed. In co-op the card is applied on the host (the life that counts) and then on the client; a client's life bars take the host's maximum, so allies' bars reach the new maximum too (multiplayer.md -> "Replication", 2026-10-24).
 
 Chain Reaction's explosions (and the Warrior's Decay) go off on the frame after
 the kill, so a cascade spreads through a pack one hop per frame (~16 ms) as a

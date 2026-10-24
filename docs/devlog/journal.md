@@ -700,3 +700,11 @@ Owner decision: "When a friend dies, they get back up after a 10 s delay, or an 
 - **UI:** the downed player's own screen counts down ("Getting up in 7 s… or wait for an ally"). The ring around a downed player shows the timer (thin, grey) and the channel (green). The reviver gets a green bar over their head. A downed ally's ring on the minimaps fills green.
 - Tests: 10 new checks in `CoopSmokeTest` and `CoopRealityTest` plus 4 pure ones in `RiftProgressionTest` (see multiplayer.md -> "Deaths and revives"). The Rift's wipe ends the run, so `RunState.EndRunInterceptForTest` catches that end and the rest of the test can still play. 18/18 suites.
 - Needs a real game with friends: revives at internet latency (the start arrives a trip later and the host's range has 30 px of slack), the prompt and rings in the windowed voxel view, and E next to a reality's exit portal with a downed ally lying on it (the revive wins).
+
+## 2026-10-24: Pact + Vitality, traced on co-op clients
+
+347d17d fixed Vitality on the host. The co-op client path was never traced, so `CoopSmokeTest` now plays it for real: a client takes Vampiric Pact, then Vitality, through two level-up rounds. The host checks the row, applies the card to its copy, and the client applies it after `PickApplied`. Then the host drops the client to 30 % and kills slimes in its name until life on kill fills it.
+
+- **The client's own HUD was right.** It showed 502.83 / 502.83 like the host, 30 % at 30 %, and full after the kills.
+- **The other client's view of that ally was wrong.** Snapshots always carried every player's maximum life, but clients discarded it and clamped the host's life to their local stat. A client never applies another player's run cards to its copy, so beta drew alpha as 151/420 (36 %) instead of 151/503 (30 %), and as full at 420. That is a stale maximum and a clamp to an old max, in the replication of current life without its max.
+- Fix: `Health.SetNetState(life, dead, max)` and `ResourcePool.NetMax`. On a client, every player's pool uses the host's maximum. No wire change, so no protocol bump. New check `PACT-VITALITY-ALLY-BAR-ON-OTHER-CLIENT` failed before (max 420) and passes after. The two own-HUD checks pass either way.
