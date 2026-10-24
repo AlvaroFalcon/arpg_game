@@ -23,7 +23,16 @@ public sealed class ResourcePool
 
     public float Current { get; set; }
 
-    public float Max => _maxStat.Value;
+    public float Max => NetMax ?? _maxStat.Value;
+
+    /// <summary>
+    /// Co-op client: the host's maximum for this pool, from snapshots (docs/design/multiplayer.md
+    /// -> "Replication"), which overrides the local stat. The host simulates every player, and a
+    /// client's copy of an ally never takes that ally's run cards (each machine applies only its
+    /// own), so the local stat could be a stale ceiling: an ally with Vitality showed full at 420
+    /// of 503 (owner's report 2026-10-24). Null everywhere else (offline, on the host).
+    /// </summary>
+    public float? NetMax { get; set; }
 
     public float RegenPerSecond => _regenStat.Value;
 

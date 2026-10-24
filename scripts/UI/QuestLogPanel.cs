@@ -46,11 +46,18 @@ public partial class QuestLogPanel : ModalPanel
     private readonly List<string> _listing = new();
     private VBoxContainer _list = null!;
     private VBoxContainer _detail = null!;
+
+    /// <summary>The turn-in strip (map and "Walk there"), outside the detail's scroll so the
+    /// button is always on screen: inside it, a long explanation pushed it below the fold.</summary>
+    private VBoxContainer _footer = null!;
     private Button? _walk;
     private string? _walkStation;
 
     /// <summary>The "Walk there" button is enabled (tests).</summary>
     public bool CanWalk => _walk is { Disabled: false };
+
+    /// <summary>Where the "Walk there" button is on screen (tests click it for real).</summary>
+    public Rect2 WalkButtonRect => _walk?.GetGlobalRect() ?? default;
 
     protected override void Build(VBoxContainer body)
     {
@@ -65,10 +72,12 @@ public partial class QuestLogPanel : ModalPanel
         _list = UiTheme.VBox(listScroll, 2);
         _list.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 
-        var detailScroll = new ScrollContainer { CustomMinimumSize = new Vector2(640f, 510f), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        columns.AddChild(detailScroll);
+        VBoxContainer right = UiTheme.VBox(columns, 8);
+        var detailScroll = new ScrollContainer { CustomMinimumSize = new Vector2(640f, 300f), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        right.AddChild(detailScroll);
         _detail = UiTheme.VBox(detailScroll, 8);
         _detail.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        _footer = UiTheme.VBox(right, 8);
     }
 
     /// <summary>Opens the log on a quest (a toast or a tracker row was clicked).</summary>
@@ -93,6 +102,7 @@ public partial class QuestLogPanel : ModalPanel
     {
         ClearChildren(_list);
         ClearChildren(_detail);
+        ClearChildren(_footer);
         _listing.Clear();
         _walk = null;
         _walkStation = null;
@@ -180,7 +190,7 @@ public partial class QuestLogPanel : ModalPanel
 
         QuestContext? ctx = profile is null ? null : QuestService.ContextOf(profile);
         string explanation = ctx is null ? "" : q.Explain(ctx);
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(620f, 130f), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(620f, 110f), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = Control.SizeFlags.ExpandFill };
         _detail.AddChild(scroll);
         var rich = new RichTextLabel
         {
@@ -221,7 +231,7 @@ public partial class QuestLogPanel : ModalPanel
 
         if (progress.Status == QuestStatus.Done)
         {
-            HBoxContainer line = UiTheme.HBox(_detail, 12);
+            HBoxContainer line = UiTheme.HBox(_footer, 12);
             line.AddChild(Caps("TURNED IN"));
             Label said = UiTheme.Label(q.TurnIn, 14, UiTheme.TextDim);
             said.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -231,7 +241,7 @@ public partial class QuestLogPanel : ModalPanel
         }
 
         // Turn in: the town map with the station ringed, and a button that walks there.
-        HBoxContainer turnIn = UiTheme.HBox(_detail, 12);
+        HBoxContainer turnIn = UiTheme.HBox(_footer, 12);
         Label turnInCaps = Caps("TURN IN");
         turnInCaps.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
         turnIn.AddChild(turnInCaps);

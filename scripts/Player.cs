@@ -138,8 +138,17 @@ public partial class Player : CharacterBody2D
 
     private bool _warded;
 
-    /// <summary>Co-op: 0..1 progress of an ally reviving this downed player (drawn as a ring).</summary>
+    /// <summary>Co-op: 0..1 progress of an ally's revive channel on this downed player (the
+    /// green ring; docs/design/multiplayer.md -> "Deaths and revives").</summary>
     public float ReviveProgress { get; set; }
+
+    /// <summary>Co-op: 0..1 of the way to getting up alone (<see cref="Net.PartyRules.RespawnSeconds"/>;
+    /// the thin grey ring, and the "Getting up in 7 s" line on this player's own screen).</summary>
+    public float GetUpProgress { get; set; }
+
+    /// <summary>Co-op: the downed ally this player is channelling a revive on, or null (a bar
+    /// over this player's head shows the channel too).</summary>
+    public Player? RevivingTarget { get; set; }
 
     /// <summary>Co-op client: shows a hit the host resolved (number, flash, sound).</summary>
     public void ShowHurt(float amount) => OnDamaged(amount);
@@ -235,7 +244,8 @@ public partial class Player : CharacterBody2D
             ZIndex = 5,
         };
         tag.AddThemeFontSizeOverride("font_size", 13);
-        tag.AddThemeColorOverride("font_color", new Color(0.75f, 0.9f, 1f));
+        // The party colour, as on every map (docs/design/multiplayer.md -> "Allies on the maps").
+        tag.AddThemeColorOverride("font_color", UI.PartyMarkers.ColorOf(this, PeerId));
         tag.AddThemeColorOverride("font_outline_color", Colors.Black);
         tag.AddThemeConstantOverride("outline_size", 4);
         AddChild(tag);
@@ -243,19 +253,46 @@ public partial class Player : CharacterBody2D
 
     public override void _Draw()
     {
-        // Co-op: a downed player shows how far an ally's revive has come.
-        if (Health is { IsDead: true } && !IsLocalOffline)
+        // Co-op (docs/design/multiplayer.md -> "Deaths and revives"): a downed player shows
+        // the way to getting up alone (thin, grey) and an ally's revive channel (green).
+        if (ShowsDowned)
         {
-            DrawArc(new Vector2(0f, -4f), 22f, 0f, Mathf.Tau, 32, new Color(0f, 0f, 0f, 0.5f), 4f, true);
+            var centre = new Vector2(0f, -4f);
+            DrawArc(centre, 22f, 0f, Mathf.Tau, 32, new Color(0f, 0f, 0f, 0.5f), 4f, true);
+            if (GetUpProgress > 0f)
+            {
+                DrawArc(centre, 27f, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * Mathf.Min(1f, GetUpProgress), 32, new Color(0.8f, 0.8f, 0.85f, 0.55f), 2f, true);
+            }
+
             if (ReviveProgress > 0f)
             {
-                DrawArc(new Vector2(0f, -4f), 22f, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * ReviveProgress, 32, new Color(0.45f, 1f, 0.55f), 4f, true);
+                DrawArc(centre, 22f, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * Mathf.Min(1f, ReviveProgress), 32, new Color(0.45f, 1f, 0.55f), 4f, true);
             }
+
+            Font font = ThemeDB.FallbackFont;
+            const string down = "DOWN";
+            float w = font.GetStringSize(down, HorizontalAlignment.Left, -1, 12).X;
+            var at = new Vector2(-w / 2f, -32f);
+            DrawStringOutline(font, at, down, HorizontalAlignment.Left, -1, 12, 4, new Color(0f, 0f, 0f, 0.85f));
+            DrawString(font, at, down, HorizontalAlignment.Left, -1, 12, new Color(1f, 0.5f, 0.45f));
+        }
+        else if (RevivingTarget is { } target && IsInstanceValid(target))
+        {
+            // The reviver: the same channel as a bar over their head, for everyone to see.
+            var bar = new Rect2(-20f, -50f, 40f, 5f);
+            DrawRect(bar.Grow(1f), new Color(0f, 0f, 0f, 0.8f));
+            DrawRect(new Rect2(bar.Position, new Vector2(bar.Size.X * Mathf.Clamp(target.ReviveProgress, 0f, 1f), bar.Size.Y)), new Color(0.45f, 1f, 0.55f));
+            DrawArc(new Vector2(0f, -4f), 18f, 0f, Mathf.Tau, 28, new Color(0.45f, 1f, 0.55f, 0.35f), 2f, true);
         }
     }
 
     /// <summary>True outside co-op (nothing to draw for a downed player there).</summary>
     private bool IsLocalOffline => IsLocal && PeerId == 0;
+
+    /// <summary>Co-op: this player is down (docs/design/multiplayer.md -> "Deaths") and is drawn
+    /// so: lying on the ground (the 2D sprite and its voxel body, <see cref="View3D.VoxelActor"/>),
+    /// greyed, with the revive ring and "DOWN" over it.</summary>
+    public bool ShowsDowned => Health is { IsDead: true } && !IsLocalOffline;
 
     /// <summary>
     /// The item a click asked for while it was out of reach. Set by
@@ -480,9 +517,11 @@ public partial class Player : CharacterBody2D
             QueueRedraw();
         }
 
-        if (Health is { IsDead: true } && !IsLocalOffline)
+        // Co-op: downed, waiting for a revive — lying on the ground (it used to stand there,
+        // only faded, and read as a player already back up).
+        _sprite.Rotation = ShowsDowned ? Mathf.Pi / 2f : 0f;
+        if (ShowsDowned)
         {
-            // Co-op: downed, waiting for a revive.
             _sprite.Modulate = new Color(0.45f, 0.45f, 0.55f, 0.6f);
         }
         else if (_hurtFlash > 0f)

@@ -72,6 +72,17 @@ public abstract partial class CoopClient : Node, IRunLink
     /// <summary>Host events skipped by the limits above (tests, diagnostics).</summary>
     public int Refused { get; private set; }
 
+    /// <summary>Effects replayed here from host events, by kind ("slash", "line", "burst",
+    /// "bullet", "orbit", "projectile"): tests check every skill's visual reaches clients.</summary>
+    public IReadOnlyDictionary<string, int> Replayed => _replayed;
+
+    private readonly Dictionary<string, int> _replayed = new();
+
+    /// <summary>The arc (degrees) of the last swing replayed here (tests).</summary>
+    public float LastSlashArc { get; private set; }
+
+    private void CountReplay(string kind) => _replayed[kind] = _replayed.GetValueOrDefault(kind) + 1;
+
     /// <summary>Test hook: when set, the local player walks this way (both locally and on the host).</summary>
     public static Vector2? TestMove { get; set; }
 
@@ -186,6 +197,19 @@ public abstract partial class CoopClient : Node, IRunLink
     }
 
     private readonly Dictionary<long, Player> _players = new();
+    private readonly List<Player?> _snapshotPlayers = new();
+    private readonly List<byte> _revivingIndex = new();
+
+    /// <summary>Asks the host to start (or stop) a revive on <paramref name="targetPeer"/>'s downed
+    /// player (docs/design/multiplayer.md -> "Deaths and revives"). The host decides.</summary>
+    public void SendRevive(bool start, long targetPeer)
+    {
+        _events.Clear();
+        _events.U8(RiftProtocol.ClientRevive);
+        _events.U8((byte)(start ? 1 : 0));
+        _events.I32((int)targetPeer);
+        _session.SendClientEvents(_events.ToArray());
+    }
 
     /// <summary>The host has answered (any event batch): stop repeating "ready".</summary>
     private bool _heardFromHost;
@@ -478,21 +502,29 @@ public abstract partial class CoopClient : Node, IRunLink
         int players = r.U8();
         Vector2 myHostPos = Vector2.Zero;
         bool haveMine = false;
+        _snapshotPlayers.Clear();
+        _revivingIndex.Clear();
         for (int i = 0; i < players; i++)
         {
             long peer = r.I32();
             Vector2 at = r.Pos();
             float life = r.U16();
-            r.U16();
+            float maxLife = r.U16(); // the host's: a client's copy of an ally never took their run cards
             byte pflags = r.U8();
             float revive = r.U8() / 255f;
-            if (!_players.TryGetValue(peer, out Player? p) || !IsInstanceValid(p))
+            float getUp = r.U8() / 255f;
+            byte reviving = r.U8();
+            _players.TryGetValue(peer, out Player? p);
+            _snapshotPlayers.Add(p is not null && IsInstanceValid(p) ? p : null);
+            _revivingIndex.Add(reviving);
+            if (p is null || !IsInstanceValid(p))
             {
                 continue;
             }
 
             bool dead = (pflags & RiftProtocol.PlayerDead) != 0;
             p.ReviveProgress = revive;
+            p.GetUpProgress = getUp;
             if (p == Local)
             {
                 myHostPos = at;
@@ -503,15 +535,26 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 _lastLife = life;
-                p.Health?.SetNetState(life, dead);
+                p.Health?.SetNetState(life, dead, maxLife);
                 continue;
             }
 
-            p.Health?.SetNetState(life, dead);
+            p.Health?.SetNetState(life, dead, maxLife);
             p.Warded = (pflags & RiftProtocol.PlayerWarded) != 0;
             if (_playerTracks.TryGetValue(peer, out NetTrack? track))
             {
                 track.Push(hostTime, at);
+            }
+        }
+
+        // Who revives whom (deaths and revives): an index into this list; anything else is nobody.
+        for (int i = 0; i < _snapshotPlayers.Count; i++)
+        {
+            if (_snapshotPlayers[i] is { } reviver)
+            {
+                int at = _revivingIndex[i];
+                Player? target = at < _snapshotPlayers.Count && at != i ? _snapshotPlayers[at] : null;
+                reviver.RevivingTarget = target is { Health.IsDead: true } ? target : null;
             }
         }
 
@@ -721,6 +764,7 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 AreaBurst.Spawn(Scene, at, radius, delay, tint, new HitProfile { Faction = (flags & 1) != 0 ? Faction.Player : Faction.Enemy }, inner, (flags & 2) != 0);
+                CountReplay("burst");
                 return true;
             }
 
@@ -740,6 +784,7 @@ public abstract partial class CoopClient : Node, IRunLink
 
                 LineStrike line = LineStrike.Spawn(Scene, at, Vector2.Right.Rotated(angle), length, width, delay, new HitProfile { Faction = (flags & 1) != 0 ? Faction.Player : Faction.Enemy });
                 line.Harmless = (flags & 2) != 0;
+                CountReplay("line");
                 return true;
             }
 
@@ -761,6 +806,7 @@ public abstract partial class CoopClient : Node, IRunLink
                 BossBullet bullet = BossBullet.Spawn(Scene, at, velocity, new HitProfile { Faction = player ? Faction.Player : Faction.Enemy }, frames, scale);
                 bullet.AngularVelocity = angular;
                 bullet.Range = range;
+                CountReplay("bullet");
                 return true;
             }
 
@@ -769,7 +815,9 @@ public abstract partial class CoopClient : Node, IRunLink
                 Vector2 at = r.Pos();
                 float angle = r.Angle();
                 float range = Sane(r.F32(), 0f, 4000f);
-                float arc = Sane(r.F32(), 0f, Mathf.Tau);
+                // Degrees on the wire (SlashEffect.ArcDegrees). This used to be clamped to
+                // Tau as if it were radians: every swing showed as a sliver of at most 6.3°.
+                float arc = Sane(r.F32(), 0f, 360f);
                 Color tint = r.Colour();
                 if (!Room)
                 {
@@ -778,6 +826,10 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 SlashEffect.Spawn(Scene, at, Vector2.Right.Rotated(angle), range, arc, tint);
+                LastSlashArc = arc;
+                CountReplay("slash");
+                // The swing's sound, as the caster's machine plays it (SkillUser.Strike).
+                Core.Sfx.Play(this, "hit", -4f);
                 return true;
             }
 
@@ -794,6 +846,7 @@ public abstract partial class CoopClient : Node, IRunLink
                     var blades = new OrbitBlades { Anchor = anchor, Count = count, Radius = radius, Duration = duration, AngularSpeed = speed, Frames = frames, Hit = new HitProfile { Faction = Faction.Player } };
                     Scene.AddChild(blades);
                     blades.GlobalPosition = anchor.GlobalPosition;
+                    CountReplay("orbit");
                 }
 
                 return true;
@@ -826,6 +879,7 @@ public abstract partial class CoopClient : Node, IRunLink
                 }
 
                 _projectiles[id] = projectile;
+                CountReplay("projectile");
                 projectile.TreeExiting += () =>
                 {
                     if (_projectiles.TryGetValue(id, out Projectile? current) && current == projectile)
@@ -942,6 +996,9 @@ public abstract partial class CoopClient : Node, IRunLink
                 {
                     Scene.AddChild(item);
                     item.GlobalPosition = at;
+                    // The icon and the filtered rarity label, as on the host (a restored item
+                    // has neither: it showed as the grey placeholder square).
+                    item.ShowOnGround();
                 }
 
                 return true;

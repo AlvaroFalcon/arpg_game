@@ -610,6 +610,14 @@ public partial class Hideout : Node2D
     {
         var dummy = GD.Load<PackedScene>("res://scenes/combat/TargetDummy.tscn").Instantiate<Node2D>();
         dummy.GetNode<ActorStats>("Stats").Bases = GD.Load<StatBlock>("res://resources/stats/TrainingDummy.tres");
+
+        // Town dummies never die and give nothing: no kill, no XP, no loot (docs/design/hideout.md).
+        ((Combat.TargetDummy)dummy).Immortal = true;
+        foreach (string spawner in new[] { "DropSpawner", "EquipmentDropSpawner" })
+        {
+            dummy.GetNode(spawner).Free();
+        }
+
         AnimatedSprite2D sprite = GD.Load<PackedScene>("res://assets/sprites/props/training_dummy.tscn").Instantiate<AnimatedSprite2D>();
         sprite.Name = "Sprite";
         sprite.Position = new Vector2(0f, -12f);

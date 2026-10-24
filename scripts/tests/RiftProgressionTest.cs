@@ -86,6 +86,7 @@ public partial class RiftProgressionTest : Node2D
             await RerollUiChecks();
             await MinimumLootChecks();
             await EnergyShieldChecks();
+            await NoRegenMaxLifeChecks();
             OverflowChecks();
             DownedRuleChecks();
             await OverflowUiChecks(real);
@@ -423,6 +424,51 @@ public partial class RiftProgressionTest : Node2D
         await Frames(1);
     }
 
+    // --- no regeneration + a max-life card (owner's report 2026-10-24) --------------------------
+
+    private async Task NoRegenMaxLifeChecks()
+    {
+        (Player player, RunBuild build) = await RunPlayer(null);
+        Combat.Health health = player.Health!;
+        ResourcePool life = player.Stats.Life!;
+        build.ApplyKey("k:vampiric_pact");
+        build.ApplyKey("p:max_life:2");
+        build.ApplyKey("p:max_life:2");
+        await Frames(3);
+        bool noRegen = Mathf.IsEqualApprox(life.RegenPerSecond, 0f);
+        float maxBefore = life.Max;
+        life.Current = life.Max * 0.2f;
+        float lifeOnKill = player.Stats.Get(StatId.LifeOnKill).Value;
+        for (int i = 0; i < 60; i++)
+        {
+            health.Heal(lifeOnKill);
+        }
+
+        await Frames(3);
+        Check("NO-REGEN-MAX-LIFE-REACHABLE", noRegen && Mathf.IsEqualApprox(life.Max, maxBefore) && Mathf.IsEqualApprox(life.Current, life.Max),
+            $"no regen={noRegen}, life {life.Current:0.##} / {life.Max:0.##} after healing with {lifeOnKill:0.#} per kill");
+
+        // The card itself: Vitality heals by exactly what it adds to the maximum (flat part and
+        // the increased part both). With no regeneration, a card that left you a few points
+        // short would leave you short for good until the next kill.
+        life.Current = life.Max;
+        float before = life.Max;
+        build.ApplyKey("p:max_life:2");
+        await Frames(3);
+        bool full = Mathf.IsEqualApprox(life.Current, life.Max);
+        Check("MAX-LIFE-CARD-AT-FULL-STAYS-FULL", full && life.Max > before,
+            $"max {before:0.##} -> {life.Max:0.##}, current {life.Current:0.##} straight after the card");
+        life.Current = life.Max * 0.5f;
+        float half = life.Current;
+        float maxNow = life.Max;
+        build.ApplyKey("p:max_life:1");
+        await Frames(3);
+        Check("MAX-LIFE-CARD-KEEPS-MISSING-LIFE", Mathf.IsEqualApprox(life.Current, half + (life.Max - maxNow)) && life.Current < life.Max,
+            $"{half:0.##}/{maxNow:0.##} -> {life.Current:0.##}/{life.Max:0.##}: the card adds the new maximum, not a free refill");
+        player.QueueFree();
+        await Frames(1);
+    }
+
     // --- Pending items --------------------------------------------------------------------------
 
     private static EquipmentItem Roll(int seed) =>
@@ -447,35 +493,45 @@ public partial class RiftProgressionTest : Node2D
         return account;
     }
 
-    /// <summary>Co-op downed rule (PartyRules.StepRevive): back up alone after 10 s,
-    /// sooner with an ally standing by; the ring shows whichever is further.</summary>
+    /// <summary>Co-op downed rule (PartyRules.StepDowned, ChannelBreak — docs/design/multiplayer.md
+    /// -> "Deaths and revives"): back up alone after 10 s; an ally's 5 s channel sooner; a stopped
+    /// channel loses its progress; what stops a channel and what doesn't.</summary>
     private void DownedRuleChecks()
     {
-        float help = 0f, down = 0f, shown = 0f;
+        float down = 0f, channel = 0f;
         Net.PartyRules.ReviveOutcome outcome = Net.PartyRules.ReviveOutcome.StillDown;
         int steps = 0;
         while (outcome == Net.PartyRules.ReviveOutcome.StillDown && steps < 2000)
         {
-            (help, down, outcome, shown) = Net.PartyRules.StepRevive(help, down, false, 0.05f);
+            (down, channel, outcome) = Net.PartyRules.StepDowned(down, channel, false, 0.05f);
             steps++;
         }
 
         Check("DOWNED-ALONE-RESPAWNS-AT-10S", outcome == Net.PartyRules.ReviveOutcome.Respawned && Mathf.Abs(steps * 0.05f - Net.PartyRules.RespawnSeconds) < 0.06f,
             $"outcome={outcome} after {steps * 0.05f:0.00} s");
 
-        help = 0f; down = 0f; outcome = Net.PartyRules.ReviveOutcome.StillDown; steps = 0;
+        down = 0f; channel = 0f; outcome = Net.PartyRules.ReviveOutcome.StillDown; steps = 0;
         while (outcome == Net.PartyRules.ReviveOutcome.StillDown && steps < 2000)
         {
-            (help, down, outcome, shown) = Net.PartyRules.StepRevive(help, down, true, 0.05f);
+            (down, channel, outcome) = Net.PartyRules.StepDowned(down, channel, true, 0.05f);
             steps++;
         }
 
-        Check("DOWNED-ALLY-REVIVES-SOONER", outcome == Net.PartyRules.ReviveOutcome.RevivedByAlly && Mathf.Abs(steps * 0.05f - Net.PartyRules.ReviveTime) < 0.06f,
-            $"outcome={outcome} after {steps * 0.05f:0.00} s");
+        Check("DOWNED-ALLY-CHANNEL-5S", outcome == Net.PartyRules.ReviveOutcome.RevivedByAlly && Mathf.Abs(steps * 0.05f - Net.PartyRules.ReviveChannelSeconds) < 0.06f
+                && Net.PartyRules.ReviveLife == Net.PartyRules.RespawnLife,
+            $"outcome={outcome} after {steps * 0.05f:0.00} s; ally revive life {Net.PartyRules.ReviveLife:P0}, alone {Net.PartyRules.RespawnLife:P0}");
 
-        (float h, float d, Net.PartyRules.ReviveOutcome o, float ring) = Net.PartyRules.StepRevive(0.1f, 6f, false, 0.05f);
-        Check("DOWNED-RING-SHOWS-FURTHEST", o == Net.PartyRules.ReviveOutcome.StillDown && Mathf.IsEqualApprox(ring, 6.05f / Net.PartyRules.RespawnSeconds) && h < 0.1f,
-            $"ring={ring:0.000}, help drained to {h:0.000}, down {d:0.00} s");
+        (float d1, float c1, _) = Net.PartyRules.StepDowned(3f, 0.6f, false, 0.05f);
+        Check("DOWNED-CHANNEL-LOST-WHEN-STOPPED", c1 == 0f && Mathf.IsEqualApprox(d1, 3.05f), $"channel 0.6 → {c1:0.00} when it stops; the get-up timer goes on ({d1:0.00} s)");
+
+        Net.PartyRules.ReviveStop Break(bool down2 = false, bool up = false, bool move = false, bool dodge = false, bool cast = false, bool stun = false, float dist = 40f) =>
+            Net.PartyRules.ChannelBreak(down2, !up, move, dodge, cast, stun, dist);
+        Check("DOWNED-CHANNEL-BREAKS", Break() == Net.PartyRules.ReviveStop.None && Break(move: true) == Net.PartyRules.ReviveStop.Moved
+                && Break(dodge: true) == Net.PartyRules.ReviveStop.Dodged && Break(cast: true) == Net.PartyRules.ReviveStop.Cast
+                && Break(stun: true) == Net.PartyRules.ReviveStop.Stunned && Break(down2: true) == Net.PartyRules.ReviveStop.ReviverDown
+                && Break(up: true) == Net.PartyRules.ReviveStop.TargetUp && Break(dist: Net.PartyRules.ReviveRadius + Net.PartyRules.ReviveRangeSlack + 1f) == Net.PartyRules.ReviveStop.TooFar
+                && Break(dist: Net.PartyRules.ReviveRadius + Net.PartyRules.ReviveRangeSlack - 1f) == Net.PartyRules.ReviveStop.None,
+            "still → goes on; move, dodge, cast, stun, going down, the target up, out of range → stops (damage is not an input: it never stops it)");
     }
 
     private void OverflowChecks()
@@ -595,6 +651,7 @@ public partial class RiftProgressionTest : Node2D
         c.Level = CharacterData.MaxLevel;
         c.TutorialDone = true;
         c.Passives.UnionWith(PassiveTree.PathTo(c, "ks_juggernaut"));
+        c.Passives.UnionWith(PassiveTree.PathTo(c, "ks_vampiric_pact"));
         c.Ascendancy = "barbarian";
         c.AscendancyPoints = 4;
         c.AscendancyNodes.UnionWith(new[] { "barb_thick", "barb_bloodlust" });
@@ -643,6 +700,28 @@ public partial class RiftProgressionTest : Node2D
         await Frames(2);
         Check("RIFT-STARTS-AFTER-PICK", !run.LevelUp.IsOpen && !GetTree().Paused && run.Director.Spawning, $"open={run.LevelUp.IsOpen}, paused={GetTree().Paused}, spawning={run.Director.Spawning}");
         run.Director.Spawning = false;
+
+        // Vampiric Pact (no regeneration, life on kill) + Vitality in the real Rift: kills
+        // must be able to fill the new, larger maximum (owner's report 2026-10-24).
+        if (!run.Build.HasKeystone("vampiric_pact")) run.Build.ApplyKey("k:vampiric_pact");
+        run.Build.ApplyKey("p:max_life:1");
+        run.Build.ApplyKey("p:max_life:2");
+        await Frames(3);
+        ResourcePool pool = player.Stats.Life!;
+        pool.Current = pool.Max * 0.3f;
+        for (int i = 0; i < 40 && pool.Current < pool.Max - 0.01f; i++)
+        {
+            var slime = GD.Load<PackedScene>("res://scenes/enemies/Slime.tscn").Instantiate<Enemies.Enemy>();
+            AddChild(slime);
+            slime.GlobalPosition = player.GlobalPosition + new Vector2(60f, 0f);
+            run.State.RegisterEnemy(slime);
+            await Frames(1);
+            slime.Health.ApplyResolvedDamage(100000f, player);
+            await Frames(1);
+        }
+
+        Check("PACT-KILLS-REACH-MAX-LIFE", pool.Current >= pool.Max - 0.01f && pool.RegenPerSecond <= 0f,
+            $"life {pool.Current:0.##} / {pool.Max:0.##}, regen {pool.RegenPerSecond:0.##}");
         run.QueueFree();
         await Frames(2);
     }

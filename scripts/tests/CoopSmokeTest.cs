@@ -11,6 +11,7 @@ using ArpgGame.Core;
 using ArpgGame.Enemies;
 using ArpgGame.Net;
 using ArpgGame.Run;
+using ArpgGame.Skills;
 using ArpgGame.UI;
 
 namespace ArpgGame.Tests;
@@ -92,6 +93,13 @@ public partial class CoopTestHost : CoopTestDriver
         {
             _failed = true;
         }
+    }
+
+    /// <summary>The seconds in "Getting up in 7 s…" (spaces or underscores), or -1.</summary>
+    private static int PromptSeconds(string prompt)
+    {
+        string[] words = prompt.Replace('_', ' ').Split(' ');
+        return words.Length > 3 && int.TryParse(words[3], out int secs) ? secs : -1;
     }
 
     private static string ClientLog(string name) => $"user://test_results/CoopSmokeTest_{name}.txt";
@@ -263,7 +271,17 @@ public partial class CoopTestHost : CoopTestDriver
             Dictionary<string, string> f = Fields(answer ?? "");
             Check($"PLAYERS-ON-CLIENT-{m.Name.ToUpperInvariant()}", F(f, "players") == 3f && F(f, "local") == m.PeerId && F(f, "puppets") == 2f,
                 answer ?? "no answer");
+            string others = string.Join(",", session.Members.Where(o => o.PeerId != m.PeerId).Select(o => o.Name).OrderBy(n => n, StringComparer.Ordinal));
+            Check($"RIFT-PARTY-MAP-{m.Name.ToUpperInvariant()}", F(f, "partymap") == 2f && F(f, "partymap_shown") == 1f && f.GetValueOrDefault("partymap_names") == others,
+                $"{m.Name}'s party minimap: {f.GetValueOrDefault("partymap")} allies ({f.GetValueOrDefault("partymap_names")}; want {others}), shown={f.GetValueOrDefault("partymap_shown")}");
         }
+
+        List<AllyMarker> hostMap = run.Hud.PartyMap.Allies();
+        Check("RIFT-PARTY-MAP-HOST", hostMap.Count == 2 && run.Hud.PartyMap.Party && hostMap.Select(a => a.Name).OrderBy(n => n).SequenceEqual(new[] { "alpha", "beta" })
+                && hostMap.All(a => run.State.PlayerByPeer(a.PeerId)?.Player is { } p && p.GlobalPosition.DistanceTo(a.Position) < 1f),
+            $"host's party minimap: {string.Join(", ", hostMap.Select(a => $"{a.Name} {a.Color.ToHtml(false)}"))}, shown={run.Hud.PartyMap.Party}");
+
+        await SkillEffectChecks(run, alpha, beta);
 
         await WaitFor(() => _lobbyReports == 2, 5f);
         Check("LOBBY-REPORTED-BY-BOTH-CLIENTS", _lobbyReports == 2, $"{_lobbyReports} of 2 clients reported the lobby");
@@ -470,13 +488,18 @@ public partial class CoopTestHost : CoopTestDriver
         bool fell = hostPlayer.Health.IsDead && !run.State.Ended;
         await Seconds(5f);
         bool stillDown = hostPlayer.Health.IsDead && !run.State.Ended;
-        float ring = hostPlayer.ReviveProgress;
+        float ring = hostPlayer.GetUpProgress;
+        string hostPrompt = run.Revive?.PromptText ?? "";
         bool up = await WaitFor(() => !hostPlayer.Health.IsDead, 7f);
         float lifeShare = hostPlayer.Stats.Life.Current / Mathf.Max(1f, hostPlayer.Stats.Life.Max);
-        Check("DOWNED-RESPAWNS-IN-10S", fell && stillDown && ring is > 0.35f and < 0.75f && up && lifeShare is > 0.4f and <= 0.6f && !run.State.Ended,
-            $"fell={fell}, still down at 5 s={stillDown} (ring {ring:0.00}), back up={up} at {lifeShare:P0} life, run ended={run.State.Ended}");
+        Check("DOWNED-RESPAWNS-IN-10S", fell && stillDown && ring is > 0.35f and < 0.75f && up && lifeShare is > 0.4f and <= 0.6f && !run.State.Ended
+                && hostPrompt.StartsWith("Getting up in ") && hostPrompt.EndsWith("or wait for an ally") && PromptSeconds(hostPrompt) is >= 4 and <= 6,
+            $"fell={fell}, still down at 5 s={stillDown} (ring {ring:0.00}, the host's screen: '{hostPrompt}'), back up={up} at {lifeShare:P0} life, run ended={run.State.Ended}");
         hostPlayer.Health.IgnoreDamage = true;
         slime.QueueFree();
+        await ClientDownedChecks(run, alpha, beta);
+        await ReviveChecks(run, host, alpha, beta);
+        await VitalityPactClientChecks(run, host, alpha, beta);
 
         // A burst of two levels: two rounds back to back, never unpaused between them.
         level = run.State.PartyLevel;
@@ -506,6 +529,149 @@ public partial class CoopTestHost : CoopTestDriver
                 && F(alphaSecond, "round") == secondId && F(alphaSecond, "chosen") == 0f && F(alphaSecond, "paused") == 1f,
             $"rounds {firstId}→{secondId}, paused between={pausedThroughout}, resumed={done}, level {level}→{run.State.PartyLevel}, alpha saw round {alphaSecond.GetValueOrDefault("round")} (chosen={alphaSecond.GetValueOrDefault("chosen")})");
         await BuildsMatch("LEVEL-UP-SAME-BUILD-BOTH-SIDES", run, alpha, beta);
+    }
+
+    /// <summary>The 13 run skills and the visual each one leaves: (resource, kind, how many).</summary>
+    private static readonly (string Skill, string Kind, int Count)[] RunSkills =
+    {
+        ("cleave", "slash", 1), ("double_strike", "slash", 2), ("glacial_hammer", "slash", 1), ("storm_strike", "slash", 1),
+        ("sunder", "line", 1), ("frost_nova", "burst", 1), ("ground_slam", "burst", 1), ("meteor", "burst", 1),
+        ("blades", "orbit", 1), ("fireball", "projectile", 1), ("frost_shards", "projectile", 1), ("spark", "projectile", 1),
+        ("throwing_knives", "projectile", 1),
+    };
+
+    /// <summary>
+    /// Every skill's visual reaches the clients (the owner's report 2026-10-23: "my
+    /// friend was a warrior and the slash showed for me, but not for him"). The host's
+    /// copy of alpha casts each of the 13 run skills through its real SkillUser, and the
+    /// host casts Cleave: alpha must replay its own casts, beta alpha's, and both the
+    /// host's, each swing at its real arc (it used to arrive clamped to 6.3°).
+    /// </summary>
+    private async Task SkillEffectChecks(RunController run, LobbyMember alpha, LobbyMember beta)
+    {
+        Player a = run.State.PlayerByPeer(alpha.PeerId)!.Player!;
+        Player host = run.Player;
+        var before = new Dictionary<long, Dictionary<string, string>>();
+        foreach (LobbyMember m in new[] { alpha, beta })
+        {
+            before[m.PeerId] = Fields(await Ask(m.PeerId, "effects") ?? "");
+        }
+
+        SkillInstance? saved = a.SkillUser.GetSkill(SkillSlotId.Slot4);
+        var expected = new Dictionary<string, int>();
+        var cast = new List<string>();
+        foreach ((string skill, string kind, int count) in RunSkills)
+        {
+            if (ResourceLoader.Load($"res://resources/skills/run/{skill}.tres") is not SkillDefinition def)
+            {
+                continue;
+            }
+
+            a.SkillUser.EquipSkill(SkillSlotId.Slot4, new SkillInstance(def));
+            CastFailure? failure = a.SkillUser.TryCast(SkillSlotId.Slot4, Vector2.Right, a.GlobalPosition + new Vector2(120f, 0f));
+            if (failure is null)
+            {
+                cast.Add(skill);
+                expected[kind] = expected.GetValueOrDefault(kind) + count;
+            }
+
+            await Seconds(0.15f);
+        }
+
+        if (saved is not null)
+        {
+            a.SkillUser.EquipSkill(SkillSlotId.Slot4, saved);
+        }
+        else
+        {
+            a.SkillUser.ClearSlot(SkillSlotId.Slot4);
+        }
+
+        // The host's own swing (another player's cast, for both clients).
+        SkillInstance? hostSaved = host.SkillUser.GetSkill(SkillSlotId.Slot4);
+        var cleave = (SkillDefinition)ResourceLoader.Load("res://resources/skills/run/cleave.tres");
+        host.SkillUser.EquipSkill(SkillSlotId.Slot4, new SkillInstance(cleave));
+        bool hostCast = host.SkillUser.TryCast(SkillSlotId.Slot4, Vector2.Left) is null;
+        if (hostSaved is not null)
+        {
+            host.SkillUser.EquipSkill(SkillSlotId.Slot4, hostSaved);
+        }
+        else
+        {
+            host.SkillUser.ClearSlot(SkillSlotId.Slot4);
+        }
+
+        await Seconds(0.8f);
+        Check("SKILLS-CAST-ON-HOST", cast.Count == RunSkills.Length && hostCast, $"alpha's copy cast {cast.Count}/{RunSkills.Length} ({string.Join(",", cast)}); host cast cleave={hostCast}");
+        foreach (LobbyMember m in new[] { alpha, beta })
+        {
+            Dictionary<string, string> after = Fields(await Ask(m.PeerId, "effects") ?? "");
+            var missing = new List<string>();
+            foreach ((string kind, int count) in expected)
+            {
+                int need = count + (kind == "slash" ? 1 : 0); // + the host's cleave
+                float got = F(after, kind) - F(before[m.PeerId], kind);
+                if (got < need)
+                {
+                    missing.Add($"{kind} {got}/{need}");
+                }
+            }
+
+            string who = m == alpha ? "OWN-AND-OTHERS" : "OTHERS";
+            Check($"SKILL-VISUALS-ON-CLIENT-{m.Name.ToUpperInvariant()}-{who}", missing.Count == 0 && F(after, "arc") >= 140f,
+                $"{string.Join(" ", after.Select(kv => $"{kv.Key}={kv.Value}"))}; missing: {(missing.Count == 0 ? "none" : string.Join(", ", missing))}; last swing {after.GetValueOrDefault("arc")}° (the host's cleave: {(cleave is MeleeSkillDefinition md ? md.ArcDegrees : 0f)}°)");
+        }
+    }
+
+    /// <summary>
+    /// A client's player is downed (the owner's report 2026-10-23: "allies respawn
+    /// instantly"): it stays down about <see cref="PartyRules.RespawnSeconds"/> on the
+    /// host, on its own machine and on the other client, then gets back up at half life.
+    /// Alpha is moved away from everyone so nobody revives it sooner.
+    /// </summary>
+    private async Task ClientDownedChecks(RunController run, LobbyMember alpha, LobbyMember beta)
+    {
+        RunPlayer alphaRp = run.State.PlayerByPeer(alpha.PeerId)!;
+        Player a = alphaRp.Player!;
+        Vector2 others = run.State.Players.Where(rp => rp != alphaRp && rp.Player is not null).Select(rp => rp.Player!.GlobalPosition).Aggregate(Vector2.Zero, (s, b) => s + b) / Mathf.Max(1, run.State.Players.Count - 1);
+        Vector2 away = (a.GlobalPosition - others).LengthSquared() > 1f ? (a.GlobalPosition - others).Normalized() : Vector2.Right;
+        a.GlobalPosition = run.Arena.Clamp(others + away * 520f, 60f);
+        await Seconds(0.5f);
+        float nearest = run.State.Players.Where(rp => rp != alphaRp && rp.Player is not null).Select(rp => rp.Player!.GlobalPosition.DistanceTo(a.GlobalPosition)).DefaultIfEmpty(9999f).Min();
+        // Life regeneration (a passive, a card, gear): a downed player's life used to refill
+        // while down, so the ally looked back up at once and the revive dropped them to half.
+        var regen = new Stats.StatModifier(Stats.ModifierType.Flat, 400f, "coop_test_regen");
+        a.Stats.Get(Stats.StatId.LifeRegen).AddModifier(regen);
+        a.Health!.IgnoreDamage = false;
+        a.Health.ApplyResolvedDamage(float.MaxValue / 4f, null);
+        a.Health.IgnoreDamage = true;
+        ulong downAt = Time.GetTicksMsec();
+        bool fell = alphaRp.Downed && !run.State.Ended;
+        await Seconds(1.5f);
+        Dictionary<string, string> alphaEarly = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        Dictionary<string, string> betaEarly = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        await WaitFor(() => Time.GetTicksMsec() - downAt >= 6000, 6f);
+        bool hostLate = alphaRp.Downed;
+        float hostLifeLate = a.Stats.Life!.Current;
+        bool hostLying = a.ShowsDowned && run.Hud.PartyMap.Allies().Any(m => m.PeerId == alpha.PeerId && m.Downed);
+        Dictionary<string, string> alphaLate = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        Dictionary<string, string> betaLate = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        bool up = await WaitFor(() => !alphaRp.Downed, 7f);
+        float upAfter = (Time.GetTicksMsec() - downAt) / 1000f;
+        a.Stats.Get(Stats.StatId.LifeRegen).RemoveModifier(regen);
+        await Seconds(0.4f);
+        Dictionary<string, string> alphaUp = Fields(await Ask(alpha.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        Dictionary<string, string> betaUp = Fields(await Ask(beta.PeerId, $"downed peer={alpha.PeerId}") ?? "");
+        string D(Dictionary<string, string> f) => $"dead={f.GetValueOrDefault("dead")} lying={f.GetValueOrDefault("lying")} ring={f.GetValueOrDefault("ring")} life={f.GetValueOrDefault("life")} prompt={f.GetValueOrDefault("prompt")}";
+        Check("CLIENT-DOWNED-HOLDS-ON-HOST", fell && hostLate && hostLying && hostLifeLate == 0f && up && upAfter is >= 9.5f and <= 11.5f && !run.State.Ended,
+            $"alpha fell={fell} ({nearest:0} px from the nearest ally), still down at 6 s={hostLate} (lying and hollow on the party map={hostLying}, life {hostLifeLate:0} with +400 life regen), back up={up} after {upAfter:0.0} s");
+        Check("CLIENT-DOWNED-HOLDS-ON-ITS-OWN-MACHINE", F(alphaEarly, "dead") == 1f && F(alphaLate, "dead") == 1f && F(alphaLate, "ring") is > 0.45f and < 0.8f
+                && alphaLate.GetValueOrDefault("prompt", "").StartsWith("Getting_up_in_") && PromptSeconds(alphaLate.GetValueOrDefault("prompt", "")) is >= 3 and <= 5
+                && F(alphaLate, "life") == 0f && F(alphaLate, "lying") == 1f && F(alphaUp, "dead") == 0f && F(alphaUp, "lying") == 0f && F(alphaUp, "life") is > 0.4f and <= 0.6f,
+            $"alpha sees itself: 1.5 s {D(alphaEarly)}; 6 s {D(alphaLate)}; up {D(alphaUp)}");
+        Check("CLIENT-DOWNED-HOLDS-ON-OTHER-CLIENT", F(betaEarly, "dead") == 1f && F(betaLate, "dead") == 1f && F(betaLate, "life") == 0f && F(betaLate, "lying") == 1f
+                && F(betaUp, "dead") == 0f && F(betaUp, "lying") == 0f,
+            $"beta sees alpha: 1.5 s {D(betaEarly)}; 6 s {D(betaLate)}; up {D(betaUp)}");
     }
 
     private async Task<Error> HostOnFreePort(NetSession session, Profile profile)
@@ -893,7 +1059,9 @@ public partial class CoopTestClient : CoopTestDriver
             {
                 int players = GetTree().GetNodesInGroup(CombatQuery.PlayerGroup).Count;
                 int puppets = GetTree().GetNodesInGroup(CombatQuery.PlayerGroup).OfType<Player>().Count(p => p.Puppet);
-                return $"players={players} local={session.LocalPeerId} puppets={puppets} local_is_mine={run.Player.IsLocal && !run.Player.Puppet}";
+                List<AllyMarker> map = run.Hud.PartyMap.Allies();
+                return $"players={players} local={session.LocalPeerId} puppets={puppets} local_is_mine={run.Player.IsLocal && !run.Player.Puppet} "
+                    + $"partymap={map.Count} partymap_shown={(run.Hud.PartyMap.Party ? 1 : 0)} partymap_names={string.Join(",", map.Select(a => a.Name).OrderBy(n => n, StringComparer.Ordinal))}";
             }
 
             case "check_enemy":
@@ -916,6 +1084,27 @@ public partial class CoopTestClient : CoopTestDriver
 
             case "where":
                 return $"x={Num(run.Player.GlobalPosition.X)} y={Num(run.Player.GlobalPosition.Y)}";
+            case "effects":
+            {
+                string counts = string.Join(" ", new[] { "slash", "line", "burst", "bullet", "orbit", "projectile" }.Select(k => $"{k}={client.Replayed.GetValueOrDefault(k)}"));
+                return $"{counts} arc={Num(client.LastSlashArc)}";
+            }
+
+            case "downed":
+            {
+                // How this machine shows player `peer`: down or up, the ring, its life share.
+                long peer = long.TryParse(f.GetValueOrDefault("peer"), out long id) ? id : 0;
+                Player? p = run.State.PlayerByPeer(peer)?.Player;
+                if (p is null)
+                {
+                    return "dead=-1";
+                }
+
+                float share = p.Stats.Life is { Max: > 0f } life ? life.Current / life.Max : -1f;
+                // ring: the way to getting up alone; channel: an ally's revive; prompt: this machine's revive line.
+                return $"dead={(p.Health is { IsDead: true } ? 1 : 0)} ring={p.GetUpProgress.ToString("0.00", CultureInfo.InvariantCulture)} channel={p.ReviveProgress.ToString("0.00", CultureInfo.InvariantCulture)} "
+                    + $"life={share.ToString("0.00", CultureInfo.InvariantCulture)} local={(p.IsLocal ? 1 : 0)} lying={(p.ShowsDowned ? 1 : 0)} prompt={Prompt(run)}";
+            }
             case "check_kill":
             {
                 bool cosmetic = GetTree().GetNodesInGroup(RunState.PickupGroup).OfType<Pickup>().All(p => p.Cosmetic);
@@ -980,6 +1169,16 @@ public partial class CoopTestClient : CoopTestDriver
             case "toast":
             case "leave_panel":
                 return await CashOutAnswer(run, session, question);
+            case "revive_hold":
+            case "revive_release":
+            case "revive_move":
+            case "revive_dodge":
+            case "revive_state":
+            case "revive_forge":
+                return await ReviveAnswer(run, session, question);
+            case "pick_key":
+            case "life":
+                return await VitalityAnswer(run, question);
             case "history":
                 return string.Join(" ", run.Build.History);
             case "leave":

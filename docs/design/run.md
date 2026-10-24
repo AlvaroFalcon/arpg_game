@@ -367,7 +367,8 @@ Capture: `RunCapture --only=update` gains `rift-cashout-offer.png`,
 
 1. **Death:** solo, falling ends the run with the reward reached; co-op, a downed
    player gets back up after 10 s and the run ends only when everyone is down at
-   once, with the reward reached (multiplayer.md -> "Deaths"). The "keep only the
+   once, with the reward reached (multiplayer.md -> "Deaths and revives"; since
+   2026-10-24 an ally can also revive them with a 5 s channel, holding E). The "keep only the
    last tier" rule stays unused.
 2. Co-op vote: as built — if anyone stays, the party stays.
 3. Tier V+ rewards and prices: keep the first guesses until they've been played.

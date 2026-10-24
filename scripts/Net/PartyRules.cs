@@ -77,50 +77,129 @@ public static class PartyRules
     /// minute stay close to solo). Elite and boss drops are not shared down.</summary>
     public static float Share(int players) => 1f / SpawnRate(players);
 
-    // --- deaths ------------------------------------------------------------------
+    // --- deaths (docs/design/multiplayer.md -> "Deaths and revives") -------------------
+    // Owner decision 2026-10-24: "When a friend dies, they get back up after a 10 s delay,
+    // or an ally can revive them with a 5 s cast without moving, cancellable in case they
+    // need to dodge." Every co-op mode (the Survival Rift and co-op realities); solo play
+    // never goes down.
 
-    /// <summary>How close (px) a living ally must stand to revive a downed player.</summary>
+    /// <summary>How close (px) a living ally must stand to a downed player to start a revive
+    /// (the "Hold E to revive" prompt shows within this).</summary>
     public const float ReviveRadius = 70f;
 
-    /// <summary>Seconds of an ally standing next to a downed player to revive them.</summary>
-    public const float ReviveTime = 3f;
+    /// <summary>The host accepts a revive up to <see cref="ReviveRadius"/> plus this (px): a
+    /// client sees the downed body 100 ms in the past and its own player a trip ahead.
+    /// Further than that is refused ("too far"), and a channel stops there.</summary>
+    public const float ReviveRangeSlack = 30f;
 
-    /// <summary>Life a revived player comes back with (fraction of max).</summary>
-    public const float ReviveLife = 0.4f;
-
-    /// <summary>Invulnerability after a revive (seconds).</summary>
-    public const float ReviveGrace = 2f;
+    /// <summary>Seconds an ally channels, standing still, to revive a downed player.</summary>
+    public const float ReviveChannelSeconds = 5f;
 
     /// <summary>Seconds after which a downed player gets back up on their own
-    /// (owner decision 2026-10-17); an ally standing by still revives sooner.</summary>
+    /// (owner decision 2026-10-17); an ally's channel revives sooner.</summary>
     public const float RespawnSeconds = 10f;
 
-    /// <summary>Life a player who got up on their own comes back with (fraction of max).</summary>
+    /// <summary>Life a player comes back with when they get up on their own (fraction of max).</summary>
     public const float RespawnLife = 0.5f;
+
+    /// <summary>Life an ally's revive brings back: the same as getting up alone (owner
+    /// decision 2026-10-24; it was 40 % with the old stand-by revive).</summary>
+    public const float ReviveLife = RespawnLife;
+
+    /// <summary>Invulnerability after getting up, either way (seconds).</summary>
+    public const float ReviveGrace = 2f;
+
+    /// <summary>Co-op realities: a fall costs the party this many portals of the shared pool
+    /// (the solo rule). The one number to change if portals are reworked.</summary>
+    public const int RealityPortalsPerFall = 1;
+
+    /// <summary>Co-op realities: when the whole party is down at once, everyone is back at the
+    /// entrance this many seconds after the last fall (the solo death rule, for the party).</summary>
+    public const float RealityWipeSeconds = 1.5f;
 
     public enum ReviveOutcome { StillDown, RevivedByAlly, Respawned }
 
     /// <summary>
-    /// One step of the downed rule: an ally's help fills over <see cref="ReviveTime"/>
-    /// and drains when nobody stands by; the respawn timer fills over
-    /// <see cref="RespawnSeconds"/> regardless. Returns the new help and time down,
-    /// what happened, and the progress the ring shows (whichever is further).
+    /// One step of the downed rule: the get-up timer fills over <see cref="RespawnSeconds"/>
+    /// whatever happens; an ally's channel fills over <see cref="ReviveChannelSeconds"/> while it
+    /// lasts and is lost when it stops (a cancelled revive starts again from zero). Returns the
+    /// new time down and channel progress, and what happened.
     /// </summary>
-    public static (float Help, float DownedFor, ReviveOutcome Outcome, float Shown) StepRevive(float help, float downedFor, bool helped, float dt)
+    public static (float DownedFor, float Channel, ReviveOutcome Outcome) StepDowned(float downedFor, float channel, bool channelling, float dt)
     {
-        help = Mathf.Clamp(help + (helped ? dt : -dt) / ReviveTime, 0f, 1f);
         downedFor += dt;
-        if (help >= 1f)
+        channel = channelling ? channel + dt / ReviveChannelSeconds : 0f;
+        if (channel >= 1f)
         {
-            return (0f, 0f, ReviveOutcome.RevivedByAlly, 0f);
+            return (0f, 0f, ReviveOutcome.RevivedByAlly);
         }
 
         if (downedFor >= RespawnSeconds)
         {
-            return (0f, 0f, ReviveOutcome.Respawned, 0f);
+            return (0f, 0f, ReviveOutcome.Respawned);
         }
 
-        return (help, downedFor, ReviveOutcome.StillDown, Mathf.Max(help, downedFor / RespawnSeconds));
+        return (downedFor, channel, ReviveOutcome.StillDown);
+    }
+
+    /// <summary>Why a revive was refused or a channel stopped (tests, the security log).</summary>
+    public enum ReviveStop
+    {
+        None,
+        Released,
+        Moved,
+        Dodged,
+        Cast,
+        Stunned,
+        ReviverDown,
+        TargetUp,
+        TooFar,
+        Taken,
+        Unknown,
+        Self,
+        RateLimited,
+        Left,
+    }
+
+    /// <summary>
+    /// Whether an ally's channel goes on this step (<see cref="ReviveStop.None"/>) or why it
+    /// stops. Moving, dodging, casting a skill, being stunned (no control) or going down
+    /// stop it; taking damage does not. Automatic casts (the Survival Rift) don't count:
+    /// the caller passes <paramref name="cast"/> only for a cast the player pressed.
+    /// </summary>
+    public static ReviveStop ChannelBreak(bool reviverDown, bool targetDown, bool moving, bool dodging, bool cast, bool stunned, float distance)
+    {
+        if (reviverDown)
+        {
+            return ReviveStop.ReviverDown;
+        }
+
+        if (!targetDown)
+        {
+            return ReviveStop.TargetUp;
+        }
+
+        if (stunned)
+        {
+            return ReviveStop.Stunned;
+        }
+
+        if (dodging)
+        {
+            return ReviveStop.Dodged;
+        }
+
+        if (moving)
+        {
+            return ReviveStop.Moved;
+        }
+
+        if (cast)
+        {
+            return ReviveStop.Cast;
+        }
+
+        return distance > ReviveRadius + ReviveRangeSlack ? ReviveStop.TooFar : ReviveStop.None;
     }
 
     /// <summary>More than one player: the party rules apply (portal, cash-out vote).</summary>

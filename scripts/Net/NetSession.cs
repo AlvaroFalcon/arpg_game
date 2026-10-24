@@ -117,8 +117,11 @@ public partial class NetSession : Node
     /// 5: party session (hideout, proposals, presence, edit lock, co-op realities):
     /// RpcStartRun replaced by the StartRift party message, to the participants only.
     /// 6: co-op Altered Realities (RealityProtocol events 64-69, a reality's snapshot
-    /// header, the held skill buttons at the end of a reality client's input).</summary>
-    public const int Protocol = 6;
+    /// header, the held skill buttons at the end of a reality client's input).
+    /// 7: revives (docs/design/multiplayer.md -> "Deaths and revives"): every player in a
+    /// snapshot carries the get-up timer and whom they revive (two more bytes), and clients
+    /// send ClientRevive (start/stop a 5 s channel on a downed ally).</summary>
+    public const int Protocol = 7;
 
     /// <summary>First bytes of the authentication message ("ARPG").</summary>
     private static readonly byte[] AuthMagic = { 0x41, 0x52, 0x50, 0x47 };

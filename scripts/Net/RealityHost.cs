@@ -21,6 +21,19 @@ public partial class RealityHost : CoopHost
 
     protected override ICoopWorld World => Reality.Party;
 
+    /// <summary>The whole party is down: nobody gets up in place, the wipe brings everyone back at the entrance.</summary>
+    protected override bool RevivesHeld => Reality.WipePending;
+
+    /// <summary>Realities cast with mana: up with at least the same share of it as of life
+    /// (docs/design/multiplayer.md -> "Deaths and revives"; the old respawn refilled it).</summary>
+    protected override void ModeGotUp(RunPlayer rp, bool byAlly)
+    {
+        if (rp.Player?.Stats.Mana is { } mana)
+        {
+            mana.Current = Mathf.Max(mana.Current, mana.Max * PartyRules.RespawnLife);
+        }
+    }
+
     /// <summary>A reality's packs sleep until someone comes near: far sleeping ones aren't re-sent.</summary>
     protected override bool SkipFarDormant => true;
 

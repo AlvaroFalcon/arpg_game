@@ -63,10 +63,20 @@ public partial class VoxelActor : Node3D
         // Upright figures cancel the stage's depth stretch and lean back, away from
         // the camera (most of the way to an HD-2D billboard), so faces read
         // instead of the tops of heads.
-        Basis basis = _flat
+        // A downed co-op player lies on the ground on its side (docs/design/multiplayer.md -> "Deaths").
+        bool lying = parent is Player { ShowsDowned: true };
+        Basis basis = _flat || lying
             ? new Basis(Vector3.Up, -Sprite.GlobalRotation) * new Basis(Vector3.Right, -Mathf.Pi / 2f)
             : Basis.FromScale(new Vector3(1f, 1f, VoxelStage.SinPitch)) * new Basis(Vector3.Right, -Mathf.DegToRad(LeanDegrees));
-        Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(anchor.GlobalPosition, _height));
+        Vector2 feet = anchor.GlobalPosition;
+        if (lying && Sprite.SpriteFrames?.GetFrameTexture(Sprite.Animation, Sprite.Frame) is { } frame)
+        {
+            // The model stands on its feet (bottom-centre origin): lying, the body would
+            // stretch out beside the revive ring. Centre it on the player instead.
+            feet -= Vector2.Up.Rotated(Sprite.GlobalRotation) * frame.GetHeight() * Mathf.Abs(Sprite.GlobalScale.Y) * 0.4f;
+        }
+
+        Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(feet, lying ? 0.1f : _height));
         _mesh.Mesh = VoxelLibrary.MeshFor(Sprite);
 
         ApplyModulate(Sprite.Modulate * anchor.Modulate);

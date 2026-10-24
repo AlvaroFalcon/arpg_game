@@ -210,6 +210,19 @@ public partial class EquipmentItem : Area2D, IDroppable
         }
     }
 
+    /// <summary>
+    /// An item rebuilt from data (<see cref="Restore"/>) and then put on the ground: the
+    /// same icon and filtered label a freshly rolled drop gets in <see cref="Initialize"/>.
+    /// Co-op clients need it for the gear the host drops for them
+    /// (docs/design/multiplayer.md -> "Replication"); without it they showed the scene's
+    /// grey placeholder square and no name. Call after the item is in the tree.
+    /// </summary>
+    public void ShowOnGround()
+    {
+        ShowIcon();
+        RegisterLabel();
+    }
+
     private static Vector2[] Circle(float rx, float ry)
     {
         var points = new Vector2[16];

@@ -118,6 +118,10 @@ public partial class TownMap : Control
         DrawString(font, at, text, HorizontalAlignment.Left, -1, size, color);
     }
 
+    /// <summary>The party members this map shows (none offline; tests read it too).</summary>
+    public List<AllyMarker> Allies() =>
+        Hideout is not null && IsInstanceValid(Hideout) ? PartyMarkers.Allies(Hideout, Hideout.Player) : new List<AllyMarker>();
+
     /// <summary>Where a world point is drawn, in this control's coordinates (captures, tests).</summary>
     public Vector2 MapPointOf(Vector2 world) => ToMap(world);
 
@@ -270,6 +274,13 @@ public partial class TownMap : Control
         {
             _hovered = _hoveredNow;
             MouseDefaultCursorShape = _hovered is not null || !Big ? CursorShape.PointingHand : CursorShape.Arrow;
+        }
+
+        // Allies home with you (docs/design/multiplayer.md -> "Allies on the maps"): a dot in
+        // their party colour, their name on the big map.
+        foreach (AllyMarker ally in Allies())
+        {
+            PartyMarkers.Draw(this, ToMap(ally.Position), ally, Big ? 6f : 3.5f, label: Big);
         }
 
         // You: a green arrow pointing the way you face.
