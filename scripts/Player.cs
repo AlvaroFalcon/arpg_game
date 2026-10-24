@@ -191,6 +191,8 @@ public partial class Player : CharacterBody2D
             Health.Damaged += OnDamaged;
         }
 
+        Health.AnyHitNegated += OnAnyHitNegated;
+
         _navigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
         _stats = GetNode<ActorStats>("Stats");
         _skillUser = GetNode<SkillUser>("SkillUser");
@@ -436,6 +438,20 @@ public partial class Player : CharacterBody2D
         return best;
     }
 
+    public override void _ExitTree()
+    {
+        Health.AnyHitNegated -= OnAnyHitNegated;
+    }
+
+    /// <summary>A block or an evasion (not a dodge's invulnerability): say so where the hit would have shown.</summary>
+    private void OnAnyHitNegated(Health target, DamagePayload payload, bool invulnerable)
+    {
+        if (!invulnerable && target == Health && IsLocal && DamageNumberScene is not null)
+        {
+            UI.DamageNumberLayer.ShowAvoided(this);
+        }
+    }
+
     private void OnDamaged(float amount)
     {
         if (amount < 0.5f)
@@ -446,12 +462,10 @@ public partial class Player : CharacterBody2D
         _hurtFlash = 0.15f;
         Core.Sfx.Play(this, "hurt");
         Core.CameraShake.Request(this, 3f);
-        if (DamageNumberScene is not null && (Core.GameSettings.Get(this)?.DamageNumbers ?? true))
+        // Only the local player's own damage taken: an ally's shows on their screen.
+        if (DamageNumberScene is not null && IsLocal)
         {
-            var number = DamageNumberScene.Instantiate<UI.DamageNumber>();
-            GetTree().CurrentScene.AddChild(number);
-            number.GlobalPosition = GlobalPosition + new Vector2(0f, -28f);
-            number.Display(amount, new Color(1f, 0.3f, 0.3f));
+            UI.DamageNumberLayer.ShowIncoming(this, amount, Stats.Life?.Max ?? 0f);
         }
     }
 

@@ -457,6 +457,7 @@ public partial class SkillUser : Node
             CanInflictAilments = context.CanInflictAilments,
             IgniteDamageMultiplier = context.IgniteDamageMultiplier,
             KnockbackForce = knockback,
+            Skill = instance.Definition,
         };
     }
 

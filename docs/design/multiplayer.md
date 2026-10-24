@@ -44,7 +44,7 @@ Offline play doesn't change. Without an active session, no net node is added, `C
 | Level-up round: id, start pick or level, level, rounds left, chosen / total, deadline (host clock), "you have chosen" | event (full state, sent on every change) | reliable |
 | The card the host applied for this player (their pick, or the timer's) | event, to that client only | reliable |
 | Banners, toasts, boss spawned / phase / attack name / callouts, exit portal, run begin/end | event | reliable |
-| Damage numbers for the client's own hits | event, to that client only | reliable |
+| Damage numbers for the client's own hits: amount, the hit's qualities in one byte (crit, damage type, ignite/chill/shock/freeze applied, a heavy share of an elite's or boss's life) and the skill's loadout slot for its icon (protocol 8) | event, to that client only | reliable |
 | Client → host: input (move, aim, sprint, choosing, dodge/flask counters, sequence) | input packet | every physics frame, unreliable |
 | Realities: kills, monsters total, the shared portal pool, boss fight / cleared / collapsed flags, the receiver's mana | snapshot header (instead of the Rift's) | 20 Hz, unreliable |
 | Realities: a gem drop's kind (`PickupExtra` 64), teleports (65), the end for everyone (66), the gate (67), the clear (68), the exit portal (69) | event (`RealityProtocol`) | reliable |

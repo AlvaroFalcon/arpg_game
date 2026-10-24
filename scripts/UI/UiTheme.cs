@@ -24,6 +24,41 @@ public static class UiTheme
     public static readonly Color Mana = new(0.25f, 0.45f, 0.95f);
     public static readonly Color Experience = new(0.4f, 0.85f, 0.45f);
 
+    // Damage numbers (docs/design/menus.md -> "Damage numbers"). Warm gold is the
+    // player's own damage; each element keeps a hue that reads on dark caverns and
+    // stays apart from the gold; crits go brighter and more orange; damage taken is red.
+    public static readonly Color DamagePhysical = new(1f, 0.85f, 0.52f);
+    public static readonly Color DamageFire = new(1f, 0.55f, 0.24f);
+    public static readonly Color DamageCold = new(0.55f, 0.85f, 1f);
+    public static readonly Color DamageLightning = new(0.84f, 0.74f, 1f);
+    public static readonly Color DamagePoison = new(0.56f, 0.95f, 0.42f);
+    public static readonly Color DamageCrit = new(1f, 0.72f, 0.16f);
+    public static readonly Color DamageStreak = new(1f, 0.74f, 0.22f);
+    public static readonly Color DamageTaken = new(1f, 0.3f, 0.28f);
+    public static readonly Color NumberOutline = new(0.07f, 0.035f, 0.02f, 0.92f);
+
+    public static Color DamageColor(Combat.DamageType type) => type switch
+    {
+        Combat.DamageType.Fire => DamageFire,
+        Combat.DamageType.Cold => DamageCold,
+        Combat.DamageType.Lightning => DamageLightning,
+        _ => DamagePhysical,
+    };
+
+    private static FontVariation? _numberFont;
+    private static FontVariation? _bigNumberFont;
+
+    /// <summary>The default font, emboldened: damage numbers and their tags.</summary>
+    public static Font NumberFont => _numberFont ??= new FontVariation { BaseFont = ThemeDB.FallbackFont, VariationEmbolden = 0.6f };
+
+    /// <summary>Bolder and slanted: the big-hit number.</summary>
+    public static Font BigNumberFont => _bigNumberFont ??= new FontVariation
+    {
+        BaseFont = ThemeDB.FallbackFont,
+        VariationEmbolden = 0.9f,
+        VariationTransform = new Transform2D(new Vector2(1f, 0f), new Vector2(-0.18f, 1f), Vector2.Zero),
+    };
+
     private static Theme? _theme;
 
     public static Theme Theme => _theme ??= Build();

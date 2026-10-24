@@ -23,6 +23,17 @@ namespace ArpgGame.Combat;
 /// this component's own source objects, so they compose with everything else
 /// and are removed with the existing remove-by-source mechanism.
 /// </summary>
+/// <summary>Ailments one hit applied (<see cref="Ailments.LastHitApplied"/>).</summary>
+[System.Flags]
+public enum AilmentHit : byte
+{
+    None = 0,
+    Ignite = 1,
+    Chill = 2,
+    Shock = 4,
+    Freeze = 8,
+}
+
 [GlobalClass]
 public partial class Ailments : Node
 {
@@ -106,8 +117,15 @@ public partial class Ailments : Node
         _ => Colors.White,
     };
 
+    /// <summary>Which ailments the last resolved hit actually applied (a fresh chill, a
+    /// successful ignite/shock/freeze roll). Presentation only: damage numbers read it
+    /// from <see cref="Health.HitPresented"/> to tag the hit (docs/design/menus.md ->
+    /// "Damage numbers").</summary>
+    public AilmentHit LastHitApplied { get; private set; }
+
     private void OnHitResolved(DamagePayload payload, float taken)
     {
+        LastHitApplied = AilmentHit.None;
         if (!payload.CanInflictAilments || _health.IsDead)
         {
             return;
@@ -123,17 +141,37 @@ public partial class Ailments : Node
             switch (type)
             {
                 case DamageType.Cold:
+                    if (!IsChilled)
+                    {
+                        LastHitApplied |= AilmentHit.Chill;
+                    }
+
                     ApplyChill();
                     if (payload.FreezeChance > 0f && _rng.Randf() < payload.FreezeChance)
                     {
+                        float before = FreezeRemaining;
                         ApplyFreeze();
+                        if (FreezeRemaining > before)
+                        {
+                            LastHitApplied |= AilmentHit.Freeze;
+                        }
                     }
 
                     break;
                 case DamageType.Fire when _rng.Randf() < payload.IgniteChance:
+                {
+                    float before = IgniteRemaining;
                     ApplyIgnite(taken * IgniteDamageRatio * payload.IgniteDamageMultiplier, payload.SourceActor);
+                    if (IgniteRemaining > before)
+                    {
+                        LastHitApplied |= AilmentHit.Ignite;
+                    }
+
                     break;
+                }
+
                 case DamageType.Lightning when _rng.Randf() < payload.ShockChance:
+                    LastHitApplied |= AilmentHit.Shock;
                     ApplyShock();
                     break;
             }

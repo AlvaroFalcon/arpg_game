@@ -172,6 +172,7 @@ public partial class Enemy : CharacterBody2D
         Health.Damaged += OnDamaged;
         Health.Died += OnDied;
         Health.HitResolved += OnHitResolved;
+        Health.HitPresented += OnHitPresented;
     }
 
     private void RefillLife()
@@ -579,25 +580,38 @@ public partial class Enemy : CharacterBody2D
     {
         LastHurtMsec = Time.GetTicksMsec();
         _flashTimer = 0.08f;
-        SpawnDamageNumber(amount);
-    }
 
-    private void SpawnDamageNumber(float amount)
-    {
-        if (DamageNumberScene is null || amount < 0.5f || !(Core.GameSettings.Get(this)?.DamageNumbers ?? true))
+        // A hit gets its number from OnHitPresented, with its tags; this is damage
+        // that was already resolved (ignite and poison ticks, explosions).
+        if (Health.ResolvingHit is null && DamageNumberScene is not null)
         {
-            return;
+            UI.DamageNumberLayer.ShowTick(this, amount, Ailments, NumberOffset);
         }
-
-        var number = UI.DamageNumber.Spawn(DamageNumberScene, GetTree().CurrentScene, GlobalPosition + new Vector2(GD.Randf() * 16f - 8f, -18f * Scale.Y));
-        number.Display(amount);
     }
+
+    private void OnHitPresented(DamagePayload payload, float taken)
+    {
+        if (DamageNumberScene is not null)
+        {
+            UI.DamageNumberLayer.ShowHit(this, payload, taken, Ailments, Stats.Life?.Max ?? 0f, UI.DamageNumberLayer.HeavyShareFor(this), NumberOffset);
+        }
+    }
+
+    /// <summary>Where this monster's damage-number column starts: just right of its head.</summary>
+    public Vector2 NumberOffset => new(12f * Mathf.Abs(Scale.X), -24f * Mathf.Abs(Scale.Y));
 
     /// <summary>Co-op client: a hit landed on the host (white flash).</summary>
     public void ReplicaFlash() => _flashTimer = 0.08f;
 
-    /// <summary>Co-op client: shows a damage number for a hit the host resolved.</summary>
-    public void ReplicaDamageNumber(float amount) => SpawnDamageNumber(amount);
+    /// <summary>Co-op client: shows a damage number for one of this client's hits the host
+    /// resolved (flags and skill slot from <see cref="UI.DamageNumberLayer.Encode"/>).</summary>
+    public void ReplicaDamageNumber(float amount, byte flags = 0, byte slot = 255)
+    {
+        if (DamageNumberScene is not null)
+        {
+            UI.DamageNumberLayer.ShowReplicaHit(this, amount, flags, slot, NumberOffset);
+        }
+    }
 
     /// <summary>
     /// Co-op client: the host says this monster is gone — a death puff when it
