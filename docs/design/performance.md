@@ -1,6 +1,6 @@
 # Performance
 
-Status: **second pass done (mass deaths: all four proposals implemented)**. This doc records frame-time problems
+Status: **frame budget pass in progress** (the 2D checklist, C1–C11: see the last section). Earlier: mass deaths, all four proposals implemented. This doc records frame-time problems
 we measured, what caused them, what we changed, and the budgets we keep. Every
 number here comes from a benchmark you can re-run. Add to it when a new problem
 gets measured.
@@ -442,3 +442,51 @@ Same method as above (`scenes/tools/CoopBench.tscn`, host + 3 headless clients o
 Clients: 17–18 ms frames, 0.8 ms replica update. Far sleeping packs are left out of snapshots (`SkipFarDormant`); without that every one of the 324 would go out at least at 5 Hz.
 
 **ENet's throttle and the unreliable channels (the phase-A open question).** Snapshots (host → client, ≤ 1100 B chunks at 20 Hz): 98.4–100 % of ticks delivered on loopback, in both modes. Inputs (client → host, ~20 B at 60 Hz): 3–10 % lost to sequence gaps. Not fixed: an input carries the whole state (direction, aim, held buttons) and one-shot presses travel as counters, so a lost input only delays the next by one frame; the host stops a player only after 300 ms without input. Presence in the hideout stays reliable (phase A), where losing two thirds was visible.
+
+## Frame budget pass (2026-10-24): the 2D checklist
+
+The owner's checklist (atlases, tilemaps, overdraw, culling, pooling, texture compression, profile first, simple
+collision, spatial partitioning, staggered AI) checked against this game: research, measured experiments on a scratch
+copy and a ranked list C1–C13. The owner approved every candidate, soft crowd separation and spreading the
+Cataclysm kills. They land as one commit each (I0–I14), every one measured before and after the same way.
+
+### Method
+
+- **`scenes/tools/PerfBench.tscn`** (`scripts/tools/PerfBench.cs`), run through **`scripts/perf_bench.sh`**:
+  - `--mode=rift`: the Survival Rift at clock 350 s, 1800 fill frames, 1200 measured, monsters immortal so the
+    count sits at the cap (the RiftBench setup).
+  - `--mode=reality`: tier 10, seed 7 (The Bone Warrens). A "steady" phase (packs asleep, the player at the
+    entrance), then every non-boss pack is woken and floods the player for 600 frames, then an "awake" phase.
+  - It turns on the `Perf` probes (`scripts/tools/Perf.cs`; a static gate, off in the game, so a probe is two
+    calls that return at once) and logs: frame wall time (avg / p95 / p99 / max), the physics scripts' time per
+    step (`StepProbe`), managed allocations per frame, every GC with its pause, spikes over 50 ms, Physics2D
+    active objects and pairs, render counts, and each probe in ms/frame, µs per call and KB/frame. One
+    `PERF SUMMARY` line per phase holds all of it, so tables are pasted, not retyped.
+  - `--forcevoxel` builds the voxel stage under the headless dummy renderer (`HdView.ForceInHeadless`): the
+    view's CPU cost without lavapipe stealing cores.
+  - `--window` (the script): Forward+ on lavapipe under Xvfb at 1280×720, 120 fill and 60 measured frames.
+    Draws, objects, primitives and memory are exact; timings are relative only.
+  - `--shots=<dir>` saves the fixed screenshot set before the fill (packs hidden and frozen, so it is the same
+    on every run): `reality-entrance`, `reality-behind-wall`, `reality-liquid`, `reality-arena`,
+    `reality-overview` (zoom 0.5), `rift-centre`, `rift-edge` and, with `--lineup`, `rift-lineup` (every enemy
+    and boss scene and every player look, dormant, in rows).
+- **A/B discipline.** Same machine (4 vCPUs, ±1 ms noise on a 14 ms frame), back to back, the compiler server
+  killed before every run. The Rift's monster count varies between runs (312–377 with the same seed), so runs
+  are compared per monster or per call when the counts differ.
+- RiftBench's `cataclysm` line now also lists the first ten frames after the Cataclysm.
+
+### I0: probes and the bench (no gameplay change)
+
+Probes: `Enemy._PhysicsProcess` (with allocations), each `MoveAndSlide`, `Enemy.FindTarget`,
+`VoxelActor._Process` (with allocations) and its `VoxelLibrary.MeshFor`, `VoxelStage._Process`,
+`TargetFrame._Process`, `RunDirector._PhysicsProcess`.
+
+**Disabled probes cost nothing measurable.** RiftBench, base `1b22757` against I0, interleaved, 3 runs each:
+
+| | Monsters | Frame avg (ms) | µs per monster | p99 | Alloc KB/frame |
+|---|---|---|---|---|---|
+| Base | 371 / 374 / 374 | 14.93* / 14.60 / 14.07 | 40.2 / 39.0 / 37.6 | 25.6 / 17.8 / 18.6 | 79.0 / 79.9 / 79.5 |
+| I0 | 312 / 320 / 374 | 11.84 / 11.78 / 13.80 | 37.9 / 36.8 / 36.9 | 17.2 / 15.7 / 19.4 | 71.6 / 71.4 / 79.4 |
+
+\* a compiler server was still running during that run. At 374 monsters: 14.07–14.60 → 13.80 ms, within noise.
+

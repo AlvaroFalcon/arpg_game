@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using ArpgGame.Combat;
 using ArpgGame.Stats;
+using ArpgGame.Tools;
 
 namespace ArpgGame.Enemies;
 
@@ -290,6 +291,13 @@ public partial class Enemy : CharacterBody2D
 
     public override void _PhysicsProcess(double delta)
     {
+        long t0 = Perf.BeginAlloc(out long b0);
+        PhysicsStep(delta);
+        Perf.EndAlloc(Perf.K.EnemyPhys, t0, b0);
+    }
+
+    private void PhysicsStep(double delta)
+    {
         if (IsReplica)
         {
             UpdateVisual((float)delta);
@@ -302,7 +310,9 @@ public partial class Enemy : CharacterBody2D
         }
 
         float dt = (float)delta;
+        long tf = Perf.Begin();
         Target = FindTarget(dt);
+        Perf.End(Perf.K.FindTarget, tf);
 
         if (Dormant)
         {
@@ -313,7 +323,7 @@ public partial class Enemy : CharacterBody2D
             else
             {
                 Velocity = _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
-                MoveAndSlide();
+                Slide();
                 UpdateVisual(dt);
                 return;
             }
@@ -324,7 +334,7 @@ public partial class Enemy : CharacterBody2D
             // Frozen: no thinking, no walking, no contact damage — only knockback drift.
             _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
             Velocity = _knockback;
-            MoveAndSlide();
+            Slide();
             UpdateVisual(dt);
             return;
         }
@@ -339,7 +349,7 @@ public partial class Enemy : CharacterBody2D
 
         _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
         Velocity = DesiredVelocity + _knockback;
-        MoveAndSlide();
+        Slide();
 
         if (_contactTimer > 0f)
         {
@@ -356,6 +366,14 @@ public partial class Enemy : CharacterBody2D
     }
 
     /// <summary>Behaviours may raise contact damage (a charging brute).</summary>
+
+    private void Slide()
+    {
+        long t0 = Perf.Begin();
+        MoveAndSlide();
+        Perf.End(Perf.K.MoveSlide, t0);
+    }
+
     protected virtual float ContactDamageScale() => 1f;
 
     protected virtual bool IsTouching(Node2D target) =>

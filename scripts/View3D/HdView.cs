@@ -22,8 +22,11 @@ public partial class HdView : Node
     private readonly List<(AnimatedSprite2D Sprite, float Until)> _pending = new();
     private float _clock;
 
+    /// <summary>PerfBench --forcevoxel: build the voxel stage under the headless dummy renderer (its CPU cost, no GPU).</summary>
+    public static bool ForceInHeadless;
+
     public static bool Enabled(Node context) =>
-        DisplayServer.GetName() != "headless" && (Core.GameSettings.Get(context)?.VoxelGraphics ?? true);
+        (DisplayServer.GetName() != "headless" || ForceInHeadless) && (Core.GameSettings.Get(context)?.VoxelGraphics ?? true);
 
     public override void _Ready()
     {

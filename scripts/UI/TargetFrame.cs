@@ -80,6 +80,13 @@ public partial class TargetFrame : Control
 
     public override void _Process(double delta)
     {
+        long t0 = Tools.Perf.BeginAlloc(out long b0);
+        Follow(delta);
+        Tools.Perf.EndAlloc(Tools.Perf.K.TargetFrame, t0, b0);
+    }
+
+    private void Follow(double delta)
+    {
         float dt = (float)delta;
         _time += dt;
         Enemy? target = PickTarget(dt);

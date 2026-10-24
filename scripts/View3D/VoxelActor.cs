@@ -40,6 +40,13 @@ public partial class VoxelActor : Node3D
 
     public override void _Process(double delta)
     {
+        long t0 = Tools.Perf.BeginAlloc(out long b0);
+        Follow();
+        Tools.Perf.EndAlloc(Tools.Perf.K.VoxActor, t0, b0);
+    }
+
+    private void Follow()
+    {
         if (!IsInstanceValid(Sprite) || !Sprite.IsInsideTree())
         {
             QueueFree();
@@ -77,7 +84,9 @@ public partial class VoxelActor : Node3D
         }
 
         Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(feet, lying ? 0.1f : _height));
+        long tm = Tools.Perf.Begin();
         _mesh.Mesh = VoxelLibrary.MeshFor(Sprite);
+        Tools.Perf.End(Tools.Perf.K.VoxMeshFor, tm);
 
         ApplyModulate(Sprite.Modulate * anchor.Modulate);
     }

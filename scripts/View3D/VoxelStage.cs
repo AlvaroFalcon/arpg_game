@@ -178,6 +178,13 @@ public partial class VoxelStage : Node3D
 
     public override void _Process(double delta)
     {
+        long t0 = Tools.Perf.Begin();
+        Follow(delta);
+        Tools.Perf.End(Tools.Perf.K.VoxStage, t0);
+    }
+
+    private void Follow(double delta)
+    {
         SyncCamera();
         _time += (float)delta;
         foreach ((OmniLight3D light, float energy, float phase, float speed, float depth) in _flicker)
