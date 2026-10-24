@@ -364,7 +364,7 @@ public partial class PerfBench : Node
         {
             Node2D lineup = Lineup(run.Arena.Center);
             run.AddChild(lineup);
-            await MoveTo(run.Player, run.Arena.Center + new Vector2(0f, 150f));
+            await MoveTo(run.Player, run.Arena.Center + new Vector2(0f, 100f));
             await Snap(dir, "rift-lineup.png");
             lineup.QueueFree();
             await Frame();
@@ -383,12 +383,12 @@ public partial class PerfBench : Node
         string[] looks = { "player", "warrior", "rogue", "sage", "barbarian", "paladin", "assassin", "ninja", "samurai", "warlock", "ascendant" };
         for (int i = 0; i < enemies.Length; i++)
         {
-            AddDormant(root, $"res://scenes/enemies/{enemies[i]}.tscn", centre + new Vector2((i - (enemies.Length - 1) / 2f) * 48f, -60f));
+            AddDormant(root, $"res://scenes/enemies/{enemies[i]}.tscn", centre + new Vector2((i - (enemies.Length - 1) / 2f) * 48f, -50f));
         }
 
         for (int i = 0; i < bosses.Length; i++)
         {
-            AddDormant(root, $"res://scenes/enemies/{bosses[i]}.tscn", centre + new Vector2((i - 1) * 130f, -170f));
+            AddDormant(root, $"res://scenes/enemies/{bosses[i]}.tscn", centre + new Vector2((i - 1) * 130f, -140f));
         }
 
         for (int i = 0; i < looks.Length; i++)

@@ -490,3 +490,42 @@ Probes: `Enemy._PhysicsProcess` (with allocations), each `MoveAndSlide`, `Enemy.
 
 \* a compiler server was still running during that run. At 374 monsters: 14.07–14.60 → 13.80 ms, within noise.
 
+### Baseline (I0, 2026-10-24, this container)
+
+Measured at I0 (probes off unless PerfBench). Medians of the runs, [min–max] where it matters. Raw files:
+`user://bench/history/`.
+
+| Bench | Runs | Monsters | Frame avg / p95 / p99 / max (ms) | Physics scripts / step | Alloc KB/frame | GCs | Physics pairs / active |
+|---|---|---|---|---|---|---|---|
+| PerfBench Rift | 3 | 374 [325–374] | 14.30 [12.0–14.5] / 15.9 / 18.7 / 31.1 | 9.77 ms | 80.2 | 0 | 836 / 378 |
+| PerfBench reality, steady (asleep) | 3 | 286 [243–299] | 5.70 [4.9–5.9] / 6.3 / 7.3 / 17.0 | 3.46 ms | 49.5 | 0 | 69 / 287 |
+| PerfBench reality, awake | 3 | 286 | 9.07 [7.6–9.5] / 10.1 / 12.4 / **276 [272–313]** | 6.01 ms | 107.5 | **1 gen2 in every run** (pause 132–166 ms, heap 340–368 MB) | 518 / 287 |
+| PerfBench Rift `--forcevoxel` | 2 | 341 / 374 | 16.6 / 18.7; p99 23.8; max 100–128 | 9.2 ms | **265 / 311** | 0 / 1 | 773 / 362 |
+| RiftBench | 3 | 348 / 374 / 374 | 12.94 / 14.19 / 13.87; p99 17.8–20.1 | — | 76 | 0 | — |
+
+Probes (Rift, 374 monsters): `Enemy._PhysicsProcess` 15.8 µs per monster (16 KB/frame), of which `MoveAndSlide`
+13.6 µs and `FindTarget` 0.42 µs; `TargetFrame` 0.44 ms/frame; `RunDirector` 0.36 ms/frame. Forcevoxel:
+`VoxelActor` 6.1 µs per actor (234 / 193 KB/frame), of which `MeshFor` 3.7 µs; `VoxelStage` 32 µs.
+Reality awake: `MoveAndSlide` 7.0 µs, `Enemy._PhysicsProcess` 11.6 µs and 63 KB/frame.
+
+**Cataclysm** (RiftBench, 352–377 victims): first frame 87.3 / 87.9 / 92.4 ms; a second spike of 46–49 ms 4–6
+frames later (the queued drops), the rest 4–8 ms.
+
+**ExplosionBench** (60 Slimes, ms, median of 3): reality volatile kill call 5.2, kill frame #0+#1 13.3, worst
+7.8; reality chain 2.2 / 4.1 / 9.5; Rift volatile 6.1 / 14.7 / 7.7; Rift chain 2.6 / 5.3 / 10.9.
+
+**Windowed** (Forward+ on lavapipe, 1280×720, 120 fill + 60 measured frames, 2 runs):
+
+| Scene | Monsters | Draw calls | Objects | Primitives | Lavapipe frame | `VoxelStage` |
+|---|---|---|---|---|---|---|
+| Rift | 17 / 28 | 451 / 548 | 493 / 634 | **7.36 M** | 620–628 ms | 73 µs |
+| Cavern T10 seed 7, asleep | 218 / 227 | 193 / 208 | 588 / 766 | **5.50–5.52 M** | 531–541 ms | 61 µs |
+| Cavern, awake (120 frames after waking) | 218 / 227 | 244 / 260 | 654 / 774 | 5.51 M | 532–547 ms | 59 µs |
+
+The research numbers (perf_research §2) agree within ±15 %, except reality awake (9.1 against 7.8 ms, +16 %):
+more monsters in these runs (286 against 245). These I0 numbers are the reference for the increments.
+
+**Screenshot set "base"**: PerfBench `--shots` twice (Rift with `--lineup`, reality) gave **byte-identical**
+images (AE 0 at fuzz 2 %): the set is deterministic, so any later difference is real. RunCapture
+`--only=caves` and `--only=town` were captured at `--fixed-fps 60` for the terrain increments.
+
