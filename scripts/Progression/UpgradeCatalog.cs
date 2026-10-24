@@ -287,9 +287,16 @@ public static class UpgradeCatalog
             Describe = m => $"+{Mathf.RoundToInt(15 * m)} maximum Life\n{Pct(5 * m)} increased maximum Life",
             Apply = (s, m, src) =>
             {
+                // Heals by exactly what the card adds to the maximum (flat part and the
+                // increased part): a fixed +15 fell short of the new ceiling, and with no
+                // regeneration (Vampiric Pact) the missing life stayed missing.
+                float before = s.Get(StatId.MaxLife).Value;
                 s.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Flat, 15f * m, src));
                 s.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Increased, 5f * m, src));
-                if (s.Life is { } life && !s.OwnerDead) life.Current += 15f * m;
+                if (s.Life is { } life && !s.OwnerDead)
+                {
+                    life.Current = Mathf.Min(life.Max, life.Current + Mathf.Max(0f, life.Max - before));
+                }
             },
         },
         StatPassive("life_regen", "Regeneration", StatId.LifeRegen, ModifierType.Flat, 1.5f, m => $"+{1.5f * m:0.#} Life regenerated per second"),
