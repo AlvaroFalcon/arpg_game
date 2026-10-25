@@ -10,8 +10,9 @@ shader_type spatial;
 render_mode diffuse_lambert, specular_disabled;
 
 uniform vec4 albedo : source_color = vec4(1.0);
-// The player's feet, in world space (VoxelStage updates it every frame).
-uniform vec3 player_pos = vec3(0.0, -100.0, 0.0);
+// The player's feet, in world space: a global uniform ([shader_globals] in
+// project.godot) that VoxelStage sets once per frame for every wall and rock.
+global uniform vec3 player_pos;
 // Silhouette ellipse around the player's chest, in metres on screen.
 uniform vec2 fade_radii = vec2(1.1, 1.5);
 uniform float chest_height = 0.75;

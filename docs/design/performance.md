@@ -715,3 +715,40 @@ Threshold (physics scripts −1.4 ms/step at the same count, i.e. ≥ 3.5 µs pe
 reality not worse): **met** (−3.3 to −3.9 ms at 374 monsters, ~9 µs per monster on this 2.2× slower machine;
 reality −40 % per monster, steady and awake).
 
+### I6: `player_pos` as a global shader uniform (C11)
+
+- **Cause.** `VoxelStage._Process` wrote the player's feet into every wall and rock `ShaderMaterial`
+  (`SetShaderParameter("player_pos", …)`: a string → `StringName` and a Variant per material per frame). Cheap
+  with one map-wide wall mesh, but it grows with the material count, and terrain chunking (I7, I8) must not
+  multiply it.
+- **Fix.** `[shader_globals] player_pos` (vec3, default `(0, -100, 0)`) in `project.godot`; `voxel_wall` and
+  `voxel_rock` declare `global uniform vec3 player_pos;`. `VoxelStage` sets it once per frame with
+  `RenderingServer.GlobalShaderParameterSet` and a cached `StringName`, resets it on `_Ready` and `_ExitTree`,
+  and adds it at run time (with a warning) if a build ever lacks the setting. That guard checks
+  `ProjectSettings.HasSetting("shader_globals/player_pos")`: the server's `GlobalShaderParameterGetList` is
+  editor-only on the RD renderers (it errors and returns nothing at run time, so a list-based check would
+  warn and fail to re-add on every stage). `_wallMaterials` stays for
+  `RebuildTerrain`, but nothing walks it per frame.
+- **Exports:** a `--export-pack "Windows Desktop"` pack's `project.binary` contains `shader_globals/player_pos`
+  (no export templates in this container for a full export).
+
+| | `VoxelStage` per frame | Draws / objects / primitives |
+|---|---|---|
+| Forcevoxel Rift, I5 (2 runs) | 79.6 / 97.7 µs | — |
+| Forcevoxel Rift, I6 (2 runs) | **45.9 / 43.5 µs** | — |
+| Cavern windowed, I5 (1 run, 268 monsters; steady / awake) | 87.8 / 81.4 µs | 228 / 962 / 5.55 M (steady) |
+| Cavern windowed, I6 (1 run, 292 monsters) | 75.3 / 80.9 µs | 218 / 1020 / 5.56 M (steady) |
+
+What's left in `VoxelStage._Process` (~45 µs in the Rift, ~75 µs in a cavern on this machine) is the camera
+sync, the player light and the flicker lights (one `LightEnergy` write per glowing cluster per frame); I6
+doesn't touch them, and they weren't profiled separately.
+
+**Visual:** the five reality shots (`reality-behind-wall` shows the see-through dither) are **identical** to the
+base set and to the I5 run (AE 0 at fuzz 2 %), and so are the 14 RunCapture `--only=town` shots (hideout quarters,
+plaza, overview, edit mode) against the base set.
+
+Threshold (`VoxelStage` ≤ 30 µs from 30–70 on the old machine, no longer growing with the material count;
+counts unchanged; shots identical): the per-material cost is gone (−44 µs, −50 %, in the forcevoxel Rift) and
+counts and shots are unchanged, but the absolute ≤ 30 µs is **missed** on this machine (the rest of
+`_Process` stays). Committed as a clear win that I7 depends on.
+

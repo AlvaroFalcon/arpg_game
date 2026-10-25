@@ -165,6 +165,13 @@ toggle_quests={
 ]
 }
 
+[shader_globals]
+
+player_pos={
+"type": "vec3",
+"value": Vector3(0, -100, 0)
+}
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0

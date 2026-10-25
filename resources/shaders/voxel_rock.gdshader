@@ -11,7 +11,7 @@ uniform vec4 albedo : source_color = vec4(0.45, 0.4, 0.38, 1.0);
 uniform vec4 albedo_dark : source_color = vec4(0.25, 0.22, 0.21, 1.0);
 uniform vec4 albedo_light : source_color = vec4(0.6, 0.55, 0.5, 1.0);
 uniform float voxel = 0.125;
-uniform vec3 player_pos = vec3(0.0, -100.0, 0.0);
+global uniform vec3 player_pos;
 uniform vec2 fade_radii = vec2(1.1, 1.5);
 uniform float chest_height = 0.75;
 
