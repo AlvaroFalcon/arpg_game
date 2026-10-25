@@ -139,6 +139,8 @@ public partial class Enemy : CharacterBody2D
     protected Vector2 DesiredVelocity;
 
     private Vector2 _knockback;
+    private const int SettleFrames = 10;
+    private int _settleFrames = SettleFrames;
     private float _contactTimer;
     private float _flashTimer;
     private Color _eliteTint = Colors.White;
@@ -367,8 +369,24 @@ public partial class Enemy : CharacterBody2D
 
     /// <summary>Behaviours may raise contact damage (a charging brute).</summary>
 
+    /// <summary>
+    /// MoveAndSlide, skipped while the monster stands still (docs/design/performance.md ->
+    /// "Frame budget pass", I2): at zero velocity it only depenetrates, and a sleeping pack
+    /// paid it every frame. The first <see cref="SettleFrames"/> physics frames after
+    /// entering the tree always slide, so a monster spawned overlapping a wall or a
+    /// packmate is still pushed out as before.
+    /// </summary>
     private void Slide()
     {
+        if (_settleFrames > 0)
+        {
+            _settleFrames--;
+        }
+        else if (Velocity == Vector2.Zero)
+        {
+            return;
+        }
+
         long t0 = Perf.Begin();
         MoveAndSlide();
         Perf.End(Perf.K.MoveSlide, t0);

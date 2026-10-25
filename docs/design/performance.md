@@ -555,3 +555,40 @@ PerfBench Rift, 3 runs each (I0 baseline above → I1):
 Threshold (≤ 25 KB/frame with C13a; frame not worse than baseline + 0.5 ms): **met** (at 374 monsters
 14.30–14.54 → 13.70 ms).
 
+**The machine changed after I1.** The container restarted between I1 and I2 and the new one runs the same code
+about 2.2× slower (PerfBench Rift at I1, 374 monsters: 13.7 ms before the restart, 31.8 ms after; same
+4 vCPUs, `Intel Xeon @ 2.80GHz`). From I2 on every increment is an **interleaved A/B on the new machine**
+(before = the previous commit, after = the change, alternating run by run), and thresholds written as absolute
+milliseconds in the plan are read as the same relative change.
+
+### I2: idle monsters skip `MoveAndSlide` (C1a)
+
+- **Cause.** Every monster called `MoveAndSlide()` every physics frame, asleep or not. At zero velocity it only
+  depenetrates, but it still kept the body active in the Physics2D server and paid the query (4.2 µs per
+  sleeping monster here, 1.1 of the 7 ms of physics scripts with every pack asleep), plus the server's own
+  work for 270 active bodies.
+- **Fix.** `Enemy.Slide()` returns at once when `Velocity` is zero (the Dormant branch, the Frozen branch and the
+  main path all go through it). `Velocity` keeps its value, so facing is unchanged. **Deviation from the plan:**
+  the first 10 physics frames after a monster enters the tree always slide, so a spawn overlapping rock or a
+  packmate is still pushed out exactly as before (packs are placed on floor cells, so this is a guard, not a
+  fix of a seen bug). Frozen monsters with knockback have a non-zero velocity and still drift.
+- **Check:** `EndgameSmokeTest` `PERF-IDLE-SLIDE-WAKE-DEPENETRATES`: no monster of the T10 seed-7 cavern is
+  inside rock after settling; a Slime spawned 6 px into the rock settles out; pushed in again while dormant it
+  stays (allowed), woken it walks out; a frozen Slime knocked back moves (53 px).
+- **Left as is:** two *standing* monsters that overlap stay overlapped until one moves (cosmetic; I12's soft
+  separation replaces this).
+
+PerfBench, interleaved, 3 runs each side (I1 → I2), new machine:
+
+| | Monsters | Frame avg (ms) | p95 / p99 / max | Scripts / step | Physics2D active | `Enemy._PhysicsProcess` per monster |
+|---|---|---|---|---|---|---|
+| Reality steady, I1 | 268 [213–339] | 11.76 [9.7–15.1] | 17.0 / 20.1 / 37.7 | 6.98 ms | 269 | 6.79 µs |
+| Reality steady, I2 | 275 [219–284] | **8.96** [8.3–9.6] | 13.1 / 15.9 / 29.2 | 5.99 ms | **1** | **2.95 µs** |
+| Reality awake, I1 | 268 | 18.45 [14.2–23.2] | 29.5 / 34.4 / 39.7 | 11.72 ms | 269 | 23.1 µs |
+| Reality awake, I2 | 275 | 16.91 [14.9–18.5] | 24.0 / 27.9 / 41.1 | 10.81 ms | 275 | 21.2 µs |
+| Rift, I1 | 374 [308–374] | 31.95 [26.0–33.3] | 45.9 / 55.3 / 142 | 21.38 ms | 378 | 34.8 µs |
+| Rift, I2 | 374 [368–374] | 30.43 [30.0–31.0] | 42.3 / 51.4 / 74.6 | 20.57 ms | 345 | 33.9 µs |
+
+Threshold (reality steady 5.1 → ≤ 4.2 ms, i.e. −18 %; active ≤ 10; awake and Rift within noise): **met**
+(−24 %, 1 active body; awake and Rift within noise, slightly better).
+

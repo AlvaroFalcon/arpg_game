@@ -96,6 +96,7 @@ public partial class EndgameSmokeTest : Node2D
         await RarityChecks();
         await BuildChecks();
         await RealityChecks();
+        await IdleSlideChecks();
         await TutorialChecks();
         await CraftingChecks();
         await IssueFeedbackChecks();
@@ -1020,6 +1021,104 @@ public partial class EndgameSmokeTest : Node2D
             r.QueueFree();
             await Frames(2);
         }
+    }
+
+    // --- idle monsters skip MoveAndSlide (docs/design/performance.md -> "Frame budget pass", I2) ---
+
+    /// <summary>How deep a monster's collision circle reaches into a blocking cell
+    /// (rock, pillar, liquid or the map's edge), in pixels; 0 when it is clear.</summary>
+    private static float WallOverlap(RasterLayout r, Enemy e)
+    {
+        float radius = (e.GetNodeOrNull<CollisionShape2D>("CollisionShape2D")?.Shape as CircleShape2D)?.Radius ?? 10f;
+        radius *= Mathf.Abs(e.Scale.X);
+        Vector2 p = e.GlobalPosition;
+        var cell = new Vector2I(Mathf.FloorToInt(p.X / RasterLayout.CellPx), Mathf.FloorToInt(p.Y / RasterLayout.CellPx));
+        float worst = 0f;
+        for (int dx = -2; dx <= 2; dx++)
+        {
+            for (int dy = -2; dy <= 2; dy++)
+            {
+                Vector2I c = cell + new Vector2I(dx, dy);
+                if (r.Walkable(c))
+                {
+                    continue;
+                }
+
+                var rect = new Rect2(c.X * RasterLayout.CellPx, c.Y * RasterLayout.CellPx, RasterLayout.CellPx, RasterLayout.CellPx);
+                Vector2 nearest = new(Mathf.Clamp(p.X, rect.Position.X, rect.End.X), Mathf.Clamp(p.Y, rect.Position.Y, rect.End.Y));
+                worst = Mathf.Max(worst, radius - p.DistanceTo(nearest));
+            }
+        }
+
+        return worst;
+    }
+
+    private async Task IdleSlideChecks()
+    {
+        RealityLaunch.Tier = 10;
+        RealityLaunch.Seed = 7;
+        RealityLaunch.Modifiers = new List<string>();
+        var reality = GD.Load<PackedScene>(Scenes.Reality).Instantiate<RealityController>();
+        AddChild(reality);
+        reality.Player.Health!.IgnoreDamage = true;
+        await Frames(15);
+
+        // Packs are placed on floor cells; a spawn that grazes a wall is pushed out in its
+        // first frames (the settle frames), as when every monster slid every frame.
+        RasterLayout raster = reality.Raster;
+        List<Enemy> monsters = reality.GetChildren().OfType<Enemy>().ToList();
+        List<(Enemy E, float Overlap)> inWalls = monsters.Select(e => (e, WallOverlap(raster, e))).Where(x => x.Item2 > 1f).ToList();
+
+        // A dormant Slime pushed 6 px into the rock after it has settled: it stays dormant
+        // (the overlap is allowed while it sleeps), and once woken it walks out of the wall.
+        Vector2I? spot = null;
+        Vector2I entrance = raster.Entrance;
+        for (int y = 0; y < raster.Height && spot is null; y++)
+        {
+            for (int x = 0; x < raster.Width && spot is null; x++)
+            {
+                var c = new Vector2I(x, y);
+                if (raster.Walkable(c) && raster.Walkable(c + Vector2I.Down) && raster.Walkable(c + Vector2I.Left) && raster.Walkable(c + Vector2I.Right)
+                    && !raster.Walkable(c + Vector2I.Up) && (c - entrance).Length() > 12f)
+                {
+                    spot = c;
+                }
+            }
+        }
+
+        var slime = GD.Load<PackedScene>("res://scenes/enemies/Slime.tscn").Instantiate<Enemy>();
+        slime.Dormant = true;
+        reality.AddChild(slime);
+        Vector2I at = spot ?? entrance;
+        slime.GlobalPosition = RasterLayout.World(at) + new Vector2(0f, -32f + 10f - 6f);
+        await Frames(15);
+        float settled = WallOverlap(raster, slime);
+        slime.GlobalPosition = RasterLayout.World(at) + new Vector2(0f, -32f + 10f - 6f);
+        await Frames(10);
+        bool stillDormant = slime.Dormant;
+        float asleep = WallOverlap(raster, slime);
+        slime.Wake();
+        await Frames(30);
+        float awake = WallOverlap(raster, slime);
+
+        // Frozen with knockback: the knockback velocity is non-zero, so it still drifts.
+        var frozen = GD.Load<PackedScene>("res://scenes/enemies/Slime.tscn").Instantiate<Enemy>();
+        reality.AddChild(frozen);
+        frozen.GlobalPosition = RasterLayout.World(entrance + new Vector2I(0, 0));
+        await Frames(15);
+        frozen.Ailments!.ApplyFreeze();
+        Vector2 before = frozen.GlobalPosition;
+        frozen.Health.TakeDamage(new DamagePayload(1f, DamageType.Physical, reality.Player, Faction.Player, SkillTags.None, DamageDeliveryKind.Hit) { Knockback = new Vector2(400f, 0f) });
+        await Frames(10);
+        bool drifted = frozen.Ailments.IsFrozen && frozen.GlobalPosition.DistanceTo(before) > 4f;
+
+        Check("PERF-IDLE-SLIDE-WAKE-DEPENETRATES",
+            spot is not null && inWalls.Count == 0 && settled <= 1f && stillDormant && asleep > 3f && awake <= 1f && drifted,
+            $"{monsters.Count} monsters of the T10 seed-7 cavern, {inWalls.Count} inside rock after settling{string.Concat(inWalls.Take(3).Select(x => $" [{x.E.DisplayName} {x.Overlap:0.0} px]"))}; "
+            + $"a new Slime 6 px into the rock settles to {settled:0.0} px; pushed in again while asleep: dormant={stillDormant}, {asleep:0.0} px in; woken: {awake:0.0} px; "
+            + $"frozen Slime knocked back: frozen={frozen.Ailments.IsFrozen}, moved {frozen.GlobalPosition.DistanceTo(before):0} px");
+        reality.QueueFree();
+        await Frames(2);
     }
 
     // --- the introduction (docs/design/tutorial.md) ---------------------------------
