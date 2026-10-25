@@ -592,3 +592,41 @@ PerfBench, interleaved, 3 runs each side (I1 → I2), new machine:
 Threshold (reality steady 5.1 → ≤ 4.2 ms, i.e. −18 %; active ≤ 10; awake and Rift within noise): **met**
 (−24 %, 1 active body; awake and Rift within noise, slightly better).
 
+### I3: the voxel actor's mesh from a frame table, resolved on the sprite's signals (C2)
+
+- **Cause.** Every `VoxelActor._Process` looked its mesh up by name: it read `Sprite.Animation` (a new
+  `StringName`, a finalizable managed object), built the model path and an `"f{index}"` string, and searched the
+  model's nodes, for every actor on every frame (8.7 µs and 234 KB/frame for 374 monsters). It also wrote
+  `MaterialOverlay` and `Transparency` every frame for plain actors.
+- **Fix.**
+  - `VoxelLibrary` builds, once per `SpriteFrames`, a table animation → `Mesh?[]` (index = frame) with exactly
+    the old rule (atlas region → cell index → `f{index}`, falling back to `f0`). The old lookup stays as
+    `ResolveFrame`, the reference the table is built from and tested against.
+  - `VoxelActor` listens to the sprite's `SpriteFramesChanged` / `AnimationChanged` (re-read the animation and
+    its mesh array) and `FrameChanged` (index the array). It never polls `Sprite.Animation`. Anchor, flat flag
+    and player reference are cached in `_Ready`.
+  - The overlay is only written when it changes (plain → plain costs nothing).
+- **Rejected:** skipping off-screen actors. They cast shadows into view, and their transform must be current
+  when they enter.
+- **Checks:** `EndgameSmokeTest` `VOXEL-FRAME-TABLE-MATCHES` (30 sheets, 517 frames including out-of-range
+  indices: the table's mesh is the same instance the old lookup returns) and `VOXEL-ACTOR-FOLLOWS-FRAMES` (an
+  actor shows the right mesh after a frame change, an animation change, a `SpriteFrames` swap and 20 frames of
+  playing).
+
+PerfBench Rift `--forcevoxel` (the voxel view's CPU cost headless), 2 runs each side, new machine:
+
+| | Monsters | Frame avg (ms) | p99 / max | **`VoxelActor` per actor** | `VoxelActor` alloc | **Frame alloc** |
+|---|---|---|---|---|---|---|
+| I2 | 374 / 374 | 42.38 / 41.01 | 66.6 / 213 | **14.9 µs** | 234 KB/frame | **252 KB/frame** |
+| I3 | 374 / 320 | 39.17 / 30.22 | 56.5 / 76 | **5.1 µs** | 0 | **23 KB/frame** |
+
+The mesh lookup now runs only on ~50 sprite events a frame (6.4 µs each, from 8.7 µs on every actor). A first
+version that re-read the animation on every `FrameChanged` gave 6.4 µs per actor and 18 KB/frame; reading it only
+when it changes removed the rest. Windowed Rift (lavapipe), 1 run each: draws and objects follow the monster
+count as at I0 (≈ 300 + 8.8 draws per monster: 545 at 27 monsters before, 403 at 14 after), primitives
+7.37 → 7.35 M. The Rift shots (`rift-centre`, `rift-edge`, `rift-lineup`) are **identical** to the base set
+(AE 0 at fuzz 2 %).
+
+Threshold (`VoxelActor` −45 % per actor and ≤ 5 KB/frame; forcevoxel alloc ≤ 80 KB/frame; frame −2 ms; draws
+±2 %): **met** (−66 %, 0 KB, 23 KB, −2.5 ms at 374 monsters; counts unchanged).
+

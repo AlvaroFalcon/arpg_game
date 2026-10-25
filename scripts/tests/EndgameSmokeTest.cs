@@ -97,6 +97,7 @@ public partial class EndgameSmokeTest : Node2D
         await BuildChecks();
         await RealityChecks();
         await IdleSlideChecks();
+        await VoxelFrameChecks();
         await TutorialChecks();
         await CraftingChecks();
         await IssueFeedbackChecks();
@@ -1118,6 +1119,103 @@ public partial class EndgameSmokeTest : Node2D
             + $"a new Slime 6 px into the rock settles to {settled:0.0} px; pushed in again while asleep: dormant={stillDormant}, {asleep:0.0} px in; woken: {awake:0.0} px; "
             + $"frozen Slime knocked back: frozen={frozen.Ailments.IsFrozen}, moved {frozen.GlobalPosition.DistanceTo(before):0} px");
         reality.QueueFree();
+        await Frames(2);
+    }
+
+    // --- voxel frame table (docs/design/performance.md -> "Frame budget pass", I3) ----------
+
+    private async Task VoxelFrameChecks()
+    {
+        // Every sprite with a voxel model: the table gives, for every animation and
+        // frame, the very mesh the old lookup by name returns.
+        ulong started = Time.GetTicksMsec();
+        int sheets = 0, frames = 0, mismatches = 0;
+        string first = "";
+        foreach (string dir in new[] { "player", "enemies", "bosses", "projectiles" })
+        {
+            string root = $"res://assets/sprites/{dir}";
+            foreach (string file in DirAccess.GetFilesAt(root))
+            {
+                if (!file.EndsWith(".tres") || ResourceLoader.Load($"{root}/{file}") is not SpriteFrames sf
+                    || View3D.VoxelLibrary.ModelPathFor(sf) is not { } model || View3D.VoxelLibrary.Load(model) is null)
+                {
+                    continue;
+                }
+
+                sheets++;
+                foreach (string name in sf.GetAnimationNames())
+                {
+                    var anim = new StringName(name);
+                    for (int i = -1; i <= sf.GetFrameCount(anim); i++)
+                    {
+                        frames++;
+                        if (View3D.VoxelLibrary.MeshFor(sf, anim, i) != View3D.VoxelLibrary.ResolveFrame(sf, anim, i))
+                        {
+                            mismatches++;
+                            first = first.Length > 0 ? first : $" first: {file} {name} #{i}";
+                        }
+                    }
+                }
+
+                var missing = new StringName("no_such_animation");
+                if (View3D.VoxelLibrary.MeshFor(sf, missing, 0) is not null)
+                {
+                    mismatches++;
+                }
+            }
+        }
+
+        Check("VOXEL-FRAME-TABLE-MATCHES", sheets >= 20 && frames > 100 && mismatches == 0,
+            $"{sheets} sheets, {frames} frames (incl. out-of-range indices) checked, {mismatches} mismatches{first}, {Time.GetTicksMsec() - started} ms");
+
+        // A voxel actor shows the frame the sprite is on after a frame, an animation
+        // change and a SpriteFrames swap (it listens to the sprite's signals).
+        var holder = new Node2D();
+        var sprite = new AnimatedSprite2D { SpriteFrames = GD.Load<SpriteFrames>("res://assets/sprites/enemies/slime.tres") };
+        holder.AddChild(sprite);
+        AddChild(holder);
+        var actor = new View3D.VoxelActor { Sprite = sprite };
+        AddChild(actor);
+        var seen = new List<string>();
+        bool follows = true;
+        // Process frames, not physics frames: the actor resolves its mesh in _Process,
+        // and process_frame fires before the nodes process, so a change shows one later.
+        async Task ProcessFrames(int n)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+        }
+
+        async Task Expect(string step)
+        {
+            await ProcessFrames(2);
+            bool ok = actor.CurrentMesh == View3D.VoxelLibrary.ResolveFrame(sprite.SpriteFrames, sprite.Animation, sprite.Frame);
+            follows &= ok;
+            seen.Add($"{step}={(ok ? "ok" : "WRONG")}");
+        }
+
+        await Expect("start");
+        string[] anims = sprite.SpriteFrames.GetAnimationNames();
+        sprite.Play(anims[0]);
+        sprite.Frame = Mathf.Max(0, sprite.SpriteFrames.GetFrameCount(anims[0]) - 1);
+        await Expect("frame");
+        sprite.Play(anims[^1]);
+        await Expect("animation");
+        sprite.SpriteFrames = GD.Load<SpriteFrames>("res://assets/sprites/player/warrior.tres");
+        sprite.Play("idle");
+        await Expect("swap");
+        for (int i = 0; i < 20; i++)
+        {
+            await ProcessFrames(1);
+            follows &= actor.CurrentMesh == View3D.VoxelLibrary.ResolveFrame(sprite.SpriteFrames, sprite.Animation, sprite.Frame);
+        }
+
+        seen.Add($"playing={follows}");
+        Check("VOXEL-ACTOR-FOLLOWS-FRAMES", follows && actor.CurrentMesh is not null, string.Join(", ", seen));
+        actor.QueueFree();
+        holder.QueueFree();
         await Frames(2);
     }
 

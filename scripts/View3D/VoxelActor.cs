@@ -25,6 +25,26 @@ public partial class VoxelActor : Node3D
     private StandardMaterial3D? _overlay;
     private float _height;
     private bool _flat;
+    private Node2D _anchor = null!;
+    private Player? _player;
+
+    // The mesh is resolved only when the sprite's frames, animation or frame change
+    // (its signals), never polled: reading Sprite.Animation allocates a StringName, and
+    // the old per-frame lookup built strings (docs/design/performance.md -> "Frame budget pass", I3).
+    // A frame change only re-indexes the current animation's meshes; the animation (a
+    // new StringName on every read) is read again only when it or the frames change.
+    private bool _meshDirty = true;
+    private bool _animDirty = true;
+    private SpriteFrames? _frames;
+    private StringName? _anim;
+    private Mesh?[]? _animMeshes;
+    private int _frame;
+
+    // The overlay state last written, so a plain or unchanged tint costs no engine call.
+    private bool _plain;
+    private bool _overlayOn;
+    private float _transparency = -1f;
+    private Color _overlayColor = new(-1f, -1f, -1f, -1f);
 
     public override void _Ready()
     {
@@ -33,10 +53,34 @@ public partial class VoxelActor : Node3D
         Sprite.SelfModulate = new Color(1f, 1f, 1f, 0f);
 
         // Projectiles and orbs fly at chest height and turn with their heading.
+        // Feet: a physics body's origin (players, monsters, projectiles, dummies);
+        // a free-standing sprite (props placed in a scene) is its own anchor.
         Node? owner = Sprite.GetParent();
         _flat = owner is Combat.Projectile or Combat.BossBullet;
         _height = _flat ? 0.45f : 0f;
+        _anchor = owner is CollisionObject2D or Combat.BossBullet ? (Node2D)owner : Sprite;
+        _player = owner as Player;
+        Sprite.SpriteFramesChanged += MarkAnimDirty;
+        Sprite.AnimationChanged += MarkAnimDirty;
+        Sprite.FrameChanged += MarkMeshDirty;
     }
+
+    public override void _ExitTree()
+    {
+        if (IsInstanceValid(Sprite))
+        {
+            Sprite.SpriteFramesChanged -= MarkAnimDirty;
+            Sprite.AnimationChanged -= MarkAnimDirty;
+            Sprite.FrameChanged -= MarkMeshDirty;
+        }
+    }
+
+    private void MarkMeshDirty() => _meshDirty = true;
+
+    private void MarkAnimDirty() => _animDirty = _meshDirty = true;
+
+    /// <summary>The mesh shown now (tests).</summary>
+    public Mesh? CurrentMesh => _mesh.Mesh;
 
     public override void _Process(double delta)
     {
@@ -47,20 +91,33 @@ public partial class VoxelActor : Node3D
 
     private void Follow()
     {
-        if (!IsInstanceValid(Sprite) || !Sprite.IsInsideTree())
+        if (!IsInstanceValid(Sprite) || !Sprite.IsInsideTree() || !IsInstanceValid(_anchor))
         {
             QueueFree();
             return;
         }
 
-        // Feet: a physics body's origin (players, monsters, projectiles, dummies);
-        // a free-standing sprite (props placed in a scene) is its own anchor.
-        Node? parent = Sprite.GetParent();
-        Node2D anchor = parent is CollisionObject2D or Combat.BossBullet ? (Node2D)parent : Sprite;
         Visible = Sprite.IsVisibleInTree();
         if (!Visible)
         {
             return;
+        }
+
+        if (_meshDirty)
+        {
+            long tm = Tools.Perf.Begin();
+            _meshDirty = false;
+            if (_animDirty)
+            {
+                _animDirty = false;
+                _frames = Sprite.SpriteFrames;
+                _anim = Sprite.Animation;
+                _animMeshes = VoxelLibrary.MeshesFor(_frames, _anim);
+            }
+
+            _frame = Sprite.Frame;
+            _mesh.Mesh = _animMeshes is { Length: > 0 } meshes ? meshes[Mathf.Clamp(_frame, 0, meshes.Length - 1)] : null;
+            Tools.Perf.End(Tools.Perf.K.VoxMeshFor, tm);
         }
 
         float s = Mathf.Abs(Sprite.GlobalScale.X) / 2f;
@@ -71,12 +128,12 @@ public partial class VoxelActor : Node3D
         // the camera (most of the way to an HD-2D billboard), so faces read
         // instead of the tops of heads.
         // A downed co-op player lies on the ground on its side (docs/design/multiplayer.md -> "Deaths").
-        bool lying = parent is Player { ShowsDowned: true };
+        bool lying = _player is { ShowsDowned: true };
         Basis basis = _flat || lying
             ? new Basis(Vector3.Up, -Sprite.GlobalRotation) * new Basis(Vector3.Right, -Mathf.Pi / 2f)
             : Basis.FromScale(new Vector3(1f, 1f, VoxelStage.SinPitch)) * new Basis(Vector3.Right, -Mathf.DegToRad(LeanDegrees));
-        Vector2 feet = anchor.GlobalPosition;
-        if (lying && Sprite.SpriteFrames?.GetFrameTexture(Sprite.Animation, Sprite.Frame) is { } frame)
+        Vector2 feet = _anchor.GlobalPosition;
+        if (lying && _anim is not null && _frames?.GetFrameTexture(_anim, _frame) is { } frame)
         {
             // The model stands on its feet (bottom-centre origin): lying, the body would
             // stretch out beside the revive ring. Centre it on the player instead.
@@ -84,11 +141,7 @@ public partial class VoxelActor : Node3D
         }
 
         Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(feet, lying ? 0.1f : _height));
-        long tm = Tools.Perf.Begin();
-        _mesh.Mesh = VoxelLibrary.MeshFor(Sprite);
-        Tools.Perf.End(Tools.Perf.K.VoxMeshFor, tm);
-
-        ApplyModulate(Sprite.Modulate * anchor.Modulate);
+        ApplyModulate(Sprite.Modulate * _anchor.Modulate);
     }
 
     /// <summary>Hit flashes (bright modulate), tints (rarity, ailments) and fades.</summary>
@@ -97,11 +150,19 @@ public partial class VoxelActor : Node3D
         bool plain = Mathf.IsEqualApprox(m.R, 1f) && Mathf.IsEqualApprox(m.G, 1f) && Mathf.IsEqualApprox(m.B, 1f) && Mathf.IsEqualApprox(m.A, 1f);
         if (plain)
         {
-            _mesh.MaterialOverlay = null;
-            _mesh.Transparency = 0f;
+            if (!_plain)
+            {
+                _plain = true;
+                _overlayOn = false;
+                _transparency = 0f;
+                _mesh.MaterialOverlay = null;
+                _mesh.Transparency = 0f;
+            }
+
             return;
         }
 
+        _plain = false;
         _overlay ??= new StandardMaterial3D
         {
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
@@ -110,17 +171,27 @@ public partial class VoxelActor : Node3D
         };
 
         float brightness = (m.R + m.G + m.B) / 3f;
-        if (brightness > 1.05f)
+        // Hit flash: white over the model; otherwise the tint.
+        Color albedo = brightness > 1.05f
+            ? new Color(1f, 1f, 1f, Mathf.Clamp((brightness - 1f) * 0.9f, 0f, 0.85f))
+            : new Color(m.R, m.G, m.B, 0.28f);
+        if (albedo != _overlayColor)
         {
-            // Hit flash: white over the model.
-            _overlay.AlbedoColor = new Color(1f, 1f, 1f, Mathf.Clamp((brightness - 1f) * 0.9f, 0f, 0.85f));
-        }
-        else
-        {
-            _overlay.AlbedoColor = new Color(m.R, m.G, m.B, 0.28f);
+            _overlayColor = albedo;
+            _overlay.AlbedoColor = albedo;
         }
 
-        _mesh.MaterialOverlay = _overlay;
-        _mesh.Transparency = 1f - Mathf.Clamp(m.A, 0f, 1f);
+        if (!_overlayOn)
+        {
+            _overlayOn = true;
+            _mesh.MaterialOverlay = _overlay;
+        }
+
+        float transparency = 1f - Mathf.Clamp(m.A, 0f, 1f);
+        if (transparency != _transparency)
+        {
+            _transparency = transparency;
+            _mesh.Transparency = transparency;
+        }
     }
 }

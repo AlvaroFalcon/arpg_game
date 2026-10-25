@@ -64,20 +64,79 @@ public static class VoxelLibrary
     /// through the AtlasTexture region: its cell in the EasyPixel spritesheet is
     /// the frame's index in the document, which is how the .glb names its nodes.
     /// </summary>
-    public static Mesh? MeshFor(AnimatedSprite2D sprite)
+    public static Mesh? MeshFor(AnimatedSprite2D sprite) => MeshFor(sprite.SpriteFrames, sprite.Animation, sprite.Frame);
+
+    /// <summary>One mesh per animation frame of a SpriteFrames, resolved once
+    /// (docs/design/performance.md -> "Frame budget pass", I3): a lookup per frame
+    /// built a model path and an "f{index}" string for every actor every frame.</summary>
+    private static readonly Dictionary<ulong, Dictionary<StringName, Mesh?[]>?> FrameTables = new();
+
+    /// <summary>The mesh of <paramref name="frame"/> of <paramref name="anim"/>, from the
+    /// per-SpriteFrames table; null when there is no model or no such animation.</summary>
+    public static Mesh? MeshFor(SpriteFrames? frames, StringName? anim, int frame) =>
+        MeshesFor(frames, anim) is { Length: > 0 } meshes ? meshes[Mathf.Clamp(frame, 0, meshes.Length - 1)] : null;
+
+    /// <summary>The meshes of every frame of <paramref name="anim"/> (index = frame), from the
+    /// per-SpriteFrames table; null when there is no model or no such animation.</summary>
+    public static Mesh?[]? MeshesFor(SpriteFrames? frames, StringName? anim)
     {
-        if (sprite.SpriteFrames is not { } frames || ModelPathFor(frames) is not { } path || Load(path) is not { } set)
+        if (frames is null || anim is null)
         {
             return null;
         }
 
-        StringName anim = sprite.Animation;
+        ulong id = frames.GetInstanceId();
+        if (!FrameTables.TryGetValue(id, out Dictionary<StringName, Mesh?[]>? table))
+        {
+            FrameTables[id] = table = BuildFrameTable(frames);
+        }
+
+        return table is not null && table.TryGetValue(anim, out Mesh?[]? meshes) ? meshes : null;
+    }
+
+    private static Dictionary<StringName, Mesh?[]>? BuildFrameTable(SpriteFrames frames)
+    {
+        if (ModelPathFor(frames) is not { } path || Load(path) is null)
+        {
+            return null;
+        }
+
+        var table = new Dictionary<StringName, Mesh?[]>();
+        foreach (string name in frames.GetAnimationNames())
+        {
+            var anim = new StringName(name);
+            int count = frames.GetFrameCount(anim);
+            var meshes = new Mesh?[count];
+            for (int i = 0; i < count; i++)
+            {
+                meshes[i] = ResolveFrame(frames, anim, i);
+            }
+
+            table[anim] = meshes;
+        }
+
+        return table;
+    }
+
+    /// <summary>
+    /// The lookup by name, as it ran every frame before the table: the region's
+    /// cell index → node "f{index}", falling back to "f0". Kept as the reference
+    /// the table is built from and checked against (EndgameSmokeTest
+    /// VOXEL-FRAME-TABLE-MATCHES).
+    /// </summary>
+    public static Mesh? ResolveFrame(SpriteFrames? frames, StringName anim, int frame)
+    {
+        if (frames is null || ModelPathFor(frames) is not { } path || Load(path) is not { } set)
+        {
+            return null;
+        }
+
         if (!frames.HasAnimation(anim) || frames.GetFrameCount(anim) == 0)
         {
             return null;
         }
 
-        int frame = Mathf.Clamp(sprite.Frame, 0, frames.GetFrameCount(anim) - 1);
+        frame = Mathf.Clamp(frame, 0, frames.GetFrameCount(anim) - 1);
         if (frames.GetFrameTexture(anim, frame) is AtlasTexture { Atlas: { } atlas } at && at.Region.Size.X > 0f)
         {
             int cols = Mathf.Max(1, Mathf.RoundToInt(atlas.GetWidth() / at.Region.Size.X));
