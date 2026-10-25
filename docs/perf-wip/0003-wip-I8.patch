@@ -1,0 +1,146 @@
+From c33dd0e17c28a21f2d23d5a7c12a2e21c6bd1574 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 24 Oct 2026 22:37:06 +0000
+Subject: [PATCH 3/3] wip I8
+
+---
+ scripts/View3D/CaveWalls.cs  | 31 +++++++++++++++++++-------
+ scripts/View3D/VoxelStage.cs | 42 +++++++++++++++++++++++++++++-------
+ 2 files changed, 57 insertions(+), 16 deletions(-)
+
+diff --git a/scripts/View3D/CaveWalls.cs b/scripts/View3D/CaveWalls.cs
+index cf9d41e..9cd0939 100644
+--- a/scripts/View3D/CaveWalls.cs
++++ b/scripts/View3D/CaveWalls.cs
+@@ -22,8 +22,13 @@ public static class CaveWalls
+     /// Builds the mesh. <paramref name="ground"/> maps fractional cell coordinates
+     /// (cell centres at integers) to a ground point; <paramref name="height"/>
+     /// gives the rock's height there. Cells outside <paramref name="walls"/> are open.
++    /// With <paramref name="squares"/>, only the marching squares whose origin (top-left
++    /// cell) lies in that rectangle are built: one chunk of the rock, exactly the
++    /// triangles the whole mesh has there (neighbours are still read from every wall),
++    /// so chunks meet without seams (docs/design/performance.md -> "Frame budget pass", I8).
++    /// The result has no surface when the chunk holds no rock.
+     /// </summary>
+-    public static ArrayMesh Build(HashSet<Vector2I> walls, Func<Vector2, Vector3> ground, Func<Vector2, float> height)
++    public static ArrayMesh Build(HashSet<Vector2I> walls, Func<Vector2, Vector3> ground, Func<Vector2, float> height, Rect2I? squares = null)
+     {
+         var st = new SurfaceTool();
+         st.Begin(Mesh.PrimitiveType.Triangles);
+@@ -44,9 +49,18 @@ public static class CaveWalls
+         // Corners of a square, in order around it: (0,0) (1,0) (1,1) (0,1).
+         Vector2I[] offsets = { new(0, 0), new(1, 0), new(1, 1), new(0, 1) };
+         var poly = new List<(Vector2 P, bool Mid)>(8);
+-        for (int x = minX - 1; x <= maxX; x++)
++        int x0 = minX - 1, x1 = maxX, y0 = minY - 1, y1 = maxY;
++        if (squares is { } only)
+         {
+-            for (int y = minY - 1; y <= maxY; y++)
++            x0 = Math.Max(x0, only.Position.X);
++            y0 = Math.Max(y0, only.Position.Y);
++            x1 = Math.Min(x1, only.End.X - 1);
++            y1 = Math.Min(y1, only.End.Y - 1);
++        }
++
++        for (int x = x0; x <= x1; x++)
++        {
++            for (int y = y0; y <= y1; y++)
+             {
+                 var origin = new Vector2I(x, y);
+                 int count = 0;
+@@ -147,10 +161,11 @@ public static class CaveWalls
+             (b, c) = (c, b);
+         }
+ 
+-        foreach (Vector3 v in new[] { a, b, c })
+-        {
+-            st.SetNormal(n);
+-            st.AddVertex(v);
+-        }
++        st.SetNormal(n);
++        st.AddVertex(a);
++        st.SetNormal(n);
++        st.AddVertex(b);
++        st.SetNormal(n);
++        st.AddVertex(c);
+     }
+ }
+diff --git a/scripts/View3D/VoxelStage.cs b/scripts/View3D/VoxelStage.cs
+index 1f3bb61..5960381 100644
+--- a/scripts/View3D/VoxelStage.cs
++++ b/scripts/View3D/VoxelStage.cs
+@@ -354,7 +354,7 @@ public partial class VoxelStage : Node3D
+ 
+         if (Caverns && wallCells.Count > 0 && pieces.TryGetValue("wall", out Mesh? rockSource))
+         {
+-            created.Add(AddCaveRock(map, wallCells, rockSource));
++            created.AddRange(AddCaveRock(map, wallCells, rockSource));
+         }
+ 
+         // One MultiMesh per piece per chunk: Godot culls a MultiMesh as one box, so a
+@@ -600,7 +600,7 @@ public partial class VoxelStage : Node3D
+     /// height, coloured by voxel_rock.gdshader from the tileset wall's own palette
+     /// (its darkest, middle and lightest colours), so each theme keeps its stone.
+     /// </summary>
+-    private MeshInstance3D AddCaveRock(TileMap map, HashSet<Vector2I> wallCells, Mesh wallMesh)
++    private List<Node> AddCaveRock(TileMap map, HashSet<Vector2I> wallCells, Mesh wallMesh)
+     {
+         Vector3 origin = Ground(map.ToGlobal(map.MapToLocal(Vector2I.Zero)));
+         Vector3 ex = Ground(map.ToGlobal(map.MapToLocal(Vector2I.Right))) - origin;
+@@ -631,8 +631,6 @@ public partial class VoxelStage : Node3D
+             }
+         }
+ 
+-        ArrayMesh mesh = CaveWalls.Build(rock, p => origin + ex * p.X + ey * p.Y, Height);
+-
+         var palette = new List<Color>();
+         for (int s = 0; s < wallMesh.GetSurfaceCount(); s++)
+         {
+@@ -648,12 +646,40 @@ public partial class VoxelStage : Node3D
+         material.SetShaderParameter("albedo", mid);
+         material.SetShaderParameter("albedo_dark", palette.Count > 0 ? palette[0] : mid.Darkened(0.4f));
+         material.SetShaderParameter("albedo_light", palette.Count > 0 ? palette[^1] : mid.Lightened(0.25f));
+-        mesh.SurfaceSetMaterial(0, material);
+         _wallMaterials.Add(material);
+         _wallColor = mid;
+-        var instance = new MeshInstance3D { Mesh = mesh, Name = "Terrain_rock", CastShadow = GeometryInstance3D.ShadowCastingSetting.On };
+-        World.AddChild(instance);
+-        return instance;
++
++        // One mesh per chunk of marching squares, sharing the material, so the rock out
++        // of view is culled (I8). Same triangles as one mesh: no seams.
++        int step = Mathf.Max(1, Mathf.RoundToInt(ChunkMeters / tileMeters));
++        int minX = int.MaxValue, minY = int.MaxValue, maxX = int.MinValue, maxY = int.MinValue;
++        foreach (Vector2I c in rock)
++        {
++            minX = Mathf.Min(minX, c.X);
++            minY = Mathf.Min(minY, c.Y);
++            maxX = Mathf.Max(maxX, c.X);
++            maxY = Mathf.Max(maxY, c.Y);
++        }
++
++        var created = new List<Node>();
++        for (int cx = Mathf.FloorToInt((minX - 1) / (float)step); cx * step <= maxX; cx++)
++        {
++            for (int cy = Mathf.FloorToInt((minY - 1) / (float)step); cy * step <= maxY; cy++)
++            {
++                ArrayMesh mesh = CaveWalls.Build(rock, p => origin + ex * p.X + ey * p.Y, Height, new Rect2I(cx * step, cy * step, step, step));
++                if (mesh.GetSurfaceCount() == 0)
++                {
++                    continue;
++                }
++
++                mesh.SurfaceSetMaterial(0, material);
++                var instance = new MeshInstance3D { Mesh = mesh, Name = $"Terrain_rock_{cx}_{cy}", CastShadow = GeometryInstance3D.ShadowCastingSetting.On };
++                World.AddChild(instance);
++                created.Add(instance);
++            }
++        }
++
++        return created;
+     }
+ 
+     /// <summary>Copies the wall mesh with the dithering wall shader on every colour surface.</summary>
+-- 
+2.43.0
+

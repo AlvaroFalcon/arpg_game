@@ -1,0 +1,187 @@
+diff --git a/scripts/View3D/VoxelStage.cs b/scripts/View3D/VoxelStage.cs
+index 9919144..09f3c29 100644
+--- a/scripts/View3D/VoxelStage.cs
++++ b/scripts/View3D/VoxelStage.cs
+@@ -259,6 +259,16 @@ public partial class VoxelStage : Node3D
+ 
+     /// <summary>Builds voxel terrain for a TileMap and hides the 2D one.</summary>
+     public void BuildTerrain(TileMap map)
++    {
++        var watch = System.Diagnostics.Stopwatch.StartNew();
++        BuildTerrainPieces(map);
++        TerrainBuildMs += watch.Elapsed.TotalMilliseconds;
++    }
++
++    /// <summary>Time spent building voxel terrain since the process started (benches).</summary>
++    public static double TerrainBuildMs { get; private set; }
++
++    private void BuildTerrainPieces(TileMap map)
+     {
+         if (VoxelLibrary.TerrainFor(map.TileSet) is not { } pieces)
+         {
+@@ -268,7 +278,7 @@ public partial class VoxelStage : Node3D
+         var created = new List<Node>();
+         _terrain[map.GetInstanceId()] = created;
+ 
+-        var byPiece = new Dictionary<string, List<Transform3D>>();
++        var byPiece = new Dictionary<PieceChunk, List<Transform3D>>();
+         var hazards = new List<Vector3>();
+         var liquidCells = new Dictionary<Vector2I, Transform3D>();
+         var floorCells = new Dictionary<Vector2I, Vector3>();
+@@ -288,9 +298,10 @@ public partial class VoxelStage : Node3D
+             float tileMeters = map.TileSet.TileSize.X * map.GlobalScale.X / PixelsPerMeter;
+             var basis = Basis.Identity.Scaled(Vector3.One * tileMeters);
+             Vector3 at = Ground(world2D);
+-            if (!byPiece.TryGetValue(piece, out List<Transform3D>? list))
++            Vector2I chunk = ChunkOf(at);
++            if (!byPiece.TryGetValue(new PieceChunk(piece, chunk), out List<Transform3D>? list))
+             {
+-                byPiece[piece] = list = new List<Transform3D>();
++                byPiece[new PieceChunk(piece, chunk)] = list = new List<Transform3D>();
+             }
+ 
+             Transform3D placed = new(basis, at);
+@@ -298,7 +309,7 @@ public partial class VoxelStage : Node3D
+             {
+                 // Cave rock is one mesh (CaveWalls, built below), not a block per
+                 // cell; the cell gets a floor under it for the chamfered corners.
+-                string under = $"floor{Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2}";
++                var under = new PieceChunk(Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2 == 0 ? "floor0" : "floor1", chunk);
+                 if (!byPiece.TryGetValue(under, out List<Transform3D>? unders))
+                 {
+                     byPiece[under] = unders = new List<Transform3D>();
+@@ -329,7 +340,7 @@ public partial class VoxelStage : Node3D
+                 // The liquid surface rounds its shore and cuts the land side away,
+                 // so the bed under it is ordinary floor (seen at the rounded edges).
+                 list.RemoveAt(list.Count - 1);
+-                string bed = $"floor{Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2}";
++                var bed = new PieceChunk(Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2 == 0 ? "floor0" : "floor1", chunk);
+                 if (!byPiece.TryGetValue(bed, out List<Transform3D>? beds))
+                 {
+                     byPiece[bed] = beds = new List<Transform3D>();
+@@ -344,8 +355,13 @@ public partial class VoxelStage : Node3D
+             created.Add(AddCaveRock(map, wallCells, rockSource));
+         }
+ 
+-        foreach ((string piece, List<Transform3D> transforms) in byPiece)
++        // One MultiMesh per piece per chunk: Godot culls a MultiMesh as one box, so a
++        // map-wide one was drawn whole every frame (docs/design/performance.md ->
++        // "Frame budget pass", I7). The see-through wall copy is made once and shared.
++        Mesh? seeThrough = null;
++        foreach ((PieceChunk key, List<Transform3D> transforms) in byPiece)
+         {
++            string piece = key.Piece;
+             if (transforms.Count == 0 || !pieces.TryGetValue(piece, out Mesh? mesh))
+             {
+                 continue;
+@@ -353,12 +369,17 @@ public partial class VoxelStage : Node3D
+ 
+             if (piece == "wall")
+             {
+-                if (mesh.GetSurfaceCount() > 0 && mesh.SurfaceGetMaterial(0) is BaseMaterial3D wm)
++                if (seeThrough is null)
+                 {
+-                    _wallColor = wm.AlbedoColor;
++                    if (mesh.GetSurfaceCount() > 0 && mesh.SurfaceGetMaterial(0) is BaseMaterial3D wm)
++                    {
++                        _wallColor = wm.AlbedoColor;
++                    }
++
++                    seeThrough = SeeThroughWall(mesh);
+                 }
+ 
+-                mesh = SeeThroughWall(mesh);
++                mesh = seeThrough;
+             }
+ 
+             var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = mesh, InstanceCount = transforms.Count };
+@@ -370,7 +391,7 @@ public partial class VoxelStage : Node3D
+             var instance = new MultiMeshInstance3D
+             {
+                 Multimesh = multimesh,
+-                Name = $"Terrain_{piece}",
++                Name = $"Terrain_{piece}_{key.Chunk.X}_{key.Chunk.Y}",
+                 CastShadow = piece == "wall" ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off,
+             };
+             World.AddChild(instance);
+@@ -386,7 +407,7 @@ public partial class VoxelStage : Node3D
+         if (liquidCells.Count > 0)
+         {
+             Vector3 GlobalOf(Vector2I c) => World.ToGlobal(Ground(map.ToGlobal(map.MapToLocal(c))));
+-            created.Add(AddLiquidSurface(liquidCells, floorCells, GlobalOf));
++            created.AddRange(AddLiquidSurface(liquidCells, floorCells, GlobalOf));
+         }
+ 
+         map.Visible = false;
+@@ -401,7 +422,7 @@ public partial class VoxelStage : Node3D
+     /// it (inside corners fill out over the floor a little); land is cut away and the
+     /// floor drawn beneath shows through.
+     /// </summary>
+-    private MultiMeshInstance3D AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells, Dictionary<Vector2I, Vector3> floors, System.Func<Vector2I, Vector3> globalOf)
++    private List<Node> AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells, Dictionary<Vector2I, Vector3> floors, System.Func<Vector2I, Vector3> globalOf)
+     {
+         var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://resources/shaders/voxel_liquid.gdshader") };
+         foreach ((string name, Variant value) in LiquidLook(Liquid))
+@@ -484,17 +505,44 @@ public partial class VoxelStage : Node3D
+             }
+         }
+ 
+-        var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = quad, InstanceCount = placed.Count };
+-        for (int i = 0; i < placed.Count; i++)
++        // One mask and one material for the whole map (no seams), one MultiMesh per chunk.
++        var byChunk = new Dictionary<Vector2I, List<Transform3D>>();
++        foreach (Transform3D t in placed)
+         {
+-            multimesh.SetInstanceTransform(i, placed[i]);
++            Vector2I chunk = ChunkOf(t.Origin);
++            if (!byChunk.TryGetValue(chunk, out List<Transform3D>? list))
++            {
++                byChunk[chunk] = list = new List<Transform3D>();
++            }
++
++            list.Add(t);
+         }
+ 
+-        var instance = new MultiMeshInstance3D { Multimesh = multimesh, Name = "LiquidSurface", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+-        World.AddChild(instance);
+-        return instance;
++        var created = new List<Node>();
++        foreach ((Vector2I chunk, List<Transform3D> list) in byChunk)
++        {
++            var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = quad, InstanceCount = list.Count };
++            for (int i = 0; i < list.Count; i++)
++            {
++                multimesh.SetInstanceTransform(i, list[i]);
++            }
++
++            var instance = new MultiMeshInstance3D { Multimesh = multimesh, Name = $"LiquidSurface_{chunk.X}_{chunk.Y}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
++            World.AddChild(instance);
++            created.Add(instance);
++        }
++
++        return created;
+     }
+ 
++    /// <summary>Terrain chunk size, in the World's local metres (I7).</summary>
++    public const float ChunkMeters = 12f;
++
++    private static Vector2I ChunkOf(Vector3 local) =>
++        new(Mathf.FloorToInt(local.X / ChunkMeters), Mathf.FloorToInt(local.Z / ChunkMeters));
++
++    private readonly record struct PieceChunk(string Piece, Vector2I Chunk);
++
+     /// <summary>Shader uniforms per liquid: clear moving water, slow glowing lava, sickly ooze.</summary>
+     public static (string, Variant)[] LiquidLook(LiquidStyle style) => style switch
+     {
+diff --git a/scripts/tools/PerfBench.cs b/scripts/tools/PerfBench.cs
+index ded40c5..70ff31c 100644
+--- a/scripts/tools/PerfBench.cs
++++ b/scripts/tools/PerfBench.cs
+@@ -173,6 +173,7 @@ public partial class PerfBench : Node
+             }
+         }
+ 
++        Log(string.Create(Ci, $"PERF terrain build {View3D.VoxelStage.TerrainBuildMs:0.0} ms (all BuildTerrain calls so far)"));
+         Perf.Enabled = true;
+         for (int i = 0; i < fill; i++)
+         {
