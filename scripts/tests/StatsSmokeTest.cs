@@ -36,6 +36,7 @@ public partial class StatsSmokeTest : Node2D
     private Health _targetHealth = null!;
 
     private int _frame;
+    private bool _tickChecksDone;
     private bool _failed;
     private TargetDummy? _dummy;
 
@@ -55,6 +56,7 @@ public partial class StatsSmokeTest : Node2D
         CheckNegativeResistanceFloor();
         CheckPenetrationEatsOvercapFirst();
         CheckFormulaNoAlloc();
+        _ = EnemyTickChecks();
 
         // Deferred to _PhysicsProcess: exercises AddChild -> _Ready timing for a
         // node built entirely at runtime, so it needs at least one frame to
@@ -71,6 +73,87 @@ public partial class StatsSmokeTest : Node2D
     }
 
     private static bool Approx(float a, float b, float epsilon = 0.01f) => Mathf.Abs(a - b) <= epsilon;
+
+    private async System.Threading.Tasks.Task PhysicsFrames(int n)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+        }
+    }
+
+    private Enemies.Enemy SpawnSlime(Vector2 at, bool replica = false)
+    {
+        var slime = GD.Load<PackedScene>("res://scenes/enemies/Slime.tscn").Instantiate<Enemies.Enemy>();
+        slime.IsReplica = replica;
+        slime.Position = at;
+        AddChild(slime);
+        slime.Stats.Get(StatId.MaxLife).BaseValue = 10000f;
+        slime.Stats.Life!.Current = slime.Stats.Life.Max;
+        return slime;
+    }
+
+    /// <summary>ENEMY-TICKS-DRIVEN-BY-OWNER (docs/design/performance.md -> "Frame budget pass",
+    /// I5): a monster ticks its Stats, Health and Ailments itself; their own physics
+    /// callbacks are off, and the timers, damage over time and regeneration run as before.
+    /// A co-op replica keeps its components' own callbacks.</summary>
+    private async System.Threading.Tasks.Task EnemyTickChecks()
+    {
+        try
+        {
+            await PhysicsFrames(2);
+            Enemies.Enemy chilled = SpawnSlime(new Vector2(-3000f, -3000f));
+            Enemies.Enemy ignited = SpawnSlime(new Vector2(-3000f, 3000f));
+            Enemies.Enemy regen = SpawnSlime(new Vector2(3000f, -3000f));
+            Enemies.Enemy replica = SpawnSlime(new Vector2(3000f, 3000f), replica: true);
+            regen.ApplyRarity(Enemies.MonsterRarity.Rare, new[] { Enemies.MonsterRarities.FindMod("regenerating")! });
+            await PhysicsFrames(2);
+            bool off = !chilled.Stats.IsPhysicsProcessing() && !chilled.Health.IsPhysicsProcessing() && !chilled.Ailments!.IsPhysicsProcessing();
+            bool replicaOn = replica.Stats.IsPhysicsProcessing() && replica.Health.IsPhysicsProcessing() && replica.Ailments!.IsPhysicsProcessing();
+
+            float speed = chilled.Stats.MovementSpeed.Value;
+            chilled.Ailments!.ApplyChill();
+            float slowed = chilled.Stats.MovementSpeed.Value;
+            ignited.Ailments!.ApplyIgnite(300f, null);
+            float igniteStart = ignited.Stats.Life!.Current;
+            regen.Stats.Life!.Current = regen.Stats.Life.Max * 0.5f;
+            float regenStart = regen.Stats.Life.Current;
+            int chillFrames = 0;
+            float igniteAt1s = 0f;
+            for (int i = 1; i <= 200; i++)
+            {
+                await PhysicsFrames(1);
+                if (chillFrames == 0 && !chilled.Ailments.IsChilled)
+                {
+                    chillFrames = i;
+                }
+
+                if (i == 75)
+                {
+                    igniteAt1s = igniteStart - ignited.Stats.Life.Current;
+                }
+            }
+
+            float igniteTotal = igniteStart - ignited.Stats.Life.Current;
+            float healed = regen.Stats.Life.Current - regenStart;
+            int expected = Mathf.RoundToInt(Ailments.ChillDuration * Engine.PhysicsTicksPerSecond);
+            Check("ENEMY-TICKS-DRIVEN-BY-OWNER",
+                off && replicaOn && Mathf.Abs(chillFrames - expected) <= 1 && slowed < speed && Mathf.IsEqualApprox(chilled.Stats.MovementSpeed.Value, speed)
+                && Mathf.IsEqualApprox(igniteAt1s, 100f) && igniteTotal >= 249.9f && igniteTotal <= 300.1f && healed > 0f,
+                $"components' own callbacks off={off} (replica on={replicaOn}); chill expired after {chillFrames} frames (expected {expected}), speed {speed:0} -> {slowed:0} -> {chilled.Stats.MovementSpeed.Value:0}; "
+                + $"ignite 300 over 3 s: {igniteAt1s:0} at 1.25 s, {igniteTotal:0} in all; regenerating rare healed {healed:0}");
+            foreach (Enemies.Enemy e in new[] { chilled, ignited, regen, replica })
+            {
+                e.QueueFree();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Check("ENEMY-TICKS-DRIVEN-BY-OWNER", false, e.ToString());
+        }
+
+        _tickChecksDone = true;
+    }
 
     /// <summary>The formula as it was written before the allocation-free loop
     /// (docs/design/performance.md -> "Frame budget pass", I1): the reference.</summary>
@@ -332,7 +415,7 @@ public partial class StatsSmokeTest : Node2D
             CheckDamageNumbers();
         }
 
-        if (_frame >= 10)
+        if (_frame >= 10 && _tickChecksDone)
         {
             GD.Print(_failed ? "[STATSTEST] === RESULT: FAIL ===" : "[STATSTEST] === RESULT: PASS ===");
             GetTree().Quit(_failed ? 1 : 0);

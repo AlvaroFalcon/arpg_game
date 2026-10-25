@@ -680,3 +680,38 @@ gen2, which points at finalizable wrappers (a `StringName` or `GodotObject` prox
 volume. Finding and removing those per-frame wrappers is the lever for in-play GC spikes. It also makes the
 finalizer race above rarer.
 
+### I5: a monster ticks its own Health, Ailments and ActorStats (C6)
+
+- **Cause.** Each monster had four physics callbacks: its own and one per component (`ActorStats`, `Health`,
+  `Ailments`). An engine → C# callback costs a few µs on its own, before any work (×3 × 374 monsters).
+- **Fix.** The three components move their `_PhysicsProcess` body into `public void Tick(double delta)` (and
+  `_PhysicsProcess` calls it, so players, dummies and everything else are unchanged). A non-replica `Enemy` turns
+  their physics processing off in `_Ready` and calls `Stats.Tick`, `Health.Tick`, `Ailments?.Tick` at the top of
+  its own step, in the scenes' child order, **before** the dead check and the Dormant/Frozen early returns, so
+  every branch ticks. Only `Enemy` overrides `_PhysicsProcess` among the monster classes. Co-op replicas keep
+  their components' own callbacks.
+- **Order change:** the components used to tick *after* the monster's AI in the same physics frame; now they tick
+  before it (timers one frame earlier at most). Nothing visible.
+- **Check:** `StatsSmokeTest` `ENEMY-TICKS-DRIVEN-BY-OWNER`: the components' callbacks are off (on for a
+  replica); a chill expires after 121 frames (120 expected, ±1) and the speed recovers; an ignite of 300 over
+  3 s deals 100 by 1.25 s and 300 in all; a `regenerating` rare heals.
+
+PerfBench, interleaved, 3 runs each side (I4 → I5). The monster count varies between runs, so the
+comparison is per monster (physics scripts / step ÷ monsters):
+
+| | Monsters | Frame avg (ms) | Scripts / step | **Scripts per monster** | p99 |
+|---|---|---|---|---|---|
+| Rift, I4 | 374 / 374 / 356 | 32.04 / 33.40 / 32.00 | 22.08 / 22.65 / 21.20 | **59.0 / 60.6 / 59.6 µs** | 57.0 |
+| Rift, I5 | 319 / 374 / 338 | 22.62 / 29.06 / 27.09 | 14.18 / 18.75 / 17.36 | **44.5 / 50.1 / 51.4 µs** | 45.2 |
+| Reality steady, I4 | 250 / 206 / 241 | 8.21 / 7.44 / 8.59 | 5.25 / 4.62 / 5.52 | 21.0 / 22.4 / 22.9 µs | 13.3 |
+| Reality steady, I5 | 186 / 304 / 183 | 5.00 / 7.16 / 4.63 | 2.45 / 3.77 / 2.23 | 13.2 / 12.4 / 12.2 µs | 9.3 |
+| Reality awake, I4 | 250 / 206 / 241 | 17.69 / 15.12 / 17.22 | 11.07 / 9.28 / 10.77 | 44.3 / 45.0 / 44.7 µs | 29.0 |
+| Reality awake, I5 | 186 / 304 / 183 | 10.07 / 17.20 / 10.25 | 5.22 / 9.86 / 5.62 | 28.1 / 32.4 / 30.7 µs | 17.8 |
+
+At 374 monsters in the Rift: scripts 22.1–22.7 → 18.75 ms/step, frame 32.0–33.4 → 29.1 ms. The three ticks
+together cost 1.8–2.3 µs per monster inside `Enemy._PhysicsProcess`.
+
+Threshold (physics scripts −1.4 ms/step at the same count, i.e. ≥ 3.5 µs per monster, on the old machine;
+reality not worse): **met** (−3.3 to −3.9 ms at 374 monsters, ~9 µs per monster on this 2.2× slower machine;
+reality −40 % per monster, steady and awake).
+

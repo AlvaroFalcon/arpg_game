@@ -158,6 +158,14 @@ public partial class Enemy : CharacterBody2D
         Health = GetNode<Health>("Health");
         Ailments = GetNodeOrNull<Ailments>("Ailments");
         Sprite = GetNodeOrNull<AnimatedSprite2D>("Sprite");
+        if (!IsReplica)
+        {
+            // The monster ticks its components itself, before its AI (PhysicsStep): one
+            // engine callback instead of four. Replicas keep their own (co-op clients).
+            Stats.SetPhysicsProcess(false);
+            Health.SetPhysicsProcess(false);
+            Ailments?.SetPhysicsProcess(false);
+        }
 
         Stats.Strength.BaseValue = 0f;
         Stats.Dexterity.BaseValue = 0f;
@@ -305,6 +313,14 @@ public partial class Enemy : CharacterBody2D
             UpdateVisual((float)delta);
             return;
         }
+
+        // Same order as the children in the scenes (Stats, Health, Ailments). Before the
+        // dead check and the Dormant/Frozen early returns, so every branch ticks.
+        long tt = Perf.Begin();
+        Stats.Tick(delta);
+        Health.Tick(delta);
+        Ailments?.Tick(delta);
+        Perf.End(Perf.K.EnemyTicks, tt);
 
         if (Health.IsDead)
         {
