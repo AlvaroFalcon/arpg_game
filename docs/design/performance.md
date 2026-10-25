@@ -630,3 +630,53 @@ count as at I0 (≈ 300 + 8.8 draws per monster: 545 at 27 monsters before, 403 
 Threshold (`VoxelActor` −45 % per actor and ≤ 5 KB/frame; forcevoxel alloc ≤ 80 KB/frame; frame −2 ms; draws
 ±2 %): **met** (−66 %, 0 KB, 23 KB, −2.5 ms at 374 monsters; counts unchanged).
 
+### I4: a full GC behind the loading screen (C8) — **rejected**, tools kept
+
+- **Cause looked at.** Entering a reality leaves ~90 MB of load-time garbage (generation, voxel build), and a
+  long scene far more: the bot's second and third realities entered with 330–580 MB heaps. Finalizable Godot
+  wrappers (`StringName`, `GodotObject` proxies) survive their first collection and pile up in gen2, and the
+  first gen2 in play paused a frame (I0: one in every reality-awake window, 132–166 ms).
+- **Tried 1, the plan's blocking collect** (`Collect(); WaitForPendingFinalizers(); Collect();` after the new
+  scene's 4 settle frames in `LoadingScreen.Run`): 66–78 ms at a 90 MB heap, but **2.3 s and 4.1 s** at 330 and
+  487 MB (split at 355 MB: collect 1.34 s, finalizers 0.82 s, collect 0.23 s). That holds the loading screen
+  seconds longer after every long scene. Rejected.
+- **Tried 2, a forced background collect** (`GC.Collect(2, GCCollectionMode.Forced, blocking: false)`): 0.9–1.6 ms
+  on the main thread at any heap size, and it met the bench threshold (table below). **But it crashes co-op
+  guests:** CoopRealityTest's guest died on leaving the reality with `FATAL: Condition "gchandle.is_released()"
+  is true` (`mono_object_disposed_baseref`) and `Caller thread can't call this function in this node (/root)`,
+  then signal 4. **3 of 10 runs with the collect, 0 of 12 without**, same build otherwise. The project has no
+  finalizers of its own: it is GodotSharp 4.1's finalizer thread disposing `RefCounted` wrappers while the main
+  thread frees the old scene, and forcing a full collect right after a scene change makes the two overlap.
+  Rejected; the collect is not in the game.
+- **Not tried:** `GCSettings.LatencyMode = SustainedLowLatency` (the bench windows have no gen2 left after I1–I3,
+  and the bot's in-play gen2s are background ones, which that mode doesn't shorten).
+- **Kept (tools, no gameplay change):** PerfBench `--viascreen` enters the reality through `LoadingScreen.Go`;
+  the AutoplayBot enters realities the same way (the real path, 1 s wait instead of 0.5 s) and logs a
+  `[BOT] spike` line for every frame over 100 ms with the last GC (generation, pauses, heap); debug builds log
+  `[LOADING] <scene> ready after N ms`.
+
+Measured with the background collect, PerfBench reality `--viascreen`, interleaved, 3 runs each side:
+
+| | Monsters | Steady avg | Awake avg / p99 / **max** | Gen2 in the awake window | Collect on the main thread |
+|---|---|---|---|---|---|
+| I3 | 240 [209–246] | 8.14 ms | 15.77 / 26.3 / **36.0 [33.8–145.2]** | 1 of 3 runs (145 ms frame, 139 ms of it the GC) | — |
+| background collect | 240 [231–275] | 7.85 ms | 16.13 / 28.6 / **36.4 [33.8–59.6]** | 0 of 3 | 1–2 ms |
+
+AutoplayBot reality T10, warrior, 3 realities per side (frameMs max per reality; noisy, one session each):
+
+| | Reality 1 | Reality 2 | Reality 3 | Frames > 100 ms | Worst GC pause in play |
+|---|---|---|---|---|---|
+| I3 | 218 ms | 722 ms (gen2, 272 ms pause) | 3556 ms (gen0, 3553 ms pause) | 8 | 3553 ms |
+| background collect | 249 ms | 482 ms | 36 ms | 4 | 353 ms (gen2) |
+
+Threshold (no gen2 in the awake window in ≥ 2 of 3 runs; max ≤ 150 ms; collect ≤ 100 ms): met by the
+background collect, but the guest crash is a regression, so **reverted**. The I3 side already had no gen2 in 2
+of 3 bench windows: I1–I3 cut the allocation rate.
+
+**Finding for later increments.** In play the heap grows by ~300 MB per 8-minute reality (90 → 430–580 MB in the
+bot), and gen2s still come during play (103–353 ms pauses, and one 3.5 s gen0 on this container). That is only
+~10 KB/frame (300 MB / 28 800 frames), the rate the bench windows show, but it isn't collected young: it reaches
+gen2, which points at finalizable wrappers (a `StringName` or `GodotObject` proxy per call) rather than at
+volume. Finding and removing those per-frame wrappers is the lever for in-play GC spikes. It also makes the
+finalizer race above rarer.
+

@@ -58,6 +58,8 @@ public partial class AutoplayBot
         "elemental_focus", "brutality", "concentrated_effect", "faster_projectiles", "spell_echo", "multistrike", "faster_casting", "melee_splash", "pierce",
     };
 
+    private int _gen2Seen;
+
     private async Task RealityLoop()
     {
         if (Profile.Get(this) is not { } profile)
@@ -92,8 +94,10 @@ public partial class AutoplayBot
             RealityLaunch.LayoutId = layout;
             RealityLaunch.Modifiers = new List<string>();
             GetTree().Paused = false;
-            GetTree().ChangeSceneToFile(Scenes.Reality);
-            await ToSignal(GetTree().CreateTimer(0.5, processAlways: true), SceneTreeTimer.SignalName.Timeout);
+            // The real path (the Mirror, the hideout portal): through the loading screen
+            // (docs/design/performance.md -> "Frame budget pass", I4).
+            UI.LoadingScreen.Go(GetTree(), Scenes.Reality, "Autoplay", "");
+            await ToSignal(GetTree().CreateTimer(1.0, processAlways: true), SceneTreeTimer.SignalName.Timeout);
             if (GetTree().CurrentScene is not RealityController reality)
             {
                 Log("[BOT] reality scene failed to load");
@@ -121,8 +125,18 @@ public partial class AutoplayBot
             {
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                 ulong now = Time.GetTicksUsec();
-                frameMs.Add((now - last) / 1000f);
+                float ms = (now - last) / 1000f;
+                frameMs.Add(ms);
                 last = now;
+                int gen2 = System.GC.CollectionCount(2);
+                if (ms > 100f)
+                {
+                    // Attribute the spike: a gen2 collection since the last frame, or not.
+                    System.GCMemoryInfo g = System.GC.GetGCMemoryInfo(System.GCKind.Any);
+                    Log($"[BOT] spike {ms:0} ms at {reality.Elapsed:0.0} s: gen2 {(gen2 > _gen2Seen ? "yes" : "no")}, last GC #{g.Index} gen{g.Generation} pause {g.PauseDurations[0].TotalMilliseconds:0}+{g.PauseDurations[1].TotalMilliseconds:0} ms, heap {g.HeapSizeBytes / 1048576.0:0} MB, monsters {GetTree().GetNodesInGroup(CombatQuery.EnemyGroup).Count}");
+                }
+
+                _gen2Seen = gen2;
             }
 
             frameMs.Sort();

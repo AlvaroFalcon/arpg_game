@@ -141,7 +141,16 @@ public partial class PerfBench : Node
             RealityLaunch.Seed = (ulong)Arg("seed", "7").ToInt();
             RealityLaunch.Modifiers = new List<string>();
             RealityLaunch.Tutorial = false;
-            GetTree().ChangeSceneToFile("res://scenes/reality/Reality.tscn");
+            if (_args.ContainsKey("viascreen"))
+            {
+                // The real path (the Mirror, the hideout portal): through the loading screen.
+                UI.LoadingScreen.Go(GetTree(), "res://scenes/reality/Reality.tscn", "PerfBench", "");
+            }
+            else
+            {
+                GetTree().ChangeSceneToFile("res://scenes/reality/Reality.tscn");
+            }
+
             await Frames(120);
             reality = GetTree().CurrentScene as RealityController;
             if (reality is null)
@@ -153,6 +162,11 @@ public partial class PerfBench : Node
             reality.Player.Health!.IgnoreDamage = true;
             GetTree().Paused = false;
             Log($"PERF reality {reality.Layout.Name} tier {reality.Tier}, monsters {GetTree().GetNodesInGroup(CombatQuery.EnemyGroup).Count}");
+            if (_args.ContainsKey("viascreen"))
+            {
+                Log(string.Create(Ci, $"PERF entered through the loading screen, heap now {GC.GetTotalMemory(false) / 1048576.0:0.0} MB"));
+            }
+
             if (_args.TryGetValue("shots", out string? realityShots))
             {
                 await RealityShots(reality, realityShots);
@@ -230,7 +244,7 @@ public partial class PerfBench : Node
                 Log(string.Create(Ci, $"PERF GC {label} #{g.Index} gen{g.Generation} concurrent={g.Concurrent} compacted={g.Compacted} pauses {g.PauseDurations[0].TotalMilliseconds:0.0}+{g.PauseDurations[1].TotalMilliseconds:0.0} ms, heap {g.HeapSizeBytes / 1048576.0:0.0} MB, promoted {g.PromotedBytes / 1048576.0:0.0} MB, frame {i}"));
             }
 
-            if (ms > 50.0)
+            if (ms > 50.0 && DisplayServer.GetName() == "headless")
             {
                 Log(string.Create(Ci, $"PERF SPIKE {label} frame {i}: {ms:0.0} ms, scripts {(probe.ScriptMs.Count > 0 ? probe.ScriptMs[^1] : 0):0.0} ms, GCs {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)}"));
             }
