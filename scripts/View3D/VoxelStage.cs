@@ -91,6 +91,8 @@ public partial class VoxelStage : Node3D
     public override void _Ready()
     {
         Name = "VoxelStage";
+        EnsurePlayerPosGlobal();
+        RenderingServer.GlobalShaderParameterSet(PlayerPosName, NoPlayer);
         World = new Node3D { Name = "World", Scale = new Vector3(1f, 1f, 1f / SinPitch) };
         AddChild(World);
 
@@ -156,6 +158,28 @@ public partial class VoxelStage : Node3D
     public override void _ExitTree()
     {
         Enemy.AnyKilled -= OnEnemyKilled;
+        RenderingServer.GlobalShaderParameterSet(PlayerPosName, NoPlayer);
+    }
+
+    /// <summary>The walls' see-through test reads the player's feet from this global
+    /// shader uniform (declared in project.godot's [shader_globals]).</summary>
+    private static readonly StringName PlayerPosName = "player_pos";
+
+    private static readonly Vector3 NoPlayer = new(0f, -100f, 0f);
+
+    /// <summary>Declares the global if the project settings didn't (it is in
+    /// project.godot, and the rendering server loads it at startup; this only guards a
+    /// build that lost it, where the shaders would fail to compile). The server's own
+    /// list/get calls are editor-only, so the setting is what's checked.</summary>
+    private static void EnsurePlayerPosGlobal()
+    {
+        if (ProjectSettings.HasSetting("shader_globals/player_pos"))
+        {
+            return;
+        }
+
+        GD.PushWarning("VoxelStage: the player_pos shader global was missing; adding it at run time");
+        RenderingServer.GlobalShaderParameterAdd(PlayerPosName, RenderingServer.GlobalShaderParameterType.Vec3, NoPlayer);
     }
 
     /// <summary>Applies a theme's colours (realities).</summary>
@@ -178,6 +202,13 @@ public partial class VoxelStage : Node3D
 
     public override void _Process(double delta)
     {
+        long t0 = Tools.Perf.Begin();
+        Follow(delta);
+        Tools.Perf.End(Tools.Perf.K.VoxStage, t0);
+    }
+
+    private void Follow(double delta)
+    {
         SyncCamera();
         _time += (float)delta;
         foreach ((OmniLight3D light, float energy, float phase, float speed, float depth) in _flicker)
@@ -198,11 +229,9 @@ public partial class VoxelStage : Node3D
         {
             Vector3 local = Ground(_player.GlobalPosition, 1.4f);
             _playerLight.Position = local;
-            Vector3 feet = World.ToGlobal(Ground(_player.GlobalPosition));
-            foreach (ShaderMaterial m in _wallMaterials)
-            {
-                m.SetShaderParameter("player_pos", feet);
-            }
+            // One global for every wall and rock material (docs/design/performance.md ->
+            // "Frame budget pass", I6): the per-material loop grew with the terrain chunks.
+            RenderingServer.GlobalShaderParameterSet(PlayerPosName, World.ToGlobal(Ground(_player.GlobalPosition)));
         }
     }
 

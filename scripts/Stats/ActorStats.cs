@@ -108,7 +108,12 @@ public partial class ActorStats : Node
     /// nothing that "refills" life (a character level, a Vitality card) brings it back.</summary>
     public bool OwnerDead => (_health ??= GetParent()?.GetNodeOrNull<Health>("Health")) is { IsDead: true };
 
-    public override void _PhysicsProcess(double delta)
+    public override void _PhysicsProcess(double delta) => Tick(delta);
+
+    /// <summary>One physics step of this component. A monster drives it from its own
+    /// <c>_PhysicsProcess</c> (its ActorStats has physics processing turned off): one engine callback
+    /// per monster instead of four (docs/design/performance.md -> "Frame budget pass", I5).</summary>
+    public void Tick(double delta)
     {
         float dt = (float)delta;
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using ArpgGame.Combat;
 using ArpgGame.Stats;
+using ArpgGame.Tools;
 
 namespace ArpgGame.Enemies;
 
@@ -138,6 +139,8 @@ public partial class Enemy : CharacterBody2D
     protected Vector2 DesiredVelocity;
 
     private Vector2 _knockback;
+    private const int SettleFrames = 10;
+    private int _settleFrames = SettleFrames;
     private float _contactTimer;
     private float _flashTimer;
     private Color _eliteTint = Colors.White;
@@ -155,6 +158,14 @@ public partial class Enemy : CharacterBody2D
         Health = GetNode<Health>("Health");
         Ailments = GetNodeOrNull<Ailments>("Ailments");
         Sprite = GetNodeOrNull<AnimatedSprite2D>("Sprite");
+        if (!IsReplica)
+        {
+            // The monster ticks its components itself, before its AI (PhysicsStep): one
+            // engine callback instead of four. Replicas keep their own (co-op clients).
+            Stats.SetPhysicsProcess(false);
+            Health.SetPhysicsProcess(false);
+            Ailments?.SetPhysicsProcess(false);
+        }
 
         Stats.Strength.BaseValue = 0f;
         Stats.Dexterity.BaseValue = 0f;
@@ -290,11 +301,26 @@ public partial class Enemy : CharacterBody2D
 
     public override void _PhysicsProcess(double delta)
     {
+        long t0 = Perf.BeginAlloc(out long b0);
+        PhysicsStep(delta);
+        Perf.EndAlloc(Perf.K.EnemyPhys, t0, b0);
+    }
+
+    private void PhysicsStep(double delta)
+    {
         if (IsReplica)
         {
             UpdateVisual((float)delta);
             return;
         }
+
+        // Same order as the children in the scenes (Stats, Health, Ailments). Before the
+        // dead check and the Dormant/Frozen early returns, so every branch ticks.
+        long tt = Perf.Begin();
+        Stats.Tick(delta);
+        Health.Tick(delta);
+        Ailments?.Tick(delta);
+        Perf.End(Perf.K.EnemyTicks, tt);
 
         if (Health.IsDead)
         {
@@ -302,7 +328,9 @@ public partial class Enemy : CharacterBody2D
         }
 
         float dt = (float)delta;
+        long tf = Perf.Begin();
         Target = FindTarget(dt);
+        Perf.End(Perf.K.FindTarget, tf);
 
         if (Dormant)
         {
@@ -313,7 +341,7 @@ public partial class Enemy : CharacterBody2D
             else
             {
                 Velocity = _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
-                MoveAndSlide();
+                Slide();
                 UpdateVisual(dt);
                 return;
             }
@@ -324,7 +352,7 @@ public partial class Enemy : CharacterBody2D
             // Frozen: no thinking, no walking, no contact damage — only knockback drift.
             _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
             Velocity = _knockback;
-            MoveAndSlide();
+            Slide();
             UpdateVisual(dt);
             return;
         }
@@ -339,7 +367,7 @@ public partial class Enemy : CharacterBody2D
 
         _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
         Velocity = DesiredVelocity + _knockback;
-        MoveAndSlide();
+        Slide();
 
         if (_contactTimer > 0f)
         {
@@ -356,6 +384,30 @@ public partial class Enemy : CharacterBody2D
     }
 
     /// <summary>Behaviours may raise contact damage (a charging brute).</summary>
+
+    /// <summary>
+    /// MoveAndSlide, skipped while the monster stands still (docs/design/performance.md ->
+    /// "Frame budget pass", I2): at zero velocity it only depenetrates, and a sleeping pack
+    /// paid it every frame. The first <see cref="SettleFrames"/> physics frames after
+    /// entering the tree always slide, so a monster spawned overlapping a wall or a
+    /// packmate is still pushed out as before.
+    /// </summary>
+    private void Slide()
+    {
+        if (_settleFrames > 0)
+        {
+            _settleFrames--;
+        }
+        else if (Velocity == Vector2.Zero)
+        {
+            return;
+        }
+
+        long t0 = Perf.Begin();
+        MoveAndSlide();
+        Perf.End(Perf.K.MoveSlide, t0);
+    }
+
     protected virtual float ContactDamageScale() => 1f;
 
     protected virtual bool IsTouching(Node2D target) =>
@@ -494,7 +546,9 @@ public partial class Enemy : CharacterBody2D
                 return Vector2.Zero;
             }
 
-            if (World.FlowField.Current is { } field && Target.IsInGroup(CombatQuery.PlayerGroup) && GlobalPosition.DistanceSquaredTo(Target.GlobalPosition) > 60f * 60f)
+            // Target is Player: only players join CombatQuery.PlayerGroup (Player._Ready), and the
+            // group test turned a string into a StringName on every call (16 KB a frame).
+            if (World.FlowField.Current is { } field && Target is Player && GlobalPosition.DistanceSquaredTo(Target.GlobalPosition) > 60f * 60f)
             {
                 Vector2 d = field.Direction(GlobalPosition);
                 if (d != Vector2.Zero)

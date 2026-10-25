@@ -63,6 +63,11 @@ public partial class LoadingScreen : CanvasLayer
             await ToSignal(tree.CreateTimer(MinimumSeconds - waited, processAlways: true, ignoreTimeScale: true), SceneTreeTimer.SignalName.Timeout);
         }
 
+        if (OS.IsDebugBuild())
+        {
+            GD.Print($"[LOADING] {path} ready after {Time.GetTicksMsec() - started} ms");
+        }
+
         Tween fade = CreateTween();
         fade.TweenProperty(_root, "modulate:a", 0f, FadeSeconds);
         fade.TweenCallback(Callable.From(QueueFree));

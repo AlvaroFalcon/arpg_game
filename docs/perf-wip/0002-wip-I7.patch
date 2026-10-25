@@ -1,0 +1,170 @@
+From 0a1acd63a2d3c5860b98171d93e8ba3d66cfe80c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 24 Oct 2026 22:36:32 +0000
+Subject: [PATCH 2/3] wip I7
+
+---
+ scripts/View3D/VoxelStage.cs | 74 +++++++++++++++++++++++++++---------
+ 1 file changed, 56 insertions(+), 18 deletions(-)
+
+diff --git a/scripts/View3D/VoxelStage.cs b/scripts/View3D/VoxelStage.cs
+index d6a3488..1f3bb61 100644
+--- a/scripts/View3D/VoxelStage.cs
++++ b/scripts/View3D/VoxelStage.cs
+@@ -280,7 +280,7 @@ public partial class VoxelStage : Node3D
+         var created = new List<Node>();
+         _terrain[map.GetInstanceId()] = created;
+ 
+-        var byPiece = new Dictionary<string, List<Transform3D>>();
++        var byPiece = new Dictionary<PieceChunk, List<Transform3D>>();
+         var hazards = new List<Vector3>();
+         var liquidCells = new Dictionary<Vector2I, Transform3D>();
+         var floorCells = new Dictionary<Vector2I, Vector3>();
+@@ -300,9 +300,10 @@ public partial class VoxelStage : Node3D
+             float tileMeters = map.TileSet.TileSize.X * map.GlobalScale.X / PixelsPerMeter;
+             var basis = Basis.Identity.Scaled(Vector3.One * tileMeters);
+             Vector3 at = Ground(world2D);
+-            if (!byPiece.TryGetValue(piece, out List<Transform3D>? list))
++            Vector2I chunk = ChunkOf(at);
++            if (!byPiece.TryGetValue(new PieceChunk(piece, chunk), out List<Transform3D>? list))
+             {
+-                byPiece[piece] = list = new List<Transform3D>();
++                byPiece[new PieceChunk(piece, chunk)] = list = new List<Transform3D>();
+             }
+ 
+             Transform3D placed = new(basis, at);
+@@ -310,7 +311,7 @@ public partial class VoxelStage : Node3D
+             {
+                 // Cave rock is one mesh (CaveWalls, built below), not a block per
+                 // cell; the cell gets a floor under it for the chamfered corners.
+-                string under = $"floor{Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2}";
++                var under = new PieceChunk(Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2 == 0 ? "floor0" : "floor1", chunk);
+                 if (!byPiece.TryGetValue(under, out List<Transform3D>? unders))
+                 {
+                     byPiece[under] = unders = new List<Transform3D>();
+@@ -341,7 +342,7 @@ public partial class VoxelStage : Node3D
+                 // The liquid surface rounds its shore and cuts the land side away,
+                 // so the bed under it is ordinary floor (seen at the rounded edges).
+                 list.RemoveAt(list.Count - 1);
+-                string bed = $"floor{Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2}";
++                var bed = new PieceChunk(Mathf.Abs(cell.X * 7 + cell.Y * 13) % 2 == 0 ? "floor0" : "floor1", chunk);
+                 if (!byPiece.TryGetValue(bed, out List<Transform3D>? beds))
+                 {
+                     byPiece[bed] = beds = new List<Transform3D>();
+@@ -356,8 +357,13 @@ public partial class VoxelStage : Node3D
+             created.Add(AddCaveRock(map, wallCells, rockSource));
+         }
+ 
+-        foreach ((string piece, List<Transform3D> transforms) in byPiece)
++        // One MultiMesh per piece per chunk: Godot culls a MultiMesh as one box, so a
++        // map-wide one was drawn whole every frame (docs/design/performance.md ->
++        // "Frame budget pass", I7). The see-through wall copy is made once and shared.
++        Mesh? seeThrough = null;
++        foreach ((PieceChunk key, List<Transform3D> transforms) in byPiece)
+         {
++            string piece = key.Piece;
+             if (transforms.Count == 0 || !pieces.TryGetValue(piece, out Mesh? mesh))
+             {
+                 continue;
+@@ -365,12 +371,17 @@ public partial class VoxelStage : Node3D
+ 
+             if (piece == "wall")
+             {
+-                if (mesh.GetSurfaceCount() > 0 && mesh.SurfaceGetMaterial(0) is BaseMaterial3D wm)
++                if (seeThrough is null)
+                 {
+-                    _wallColor = wm.AlbedoColor;
++                    if (mesh.GetSurfaceCount() > 0 && mesh.SurfaceGetMaterial(0) is BaseMaterial3D wm)
++                    {
++                        _wallColor = wm.AlbedoColor;
++                    }
++
++                    seeThrough = SeeThroughWall(mesh);
+                 }
+ 
+-                mesh = SeeThroughWall(mesh);
++                mesh = seeThrough;
+             }
+ 
+             var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = mesh, InstanceCount = transforms.Count };
+@@ -382,7 +393,7 @@ public partial class VoxelStage : Node3D
+             var instance = new MultiMeshInstance3D
+             {
+                 Multimesh = multimesh,
+-                Name = $"Terrain_{piece}",
++                Name = $"Terrain_{piece}_{key.Chunk.X}_{key.Chunk.Y}",
+                 CastShadow = piece == "wall" ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off,
+             };
+             World.AddChild(instance);
+@@ -398,7 +409,7 @@ public partial class VoxelStage : Node3D
+         if (liquidCells.Count > 0)
+         {
+             Vector3 GlobalOf(Vector2I c) => World.ToGlobal(Ground(map.ToGlobal(map.MapToLocal(c))));
+-            created.Add(AddLiquidSurface(liquidCells, floorCells, GlobalOf));
++            created.AddRange(AddLiquidSurface(liquidCells, floorCells, GlobalOf));
+         }
+ 
+         map.Visible = false;
+@@ -413,7 +424,7 @@ public partial class VoxelStage : Node3D
+     /// it (inside corners fill out over the floor a little); land is cut away and the
+     /// floor drawn beneath shows through.
+     /// </summary>
+-    private MultiMeshInstance3D AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells, Dictionary<Vector2I, Vector3> floors, System.Func<Vector2I, Vector3> globalOf)
++    private List<Node> AddLiquidSurface(Dictionary<Vector2I, Transform3D> cells, Dictionary<Vector2I, Vector3> floors, System.Func<Vector2I, Vector3> globalOf)
+     {
+         var material = new ShaderMaterial { Shader = GD.Load<Shader>("res://resources/shaders/voxel_liquid.gdshader") };
+         foreach ((string name, Variant value) in LiquidLook(Liquid))
+@@ -496,17 +507,44 @@ public partial class VoxelStage : Node3D
+             }
+         }
+ 
+-        var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = quad, InstanceCount = placed.Count };
+-        for (int i = 0; i < placed.Count; i++)
++        // One mask and one material for the whole map (no seams), one MultiMesh per chunk.
++        var byChunk = new Dictionary<Vector2I, List<Transform3D>>();
++        foreach (Transform3D t in placed)
+         {
+-            multimesh.SetInstanceTransform(i, placed[i]);
++            Vector2I chunk = ChunkOf(t.Origin);
++            if (!byChunk.TryGetValue(chunk, out List<Transform3D>? list))
++            {
++                byChunk[chunk] = list = new List<Transform3D>();
++            }
++
++            list.Add(t);
+         }
+ 
+-        var instance = new MultiMeshInstance3D { Multimesh = multimesh, Name = "LiquidSurface", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+-        World.AddChild(instance);
+-        return instance;
++        var created = new List<Node>();
++        foreach ((Vector2I chunk, List<Transform3D> list) in byChunk)
++        {
++            var multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = quad, InstanceCount = list.Count };
++            for (int i = 0; i < list.Count; i++)
++            {
++                multimesh.SetInstanceTransform(i, list[i]);
++            }
++
++            var instance = new MultiMeshInstance3D { Multimesh = multimesh, Name = $"LiquidSurface_{chunk.X}_{chunk.Y}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
++            World.AddChild(instance);
++            created.Add(instance);
++        }
++
++        return created;
+     }
+ 
++    /// <summary>Terrain chunk size, in the World's local metres (I7).</summary>
++    public const float ChunkMeters = 12f;
++
++    private static Vector2I ChunkOf(Vector3 local) =>
++        new(Mathf.FloorToInt(local.X / ChunkMeters), Mathf.FloorToInt(local.Z / ChunkMeters));
++
++    private readonly record struct PieceChunk(string Piece, Vector2I Chunk);
++
+     /// <summary>Shader uniforms per liquid: clear moving water, slow glowing lava, sickly ooze.</summary>
+     public static (string, Variant)[] LiquidLook(LiquidStyle style) => style switch
+     {
+-- 
+2.43.0
+

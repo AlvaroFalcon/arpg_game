@@ -142,6 +142,7 @@ public partial class RiftBench : Node
         }
 
         Log($"BENCH cataclysm {killed} killed: next 120 frames {Stats(spike)}; first two {spike[0]:0.0} + {spike[1]:0.0} ms");
+        Log("BENCH cataclysm first ten frames ms: " + string.Join(" ", spike.Take(10).Select(v => v.ToString("0.0", CultureInfo.InvariantCulture))) + string.Create(CultureInfo.InvariantCulture, $"; max of the ten {spike.Take(10).Max():0.0}"));
         Log("RESULT: PASS");
         GetTree().Quit();
     }

@@ -252,7 +252,12 @@ public partial class Ailments : Node
         ShockRemaining = ShockDuration;
     }
 
-    public override void _PhysicsProcess(double delta)
+    public override void _PhysicsProcess(double delta) => Tick(delta);
+
+    /// <summary>One physics step of this component. A monster drives it from its own
+    /// <c>_PhysicsProcess</c> (its Ailments has physics processing turned off): one engine callback
+    /// per monster instead of four (docs/design/performance.md -> "Frame budget pass", I5).</summary>
+    public void Tick(double delta)
     {
         float dt = (float)delta;
 

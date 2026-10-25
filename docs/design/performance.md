@@ -1,6 +1,6 @@
 # Performance
 
-Status: **second pass done (mass deaths: all four proposals implemented)**. This doc records frame-time problems
+Status: **frame budget pass in progress** (the 2D checklist, C1–C11: see the last section). Earlier: mass deaths, all four proposals implemented. This doc records frame-time problems
 we measured, what caused them, what we changed, and the budgets we keep. Every
 number here comes from a benchmark you can re-run. Add to it when a new problem
 gets measured.
@@ -442,3 +442,313 @@ Same method as above (`scenes/tools/CoopBench.tscn`, host + 3 headless clients o
 Clients: 17–18 ms frames, 0.8 ms replica update. Far sleeping packs are left out of snapshots (`SkipFarDormant`); without that every one of the 324 would go out at least at 5 Hz.
 
 **ENet's throttle and the unreliable channels (the phase-A open question).** Snapshots (host → client, ≤ 1100 B chunks at 20 Hz): 98.4–100 % of ticks delivered on loopback, in both modes. Inputs (client → host, ~20 B at 60 Hz): 3–10 % lost to sequence gaps. Not fixed: an input carries the whole state (direction, aim, held buttons) and one-shot presses travel as counters, so a lost input only delays the next by one frame; the host stops a player only after 300 ms without input. Presence in the hideout stays reliable (phase A), where losing two thirds was visible.
+
+## Frame budget pass (2026-10-24): the 2D checklist
+
+The owner's checklist (atlases, tilemaps, overdraw, culling, pooling, texture compression, profile first, simple
+collision, spatial partitioning, staggered AI) checked against this game: research, measured experiments on a scratch
+copy and a ranked list C1–C13. The owner approved every candidate, soft crowd separation and spreading the
+Cataclysm kills. They land as one commit each (I0–I14), every one measured before and after the same way.
+
+### Method
+
+- **`scenes/tools/PerfBench.tscn`** (`scripts/tools/PerfBench.cs`), run through **`scripts/perf_bench.sh`**:
+  - `--mode=rift`: the Survival Rift at clock 350 s, 1800 fill frames, 1200 measured, monsters immortal so the
+    count sits at the cap (the RiftBench setup).
+  - `--mode=reality`: tier 10, seed 7 (The Bone Warrens). A "steady" phase (packs asleep, the player at the
+    entrance), then every non-boss pack is woken and floods the player for 600 frames, then an "awake" phase.
+  - It turns on the `Perf` probes (`scripts/tools/Perf.cs`; a static gate, off in the game, so a probe is two
+    calls that return at once) and logs: frame wall time (avg / p95 / p99 / max), the physics scripts' time per
+    step (`StepProbe`), managed allocations per frame, every GC with its pause, spikes over 50 ms, Physics2D
+    active objects and pairs, render counts, and each probe in ms/frame, µs per call and KB/frame. One
+    `PERF SUMMARY` line per phase holds all of it, so tables are pasted, not retyped.
+  - `--forcevoxel` builds the voxel stage under the headless dummy renderer (`HdView.ForceInHeadless`): the
+    view's CPU cost without lavapipe stealing cores.
+  - `--window` (the script): Forward+ on lavapipe under Xvfb at 1280×720, 120 fill and 60 measured frames.
+    Draws, objects, primitives and memory are exact; timings are relative only.
+  - `--shots=<dir>` saves the fixed screenshot set before the fill (packs hidden and frozen, so it is the same
+    on every run): `reality-entrance`, `reality-behind-wall`, `reality-liquid`, `reality-arena`,
+    `reality-overview` (zoom 0.5), `rift-centre`, `rift-edge` and, with `--lineup`, `rift-lineup` (every enemy
+    and boss scene and every player look, dormant, in rows).
+- **A/B discipline.** Same machine (4 vCPUs, ±1 ms noise on a 14 ms frame), back to back, the compiler server
+  killed before every run. The Rift's monster count varies between runs (312–377 with the same seed), so runs
+  are compared per monster or per call when the counts differ.
+- RiftBench's `cataclysm` line now also lists the first ten frames after the Cataclysm.
+
+### I0: probes and the bench (no gameplay change)
+
+Probes: `Enemy._PhysicsProcess` (with allocations), each `MoveAndSlide`, `Enemy.FindTarget`,
+`VoxelActor._Process` (with allocations) and its `VoxelLibrary.MeshFor`, `VoxelStage._Process`,
+`TargetFrame._Process`, `RunDirector._PhysicsProcess`.
+
+**Disabled probes cost nothing measurable.** RiftBench, base `1b22757` against I0, interleaved, 3 runs each:
+
+| | Monsters | Frame avg (ms) | µs per monster | p99 | Alloc KB/frame |
+|---|---|---|---|---|---|
+| Base | 371 / 374 / 374 | 14.93* / 14.60 / 14.07 | 40.2 / 39.0 / 37.6 | 25.6 / 17.8 / 18.6 | 79.0 / 79.9 / 79.5 |
+| I0 | 312 / 320 / 374 | 11.84 / 11.78 / 13.80 | 37.9 / 36.8 / 36.9 | 17.2 / 15.7 / 19.4 | 71.6 / 71.4 / 79.4 |
+
+\* a compiler server was still running during that run. At 374 monsters: 14.07–14.60 → 13.80 ms, within noise.
+
+### Baseline (I0, 2026-10-24, this container)
+
+Measured at I0 (probes off unless PerfBench). Medians of the runs, [min–max] where it matters. Raw files:
+`user://bench/history/`.
+
+| Bench | Runs | Monsters | Frame avg / p95 / p99 / max (ms) | Physics scripts / step | Alloc KB/frame | GCs | Physics pairs / active |
+|---|---|---|---|---|---|---|---|
+| PerfBench Rift | 3 | 374 [325–374] | 14.30 [12.0–14.5] / 15.9 / 18.7 / 31.1 | 9.77 ms | 80.2 | 0 | 836 / 378 |
+| PerfBench reality, steady (asleep) | 3 | 286 [243–299] | 5.70 [4.9–5.9] / 6.3 / 7.3 / 17.0 | 3.46 ms | 49.5 | 0 | 69 / 287 |
+| PerfBench reality, awake | 3 | 286 | 9.07 [7.6–9.5] / 10.1 / 12.4 / **276 [272–313]** | 6.01 ms | 107.5 | **1 gen2 in every run** (pause 132–166 ms, heap 340–368 MB) | 518 / 287 |
+| PerfBench Rift `--forcevoxel` | 2 | 341 / 374 | 16.6 / 18.7; p99 23.8; max 100–128 | 9.2 ms | **265 / 311** | 0 / 1 | 773 / 362 |
+| RiftBench | 3 | 348 / 374 / 374 | 12.94 / 14.19 / 13.87; p99 17.8–20.1 | — | 76 | 0 | — |
+
+Probes (Rift, 374 monsters): `Enemy._PhysicsProcess` 15.8 µs per monster (16 KB/frame), of which `MoveAndSlide`
+13.6 µs and `FindTarget` 0.42 µs; `TargetFrame` 0.44 ms/frame; `RunDirector` 0.36 ms/frame. Forcevoxel:
+`VoxelActor` 6.1 µs per actor (234 / 193 KB/frame), of which `MeshFor` 3.7 µs; `VoxelStage` 32 µs.
+Reality awake: `MoveAndSlide` 7.0 µs, `Enemy._PhysicsProcess` 11.6 µs and 63 KB/frame.
+
+**Cataclysm** (RiftBench, 352–377 victims): first frame 87.3 / 87.9 / 92.4 ms; a second spike of 46–49 ms 4–6
+frames later (the queued drops), the rest 4–8 ms.
+
+**ExplosionBench** (60 Slimes, ms, median of 3): reality volatile kill call 5.2, kill frame #0+#1 13.3, worst
+7.8; reality chain 2.2 / 4.1 / 9.5; Rift volatile 6.1 / 14.7 / 7.7; Rift chain 2.6 / 5.3 / 10.9.
+
+**Windowed** (Forward+ on lavapipe, 1280×720, 120 fill + 60 measured frames, 2 runs):
+
+| Scene | Monsters | Draw calls | Objects | Primitives | Lavapipe frame | `VoxelStage` |
+|---|---|---|---|---|---|---|
+| Rift | 17 / 28 | 451 / 548 | 493 / 634 | **7.36 M** | 620–628 ms | 73 µs |
+| Cavern T10 seed 7, asleep | 218 / 227 | 193 / 208 | 588 / 766 | **5.50–5.52 M** | 531–541 ms | 61 µs |
+| Cavern, awake (120 frames after waking) | 218 / 227 | 244 / 260 | 654 / 774 | 5.51 M | 532–547 ms | 59 µs |
+
+The research numbers (perf_research §2) agree within ±15 %, except reality awake (9.1 against 7.8 ms, +16 %):
+more monsters in these runs (286 against 245). These I0 numbers are the reference for the increments.
+
+**Screenshot set "base"**: PerfBench `--shots` twice (Rift with `--lineup`, reality) gave **byte-identical**
+images (AE 0 at fuzz 2 %): the set is deterministic, so any later difference is real. RunCapture
+`--only=caves` and `--only=town` were captured at `--fixed-fps 60` for the terrain increments.
+
+### I1: allocation-free `Stat.ComputeFormula` (C5), plus the `IsInGroup` string (C13a)
+
+- **Cause.** `Stat.ComputeFormula` walked its `IReadOnlyList<StatModifier>` with `foreach`, which boxes
+  `List<T>.Enumerator`: 40 B per stat read, ~45 KB/frame in the Rift. `Enemy.DirectionToTarget` asked
+  `Target.IsInGroup(CombatQuery.PlayerGroup)`, a `string` turned into a new `StringName` on every call
+  (16 KB/frame).
+- **Fix.** Indexed loops (a `List<T>` fast path, the interface indexer otherwise), same order of operations,
+  so the results are bit-identical. `Target is Player` instead of the group test: only `Player._Ready` joins
+  that group, so it is the same set. *C13a is a one-line extra outside the owner's C1–C11 list.*
+- **Check:** `StatsSmokeTest` `PERF-STAT-FORMULA-NO-ALLOC` (10 000 calls over 6 modifiers allocate 0 B; the
+  old formula's results for Flat/Increased/More mixes at three added-damage effectivenesses, through a list
+  and an array).
+- **Follow-up, not done here:** `ActorStats.GetModifiers(ModifierQuery)` builds a new `List` per call (one
+  per cast in `SkillUser`, plus `RunController`, `RealityController`, `AscendancyEffects`). A different, colder
+  path; worth a pooled list if a skill-heavy bench shows it.
+
+PerfBench Rift, 3 runs each (I0 baseline above → I1):
+
+| | Monsters | Frame avg (ms) | p99 | Scripts / step | **Alloc KB/frame** | `Enemy._PhysicsProcess` alloc |
+|---|---|---|---|---|---|---|
+| I0 | 374 / 325 / 374 | 14.54 / 12.02 / 14.30 | 18.7 | 9.77 | **80.2** [72.6–80.3] | 15.8 KB/frame |
+| I1 | 374 / 335 / 326 | 13.70 / 12.20 / 12.04 | 15.1 | 8.28 | **20.5** [20.0–20.9] | 2.5 KB/frame |
+
+Threshold (≤ 25 KB/frame with C13a; frame not worse than baseline + 0.5 ms): **met** (at 374 monsters
+14.30–14.54 → 13.70 ms).
+
+**The machine changed after I1.** The container restarted between I1 and I2 and the new one runs the same code
+about 2.2× slower (PerfBench Rift at I1, 374 monsters: 13.7 ms before the restart, 31.8 ms after; same
+4 vCPUs, `Intel Xeon @ 2.80GHz`). From I2 on every increment is an **interleaved A/B on the new machine**
+(before = the previous commit, after = the change, alternating run by run), and thresholds written as absolute
+milliseconds in the plan are read as the same relative change.
+
+### I2: idle monsters skip `MoveAndSlide` (C1a)
+
+- **Cause.** Every monster called `MoveAndSlide()` every physics frame, asleep or not. At zero velocity it only
+  depenetrates, but it still kept the body active in the Physics2D server and paid the query (4.2 µs per
+  sleeping monster here, 1.1 of the 7 ms of physics scripts with every pack asleep), plus the server's own
+  work for 270 active bodies.
+- **Fix.** `Enemy.Slide()` returns at once when `Velocity` is zero (the Dormant branch, the Frozen branch and the
+  main path all go through it). `Velocity` keeps its value, so facing is unchanged. **Deviation from the plan:**
+  the first 10 physics frames after a monster enters the tree always slide, so a spawn overlapping rock or a
+  packmate is still pushed out exactly as before (packs are placed on floor cells, so this is a guard, not a
+  fix of a seen bug). Frozen monsters with knockback have a non-zero velocity and still drift.
+- **Check:** `EndgameSmokeTest` `PERF-IDLE-SLIDE-WAKE-DEPENETRATES`: no monster of the T10 seed-7 cavern is
+  inside rock after settling; a Slime spawned 6 px into the rock settles out; pushed in again while dormant it
+  stays (allowed), woken it walks out; a frozen Slime knocked back moves (53 px).
+- **Left as is:** two *standing* monsters that overlap stay overlapped until one moves (cosmetic; I12's soft
+  separation replaces this).
+
+PerfBench, interleaved, 3 runs each side (I1 → I2), new machine:
+
+| | Monsters | Frame avg (ms) | p95 / p99 / max | Scripts / step | Physics2D active | `Enemy._PhysicsProcess` per monster |
+|---|---|---|---|---|---|---|
+| Reality steady, I1 | 268 [213–339] | 11.76 [9.7–15.1] | 17.0 / 20.1 / 37.7 | 6.98 ms | 269 | 6.79 µs |
+| Reality steady, I2 | 275 [219–284] | **8.96** [8.3–9.6] | 13.1 / 15.9 / 29.2 | 5.99 ms | **1** | **2.95 µs** |
+| Reality awake, I1 | 268 | 18.45 [14.2–23.2] | 29.5 / 34.4 / 39.7 | 11.72 ms | 269 | 23.1 µs |
+| Reality awake, I2 | 275 | 16.91 [14.9–18.5] | 24.0 / 27.9 / 41.1 | 10.81 ms | 275 | 21.2 µs |
+| Rift, I1 | 374 [308–374] | 31.95 [26.0–33.3] | 45.9 / 55.3 / 142 | 21.38 ms | 378 | 34.8 µs |
+| Rift, I2 | 374 [368–374] | 30.43 [30.0–31.0] | 42.3 / 51.4 / 74.6 | 20.57 ms | 345 | 33.9 µs |
+
+Threshold (reality steady 5.1 → ≤ 4.2 ms, i.e. −18 %; active ≤ 10; awake and Rift within noise): **met**
+(−24 %, 1 active body; awake and Rift within noise, slightly better).
+
+### I3: the voxel actor's mesh from a frame table, resolved on the sprite's signals (C2)
+
+- **Cause.** Every `VoxelActor._Process` looked its mesh up by name: it read `Sprite.Animation` (a new
+  `StringName`, a finalizable managed object), built the model path and an `"f{index}"` string, and searched the
+  model's nodes, for every actor on every frame (8.7 µs and 234 KB/frame for 374 monsters). It also wrote
+  `MaterialOverlay` and `Transparency` every frame for plain actors.
+- **Fix.**
+  - `VoxelLibrary` builds, once per `SpriteFrames`, a table animation → `Mesh?[]` (index = frame) with exactly
+    the old rule (atlas region → cell index → `f{index}`, falling back to `f0`). The old lookup stays as
+    `ResolveFrame`, the reference the table is built from and tested against.
+  - `VoxelActor` listens to the sprite's `SpriteFramesChanged` / `AnimationChanged` (re-read the animation and
+    its mesh array) and `FrameChanged` (index the array). It never polls `Sprite.Animation`. Anchor, flat flag
+    and player reference are cached in `_Ready`.
+  - The overlay is only written when it changes (plain → plain costs nothing).
+- **Rejected:** skipping off-screen actors. They cast shadows into view, and their transform must be current
+  when they enter.
+- **Checks:** `EndgameSmokeTest` `VOXEL-FRAME-TABLE-MATCHES` (30 sheets, 517 frames including out-of-range
+  indices: the table's mesh is the same instance the old lookup returns) and `VOXEL-ACTOR-FOLLOWS-FRAMES` (an
+  actor shows the right mesh after a frame change, an animation change, a `SpriteFrames` swap and 20 frames of
+  playing).
+
+PerfBench Rift `--forcevoxel` (the voxel view's CPU cost headless), 2 runs each side, new machine:
+
+| | Monsters | Frame avg (ms) | p99 / max | **`VoxelActor` per actor** | `VoxelActor` alloc | **Frame alloc** |
+|---|---|---|---|---|---|---|
+| I2 | 374 / 374 | 42.38 / 41.01 | 66.6 / 213 | **14.9 µs** | 234 KB/frame | **252 KB/frame** |
+| I3 | 374 / 320 | 39.17 / 30.22 | 56.5 / 76 | **5.1 µs** | 0 | **23 KB/frame** |
+
+The mesh lookup now runs only on ~50 sprite events a frame (6.4 µs each, from 8.7 µs on every actor). A first
+version that re-read the animation on every `FrameChanged` gave 6.4 µs per actor and 18 KB/frame; reading it only
+when it changes removed the rest. Windowed Rift (lavapipe), 1 run each: draws and objects follow the monster
+count as at I0 (≈ 300 + 8.8 draws per monster: 545 at 27 monsters before, 403 at 14 after), primitives
+7.37 → 7.35 M. The Rift shots (`rift-centre`, `rift-edge`, `rift-lineup`) are **identical** to the base set
+(AE 0 at fuzz 2 %).
+
+Threshold (`VoxelActor` −45 % per actor and ≤ 5 KB/frame; forcevoxel alloc ≤ 80 KB/frame; frame −2 ms; draws
+±2 %): **met** (−66 %, 0 KB, 23 KB, −2.5 ms at 374 monsters; counts unchanged).
+
+### I4: a full GC behind the loading screen (C8) — **rejected**, tools kept
+
+- **Cause looked at.** Entering a reality leaves ~90 MB of load-time garbage (generation, voxel build), and a
+  long scene far more: the bot's second and third realities entered with 330–580 MB heaps. Finalizable Godot
+  wrappers (`StringName`, `GodotObject` proxies) survive their first collection and pile up in gen2, and the
+  first gen2 in play paused a frame (I0: one in every reality-awake window, 132–166 ms).
+- **Tried 1, the plan's blocking collect** (`Collect(); WaitForPendingFinalizers(); Collect();` after the new
+  scene's 4 settle frames in `LoadingScreen.Run`): 66–78 ms at a 90 MB heap, but **2.3 s and 4.1 s** at 330 and
+  487 MB (split at 355 MB: collect 1.34 s, finalizers 0.82 s, collect 0.23 s). That holds the loading screen
+  seconds longer after every long scene. Rejected.
+- **Tried 2, a forced background collect** (`GC.Collect(2, GCCollectionMode.Forced, blocking: false)`): 0.9–1.6 ms
+  on the main thread at any heap size, and it met the bench threshold (table below). **But it crashes co-op
+  guests:** CoopRealityTest's guest died on leaving the reality with `FATAL: Condition "gchandle.is_released()"
+  is true` (`mono_object_disposed_baseref`) and `Caller thread can't call this function in this node (/root)`,
+  then signal 4. **3 of 10 runs with the collect, 0 of 12 without**, same build otherwise. The project has no
+  finalizers of its own: it is GodotSharp 4.1's finalizer thread disposing `RefCounted` wrappers while the main
+  thread frees the old scene, and forcing a full collect right after a scene change makes the two overlap.
+  Rejected; the collect is not in the game.
+- **Not tried:** `GCSettings.LatencyMode = SustainedLowLatency` (the bench windows have no gen2 left after I1–I3,
+  and the bot's in-play gen2s are background ones, which that mode doesn't shorten).
+- **Kept (tools, no gameplay change):** PerfBench `--viascreen` enters the reality through `LoadingScreen.Go`;
+  the AutoplayBot enters realities the same way (the real path, 1 s wait instead of 0.5 s) and logs a
+  `[BOT] spike` line for every frame over 100 ms with the last GC (generation, pauses, heap); debug builds log
+  `[LOADING] <scene> ready after N ms`.
+
+Measured with the background collect, PerfBench reality `--viascreen`, interleaved, 3 runs each side:
+
+| | Monsters | Steady avg | Awake avg / p99 / **max** | Gen2 in the awake window | Collect on the main thread |
+|---|---|---|---|---|---|
+| I3 | 240 [209–246] | 8.14 ms | 15.77 / 26.3 / **36.0 [33.8–145.2]** | 1 of 3 runs (145 ms frame, 139 ms of it the GC) | — |
+| background collect | 240 [231–275] | 7.85 ms | 16.13 / 28.6 / **36.4 [33.8–59.6]** | 0 of 3 | 1–2 ms |
+
+AutoplayBot reality T10, warrior, 3 realities per side (frameMs max per reality; noisy, one session each):
+
+| | Reality 1 | Reality 2 | Reality 3 | Frames > 100 ms | Worst GC pause in play |
+|---|---|---|---|---|---|
+| I3 | 218 ms | 722 ms (gen2, 272 ms pause) | 3556 ms (gen0, 3553 ms pause) | 8 | 3553 ms |
+| background collect | 249 ms | 482 ms | 36 ms | 4 | 353 ms (gen2) |
+
+Threshold (no gen2 in the awake window in ≥ 2 of 3 runs; max ≤ 150 ms; collect ≤ 100 ms): met by the
+background collect, but the guest crash is a regression, so **reverted**. The I3 side already had no gen2 in 2
+of 3 bench windows: I1–I3 cut the allocation rate.
+
+**Finding for later increments.** In play the heap grows by ~300 MB per 8-minute reality (90 → 430–580 MB in the
+bot), and gen2s still come during play (103–353 ms pauses, and one 3.5 s gen0 on this container). That is only
+~10 KB/frame (300 MB / 28 800 frames), the rate the bench windows show, but it isn't collected young: it reaches
+gen2, which points at finalizable wrappers (a `StringName` or `GodotObject` proxy per call) rather than at
+volume. Finding and removing those per-frame wrappers is the lever for in-play GC spikes. It also makes the
+finalizer race above rarer.
+
+### I5: a monster ticks its own Health, Ailments and ActorStats (C6)
+
+- **Cause.** Each monster had four physics callbacks: its own and one per component (`ActorStats`, `Health`,
+  `Ailments`). An engine → C# callback costs a few µs on its own, before any work (×3 × 374 monsters).
+- **Fix.** The three components move their `_PhysicsProcess` body into `public void Tick(double delta)` (and
+  `_PhysicsProcess` calls it, so players, dummies and everything else are unchanged). A non-replica `Enemy` turns
+  their physics processing off in `_Ready` and calls `Stats.Tick`, `Health.Tick`, `Ailments?.Tick` at the top of
+  its own step, in the scenes' child order, **before** the dead check and the Dormant/Frozen early returns, so
+  every branch ticks. Only `Enemy` overrides `_PhysicsProcess` among the monster classes. Co-op replicas keep
+  their components' own callbacks.
+- **Order change:** the components used to tick *after* the monster's AI in the same physics frame; now they tick
+  before it (timers one frame earlier at most). Nothing visible.
+- **Check:** `StatsSmokeTest` `ENEMY-TICKS-DRIVEN-BY-OWNER`: the components' callbacks are off (on for a
+  replica); a chill expires after 121 frames (120 expected, ±1) and the speed recovers; an ignite of 300 over
+  3 s deals 100 by 1.25 s and 300 in all; a `regenerating` rare heals.
+
+PerfBench, interleaved, 3 runs each side (I4 → I5). The monster count varies between runs, so the
+comparison is per monster (physics scripts / step ÷ monsters):
+
+| | Monsters | Frame avg (ms) | Scripts / step | **Scripts per monster** | p99 |
+|---|---|---|---|---|---|
+| Rift, I4 | 374 / 374 / 356 | 32.04 / 33.40 / 32.00 | 22.08 / 22.65 / 21.20 | **59.0 / 60.6 / 59.6 µs** | 57.0 |
+| Rift, I5 | 319 / 374 / 338 | 22.62 / 29.06 / 27.09 | 14.18 / 18.75 / 17.36 | **44.5 / 50.1 / 51.4 µs** | 45.2 |
+| Reality steady, I4 | 250 / 206 / 241 | 8.21 / 7.44 / 8.59 | 5.25 / 4.62 / 5.52 | 21.0 / 22.4 / 22.9 µs | 13.3 |
+| Reality steady, I5 | 186 / 304 / 183 | 5.00 / 7.16 / 4.63 | 2.45 / 3.77 / 2.23 | 13.2 / 12.4 / 12.2 µs | 9.3 |
+| Reality awake, I4 | 250 / 206 / 241 | 17.69 / 15.12 / 17.22 | 11.07 / 9.28 / 10.77 | 44.3 / 45.0 / 44.7 µs | 29.0 |
+| Reality awake, I5 | 186 / 304 / 183 | 10.07 / 17.20 / 10.25 | 5.22 / 9.86 / 5.62 | 28.1 / 32.4 / 30.7 µs | 17.8 |
+
+At 374 monsters in the Rift: scripts 22.1–22.7 → 18.75 ms/step, frame 32.0–33.4 → 29.1 ms. The three ticks
+together cost 1.8–2.3 µs per monster inside `Enemy._PhysicsProcess`.
+
+Threshold (physics scripts −1.4 ms/step at the same count, i.e. ≥ 3.5 µs per monster, on the old machine;
+reality not worse): **met** (−3.3 to −3.9 ms at 374 monsters, ~9 µs per monster on this 2.2× slower machine;
+reality −40 % per monster, steady and awake).
+
+### I6: `player_pos` as a global shader uniform (C11)
+
+- **Cause.** `VoxelStage._Process` wrote the player's feet into every wall and rock `ShaderMaterial`
+  (`SetShaderParameter("player_pos", …)`: a string → `StringName` and a Variant per material per frame). Cheap
+  with one map-wide wall mesh, but it grows with the material count, and terrain chunking (I7, I8) must not
+  multiply it.
+- **Fix.** `[shader_globals] player_pos` (vec3, default `(0, -100, 0)`) in `project.godot`; `voxel_wall` and
+  `voxel_rock` declare `global uniform vec3 player_pos;`. `VoxelStage` sets it once per frame with
+  `RenderingServer.GlobalShaderParameterSet` and a cached `StringName`, resets it on `_Ready` and `_ExitTree`,
+  and adds it at run time (with a warning) if a build ever lacks the setting. That guard checks
+  `ProjectSettings.HasSetting("shader_globals/player_pos")`: the server's `GlobalShaderParameterGetList` is
+  editor-only on the RD renderers (it errors and returns nothing at run time, so a list-based check would
+  warn and fail to re-add on every stage). `_wallMaterials` stays for
+  `RebuildTerrain`, but nothing walks it per frame.
+- **Exports:** a `--export-pack "Windows Desktop"` pack's `project.binary` contains `shader_globals/player_pos`
+  (no export templates in this container for a full export).
+
+| | `VoxelStage` per frame | Draws / objects / primitives |
+|---|---|---|
+| Forcevoxel Rift, I5 (2 runs) | 79.6 / 97.7 µs | — |
+| Forcevoxel Rift, I6 (2 runs) | **45.9 / 43.5 µs** | — |
+| Cavern windowed, I5 (1 run, 268 monsters; steady / awake) | 87.8 / 81.4 µs | 228 / 962 / 5.55 M (steady) |
+| Cavern windowed, I6 (1 run, 292 monsters) | 75.3 / 80.9 µs | 218 / 1020 / 5.56 M (steady) |
+
+What's left in `VoxelStage._Process` (~45 µs in the Rift, ~75 µs in a cavern on this machine) is the camera
+sync, the player light and the flicker lights (one `LightEnergy` write per glowing cluster per frame); I6
+doesn't touch them, and they weren't profiled separately.
+
+**Visual:** the five reality shots (`reality-behind-wall` shows the see-through dither) are **identical** to the
+base set and to the I5 run (AE 0 at fuzz 2 %), and so are the 14 RunCapture `--only=town` shots (hideout quarters,
+plaza, overview, edit mode) against the base set.
+
+Threshold (`VoxelStage` ≤ 30 µs from 30–70 on the old machine, no longer growing with the material count;
+counts unchanged; shots identical): the per-material cost is gone (−44 µs, −50 %, in the forcevoxel Rift) and
+counts and shots are unchanged, but the absolute ≤ 30 µs is **missed** on this machine (the rest of
+`_Process` stays). Committed as a clear win that I7 depends on.
+

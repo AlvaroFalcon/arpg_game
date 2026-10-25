@@ -139,6 +139,13 @@ public partial class RunDirector : Node
 
     public override void _PhysicsProcess(double delta)
     {
+        long t0 = Tools.Perf.BeginAlloc(out long b0);
+        Step(delta);
+        Tools.Perf.EndAlloc(Tools.Perf.K.Director, t0, b0);
+    }
+
+    private void Step(double delta)
+    {
         if (!Spawning || State.Ended || State.Players.Count == 0)
         {
             return;
