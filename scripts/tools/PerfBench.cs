@@ -173,6 +173,7 @@ public partial class PerfBench : Node
             }
         }
 
+        Log(string.Create(Ci, $"PERF terrain build {View3D.VoxelStage.TerrainBuildMs:0.0} ms (all BuildTerrain calls so far)"));
         Perf.Enabled = true;
         for (int i = 0; i < fill; i++)
         {
