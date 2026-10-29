@@ -1,0 +1,944 @@
+{
+ "last_node_id": 20,
+ "last_link_id": 21,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "UNETLoader",
+   "pos": [
+    40,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      1
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "UNETLoader"
+   },
+   "widgets_values": [
+    "flux-2-klein-4b-fp8.safetensors",
+    "default"
+   ]
+  },
+  {
+   "id": 2,
+   "type": "CLIPLoader",
+   "pos": [
+    40,
+    200
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      2
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CLIPLoader"
+   },
+   "widgets_values": [
+    "qwen_3_4b.safetensors",
+    "flux2",
+    "default"
+   ]
+  },
+  {
+   "id": 3,
+   "type": "VAELoader",
+   "pos": [
+    40,
+    360
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      6,
+      20
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "flux2-vae.safetensors"
+   ]
+  },
+  {
+   "id": 7,
+   "type": "LoadImage",
+   "pos": [
+    40,
+    520
+   ],
+   "size": [
+    320,
+    240
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      4
+     ],
+     "slot_index": 0
+    },
+    {
+     "name": "MASK",
+     "type": "MASK",
+     "links": [],
+     "slot_index": 1
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoadImage"
+   },
+   "widgets_values": [
+    "ref_fireball.png",
+    "image"
+   ],
+   "title": "Imagen 1 (referencia)"
+  },
+  {
+   "id": 12,
+   "type": "EmptyFlux2LatentImage",
+   "pos": [
+    40,
+    810
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      18
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "EmptyFlux2LatentImage"
+   },
+   "widgets_values": [
+    1280,
+    256,
+    1
+   ]
+  },
+  {
+   "id": 13,
+   "type": "Flux2Scheduler",
+   "pos": [
+    40,
+    970
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 5,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "SIGMAS",
+     "type": "SIGMAS",
+     "links": [
+      17
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "Flux2Scheduler"
+   },
+   "widgets_values": [
+    4,
+    1280,
+    256
+   ]
+  },
+  {
+   "id": 14,
+   "type": "KSamplerSelect",
+   "pos": [
+    40,
+    1130
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "SAMPLER",
+     "type": "SAMPLER",
+     "links": [
+      16
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "KSamplerSelect"
+   },
+   "widgets_values": [
+    "euler"
+   ]
+  },
+  {
+   "id": 15,
+   "type": "RandomNoise",
+   "pos": [
+    40,
+    1290
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 7,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "NOISE",
+     "type": "NOISE",
+     "links": [
+      14
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "RandomNoise"
+   },
+   "widgets_values": [
+    75338372729980,
+    "fixed"
+   ]
+  },
+  {
+   "id": 4,
+   "type": "LoraLoaderModelOnly",
+   "pos": [
+    400,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 8,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "type": "MODEL",
+     "link": 1
+    }
+   ],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      11
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "LoraLoaderModelOnly"
+   },
+   "widgets_values": [
+    "pytorch_lora_weights.comfyui.safetensors",
+    1.0
+   ]
+  },
+  {
+   "id": 5,
+   "type": "CLIPTextEncode",
+   "pos": [
+    400,
+    200
+   ],
+   "size": [
+    320,
+    240
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "type": "CLIP",
+     "link": 2
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      3,
+      7
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    "Image 1 shows a tiny pixel art fireball projectile of a game in two animation frames, flying to the right, seen from above. Create a horizontal sprite strip with 4 animation frames side by side in 4 equal columns of the same fireball, in exactly the same pixel art style, palette, colours, chunky pixel size and shape: a round bright yellow-orange core at the right with a flickering red-orange flame tail trailing to the left, the flames shift a little in each frame for a looping flicker. Plain flat pure white background, no shadow, no text, no border. 16-bit pixel art, game asset."
+   ],
+   "title": "Prompt"
+  },
+  {
+   "id": 8,
+   "type": "ImageScaleToTotalPixels",
+   "pos": [
+    400,
+    490
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 10,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "image",
+     "type": "IMAGE",
+     "link": 4
+    }
+   ],
+   "outputs": [
+    {
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      5
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ImageScaleToTotalPixels"
+   },
+   "widgets_values": [
+    "nearest-exact",
+    1.0,
+    1
+   ]
+  },
+  {
+   "id": 6,
+   "type": "ConditioningZeroOut",
+   "pos": [
+    760,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "conditioning",
+     "type": "CONDITIONING",
+     "link": 3
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      9
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ConditioningZeroOut"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 9,
+   "type": "VAEEncode",
+   "pos": [
+    760,
+    200
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 12,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "pixels",
+     "type": "IMAGE",
+     "link": 5
+    },
+    {
+     "name": "vae",
+     "type": "VAE",
+     "link": 6
+    }
+   ],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      8,
+      10
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAEEncode"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 10,
+   "type": "ReferenceLatent",
+   "pos": [
+    1120,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 13,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "conditioning",
+     "type": "CONDITIONING",
+     "link": 7
+    },
+    {
+     "name": "latent",
+     "type": "LATENT",
+     "link": 8
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      12
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ReferenceLatent"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 11,
+   "type": "ReferenceLatent",
+   "pos": [
+    1120,
+    200
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 14,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "conditioning",
+     "type": "CONDITIONING",
+     "link": 9
+    },
+    {
+     "name": "latent",
+     "type": "LATENT",
+     "link": 10
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      13
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ReferenceLatent"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 16,
+   "type": "CFGGuider",
+   "pos": [
+    1480,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 15,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "type": "MODEL",
+     "link": 11
+    },
+    {
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 12
+    },
+    {
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 13
+    }
+   ],
+   "outputs": [
+    {
+     "name": "GUIDER",
+     "type": "GUIDER",
+     "links": [
+      15
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CFGGuider"
+   },
+   "widgets_values": [
+    1.0
+   ]
+  },
+  {
+   "id": 17,
+   "type": "SamplerCustomAdvanced",
+   "pos": [
+    1840,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 16,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "noise",
+     "type": "NOISE",
+     "link": 14
+    },
+    {
+     "name": "guider",
+     "type": "GUIDER",
+     "link": 15
+    },
+    {
+     "name": "sampler",
+     "type": "SAMPLER",
+     "link": 16
+    },
+    {
+     "name": "sigmas",
+     "type": "SIGMAS",
+     "link": 17
+    },
+    {
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 18
+    }
+   ],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      19
+     ],
+     "slot_index": 0
+    },
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [],
+     "slot_index": 1
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SamplerCustomAdvanced"
+   },
+   "widgets_values": [],
+   "title": "Muestreo"
+  },
+  {
+   "id": 18,
+   "type": "VAEDecode",
+   "pos": [
+    2200,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 17,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "samples",
+     "type": "LATENT",
+     "link": 19
+    },
+    {
+     "name": "vae",
+     "type": "VAE",
+     "link": 20
+    }
+   ],
+   "outputs": [
+    {
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      21
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAEDecode"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 19,
+   "type": "SaveImage",
+   "pos": [
+    2560,
+    40
+   ],
+   "size": [
+    320,
+    240
+   ],
+   "flags": {},
+   "order": 18,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "images",
+     "type": "IMAGE",
+     "link": 21
+    }
+   ],
+   "outputs": [],
+   "properties": {
+    "Node name for S&R": "SaveImage"
+   },
+   "widgets_values": [
+    "spritegen/fireball"
+   ],
+   "title": "Guardar"
+  },
+  {
+   "id": 20,
+   "type": "MarkdownNote",
+   "pos": [
+    40,
+    -380
+   ],
+   "size": [
+    700,
+    340
+   ],
+   "flags": {},
+   "order": 19,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "properties": {},
+   "widgets_values": [
+    "**Proyectil `fireball`** (FLUX.2 Klein 4B + LoRA pixel art de Limbicnation). Imagen 1: el arte del juego como referencia de estilo (`ref_fireball.png`, de `assets/sprites/projectiles/fireball.png`). Con la semilla guardada (75338372729980) sale el resultado aprobado. Para otro asset: cambia la referencia y el prompt y pon la semilla en *randomize*. Reducir a píxeles del juego y fijar la paleta: `spritegen.py projectile fireball`."
+   ],
+   "title": "Cómo usar"
+  }
+ ],
+ "links": [
+  [
+   1,
+   1,
+   0,
+   4,
+   0,
+   "MODEL"
+  ],
+  [
+   2,
+   2,
+   0,
+   5,
+   0,
+   "CLIP"
+  ],
+  [
+   3,
+   5,
+   0,
+   6,
+   0,
+   "CONDITIONING"
+  ],
+  [
+   4,
+   7,
+   0,
+   8,
+   0,
+   "IMAGE"
+  ],
+  [
+   5,
+   8,
+   0,
+   9,
+   0,
+   "IMAGE"
+  ],
+  [
+   6,
+   3,
+   0,
+   9,
+   1,
+   "VAE"
+  ],
+  [
+   7,
+   5,
+   0,
+   10,
+   0,
+   "CONDITIONING"
+  ],
+  [
+   8,
+   9,
+   0,
+   10,
+   1,
+   "LATENT"
+  ],
+  [
+   9,
+   6,
+   0,
+   11,
+   0,
+   "CONDITIONING"
+  ],
+  [
+   10,
+   9,
+   0,
+   11,
+   1,
+   "LATENT"
+  ],
+  [
+   11,
+   4,
+   0,
+   16,
+   0,
+   "MODEL"
+  ],
+  [
+   12,
+   10,
+   0,
+   16,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   13,
+   11,
+   0,
+   16,
+   2,
+   "CONDITIONING"
+  ],
+  [
+   14,
+   15,
+   0,
+   17,
+   0,
+   "NOISE"
+  ],
+  [
+   15,
+   16,
+   0,
+   17,
+   1,
+   "GUIDER"
+  ],
+  [
+   16,
+   14,
+   0,
+   17,
+   2,
+   "SAMPLER"
+  ],
+  [
+   17,
+   13,
+   0,
+   17,
+   3,
+   "SIGMAS"
+  ],
+  [
+   18,
+   12,
+   0,
+   17,
+   4,
+   "LATENT"
+  ],
+  [
+   19,
+   17,
+   0,
+   18,
+   0,
+   "LATENT"
+  ],
+  [
+   20,
+   3,
+   0,
+   18,
+   1,
+   "VAE"
+  ],
+  [
+   21,
+   18,
+   0,
+   19,
+   0,
+   "IMAGE"
+  ]
+ ],
+ "groups": [],
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.7,
+   "offset": [
+    80,
+    420
+   ]
+  }
+ },
+ "version": 0.4
+}

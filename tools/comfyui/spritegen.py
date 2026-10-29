@@ -38,6 +38,8 @@ ROOT = Path(__file__).resolve().parent
 CHARS = ROOT / "characters"
 OUT = ROOT / "out"
 WORKFLOWS = ROOT / "workflows"
+REPO = ROOT.parent.parent
+ENV_APPROVED = ROOT / "env" / "approved"
 
 VIEW_ORDER = ("front", "back", "side")
 
@@ -445,6 +447,138 @@ def cmd_sheet(cfg, args):
     }])
 
 
+# ---------------------------------------------------------------- environment and effects
+# Recipes in env.json: a reference from the game's own art (so the style matches), a
+# prompt, the size the model draws at, and how far down it scales to game pixels.
+
+def load_env() -> dict:
+    return json.loads((ROOT / "env.json").read_text())
+
+
+def env_cfg(cfg: dict, env: dict) -> dict:
+    out = json.loads(json.dumps(cfg))
+    out["loras"] = [env["lora"]] if env.get("lora") else []
+    return out
+
+
+def env_reference(recipe: dict) -> Image.Image:
+    """The game art the asset copies the style of, on white, scaled up by nearest."""
+    img = Image.open(REPO / recipe["ref"]).convert("RGBA")
+    if recipe.get("ref_box"):
+        img = img.crop(tuple(recipe["ref_box"]))
+    bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
+    bg.alpha_composite(img)
+    k = recipe["ref_scale"]
+    return bg.convert("RGB").resize((img.width * k, img.height * k), Image.NEAREST)
+
+
+def env_palette(recipe: dict) -> Image.Image:
+    img = Image.open(REPO / recipe["ref"]).convert("RGBA")
+    if recipe.get("palette_box"):
+        img = img.crop(tuple(recipe["palette_box"]))
+    return palette_from(img, recipe.get("palette_colors", 8))
+
+
+def tiled(img: Image.Image, n: int = 3) -> Image.Image:
+    out = Image.new("RGBA", (img.width * n, img.height * n))
+    for y in range(n):
+        for x in range(n):
+            out.paste(img, (x * img.width, y * img.height))
+    return out
+
+
+def tile_outputs(raw: Path, recipe: dict) -> Path:
+    """Generated texture -> game-pixel tile block (palette of the reference) next to
+    it, plus a 3x3 repeat preview to judge seams. Returns the preview."""
+    block = snap(dominant_downscale(Image.open(raw).convert("RGBA"), recipe["downscale"]), env_palette(recipe))
+    base = raw.with_name(raw.name.replace("_raw", ""))
+    block.save(base)
+    rep = tiled(block)
+    preview = base.with_name(base.stem + "_3x3.png")
+    rep.resize((rep.width * 4, rep.height * 4), Image.NEAREST).save(preview)
+    return preview
+
+
+def projectile_outputs(raw: Path, recipe: dict) -> Path:
+    """Generated strip -> frames of recipe["frame"] size (union bounding box of the
+    flame, aspect kept, aligned to the leading edge), palette of the reference; a
+    strip PNG, a GIF and a x10 preview. Returns the preview."""
+    fw, fh = recipe["frame"]
+    n = recipe["frames"]
+    pal = env_palette(recipe)
+    im = remove_background(Image.open(raw).convert("RGB"))
+    cw = im.width // n
+    cells = [im.crop((k * cw, 0, (k + 1) * cw, im.height)) for k in range(n)]
+    boxes = [c.getchannel("A").getbbox() or (0, 0, cw, im.height) for c in cells]
+    u = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+    uw, uh = u[2] - u[0], u[3] - u[1]
+    sc = min(fw / uw, fh / uh)
+    tw, th = max(1, round(uw * sc)), max(1, round(uh * sc))
+    frames = []
+    for c in cells:
+        small = despeckle(snap(dominant_downscale(c.crop(u).resize((tw * 16, th * 16), Image.NEAREST), 16), pal))
+        f = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
+        f.alpha_composite(small, (fw - tw, (fh - th) // 2))
+        frames.append(f)
+    strip = Image.new("RGBA", (fw * n, fh), (0, 0, 0, 0))
+    for k, f in enumerate(frames):
+        strip.alpha_composite(f, (k * fw, 0))
+    base = raw.with_name(raw.name.replace("_raw", ""))
+    strip.save(base)
+    save_gif(frames, base.with_suffix(".gif"), 100)
+    prev = Image.new("RGBA", strip.size, (64, 64, 76, 255))
+    prev.alpha_composite(strip)
+    preview = base.with_name(base.stem + "_x10.png")
+    prev.convert("RGB").resize((strip.width * 10, strip.height * 10), Image.NEAREST).save(preview)
+    return preview
+
+
+def env_job(cfg: dict, kind: str, name: str) -> dict:
+    env = load_env()
+    group = "tiles" if kind == "tile" else "projectiles"
+    if name not in env[group]:
+        sys.exit(f"No {kind} recipe '{name}' in env.json ({', '.join(env[group])})")
+    recipe = env[group][name]
+    ecfg = env_cfg(cfg, env)
+    prompt = recipe["prompt"] + env.get("style_suffix", "")
+    w, h = recipe["size"]
+    after = tile_outputs if kind == "tile" else projectile_outputs
+    return {"key": name, "prompt": prompt, "refs": [env_reference(recipe)], "out": OUT / "env" / name,
+            "build": lambda refs, seed, prefix: build_graph(ecfg, prompt, refs, w, h, seed, prefix),
+            "after": lambda path: after(path.rename(path.with_name(path.stem + "_raw.png")), recipe)}
+
+
+def cmd_tile(cfg, args):
+    """Floor/wall textures in the game's style: `env.json` recipe, the tileset as the
+    style reference, the pixel-art LoRA, downscaled to game pixels."""
+    if args.approved:
+        args.seed, args.n = load_env()["tiles"][args.name]["approved_seed"], 1
+    generate(cfg, args, [env_job(cfg, "tile", args.name)])
+
+
+def cmd_projectile(cfg, args):
+    """Animated projectile seen from above, flying right, in the game's style."""
+    if args.approved:
+        args.seed, args.n = load_env()["projectiles"][args.name]["approved_seed"], 1
+    generate(cfg, args, [env_job(cfg, "projectile", args.name)])
+
+
+def cmd_approve_env(cfg, args):
+    matches = sorted(p for p in (OUT / "env" / args.name).glob(f"{args.name}_{args.number}_s*.png")
+                     if not p.stem.endswith(("_raw", "_3x3", "_x10")))
+    if not matches:
+        sys.exit(f"No candidate #{args.number} for {args.name} in out/env/{args.name}/")
+    ENV_APPROVED.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(matches[0], ENV_APPROVED / f"{args.name}.png")
+    seed = int(matches[0].stem.rsplit("_s", 1)[1])
+    env = load_env()
+    for group in ("tiles", "projectiles"):
+        if args.name in env[group]:
+            env[group][args.name]["approved_seed"] = seed
+    (ROOT / "env.json").write_text(json.dumps(env, indent=2, ensure_ascii=False) + "\n")
+    print(f"Approved {matches[0].name} -> {(ENV_APPROVED / (args.name + '.png')).relative_to(ROOT)} (seed {seed} saved)")
+
+
 def cmd_guides(cfg, args):
     char = load_char(args.char)
     out = OUT / char["name"] / "guides"
@@ -693,6 +827,58 @@ def cmd_pack(cfg, args):
     print(f"{len(frames)} frames of {fr['width']}x{fr['height']} -> {out}/{name}.png, .tres, .tscn, previews")
 
 
+# Rows of the 6x4 sheet -> the game's directional names (left is the right row
+# mirrored by the game, so it is not packed).
+SHEET_PACK_ROWS = (("down", ""), ("right", "_side"), ("up", "_up"))
+SHEET_ROW_INDEX = {"down": 0, "left": 1, "right": 2, "up": 3}
+
+
+def cmd_pack_sheet(cfg, args):
+    """approved/sheet.png (6x4: walk x3, attack x2, hurt per direction) -> a Godot
+    SpriteFrames set with the game's animation names: idle (frame 1 plus a 1 px bob),
+    walk (1-2-3-2), attack (2 frames), hurt, each with _up and _side variants."""
+    char = load_char(args.char)
+    src = approved(char, "sheet")
+    if not src:
+        sys.exit("No approved sheet: spritegen.py approve <char> sheet <n> (or put the cleaned export there)")
+    q = cfg["qwen_sheet"]
+    sheet = Image.open(src).convert("RGBA")
+    fw, fh = sheet.width // q["columns"], sheet.height // q["rows"]
+    cell = lambda r, c: sheet.crop((c * fw, r * fh, (c + 1) * fw, (r + 1) * fh))
+    speeds = {a: char["animations"][a]["speed"] for a in ("idle", "walk", "attack") if a in char["animations"]}
+    frames, anims = [], []
+
+    def add(name, imgs, speed, loop):
+        anims.append((name, {"speed": speed, "loop": loop}, list(range(len(frames), len(frames) + len(imgs)))))
+        frames.extend(imgs)
+
+    for row, suffix in SHEET_PACK_ROWS:
+        r = SHEET_ROW_INDEX[row]
+        stand = cell(r, 0)
+        bob = Image.new("RGBA", stand.size, (0, 0, 0, 0))
+        bob.alpha_composite(stand.crop((0, 0, fw, fh - 1)), (0, 1))
+        add("idle" + suffix, [stand, bob], speeds.get("idle", 2.381), True)
+        add("walk" + suffix, [cell(r, 0), cell(r, 1), cell(r, 2), cell(r, 1)], speeds.get("walk", 8.333), True)
+        add("attack" + suffix, [cell(r, 3), cell(r, 4)], 7.143, False)
+        add("hurt" + suffix, [cell(r, 5)], 5.0, False)
+    out = Path(args.out) if args.out else OUT / char["name"] / "sheet_pack"
+    out.mkdir(parents=True, exist_ok=True)
+    name = char.get("sprite", char["name"])
+    packed = Image.new("RGBA", (fw * len(frames), fh), (0, 0, 0, 0))
+    for i, f in enumerate(frames):
+        packed.paste(f, (i * fw, 0))
+    packed.save(out / f"{name}.png")
+    res = args.res_dir.rstrip("/")
+    write_sprite_frames(out / f"{name}.tres", f"{res}/{name}.png", {"width": fw, "height": fh}, len(frames), anims)
+    (out / f"{name}.tscn").write_text(
+        f'[gd_scene load_steps=2 format=3]\n\n[ext_resource type="SpriteFrames" path="{res}/{name}.tres" id="1_frames"]\n\n'
+        f'[node name="{name.capitalize()}" type="AnimatedSprite2D"]\ntexture_filter = 1\n'
+        f'sprite_frames = ExtResource("1_frames")\nanimation = &"idle"\nautoplay = "idle"\n')
+    for anim_name, spec, idx in anims:
+        save_gif([frames[i] for i in idx], out / f"{name}_{anim_name}.gif", round(1000 / spec["speed"]))
+    print(f"{len(frames)} frames of {fw}x{fh}, {len(anims)} animations -> {out}/{name}.png, .tres, .tscn, GIFs")
+
+
 def write_sprite_frames(path: Path, texture: str, fr: dict, count: int, anims: list) -> None:
     """Same layout as the EasyPixel exporter: one AtlasTexture per frame."""
     lines = [f'[gd_resource type="SpriteFrames" load_steps={count + 2} format=3]', "",
@@ -833,6 +1019,18 @@ def cmd_export_workflows(cfg, args):
     titles = {"ref0_load": "Imagen 1 (referencia)", "ref1_load": "Imagen 2 (guía de poses)", "ref": "Referencia 768x768",
               "pos": "Prompt", "pos_raw": "Prompt", "neg_raw": "Prompt negativo (vacío)", "lora": "LoRA",
               "sample": "Muestreo", "save": "Guardar"}
+    env = load_env()
+    ecfg = env_cfg(cfg, env)
+    for group, num, label in (("tiles", 5, "Tile"), ("projectiles", 6, "Proyectil")):
+        for name, r in env[group].items():
+            key = f"{num}_{group[:-1]}_{name}"
+            graphs[key] = build_graph(ecfg, r["prompt"] + env.get("style_suffix", ""), [f"ref_{name}.png"],
+                                      *r["size"], r.get("approved_seed", 1), f"spritegen/{name}")
+            notes[key] = (f"**{label} `{name}`** (FLUX.2 Klein 4B + LoRA pixel art de Limbicnation). Imagen 1: el arte "
+                          f"del juego como referencia de estilo (`ref_{name}.png`, de `{r['ref']}`). Con la semilla "
+                          f"guardada ({r.get('approved_seed')}) sale el resultado aprobado. Para otro asset: cambia la "
+                          "referencia y el prompt y pon la semilla en *randomize*. Reducir a píxeles del juego y fijar "
+                          f"la paleta: `spritegen.py {group[:-1]} {name}`.")
     for name, g in graphs.items():
         (WORKFLOWS / f"{name}.api.json").write_text(json.dumps(g, indent=2) + "\n")
         ui = api_to_ui(g, titles, notes.get(name, ""))
@@ -867,6 +1065,18 @@ def main(argv=None):
     gen("sheet", cmd_sheet, "whole 32x48 sheet (Qwen Edit 2511 + combat LoRA) from the concept").add_argument(
         "--extra", help="text appended to the sheet prompt (e.g. ask for the staff)")
 
+    for name, fn, help_ in (("tile", cmd_tile, "floor/wall texture from an env.json recipe"),
+                            ("projectile", cmd_projectile, "animated projectile from an env.json recipe")):
+        s = sub.add_parser(name, help=help_)
+        s.add_argument("name")
+        s.add_argument("-n", type=int, default=4, help="candidates (default 4)")
+        s.add_argument("--seed", type=int, help="first seed (default random)")
+        s.add_argument("--approved", action="store_true", help="regenerate the approved result (its saved seed)")
+        s.set_defaults(fn=fn)
+    s = sub.add_parser("approve-env", help="approve candidate <number> of a tile/projectile")
+    s.add_argument("name"); s.add_argument("number", type=int)
+    s.set_defaults(fn=cmd_approve_env)
+
     s = sub.add_parser("approve", help="approve candidate <number> of <key>")
     s.add_argument("char"); s.add_argument("key"); s.add_argument("number", type=int)
     s.set_defaults(fn=cmd_approve)
@@ -881,6 +1091,11 @@ def main(argv=None):
     s.add_argument("--partial", action="store_true", help="pack even if some strips are not approved")
     s.add_argument("--no-palette", action="store_true", help="keep the generated colours (no palette lock)")
     s.set_defaults(fn=cmd_pack)
+    s = sub.add_parser("pack-sheet", help="Godot SpriteFrames from the approved 6x4 sheet")
+    s.add_argument("char")
+    s.add_argument("--out", help="output folder (default out/<char>/sheet_pack)")
+    s.add_argument("--res-dir", default="res://assets/sprites/player", help="res:// folder the .tres/.tscn point at")
+    s.set_defaults(fn=cmd_pack_sheet)
     s = sub.add_parser("export-workflows", help="write API-format workflow JSONs for the ComfyUI canvas")
     s.add_argument("char"); s.set_defaults(fn=cmd_export_workflows)
 
