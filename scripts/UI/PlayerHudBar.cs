@@ -109,10 +109,32 @@ public partial class PlayerHudBar : Control
         OffsetBottom = 0f;
     }
 
+    /// <summary>The life and mana values show (hovering the mirror, or the character panel open).</summary>
+    public bool NumbersShowing { get; private set; }
+
+    /// <summary>The mouse is over the visible half of the mirror (the control itself ignores the mouse).</summary>
+    private bool MirrorHovered()
+    {
+        Vector2 m = GetLocalMousePosition();
+        if (m.Y > BaseY)
+        {
+            return false;
+        }
+
+        Vector2 d = m - Mirror;
+        float rx = MirrorRx + RimW + 3f;
+        float ry = MirrorRy + RimW + 3f;
+        return d.X * d.X / (rx * rx) + d.Y * d.Y / (ry * ry) <= 1f;
+    }
+
+    private bool CharacterPanelOpen() =>
+        GetTree().CurrentScene?.GetNodeOrNull<CharacterPanels>("CharacterPanels") is { Sheet.IsOpen: true };
+
     public override void _Process(double delta)
     {
         float dt = (float)delta;
         _time += dt;
+        NumbersShowing = IsVisibleInTree() && (MirrorHovered() || CharacterPanelOpen());
         float life = Fraction(Player.Stats.Life);
         float mana = Fraction(Player.Stats.Mana);
         // The trail snaps up on heals and drains down a moment after damage.
@@ -185,19 +207,20 @@ public partial class PlayerHudBar : Control
         DrawOvalArc(ArcFrom, ArcTo, -1f, 1.5f, Rim with { A = 0.85f });
         DrawOvalArc(ArcFrom, ArcTo, RimW + 3f, 2f, Rim);
 
-        // --- numbers inside each half ---
-        if (Player.Stats.Life is { } life)
+        // --- numbers: the current value only, and only while the mirror is hovered or the
+        // character panel is open (owner, 2026-10-29) ---
+        if (NumbersShowing && Player.Stats.Life is { } life)
         {
-            int maxLife = Mathf.RoundToInt(life.Max);
-            Text(font, $"{Mathf.Min(Mathf.CeilToInt(life.Current), maxLife):N0}", new Vector2(Mirror.X - MirrorRx * 0.45f, BaseY - 26f), 17, Colors.White, HorizontalAlignment.Center);
-            Text(font, $"/{maxLife:N0}", new Vector2(Mirror.X - MirrorRx * 0.45f, BaseY - 11f), 11, new Color(1f, 0.8f, 0.78f), HorizontalAlignment.Center);
+            int current = Mathf.Min(Mathf.CeilToInt(life.Current), Mathf.RoundToInt(life.Max));
+            Text(font, $"{current:N0}", new Vector2(Mirror.X - MirrorRx * 0.45f, BaseY - 18f), 17, Colors.White, HorizontalAlignment.Center);
         }
 
         if (ShowMana)
         {
-            Stats.ResourcePool mana = Player.Stats.Mana!;
-            Text(font, $"{Mathf.FloorToInt(mana.Current):N0}", new Vector2(Mirror.X + MirrorRx * 0.45f, BaseY - 26f), 17, Colors.White, HorizontalAlignment.Center);
-            Text(font, $"/{Mathf.RoundToInt(mana.Max):N0}", new Vector2(Mirror.X + MirrorRx * 0.45f, BaseY - 11f), 11, new Color(0.8f, 0.9f, 1f), HorizontalAlignment.Center);
+            if (NumbersShowing)
+            {
+                Text(font, $"{Mathf.FloorToInt(Player.Stats.Mana!.Current):N0}", new Vector2(Mirror.X + MirrorRx * 0.45f, BaseY - 18f), 17, Colors.White, HorizontalAlignment.Center);
+            }
         }
         else if (gauge is { } gg)
         {

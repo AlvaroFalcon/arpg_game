@@ -18,7 +18,10 @@ namespace ArpgGame.UI;
 public partial class QuestTracker : PanelContainer
 {
     public const int MaxRows = 3;
-    public const float Width = 286f;
+    public const float DefaultWidth = 286f;
+
+    /// <summary>The panel's width (the top-right corner matches it to the minimap).</summary>
+    public float PanelWidth { get; set; } = DefaultWidth;
 
     /// <summary>Opens the quest log on a quest.</summary>
     public Action<string>? OpenLog { get; set; }
@@ -58,7 +61,7 @@ public partial class QuestTracker : PanelContainer
     public override void _Ready()
     {
         Name = "QuestTracker";
-        CustomMinimumSize = new Vector2(Width, 0f);
+        CustomMinimumSize = new Vector2(PanelWidth, 0f);
         MouseFilter = MouseFilterEnum.Pass;
         var box = new StyleBoxFlat { BgColor = new Color(0.05f, 0.04f, 0.08f, 0.82f), BorderColor = UiTheme.Gold };
         box.SetBorderWidthAll(1);
@@ -116,7 +119,7 @@ public partial class QuestTracker : PanelContainer
         foreach ((QuestDef def, QuestProgress progress) in open.Take(MaxRows))
         {
             _ids.Add(def.Id);
-            var row = new Row { Quest = def, Marker = MarkerOf(progress.Status), Open = id => OpenLog?.Invoke(id) };
+            var row = new Row { Quest = def, Marker = MarkerOf(progress.Status), Open = id => OpenLog?.Invoke(id), RowWidth = PanelWidth - 16f };
             _rows.AddChild(row);
         }
 
@@ -143,11 +146,12 @@ public partial class QuestTracker : PanelContainer
         public QuestDef Quest = null!;
         public QuestMarker Marker;
         public Action<string> Open = _ => { };
+        public float RowWidth = DefaultWidth - 16f;
         private bool _hover;
 
         public override void _Ready()
         {
-            CustomMinimumSize = new Vector2(Width - 16f, 26f);
+            CustomMinimumSize = new Vector2(RowWidth, 26f);
             MouseFilter = MouseFilterEnum.Stop;
             MouseDefaultCursorShape = CursorShape.PointingHand;
             MouseEntered += () => { _hover = true; QueueRedraw(); };

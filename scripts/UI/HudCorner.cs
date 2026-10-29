@@ -67,6 +67,11 @@ public partial class HudCorner : VBoxContainer
         {
             AddChild(new Control { CustomMinimumSize = new Vector2(0f, 10f), MouseFilter = MouseFilterEnum.Ignore });
             Tracker.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
+            // As wide as the minimap's frame (owner, 2026-10-29).
+            if (Map is not null)
+            {
+                Tracker.PanelWidth = MapSize + 2f * 3f + 2f * 2f;
+            }
             AddChild(Tracker);
         }
 

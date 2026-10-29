@@ -35,6 +35,9 @@ public partial class TownMap : Control
     private string? _hovered;
     private string? _hoveredNow;
     private Rect2 _area;
+
+    /// <summary>Where the town is drawn inside the control (the big map's legend lines up with it).</summary>
+    public Rect2 MapArea => _area;
     private float _px;
 
     public override void _Ready()

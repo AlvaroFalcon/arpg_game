@@ -103,9 +103,9 @@ public partial class QuestToast : CanvasLayer
                 // The objective was met inside the station's own panel: its strip says so there.
                 return;
             case QuestStatus.New:
-                string place = quest.Toast + (quest.Toast.Length <= 36 ? " · J for details" : "");
-                _queue.Enqueue(new Entry(Kind.New, quest, place));
-                break;
+                // No card for a new quest (owner, 2026-10-29): it appears in the tracker and the
+                // quest log (J), with the quest_new sound QuestService plays.
+                return;
             case QuestStatus.Ready:
                 _queue.Enqueue(new Entry(Kind.Done, quest, $"Turn it in at {HideoutWorldName(quest)}"));
                 break;
