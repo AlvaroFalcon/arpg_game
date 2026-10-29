@@ -255,6 +255,57 @@ Room layouts (the introduction, the hideout) keep the brick blocks: built
 walls are supposed to look built. Screenshots: `cave-*-gate.png` (the arena
 entrance), `cave-*-overview.png`.
 
+## HD-2D with flat figures — sprites in the voxel world **[DECIDED 2026-10-29]**
+
+Owner decision after a side-by-side comparison of three presentations on the same
+Ashen Depths spot (`RunCapture --only=look -- --look=voxel|2d|billboard`):
+
+1. **All voxel** (what shipped on 2026-10-12): figures are inflated to voxels.
+   The scenery is the richest, but generated or hand-cleaned character art loses
+   its detail (faces and small shapes soften) and is never seen as drawn.
+2. **All 2D** (the "Voxel graphics" setting off): figures are crisp, but the
+   caverns never had 2D art: flat brick walls, old square lava. Every environment
+   would have to be repainted with front-facing walls.
+3. **HD-2D, flat figures** (chosen, "sin duda"): the voxel world stays (terrain,
+   cave walls, liquids, lights, shadows, depth of field) and everything that moves
+   — characters, monsters, bosses, effects — is its **2D sprite as a camera-facing
+   plane** in that world, lit and shadowed by it. This is Octopath Traveler's
+   recipe, and the art pipeline gets simpler: a sheet generated with
+   `tools/comfyui/spritegen.py` (ComfyUI) or cleaned in Aseprite is what the
+   player sees, frame for frame.
+
+**Art sources from now on.** Figures and effects: PNG sheets from
+`tools/comfyui` (concept → Qwen Image Edit 2511 + svntax's 32×48 combat LoRA →
+hand cleanup in Aseprite → `spritegen.py pack-sheet`), 32×48 per frame for
+player characters. Floors, liquids and projectiles: `spritegen.py tile` /
+`projectile` (FLUX.2 Klein + a pixel-art LoRA, the game's own art as the style
+reference, palette locked to it); recipes and approved seeds in
+`tools/comfyui/env.json`. The voxel export (`tools/art/voxels.ts`) keeps building
+the terrain from the tilesets.
+
+**Prototype.** `VoxelActor.Billboard` (static, off by default) shows each figure as
+a `Sprite3D` of its current 2D frame (engine billboard, nearest filtering, shaded,
+alpha-cut so it casts a shadow) instead of its voxel mesh.
+
+**Migration plan** (each step reviewed by the owner before the next):
+
+1. Make flat figures the real path: a per-sprite mode instead of the static flag,
+   the overhead life bar raised to clear the figure's head, hit flashes and tints
+   on the `Sprite3D`, the wall dither checked against flat figures, downed co-op
+   players lying flat, tests and the perf bench.
+2. The Arcanist's approved sheet into `assets/sprites/player/` (idle still, walk,
+   attack, hurt; `_side`, `_up`), then the other classes and the ascendancies.
+3. Monsters and bosses through the same workflow (their frame sizes to decide).
+4. Projectiles from `spritegen.py projectile` (flat on the ground, as now); hits and
+   explosions with 2D/3D particles.
+5. Floors and liquids per biome from `spritegen.py tile`.
+
+**Open questions.** Props (barrels, braziers): flat figures or keep voxels as part
+of the scenery? Death bursts (`VoxelDebris`) break the current voxel frame into
+cubes: keep a voxel export only for debris, or burst the sprite's pixels? Monsters
+facing four directions or keep the left/right flip? Keep the "Voxel graphics"
+off switch (classic 2D) or drop it once flat figures ship?
+
 ## Alternatives considered
 
 - **MCP-driven drawing in the live editor.** The nicer workflow for a human session
