@@ -803,13 +803,15 @@ has three entries. The scene is still there for development.
 `UI/PlayerHudBar.cs` (vitals) and `SkillBar` in `UI/HudWidgets.cs`, the same in realities,
 the hideout and the Survival Rift.
 
-- **An oval mirror** at the bottom centre, split down the middle: **life** fills the left
-  half and **mana** the right, both rising from the bottom like liquid (a gentle wave on
+- **An oval mirror** rising out of the bottom edge: only its **upper half** shows (the
+  owner's correction after the first build, which drew the whole oval and took too much
+  screen). Split down the middle: **life** fills the left half and **mana** the right,
+  both rising from the screen edge like liquid (a gentle wave on
   the surface, the lighter "recent damage" trail kept from the old bars). Current and
   maximum sit inside each half. In the Rift, with no mana, the right half carries the
   danger gauge and its words sit over the right-hand skills.
-- **The rim is the experience bar**: a purple band that fills from the bottom, up the
-  left side, over the top and down the right, cut into ten by black notches so the
+- **The rim is the experience bar**: a purple band that fills from the bottom left, up
+  and over the top, down to the bottom right, cut into ten by black notches so the
   percentage reads at a glance. The level sits on a small gem at the top of the rim.
 - Around it: dodge charges over the gem, energy shield as a pale band inside the life
   half, stamina over the left skills, the class resource (Rage, Combo...) over the right.

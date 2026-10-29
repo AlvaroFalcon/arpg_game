@@ -9,10 +9,11 @@ namespace ArpgGame.UI;
 
 /// <summary>
 /// The bottom-centre player cluster — docs/design/menus.md -> "HUD: the mirror". Drawn
-/// from the owner's sketch (2026-10-29): an oval mirror split down the middle, life
-/// filling the left half and mana (or what stands in for it) the right, both rising from
-/// the bottom like liquid; its rim is the experience bar, a purple band that fills from
-/// the bottom round the left, cut into ten by black notches. Around it: the level on a
+/// from the owner's sketch (2026-10-29): an oval mirror rising out of the bottom edge
+/// (only its upper half shows), split down the middle, life filling the left half and
+/// mana (or what stands in for it) the right, both rising from the screen edge like
+/// liquid; its rim is the experience bar, a purple band that fills from the bottom left,
+/// over the top, to the bottom right, cut into ten by black notches. Around it: the level on a
 /// small gem at the top, dodge charges above that, the flasks (1 life, 2 mana) at the
 /// outer ends of the skill bar, stamina over the left skills and the class resource over
 /// the right ones. The skills themselves are a separate control (<see cref="CreateSkillRow"/>,
@@ -26,11 +27,11 @@ public partial class PlayerHudBar : Control
     public readonly record struct SideGauge(string Label, string Detail, float Fraction, Color Top, Color Bottom);
 
     public const float Width = 640f;
-    public const float Height = 210f;
+    public const float Height = 170f;
 
     /// <summary>The mirror's half-width and half-height.</summary>
-    public const float MirrorRx = 66f;
-    public const float MirrorRy = 84f;
+    public const float MirrorRx = 70f;
+    public const float MirrorRy = 92f;
 
     /// <summary>Room left either side of the mirror for the skill bar (<see cref="SkillBar.Gap"/>).</summary>
     public const float MirrorClearance = MirrorRx + 22f;
@@ -47,7 +48,16 @@ public partial class PlayerHudBar : Control
     public Func<SideGauge?> RightGauge = () => null;
 
     private const float CenterX = Width / 2f;
-    private static readonly Vector2 Mirror = new(CenterX, Height - MirrorRy - 14f);
+    /// <summary>The oval's centre sits on the screen's bottom edge: only its upper half
+    /// shows, like the sketch's mirror rising out of the frame.</summary>
+    private static readonly Vector2 Mirror = new(CenterX, Height);
+
+    /// <summary>Where the visible mirror ends (the screen's bottom edge): the liquids' floor.</summary>
+    private const float BaseY = Height;
+
+    /// <summary>The visible rim runs from the left end (π) over the top to the right end (2π).</summary>
+    private const float ArcFrom = Mathf.Pi;
+    private const float ArcTo = Mathf.Tau;
     private const float RimW = 9f;
 
     /// <summary>Top of the skill slots, in this control's coordinates (they sit on the same baseline).</summary>
@@ -120,23 +130,12 @@ public partial class PlayerHudBar : Control
     private static Vector2 OnOval(float t, float grow = 0f) =>
         Mirror + new Vector2(Mathf.Cos(t) * (MirrorRx + grow), Mathf.Sin(t) * (MirrorRy + grow));
 
-    private static Vector2[] Oval(float grow, int steps = 72)
-    {
-        var pts = new Vector2[steps];
-        for (int i = 0; i < steps; i++)
-        {
-            pts[i] = OnOval(Mathf.Tau * i / steps, grow);
-        }
-
-        return pts;
-    }
-
     public override void _Draw()
     {
         Font font = ThemeDB.FallbackFont;
 
         // --- the glass and its two liquids ---
-        DrawColoredPolygon(Oval(2f), Glass);
+        DrawColoredPolygon(UpperHalf(2f), Glass);
         DrawHalf(-1, Fraction(Player.Stats.Life), _lifeTrail, LifeTop, LifeBottom);
         SideGauge? gauge = null;
         if (ShowMana)
@@ -155,49 +154,50 @@ public partial class PlayerHudBar : Control
         if (Player.Health is { MaxEnergyShield: > 0f } health && !Net.NetMode.ClientSide)
         {
             float frac = Mathf.Clamp(health.EnergyShield / health.MaxEnergyShield, 0f, 1f);
-            DrawOvalArc(Mathf.Pi / 2f, Mathf.Pi / 2f + Mathf.Pi * frac, -7f, 3f, new Color(0.7f, 0.9f, 1f, 0.9f));
+            DrawOvalArc(ArcFrom, ArcFrom + Mathf.Pi / 2f * frac, -7f, 3f, new Color(0.7f, 0.9f, 1f, 0.9f));
         }
 
         // Glass: the split down the middle and a soft reflection top-left.
-        DrawLine(Mirror + new Vector2(0f, -MirrorRy), Mirror + new Vector2(0f, MirrorRy), new Color(0.02f, 0.01f, 0.03f, 0.95f), 3f);
-        DrawLine(Mirror + new Vector2(0f, -MirrorRy + 4f), Mirror + new Vector2(0f, MirrorRy - 4f), Rim with { A = 0.35f }, 1f);
+        DrawLine(Mirror + new Vector2(0f, -MirrorRy), new Vector2(Mirror.X, BaseY), new Color(0.02f, 0.01f, 0.03f, 0.95f), 3f);
+        DrawLine(Mirror + new Vector2(0f, -MirrorRy + 4f), new Vector2(Mirror.X, BaseY), Rim with { A = 0.35f }, 1f);
         DrawOvalArc(Mathf.Pi * 1.08f, Mathf.Pi * 1.42f, -14f, 4f, new Color(1f, 1f, 1f, 0.12f));
         DrawOvalArc(Mathf.Pi * 1.12f, Mathf.Pi * 1.3f, -20f, 2f, new Color(1f, 1f, 1f, 0.1f));
 
         // --- the rim: experience, ten notches ---
         (int level, float xp) = Progress();
-        DrawOvalArc(0f, Mathf.Tau, RimW / 2f + 1f, RimW + 4f, new Color(0.02f, 0.015f, 0.03f, 0.95f));
-        DrawOvalArc(0f, Mathf.Tau, RimW / 2f + 1f, RimW, XpTrack);
+        DrawOvalArc(ArcFrom, ArcTo, RimW / 2f + 1f, RimW + 4f, new Color(0.02f, 0.015f, 0.03f, 0.95f));
+        DrawOvalArc(ArcFrom, ArcTo, RimW / 2f + 1f, RimW, XpTrack);
         float x = Mathf.Clamp(xp, 0f, 1f);
         if (x > 0.002f)
         {
-            // From the bottom, up the left side, over the top and down the right.
-            DrawOvalArc(Mathf.Pi / 2f, Mathf.Pi / 2f + Mathf.Tau * x, RimW / 2f + 1f, RimW - 2f, XpPurple);
-            DrawOvalArc(Mathf.Pi / 2f, Mathf.Pi / 2f + Mathf.Tau * x, RimW / 2f - 1f, 1.5f, new Color(1f, 0.85f, 1f, 0.45f));
+            // From the bottom left, up and over the top, down to the bottom right.
+            float end = ArcFrom + (ArcTo - ArcFrom) * x;
+            DrawOvalArc(ArcFrom, end, RimW / 2f + 1f, RimW - 2f, XpPurple);
+            DrawOvalArc(ArcFrom, end, RimW / 2f - 1f, 1.5f, new Color(1f, 0.85f, 1f, 0.45f));
         }
 
-        for (int i = 0; i < 10; i++)
+        for (int i = 1; i < 10; i++)
         {
-            float t = Mathf.Pi / 2f + Mathf.Tau * i / 10f;
+            float t = ArcFrom + (ArcTo - ArcFrom) * i / 10f;
             DrawLine(OnOval(t, -1f), OnOval(t, RimW + 3f), new Color(0f, 0f, 0f, 0.95f), 2.5f);
         }
 
-        DrawPolyline(Closed(Oval(-1f)), Rim with { A = 0.85f }, 1.5f, true);
-        DrawPolyline(Closed(Oval(RimW + 3f)), Rim, 2f, true);
+        DrawOvalArc(ArcFrom, ArcTo, -1f, 1.5f, Rim with { A = 0.85f });
+        DrawOvalArc(ArcFrom, ArcTo, RimW + 3f, 2f, Rim);
 
         // --- numbers inside each half ---
         if (Player.Stats.Life is { } life)
         {
             int maxLife = Mathf.RoundToInt(life.Max);
-            Text(font, $"{Mathf.Min(Mathf.CeilToInt(life.Current), maxLife):N0}", Mirror + new Vector2(-MirrorRx * 0.48f, 22f), 17, Colors.White, HorizontalAlignment.Center);
-            Text(font, $"/{maxLife:N0}", Mirror + new Vector2(-MirrorRx * 0.48f, 38f), 11, new Color(1f, 0.8f, 0.78f), HorizontalAlignment.Center);
+            Text(font, $"{Mathf.Min(Mathf.CeilToInt(life.Current), maxLife):N0}", new Vector2(Mirror.X - MirrorRx * 0.45f, BaseY - 26f), 17, Colors.White, HorizontalAlignment.Center);
+            Text(font, $"/{maxLife:N0}", new Vector2(Mirror.X - MirrorRx * 0.45f, BaseY - 11f), 11, new Color(1f, 0.8f, 0.78f), HorizontalAlignment.Center);
         }
 
         if (ShowMana)
         {
             Stats.ResourcePool mana = Player.Stats.Mana!;
-            Text(font, $"{Mathf.FloorToInt(mana.Current):N0}", Mirror + new Vector2(MirrorRx * 0.48f, 22f), 17, Colors.White, HorizontalAlignment.Center);
-            Text(font, $"/{Mathf.RoundToInt(mana.Max):N0}", Mirror + new Vector2(MirrorRx * 0.48f, 38f), 11, new Color(0.8f, 0.9f, 1f), HorizontalAlignment.Center);
+            Text(font, $"{Mathf.FloorToInt(mana.Current):N0}", new Vector2(Mirror.X + MirrorRx * 0.45f, BaseY - 26f), 17, Colors.White, HorizontalAlignment.Center);
+            Text(font, $"/{Mathf.RoundToInt(mana.Max):N0}", new Vector2(Mirror.X + MirrorRx * 0.45f, BaseY - 11f), 11, new Color(0.8f, 0.9f, 1f), HorizontalAlignment.Center);
         }
         else if (gauge is { } gg)
         {
@@ -261,12 +261,16 @@ public partial class PlayerHudBar : Control
         }
     }
 
-    private static Vector2[] Closed(Vector2[] pts)
+    /// <summary>The visible (upper) half of the oval as a polygon, closed along the bottom edge.</summary>
+    private static Vector2[] UpperHalf(float grow, int steps = 40)
     {
-        var closed = new Vector2[pts.Length + 1];
-        pts.CopyTo(closed, 0);
-        closed[^1] = pts[0];
-        return closed;
+        var pts = new Vector2[steps + 1];
+        for (int i = 0; i <= steps; i++)
+        {
+            pts[i] = OnOval(ArcFrom + (ArcTo - ArcFrom) * i / steps, grow);
+        }
+
+        return pts;
     }
 
     /// <summary>An arc of the oval from <paramref name="from"/> to <paramref name="to"/> (radians, see <see cref="OnOval"/>).</summary>
@@ -303,9 +307,10 @@ public partial class PlayerHudBar : Control
 
         var colors = new Color[fill.Length];
         float yTop = Mirror.Y - MirrorRy;
+        float span = BaseY - yTop;
         for (int i = 0; i < fill.Length; i++)
         {
-            float k = Mathf.Clamp((fill[i].Y - yTop) / (2f * MirrorRy), 0f, 1f);
+            float k = Mathf.Clamp((fill[i].Y - yTop) / span, 0f, 1f);
             colors[i] = top.Lerp(bottom, k);
         }
 
@@ -320,7 +325,8 @@ public partial class PlayerHudBar : Control
         }
     }
 
-    private static float SurfaceY(float value) => Mirror.Y + MirrorRy - 2f * MirrorRy * Mathf.Clamp(value, 0f, 1f);
+    /// <summary>The liquid's surface: empty at the screen edge, full at the top of the oval.</summary>
+    private static float SurfaceY(float value) => BaseY - (BaseY - (Mirror.Y - MirrorRy)) * Mathf.Clamp(value, 0f, 1f);
 
     private static float HalfWidthAt(float y)
     {
@@ -338,7 +344,7 @@ public partial class PlayerHudBar : Control
         }
 
         float surface = SurfaceY(value);
-        float bottomY = Mirror.Y + MirrorRy;
+        float bottomY = BaseY;
         if (bottomY - surface < 1.5f)
         {
             return null;
