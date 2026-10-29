@@ -1,0 +1,178 @@
+{
+  "unet": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": {
+      "unet_name": "qwen-image-edit-2511-Q4_K_M.gguf"
+    }
+  },
+  "lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "lora_name": "pixel_4walk_32x48_qwen_image_edit_2511_v1.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "shift": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": {
+      "model": [
+        "lora",
+        0
+      ],
+      "shift": 3.1
+    }
+  },
+  "norm": {
+    "class_type": "CFGNorm",
+    "inputs": {
+      "model": [
+        "shift",
+        0
+      ],
+      "strength": 1.0
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    }
+  },
+  "ref": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "approved_concept_768.png"
+    }
+  },
+  "pos_raw": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "prompt": "Create a pixel art spritesheet of the character in the image. Keep the appearance the same. The spritesheet is a 6 by 4 grid of four rows and six columns of frames - first row is 3 walking frames facing down, 2 arm swing attack frames facing down and 1 hurt frame facing down, second row is 3 walking frames facing left, 2 arm swing attack frames facing left and 1 hurt frame facing left, third row is 3 walking frames facing right, 2 arm swing attack frames facing right and 1 hurt frame facing right, fourth row is 3 walking frames back view facing up, 2 arm swing attack frames back view facing up and 1 hurt frame back view facing up.",
+      "vae": [
+        "vae",
+        0
+      ],
+      "image1": [
+        "ref",
+        0
+      ]
+    }
+  },
+  "neg_raw": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "prompt": "",
+      "vae": [
+        "vae",
+        0
+      ],
+      "image1": [
+        "ref",
+        0
+      ]
+    }
+  },
+  "pos": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "pos_raw",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "neg": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "neg_raw",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "latent": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "ref",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "sample": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "norm",
+        0
+      ],
+      "positive": [
+        "pos",
+        0
+      ],
+      "negative": [
+        "neg",
+        0
+      ],
+      "latent_image": [
+        "latent",
+        0
+      ],
+      "seed": 1,
+      "steps": 40,
+      "cfg": 4.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "sample",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "save": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "filename_prefix": "spritegen/sheet"
+    }
+  }
+}

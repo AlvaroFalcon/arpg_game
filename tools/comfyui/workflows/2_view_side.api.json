@@ -1,0 +1,193 @@
+{
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "Show the exact same character from image 1 with the same design, colours, proportions, size and pixel art style, now in side view in profile, facing to the right of the image, standing idle and holding the staff upright, the whole body visible. Seen exactly from the side: the hat brim is seen edge-on as a thin flat disc, the cone rises from the head and its tip bends backward, toward the left of the image behind the head; the red gem of the hat band is at the front of the hat, on the right. Only one hand is visible, the near hand, which holds the staff upright in front of the chest; the far arm is hidden behind the body. It is the same short carved staff as in image 1 with the wooden cup holding the red crystal; its bottom touches the ground by the feet and the red crystal is level with the face, never above the hat brim. Keep every element of image 1 exactly: the same hat (a tall dark-blue pointed wizard hat with a wide round brim, a gold band, the tip bent over and drooping to the side), the same wooden staff (reaching from the feet up to head height, a straight carved wooden shaft with a round red crystal on top) held in the same hand, the same robe, belt, boots and hair. Do not add, remove or redesign anything. high quality pixel art game sprite in the style of a 16-bit JRPG, chibi proportions with a big head, crisp single-pixel dark outline, flat cel shading with a limited palette, full body, centred, plain flat pure white background, no ground shadow, no text, no border.",
+      "clip": [
+        "clip",
+        0
+      ]
+    }
+  },
+  "neg": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "pos",
+        0
+      ]
+    }
+  },
+  "ref0_load": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "approved_concept.png"
+    }
+  },
+  "ref0_scale": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "ref0_load",
+        0
+      ],
+      "upscale_method": "nearest-exact",
+      "megapixels": 1.0,
+      "resolution_steps": 1
+    }
+  },
+  "ref0_enc": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "ref0_scale",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "ref0_pos": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "pos",
+        0
+      ],
+      "latent": [
+        "ref0_enc",
+        0
+      ]
+    }
+  },
+  "ref0_neg": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "neg",
+        0
+      ],
+      "latent": [
+        "ref0_enc",
+        0
+      ]
+    }
+  },
+  "latent": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": 768,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "sigmas": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": 768,
+      "height": 1024
+    }
+  },
+  "sampler": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "noise": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 1
+    }
+  },
+  "guider": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "positive": [
+        "ref0_pos",
+        0
+      ],
+      "negative": [
+        "ref0_neg",
+        0
+      ],
+      "cfg": 1.0
+    }
+  },
+  "sample": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "noise",
+        0
+      ],
+      "guider": [
+        "guider",
+        0
+      ],
+      "sampler": [
+        "sampler",
+        0
+      ],
+      "sigmas": [
+        "sigmas",
+        0
+      ],
+      "latent_image": [
+        "latent",
+        0
+      ]
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "sample",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "save": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "filename_prefix": "spritegen/side"
+    }
+  }
+}

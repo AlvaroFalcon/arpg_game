@@ -1,0 +1,250 @@
+{
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "Create a horizontal sprite sheet with 4 animation frames side by side in 4 equal columns, read left to right, of the exact same character from image 1 with the same design, colours, proportions, size and pixel art style, in side view in profile, facing to the right of the image. Every frame shows the whole body at the same scale with the feet on the same baseline. Keep every element of image 1 exactly: the same hat (a tall dark-blue pointed wizard hat with a wide round brim, a gold band, the tip bent over and drooping to the side), the same wooden staff (reaching from the feet up to head height, a straight carved wooden shaft with a round red crystal on top) held in the same hand, the same robe, belt, boots and hair. Do not add, remove or redesign anything. Copy the body, arm, leg and staff pose of each grey mannequin in image 2, column by column; image 2 is only a pose guide, never draw the mannequin. Frame 1: walking, left foot forward touching the ground, right foot back. Frame 2: walking, passing pose: left leg straight under the body, right knee lifted. Frame 3: walking, right foot forward touching the ground, left foot back. Frame 4: walking, passing pose: right leg straight under the body, left knee lifted. high quality pixel art game sprite in the style of a 16-bit JRPG, chibi proportions with a big head, crisp single-pixel dark outline, flat cel shading with a limited palette, full body, centred, plain flat pure white background, no ground shadow, no text, no border.",
+      "clip": [
+        "clip",
+        0
+      ]
+    }
+  },
+  "neg": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "pos",
+        0
+      ]
+    }
+  },
+  "ref0_load": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "approved_side.png"
+    }
+  },
+  "ref0_scale": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "ref0_load",
+        0
+      ],
+      "upscale_method": "nearest-exact",
+      "megapixels": 1.0,
+      "resolution_steps": 1
+    }
+  },
+  "ref0_enc": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "ref0_scale",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "ref0_pos": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "pos",
+        0
+      ],
+      "latent": [
+        "ref0_enc",
+        0
+      ]
+    }
+  },
+  "ref0_neg": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "neg",
+        0
+      ],
+      "latent": [
+        "ref0_enc",
+        0
+      ]
+    }
+  },
+  "ref1_load": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "guide_walk_side.png"
+    }
+  },
+  "ref1_scale": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "ref1_load",
+        0
+      ],
+      "upscale_method": "nearest-exact",
+      "megapixels": 1.0,
+      "resolution_steps": 1
+    }
+  },
+  "ref1_enc": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "ref1_scale",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "ref1_pos": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "ref0_pos",
+        0
+      ],
+      "latent": [
+        "ref1_enc",
+        0
+      ]
+    }
+  },
+  "ref1_neg": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "ref0_neg",
+        0
+      ],
+      "latent": [
+        "ref1_enc",
+        0
+      ]
+    }
+  },
+  "latent": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": 1536,
+      "height": 512,
+      "batch_size": 1
+    }
+  },
+  "sigmas": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": 1536,
+      "height": 512
+    }
+  },
+  "sampler": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "noise": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 1
+    }
+  },
+  "guider": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "positive": [
+        "ref1_pos",
+        0
+      ],
+      "negative": [
+        "ref1_neg",
+        0
+      ],
+      "cfg": 1.0
+    }
+  },
+  "sample": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "noise",
+        0
+      ],
+      "guider": [
+        "guider",
+        0
+      ],
+      "sampler": [
+        "sampler",
+        0
+      ],
+      "sigmas": [
+        "sigmas",
+        0
+      ],
+      "latent_image": [
+        "latent",
+        0
+      ]
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "sample",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "save": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "filename_prefix": "spritegen/walk_side"
+    }
+  }
+}

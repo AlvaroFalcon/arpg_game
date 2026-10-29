@@ -249,7 +249,9 @@ def generate(cfg: dict, args, jobs: list[dict]) -> None:
         (job["out"] / f"{job['key']}_prompt.txt").write_text(job["prompt"] + "\n")
         for i in range(args.n):
             seed = args.seed + i if args.seed is not None else random.randrange(2**48)
-            graph = build_graph(cfg, job["prompt"], refs, *job["size"], seed, f"spritegen/{job['key']}")
+            prefix = f"spritegen/{job['key']}"
+            graph = (job["build"](refs, seed, prefix) if job.get("build")
+                     else build_graph(cfg, job["prompt"], refs, *job["size"], seed, prefix))
             pending.append((job, i + 1, seed, comfy.queue(graph)))
     print(f"Queued {len(pending)} image(s) in ComfyUI.")
     done: dict[str, list[Path]] = {}
@@ -259,6 +261,8 @@ def generate(cfg: dict, args, jobs: list[dict]) -> None:
         done.setdefault(job["key"], []).append(path)
         print(f"  {path.relative_to(ROOT)}")
     for job in jobs:
+        if job.get("after"):
+            done[job["key"]] = [job["after"](path) for path in done[job["key"]]]
         sheet = contact_sheet(done[job["key"]])
         sheet.save(job["out"] / f"{job['key']}_contact.png")
         if job.get("frames"):
@@ -371,6 +375,76 @@ def cmd_anims(cfg, args):
     generate(cfg, args, jobs)
 
 
+SHEET_TAG_DIRS = ("down", "left", "right", "up")
+
+
+def sheet_tags(cfg: dict) -> list[tuple[str, int, int]]:
+    """Aseprite tags of a 6-column sheet row: walk 0-2, attack 3-4, hurt 5."""
+    cols = cfg["qwen_sheet"]["columns"]
+    tags = []
+    for r, d in enumerate(SHEET_TAG_DIRS):
+        b = r * cols
+        tags += [(f"walk_{d}", b, b + 2), (f"attack_{d}", b + 3, b + 4), (f"hurt_{d}", b + 5, b + 5)]
+    return tags
+
+
+def sheet_outputs(cfg: dict, raw_path: Path, char_name: str) -> Path:
+    """A generated 768 sheet -> next to it: the cleaned game-size sheet (what
+    `approve` takes), a x4 preview, a GIF of all directions and an .aseprite file
+    with tags and an empty "staff" layer for hand cleanup. Returns the preview."""
+    import aseprite_io
+    q = cfg["qwen_sheet"]
+    cols, rows_n, f = q["columns"], q["rows"], q["downscale"]
+    rows = sheet_cells(Image.open(raw_path).convert("RGB"), cols, rows_n, f)
+    raw = [fr for row in rows for fr in row]
+    fw, fh = raw[0].size
+    grid = Image.new("RGBA", (cols * fw, rows_n * fh), (0, 0, 0, 0))
+    for i, fr in enumerate(raw):
+        grid.alpha_composite(fr, ((i % cols) * fw, (i // cols) * fh))
+    pal_img = palette_from(grid, 32)  # one palette for the whole sheet
+    frames = [despeckle(snap(fr, pal_img)) for fr in raw]
+    grid = Image.new("RGBA", grid.size, (0, 0, 0, 0))
+    for i, fr in enumerate(frames):
+        grid.alpha_composite(fr, ((i % cols) * fw, (i // cols) * fh))
+    base = raw_path.with_name(raw_path.name.replace("_raw", ""))
+    grid.save(base)
+    prev = Image.new("RGBA", grid.size, (64, 64, 76, 255))
+    prev.alpha_composite(grid)
+    preview = base.with_name(base.stem + "_x4.png")
+    prev.convert("RGB").resize((grid.width * 4, grid.height * 4), Image.NEAREST).save(preview)
+    gif = []
+    for c in [0, 1, 2, 1, 0, 1, 2, 1, 3, 4, 4, 5, 5]:
+        strip = Image.new("RGBA", (fw * rows_n, fh), (0, 0, 0, 0))
+        for r in range(rows_n):
+            strip.alpha_composite(frames[r * cols + c], (r * fw, 0))
+        gif.append(strip)
+    save_gif(gif, base.with_suffix(".gif"), 170)
+    pal = pal_img.getpalette()[:96]
+    aseprite_io.write(base.with_name(f"{char_name}_{base.stem}.aseprite"), [[fr, None] for fr in frames],
+                      ["sprite", "staff"], sheet_tags(cfg), 150, [tuple(pal[i:i + 3]) for i in range(0, 96, 3)])
+    return preview
+
+
+def cmd_sheet(cfg, args):
+    """Whole-character sheet in one image (Qwen Image Edit 2511 + svntax's 32x48
+    combat LoRA): 4 directions x (3 walk, 2 attack, 1 hurt), from the approved
+    concept. Each candidate also gets a cleaned 32x48 sheet and an .aseprite file."""
+    char = load_char(args.char)
+    front = approved(char, "concept")
+    if not front:
+        sys.exit("Approve a concept first: spritegen.py approve <char> concept <n>")
+    q = cfg["qwen_sheet"]
+    prompt = sheet_prompt(char) + (" " + char["sheet_extra"] if char.get("sheet_extra") else "")
+    if args.extra:
+        prompt += " " + args.extra
+    ref = square_reference(Image.open(front), q["size"])
+    generate(cfg, args, [{
+        "key": "sheet", "prompt": prompt, "refs": [ref], "out": OUT / char["name"] / "sheet_gen",
+        "build": lambda refs, seed, prefix: build_qwen_sheet_graph(cfg, prompt, refs[0], seed, prefix),
+        "after": lambda path: sheet_outputs(cfg, path.rename(path.with_name(path.stem + "_raw.png")), char["name"]),
+    }])
+
+
 def cmd_guides(cfg, args):
     char = load_char(args.char)
     out = OUT / char["name"] / "guides"
@@ -382,8 +456,10 @@ def cmd_guides(cfg, args):
 
 def cmd_approve(cfg, args):
     char = load_char(args.char)
-    stage = "concept" if args.key == "concept" else "views" if args.key in char["views"] else "anims"
-    matches = sorted((OUT / char["name"] / stage).glob(f"{args.key}_{args.number}_s*.png"))
+    stage = ("concept" if args.key == "concept" else "views" if args.key in char["views"]
+             else "sheet_gen" if args.key == "sheet" else "anims")
+    matches = sorted(p for p in (OUT / char["name"] / stage).glob(f"{args.key}_{args.number}_s*.png")
+                     if not p.stem.endswith(("_raw", "_x4")))
     if not matches:
         sys.exit(f"No candidate #{args.number} for {args.key} in out/{char['name']}/{stage}/")
     dest = approved_dir(char)
@@ -649,6 +725,8 @@ def cmd_export_workflows(cfg, args):
         "3_anim_walk_side": build_graph(cfg, anim_prompt(char, "side", "walk", True), ["approved_side.png", "guide_walk_side.png"],
                                         cw * 4, ch, 1, "spritegen/walk_side"),
     }
+    graphs["4_qwen_sheet"] = build_qwen_sheet_graph(cfg, sheet_prompt(char), "approved_concept_768.png", 1,
+                                                    "spritegen/sheet")
     for name, g in graphs.items():
         (WORKFLOWS / f"{name}.api.json").write_text(json.dumps(g, indent=2) + "\n")
     print(f"Wrote {len(graphs)} workflows to {WORKFLOWS.relative_to(ROOT)}/")
@@ -677,6 +755,9 @@ def main(argv=None):
     s = gen("anims", cmd_anims, "animation strips from the approved views")
     s.add_argument("--only", nargs="+", help="keys (walk_side), views (side) or animations (walk)")
     s.add_argument("--no-guide", action="store_true", help="no mannequin pose guide, prompt only")
+
+    gen("sheet", cmd_sheet, "whole 32x48 sheet (Qwen Edit 2511 + combat LoRA) from the concept").add_argument(
+        "--extra", help="text appended to the sheet prompt (e.g. ask for the staff)")
 
     s = sub.add_parser("approve", help="approve candidate <number> of <key>")
     s.add_argument("char"); s.add_argument("key"); s.add_argument("number", type=int)
