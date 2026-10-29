@@ -960,5 +960,14 @@ function portraitSpec(look: Look): SpriteSpec {
   };
 }
 
-export const animeCharacters: SpriteSpec[] = looks.map(chibiSpec);
+/**
+ * Sprites whose art now comes from tools/comfyui (generated, cleaned by hand in
+ * Aseprite, packed with `spritegen.py pack-sheet`) and is shown as a flat figure:
+ * docs/design/art-pipeline.md -> "HD-2D with flat figures". They are not drawn
+ * here any more (a build would overwrite the hand-cleaned sheet) and get no voxel
+ * model. Their portraits are still painted from the Look below.
+ */
+export const HAND_MADE = new Set(['player']);
+
+export const animeCharacters: SpriteSpec[] = looks.filter((l) => !HAND_MADE.has(l.name)).map(chibiSpec);
 export const portraits: SpriteSpec[] = looks.map(portraitSpec);

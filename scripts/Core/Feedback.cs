@@ -115,7 +115,7 @@ public static class Feedback
         {
             $"Version: {GameVersion()}",
             $"System: {OS.GetName()} {OS.GetVersion()} · {RenderingServer.GetVideoAdapterName()}",
-            $"Window: {DisplayServer.WindowGetSize()} · voxel view {(GameSettings.Get(context)?.VoxelGraphics ?? true ? "on" : "off")}",
+            $"Window: {DisplayServer.WindowGetSize()} · voxel view {(View3D.HdView.Enabled(context) ? "on" : "off")}",
         };
         if (context.IsInsideTree() && context.GetTree().CurrentScene is { } scene)
         {

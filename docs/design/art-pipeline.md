@@ -151,8 +151,9 @@ world is a presentation layer underneath the 2D canvas:
   wall fragment fades only if it is closer to the camera than the player's chest
   and inside an ellipse around them on screen. The first version faded any nearby
   wall on the camera's side, so a wall you merely stood beside turned to noise.
-- **Off switch.** Settings → *Voxel graphics (HD-2D)*; headless runs (tests, the
-  autoplay bot) never create the stage.
+- **No off switch** (removed 2026-10-29, see "HD-2D with flat figures"): the old
+  Settings → *Voxel graphics* toggle is gone. Headless runs (tests, the autoplay
+  bot) never create the stage; `HdView.ForceOff` exists for the look capture only.
 
 ### Liquids **[IMPLEMENTED 2026-10-14]**
 
@@ -254,6 +255,91 @@ scripts/View3D/CaveWalls.cs; `VoxelStage.AddCaveRock`):
 Room layouts (the introduction, the hideout) keep the brick blocks: built
 walls are supposed to look built. Screenshots: `cave-*-gate.png` (the arena
 entrance), `cave-*-overview.png`.
+
+## HD-2D with flat figures — sprites in the voxel world **[DECIDED 2026-10-29]**
+
+Owner decision after a side-by-side comparison of three presentations on the same
+Ashen Depths spot (`RunCapture --only=look -- --look=voxel|2d|billboard`):
+
+1. **All voxel** (what shipped on 2026-10-12): figures are inflated to voxels.
+   The scenery is the richest, but generated or hand-cleaned character art loses
+   its detail (faces and small shapes soften) and is never seen as drawn.
+2. **All 2D** (the "Voxel graphics" setting off): figures are crisp, but the
+   caverns never had 2D art: flat brick walls, old square lava. Every environment
+   would have to be repainted with front-facing walls.
+3. **HD-2D, flat figures** (chosen, "sin duda"): the voxel world stays (terrain,
+   cave walls, liquids, lights, shadows, depth of field) and everything that moves
+   — characters, monsters, bosses, effects — is its **2D sprite as a camera-facing
+   plane** in that world, lit and shadowed by it. This is Octopath Traveler's
+   recipe, and the art pipeline gets simpler: a sheet generated with
+   `tools/comfyui/spritegen.py` (ComfyUI) or cleaned in Aseprite is what the
+   player sees, frame for frame.
+
+**Art sources from now on.** Figures and effects: PNG sheets from
+`tools/comfyui` (concept → Qwen Image Edit 2511 + svntax's 32×48 combat LoRA →
+hand cleanup in Aseprite → `spritegen.py pack-sheet`), 32×48 per frame for
+player characters. Floors, liquids and projectiles: `spritegen.py tile` /
+`projectile` (FLUX.2 Klein + a pixel-art LoRA, the game's own art as the style
+reference, palette locked to it); recipes and approved seeds in
+`tools/comfyui/env.json`. The voxel export (`tools/art/voxels.ts`) keeps building
+the terrain from the tilesets.
+
+**How it works [IMPLEMENTED 2026-10-29].** A figure is shown flat when it has **no
+voxel model**: `VoxelStage.Track` gives any character, monster or boss sprite (a
+`CharacterBody2D`'s sprite from `assets/sprites/player|enemies|bosses`) without a
+`.glb` a `VoxelActor` with `Flat` set, which draws a `Sprite3D` of the current 2D
+frame (engine billboard, nearest filtering, shaded, alpha-cut so it casts a shadow,
+flipped with `FlipH`, feet 0.15 m up so they clear the floor slabs). Projectiles and
+downed co-op players lie on the ground. Migrating a figure is therefore: its new sheet
+into `assets/sprites/...`, its `.glb` deleted, and its name added to `HAND_MADE` in
+`tools/art/sprites/anime.ts` so the art build neither repaints nor re-voxelises it.
+The overhead bars lift above a flat figure's head. `VoxelActor.ForceFlat` and
+`RunCapture --only=look` remain for comparisons.
+
+**Done:** the Arcanist (`player`), from the hand-cleaned sheet
+(`tools/comfyui/characters/arcanist/`), idle kept still.
+
+**Deaths.** Flat figures burst into their own pixels: `View3D/DeathBurst` turns the
+current frame's opaque pixels into cubes of their colours (cached per frame; one
+MultiMesh for every death of a frame). The effect lives in one place on purpose, so
+it is easy to change (owner): `DeathBurst.Style` (`Pixels` / `None`), the
+`Monster` and `Boss` presets (cubes, power, life, cube size in pixels), or replace
+`DeathBurst.Play` with another effect. Figures still in voxels keep `VoxelDebris`.
+
+**Migration plan** (each step reviewed by the owner before the next):
+
+1. Make flat figures the real path: a per-sprite mode instead of the static flag,
+   the overhead life bar raised to clear the figure's head, hit flashes and tints
+   on the `Sprite3D`, the wall dither checked against flat figures, downed co-op
+   players lying flat, tests and the perf bench.
+2. The Arcanist's approved sheet into `assets/sprites/player/` (idle still, walk,
+   attack, hurt; `_side`, `_up`), then the other classes and the ascendancies.
+3. Monsters and bosses through the same workflow (their frame sizes to decide).
+4. Projectiles from `spritegen.py projectile` (flat on the ground, as now); hits and
+   explosions with 2D/3D particles.
+5. Floors and liquids per biome from `spritegen.py tile`.
+
+**Owner answers (2026-10-29).** Props stay voxels as part of the scenery, but will be
+regenerated soon with the ComfyUI workflows so their design matches. Deaths burst into
+pixels, configurable (above). Monsters will face four directions, like the player.
+The "Voxel graphics" switch is removed.
+
+**Attack animation [IMPLEMENTED 2026-10-29].** Every cast (`SkillUser.CastStarted`)
+plays `attack` + the facing suffix once from its first frame (a cast during it
+restarts it); walk/idle resume when it ends. On a co-op client other players'
+puppets don't cast, so they don't play it. `hurt` is not played (owner: not for
+now).
+
+**Pending:** the Arcanist's portrait (character select, altar) is still painted from
+its old `Look`; it will be made from the new concept with its own workflow
+(GitHub issue #35).
+
+**Ashen floor and fireball [IMPLEMENTED 2026-10-29].** `tools/art` reads the
+approved PNGs back as draw_grid rows (`decodePng`/`pngGrid` in `lib.ts`): the four
+Ashen floor tiles in `sprites/tiles.ts` and the 4-frame fireball in
+`sprites/projectiles.ts` now come from `tools/comfyui/env/approved/`, so the
+EasyPixel document, the Godot export and the voxel export (floor slabs, the
+fireball's model) all follow the approved art, and a rebuild reproduces it.
 
 ## Alternatives considered
 

@@ -736,3 +736,17 @@ Needs a human playtest: readability at 1080p/1440p/ultrawide, Compact in a dense
 - **"Can't change this state while flushing queries".** Not a toggled `Disabled`: `DropSpawner`/`EquipmentDropSpawner` added the drop's Area2D inside `Health.Died`, which fires in a projectile's overlap signal. Found by bracketing `ResolveHit` with prints. The drop is now added at the end of the frame (the position and roll are fixed first).
 - **`grab_focus` outside the tree.** Deferred focus calls ran after the co-op view was rebuilt. All of them go through `UiTheme.FocusLater` (checks the control is valid and in the tree when it runs).
 - **Damage numbers: allies' hits dropped** (owner decision). `DamageNumberKind.Ally` and its style are gone; `ShowHit` skips hits from a non-local player. Protocol 8's extra bytes stay (a client's own hits use them). New check `DMGNUM-ALLY-HIT-NO-LINE`.
+
+## 2026-10-29: ComfyUI sprite pipeline, Arcanist sheet, and HD-2D with flat figures
+
+- `tools/comfyui/spritegen.py` now drives a local ComfyUI end to end. The Arcanist's concept came from FLUX.2 Klein 4B with the owner's reference. Per-view generation (back/side, then strips) was inconsistent (hat, staff, extra hands), so the character switched to a **whole sheet in one image**: Qwen Image Edit 2511 (GGUF Q4) with svntax's `pixel_spritesheet_4walk_combat_32x48` LoRA gives 4 directions × (3 walk, 2 attack, 1 hurt) at exactly the game's 32×48. The script cuts the sheet into frames, despeckles it, locks the palette and writes an `.aseprite` file with tags. The owner cleaned it by hand in a self-built Aseprite (`characters/arcanist/arcanist_sheet.aseprite`), and `pack-sheet` turns it into SpriteFrames (idle kept still: the bob looked bad).
+- Environment and effects: `tile`/`projectile` stages with Klein plus Limbicnation's pixel-art LoRA, using the game's own tiles and `fireball.png` as style references. The approved Ashen floor and a 4-frame fireball are in `env/approved`, with their recipes and seeds in `env.json`; the saved ComfyUI workflow regenerates the floor pixel for pixel. Canvas workflows live in ComfyUI's Workflows sidebar (`spritegen/`).
+- **Design pivot: HD-2D with flat figures** (art-pipeline.md). Three captures of the same spot: all voxel, all 2D, and flat sprites in the voxel world. The owner chose the third. The prototype is `VoxelActor.Billboard`; the migration plan is in the doc.
+
+## 2026-10-29: flat figures ship with the Arcanist; voxel toggle removed
+
+- The new Arcanist sheet replaces `player`. Its voxel model and generated EasyPixel source are gone (`HAND_MADE` in `tools/art/sprites/anime.ts`), and `VoxelStage.Track` shows any figure without a `.glb` as a flat `Sprite3D` billboard. Overhead bars lift above flat figures.
+- Flat figures die in a pixel burst (`View3D/DeathBurst`). The style and the monster/boss presets are kept in one place so they are easy to change.
+- Settings → *Voxel graphics* removed (owner decision). Owner answers recorded in art-pipeline.md: props stay voxels (to regenerate later), monsters will face four directions.
+- Gap found: the player never plays `attack`/`hurt` animations.
+- Later the same day: casting now plays the attack animation (`Player.OnCastStarted`). The approved Ashen floor and 4-frame fireball are in the game; `tools/art` reads them back from PNG (`decodePng`/`pngGrid`), so its build and voxel export keep them. The Arcanist portrait is tracked in issue #35.

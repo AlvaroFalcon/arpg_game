@@ -1,0 +1,636 @@
+{
+ "last_node_id": 14,
+ "last_link_id": 13,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "UNETLoader",
+   "pos": [
+    40,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      3
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "UNETLoader"
+   },
+   "widgets_values": [
+    "flux-2-klein-4b-fp8.safetensors",
+    "default"
+   ]
+  },
+  {
+   "id": 2,
+   "type": "CLIPLoader",
+   "pos": [
+    40,
+    200
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      1
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CLIPLoader"
+   },
+   "widgets_values": [
+    "qwen_3_4b.safetensors",
+    "flux2",
+    "default"
+   ]
+  },
+  {
+   "id": 3,
+   "type": "VAELoader",
+   "pos": [
+    40,
+    360
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      12
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "flux2-vae.safetensors"
+   ]
+  },
+  {
+   "id": 6,
+   "type": "EmptyFlux2LatentImage",
+   "pos": [
+    40,
+    520
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      10
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "EmptyFlux2LatentImage"
+   },
+   "widgets_values": [
+    768,
+    1024,
+    1
+   ]
+  },
+  {
+   "id": 7,
+   "type": "Flux2Scheduler",
+   "pos": [
+    40,
+    680
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "SIGMAS",
+     "type": "SIGMAS",
+     "links": [
+      9
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "Flux2Scheduler"
+   },
+   "widgets_values": [
+    4,
+    768,
+    1024
+   ]
+  },
+  {
+   "id": 8,
+   "type": "KSamplerSelect",
+   "pos": [
+    40,
+    840
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 5,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "SAMPLER",
+     "type": "SAMPLER",
+     "links": [
+      8
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "KSamplerSelect"
+   },
+   "widgets_values": [
+    "euler"
+   ]
+  },
+  {
+   "id": 9,
+   "type": "RandomNoise",
+   "pos": [
+    40,
+    1000
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [
+    {
+     "name": "NOISE",
+     "type": "NOISE",
+     "links": [
+      6
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "RandomNoise"
+   },
+   "widgets_values": [
+    1,
+    "fixed"
+   ]
+  },
+  {
+   "id": 4,
+   "type": "CLIPTextEncode",
+   "pos": [
+    400,
+    40
+   ],
+   "size": [
+    320,
+    240
+   ],
+   "flags": {},
+   "order": 7,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "clip",
+     "type": "CLIP",
+     "link": 1
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      2,
+      4
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CLIPTextEncode"
+   },
+   "widgets_values": [
+    "high quality pixel art game sprite in the style of a 16-bit JRPG, chibi proportions with a big head, crisp single-pixel dark outline, flat cel shading with a limited palette, full body, centred, plain flat pure white background, no ground shadow, no text, no border. a chibi young wizard with messy brown hair and dark eyes, a big floppy dark-blue pointed wizard hat with a gold band and a round red gem on the front, a dark-blue robe with gold trim at the collar, cuffs and hem, a round red gem brooch at the collar, a brown belt with a round gold buckle, short brown boots, holding a carved wooden staff topped with a glowing red crystal. Front view, facing the camera, standing idle and holding the staff upright, the whole body visible from the tip of the hat to the boots."
+   ],
+   "title": "Prompt"
+  },
+  {
+   "id": 5,
+   "type": "ConditioningZeroOut",
+   "pos": [
+    760,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 8,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "conditioning",
+     "type": "CONDITIONING",
+     "link": 2
+    }
+   ],
+   "outputs": [
+    {
+     "name": "CONDITIONING",
+     "type": "CONDITIONING",
+     "links": [
+      5
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "ConditioningZeroOut"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 10,
+   "type": "CFGGuider",
+   "pos": [
+    1120,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "model",
+     "type": "MODEL",
+     "link": 3
+    },
+    {
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 4
+    },
+    {
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 5
+    }
+   ],
+   "outputs": [
+    {
+     "name": "GUIDER",
+     "type": "GUIDER",
+     "links": [
+      7
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "CFGGuider"
+   },
+   "widgets_values": [
+    1.0
+   ]
+  },
+  {
+   "id": 11,
+   "type": "SamplerCustomAdvanced",
+   "pos": [
+    1480,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 10,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "noise",
+     "type": "NOISE",
+     "link": 6
+    },
+    {
+     "name": "guider",
+     "type": "GUIDER",
+     "link": 7
+    },
+    {
+     "name": "sampler",
+     "type": "SAMPLER",
+     "link": 8
+    },
+    {
+     "name": "sigmas",
+     "type": "SIGMAS",
+     "link": 9
+    },
+    {
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 10
+    }
+   ],
+   "outputs": [
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      11
+     ],
+     "slot_index": 0
+    },
+    {
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [],
+     "slot_index": 1
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "SamplerCustomAdvanced"
+   },
+   "widgets_values": [],
+   "title": "Muestreo"
+  },
+  {
+   "id": 12,
+   "type": "VAEDecode",
+   "pos": [
+    1840,
+    40
+   ],
+   "size": [
+    320,
+    110
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "samples",
+     "type": "LATENT",
+     "link": 11
+    },
+    {
+     "name": "vae",
+     "type": "VAE",
+     "link": 12
+    }
+   ],
+   "outputs": [
+    {
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      13
+     ],
+     "slot_index": 0
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "VAEDecode"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 13,
+   "type": "SaveImage",
+   "pos": [
+    2200,
+    40
+   ],
+   "size": [
+    320,
+    240
+   ],
+   "flags": {},
+   "order": 12,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "images",
+     "type": "IMAGE",
+     "link": 13
+    }
+   ],
+   "outputs": [],
+   "properties": {
+    "Node name for S&R": "SaveImage"
+   },
+   "widgets_values": [
+    "spritegen/concept"
+   ],
+   "title": "Guardar"
+  },
+  {
+   "id": 14,
+   "type": "MarkdownNote",
+   "pos": [
+    40,
+    -380
+   ],
+   "size": [
+    700,
+    340
+   ],
+   "flags": {},
+   "order": 13,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "properties": {},
+   "widgets_values": [
+    "**Concepto (frente)** solo desde texto, FLUX.2 Klein 4B."
+   ],
+   "title": "Cómo usar"
+  }
+ ],
+ "links": [
+  [
+   1,
+   2,
+   0,
+   4,
+   0,
+   "CLIP"
+  ],
+  [
+   2,
+   4,
+   0,
+   5,
+   0,
+   "CONDITIONING"
+  ],
+  [
+   3,
+   1,
+   0,
+   10,
+   0,
+   "MODEL"
+  ],
+  [
+   4,
+   4,
+   0,
+   10,
+   1,
+   "CONDITIONING"
+  ],
+  [
+   5,
+   5,
+   0,
+   10,
+   2,
+   "CONDITIONING"
+  ],
+  [
+   6,
+   9,
+   0,
+   11,
+   0,
+   "NOISE"
+  ],
+  [
+   7,
+   10,
+   0,
+   11,
+   1,
+   "GUIDER"
+  ],
+  [
+   8,
+   8,
+   0,
+   11,
+   2,
+   "SAMPLER"
+  ],
+  [
+   9,
+   7,
+   0,
+   11,
+   3,
+   "SIGMAS"
+  ],
+  [
+   10,
+   6,
+   0,
+   11,
+   4,
+   "LATENT"
+  ],
+  [
+   11,
+   11,
+   0,
+   12,
+   0,
+   "LATENT"
+  ],
+  [
+   12,
+   3,
+   0,
+   12,
+   1,
+   "VAE"
+  ],
+  [
+   13,
+   12,
+   0,
+   13,
+   0,
+   "IMAGE"
+  ]
+ ],
+ "groups": [],
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.7,
+   "offset": [
+    80,
+    420
+   ]
+  }
+ },
+ "version": 0.4
+}
