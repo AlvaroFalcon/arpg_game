@@ -19,15 +19,59 @@ public partial class CharacterPanel : ModalPanel
 
     protected override string Title => "Character";
 
-    protected override Vector2 FrameSize => new(1000f, 600f);
+    protected override Vector2 FrameSize => new(1000f, 640f);
 
     private HBoxContainer _columns = null!;
     private Label _header = null!;
 
+    // The character plate: it lived on the hideout HUD until 2026-10-29 (owner: show it
+    // with the character panel instead) — docs/design/menus.md -> "Hideout HUD".
+    private Control _portraitHost = null!;
+    private string _portraitSprite = "";
+    private Label _name = null!;
+    private ProgressBar _xp = null!;
+    private Label _xpText = null!;
+    private Label _gold = null!;
+    private Label _points = null!;
+
     protected override void Build(VBoxContainer body)
     {
-        _header = UiTheme.Label("", 18, UiTheme.Gold);
-        body.AddChild(_header);
+        var plate = new PanelContainer { Name = "CharacterPlate" };
+        plate.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.06f, 0.05f, 0.09f, 0.9f), UiTheme.Gold with { A = 0.6f }, 1, 6, 10));
+        body.AddChild(plate);
+        HBoxContainer row = UiTheme.HBox(plate, 12);
+        _portraitHost = new Control { CustomMinimumSize = new Vector2(56f, 56f) };
+        row.AddChild(_portraitHost);
+        VBoxContainer text = UiTheme.VBox(row, 1);
+        text.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        _name = UiTheme.Label("", 20, UiTheme.Gold);
+        text.AddChild(_name);
+        _header = UiTheme.Label("", 14, UiTheme.TextDim);
+        text.AddChild(_header);
+        HBoxContainer xpRow = UiTheme.HBox(text, 6);
+        _xp = UiTheme.Bar(UiTheme.Experience, 6f);
+        _xp.CustomMinimumSize = new Vector2(220f, 6f);
+        _xp.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        xpRow.AddChild(_xp);
+        _xpText = UiTheme.Label("", 12, UiTheme.TextDim);
+        xpRow.AddChild(_xpText);
+        VBoxContainer right = UiTheme.VBox(row, 4);
+        right.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        HBoxContainer goldRow = UiTheme.HBox(right, 4);
+        goldRow.Alignment = BoxContainer.AlignmentMode.End;
+        goldRow.AddChild(UiTheme.PixelIcon(ItemArt.ForCurrency("gold"), 18f));
+        _gold = UiTheme.Label("", 16, UiTheme.Gold);
+        goldRow.AddChild(_gold);
+        _points = UiTheme.Label("", 13, new Color(0.12f, 0.08f, 0.02f), HorizontalAlignment.Center);
+        var pill = new StyleBoxFlat { BgColor = UiTheme.Gold };
+        pill.SetCornerRadiusAll(9);
+        pill.SetContentMarginAll(3f);
+        pill.ContentMarginLeft = 8f;
+        pill.ContentMarginRight = 8f;
+        _points.AddThemeStyleboxOverride("normal", pill);
+        _points.AddThemeConstantOverride("outline_size", 0);
+        _points.AddThemeColorOverride("font_shadow_color", Colors.Transparent);
+        right.AddChild(_points);
         _columns = UiTheme.HBox(body, 28);
     }
 
@@ -46,7 +90,23 @@ public partial class CharacterPanel : ModalPanel
         if (c is not null)
         {
             string xp = c.Level >= CharacterData.MaxLevel ? "max level" : $"{N(c.Experience)} / {N(CharacterData.ExperienceToNext(c.Level))} XP";
-            _header.Text = $"{c.Name} — level {c.Level} {c.AscendancyDef?.Name ?? c.Class.Name}   ·   {xp}   ·   {c.PassivePointsFree} passive / {c.AscendancyPointsFree} ascendancy points free   ·   best tier {c.HighestTierCleared}";
+            _name.Text = c.Name;
+            _header.Text = $"Level {c.Level} {c.AscendancyDef?.Name ?? c.Class.Name}   ·   best tier {c.HighestTierCleared}   ·   {c.PassivePointsFree} passive / {c.AscendancyPointsFree} ascendancy points free";
+            float frac = build?.ExperienceFraction ?? 0f;
+            _xp.Value = frac;
+            _xpText.Text = $"{Mathf.RoundToInt(frac * 100f)}%  ·  {xp}";
+            _gold.Text = Player.Wallet.GetBalance(Profile.GoldId).ToString("N0");
+            int passive = c.PassivePointsFree;
+            bool ascend = c.AscendancyPointsFree > 0 || c is { AscendancyPoints: > 0, Ascendancy: null };
+            _points.Visible = passive > 0 || ascend;
+            _points.Text = passive > 0 ? $"{passive} passive point{(passive == 1 ? "" : "s")} to spend (P)" : "Ascendancy ready at the altar";
+            string sprite = c.AscendancyDef?.Sprite is { Length: > 0 } sp ? sp : c.Class.Sprite;
+            if (sprite != _portraitSprite)
+            {
+                _portraitSprite = sprite;
+                ClearChildren(_portraitHost);
+                _portraitHost.AddChild(UiTheme.Portrait(sprite, 56f));
+            }
         }
 
         ClearChildren(_columns);

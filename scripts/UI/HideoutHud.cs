@@ -31,14 +31,11 @@ public partial class HideoutHud : CanvasLayer
     private Player Player => Hideout.Player;
 
     private Control _root = null!;
-    private Label _name = null!;
-    private Label _class = null!;
-    private ProgressBar _xp = null!;
-    private Label _xpText = null!;
-    private Label _gold = null!;
-    private Button _points = null!;
-    private Control _plateHost = null!;
     private VBoxContainer _directory = null!;
+    private Control _directoryHost = null!;
+
+    /// <summary>The town directory shows (only with the big map; tests).</summary>
+    public bool DirectoryShowing => _directoryHost.Visible;
     private readonly List<DirectoryRow> _rows = new();
     private readonly List<KeyChip> _chips = new();
     private PanelContainer _prompt = null!;
@@ -48,7 +45,6 @@ public partial class HideoutHud : CanvasLayer
     private Label _bannerSub = null!;
     private float _bannerTime;
     private SkillBar _skillRow = null!;
-    private string _plateSprite = "";
     private QuestTracker _tracker = null!;
     private QuestBadge _promptBadge = null!;
     private string _promptQuestSuffix = "";
@@ -81,15 +77,14 @@ public partial class HideoutHud : CanvasLayer
         Layer = 4;
         _root = UiTheme.FullRect(this);
         _root.MouseFilter = Control.MouseFilterEnum.Ignore;
-        BuildPlate();
         BuildTracker();
+        BuildBigMap();
         BuildMenuBar();
         BuildDirectory();
         BuildVitals();
         BuildPrompt();
         BuildBanner();
         BuildParty();
-        BuildBigMap();
     }
 
     private static StyleBoxFlat Glass(Color accent, int top = 2)
@@ -106,65 +101,6 @@ public partial class HideoutHud : CanvasLayer
         box.ShadowColor = new Color(0f, 0f, 0f, 0.35f);
         box.ShadowSize = 6;
         return box;
-    }
-
-    // --- character plate (top left) ------------------------------------------------
-
-    private void BuildPlate()
-    {
-        var plate = new PanelContainer { Name = "CharacterPlate", Position = new Vector2(14f, 14f) };
-        plate.AddThemeStyleboxOverride("panel", Glass(UiTheme.Gold));
-        _root.AddChild(plate);
-        HBoxContainer row = UiTheme.HBox(plate, 10);
-        _plateHost = new Control { CustomMinimumSize = new Vector2(56f, 56f) };
-        row.AddChild(_plateHost);
-        VBoxContainer text = UiTheme.VBox(row, 1);
-        _name = UiTheme.Label("", 18, UiTheme.Gold);
-        _class = UiTheme.Label("", 13, UiTheme.TextDim);
-        text.AddChild(_name);
-        text.AddChild(_class);
-        HBoxContainer xpRow = UiTheme.HBox(text, 6);
-        _xp = UiTheme.Bar(UiTheme.Experience, 6f);
-        _xp.CustomMinimumSize = new Vector2(150f, 6f);
-        _xp.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        xpRow.AddChild(_xp);
-        _xpText = UiTheme.Label("", 11, UiTheme.TextDim);
-        xpRow.AddChild(_xpText);
-        HBoxContainer goldRow = UiTheme.HBox(text, 4);
-        goldRow.AddChild(UiTheme.PixelIcon(ItemArt.ForCurrency("gold"), 16f));
-        _gold = UiTheme.Label("", 14, UiTheme.Gold);
-        goldRow.AddChild(_gold);
-        _points = UiTheme.Button("", OpenPointsPanel, 12, 0f);
-        _points.CustomMinimumSize = new Vector2(0f, 22f);
-        _points.AddThemeColorOverride("font_color", new Color(0.12f, 0.08f, 0.02f));
-        _points.AddThemeStyleboxOverride("normal", Pill(UiTheme.Gold));
-        _points.AddThemeStyleboxOverride("hover", Pill(UiTheme.Gold.Lightened(0.2f)));
-        _points.Visible = false;
-        text.AddChild(_points);
-        HudLayout.Register(plate, "character", "Character");
-    }
-
-    private static StyleBoxFlat Pill(Color c)
-    {
-        var box = new StyleBoxFlat { BgColor = c };
-        box.SetCornerRadiusAll(9);
-        box.SetContentMarginAll(3f);
-        box.ContentMarginLeft = 8f;
-        box.ContentMarginRight = 8f;
-        return box;
-    }
-
-    private void OpenPointsPanel()
-    {
-        CharacterData? c = CharacterBuild.Of(Player)?.Data;
-        if (c is { PassivePointsFree: > 0 })
-        {
-            Panels?.Tree.Open();
-        }
-        else if (c is not null && c.AscendancyPointsFree > 0)
-        {
-            Hideout.WalkTo("altar");
-        }
     }
 
     private CharacterPanels? Panels => Hideout.GetNodeOrNull<CharacterPanels>("CharacterPanels");
@@ -202,17 +138,22 @@ public partial class HideoutHud : CanvasLayer
         return new Vector2(corner.End.X - QuestToast.CardWidth, corner.End.Y + 8f);
     }
 
-    // --- menu bar (top centre) -----------------------------------------------------
+    // --- menu bar (bottom right) -----------------------------------------------------
 
     private void BuildMenuBar()
     {
         var bar = new PanelContainer { Name = "MenuBar" };
-        bar.AddThemeStyleboxOverride("panel", Glass(UiTheme.PanelBorder, 1));
+        // Bottom right, a little off the edges, a touch shorter than the flask boxes (owner, 2026-10-29).
+        StyleBoxFlat glass = Glass(UiTheme.PanelBorder, 1);
+        glass.SetContentMarginAll(3f);
+        bar.AddThemeStyleboxOverride("panel", glass);
         _root.AddChild(bar);
-        bar.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
-        bar.GrowHorizontal = Control.GrowDirection.Both;
-        bar.OffsetTop = 12f;
-        HBoxContainer row = UiTheme.HBox(bar, 4);
+        bar.SetAnchorsPreset(Control.LayoutPreset.BottomRight, true);
+        bar.GrowHorizontal = Control.GrowDirection.Begin;
+        bar.GrowVertical = Control.GrowDirection.Begin;
+        bar.OffsetRight = -12f;
+        bar.OffsetBottom = -12f;
+        HBoxContainer row = UiTheme.HBox(bar, 2);
         AddChip(row, "I", "Inventory", () => ToggleInventory());
         AddChip(row, "C", "Character", () => Panels?.Sheet.Toggle());
         AddChip(row, "K", "Skills", () => Panels?.Skills.Toggle());
@@ -251,10 +192,12 @@ public partial class HideoutHud : CanvasLayer
 
     private void BuildDirectory()
     {
-        // Under the character plate, on the left: the top right holds the minimap, clock and quests.
-        var panel = new PanelContainer { Name = "TownDirectory", Position = new Vector2(14f, 164f) };
+        // Top left, and only while the big map is open (owner, 2026-10-29): it is the map's legend.
+        _directoryHost = new Control { Name = "TownDirectoryHost", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+        _root.AddChild(_directoryHost);
+        var panel = new PanelContainer { Name = "TownDirectory", Position = new Vector2(14f, 14f) };
         panel.AddThemeStyleboxOverride("panel", Glass(new Color(0.55f, 0.75f, 1f)));
-        _root.AddChild(panel);
+        _directoryHost.AddChild(panel);
         VBoxContainer column = UiTheme.VBox(panel, 2);
         HBoxContainer head = UiTheme.HBox(column, 6);
         Label title = UiTheme.Label("TOWN", 13, new Color(0.65f, 0.8f, 1f));
@@ -291,6 +234,7 @@ public partial class HideoutHud : CanvasLayer
         if (_bigMap is not null && !Hideout.Editing)
         {
             _bigMap.Visible = !_bigMap.Visible;
+            _directoryHost.Visible = _bigMap.Visible;
         }
     }
 
@@ -299,6 +243,7 @@ public partial class HideoutHud : CanvasLayer
         if (_bigMap is not null)
         {
             _bigMap.Visible = false;
+            _directoryHost.Visible = false;
         }
     }
 
@@ -317,7 +262,7 @@ public partial class HideoutHud : CanvasLayer
         }
         else if (BigMapOpen && e.IsActionPressed("ui_cancel"))
         {
-            _bigMap!.Visible = false;
+            CloseBigMap();
             PanelStack.MarkClosedThisFrame();
             GetViewport().SetInputAsHandled();
         }
@@ -441,9 +386,9 @@ public partial class HideoutHud : CanvasLayer
             return;
         }
 
-        UpdatePlate();
         UpdateSkills();
         UpdatePrompt();
+        _directoryHost.Visible = BigMapOpen;
         foreach (DirectoryRow row in _rows)
         {
             row.Refresh();
@@ -531,41 +476,6 @@ public partial class HideoutHud : CanvasLayer
         _toastTime = 3.5f;
     }
 
-    private void UpdatePlate()
-    {
-        CharacterBuild? build = CharacterBuild.Of(Player);
-        CharacterData? c = build?.Data ?? Profile.Get(this)?.Active;
-        if (c is null)
-        {
-            return;
-        }
-
-        string sprite = c.AscendancyDef?.Sprite is { Length: > 0 } s ? s : c.Class.Sprite;
-        if (sprite != _plateSprite)
-        {
-            _plateSprite = sprite;
-            foreach (Node child in _plateHost.GetChildren())
-            {
-                child.QueueFree();
-            }
-
-            _plateHost.AddChild(UiTheme.Portrait(sprite, 56f));
-        }
-
-        _name.Text = c.Name;
-        _class.Text = $"Level {c.Level} {c.AscendancyDef?.Name ?? c.Class.Name}  ·  best tier {c.HighestTierCleared}";
-        float xp = build?.ExperienceFraction ?? 0f;
-        _xp.Value = xp;
-        _xpText.Text = $"{Mathf.RoundToInt(xp * 100f)}%";
-        _gold.Text = Player.Wallet.GetBalance(Profile.GoldId).ToString("N0");
-        int passive = c.PassivePointsFree;
-        int asc = c.AscendancyPointsFree + (c is { AscendancyPoints: > 0, Ascendancy: null } ? 1 : 0);
-        _points.Visible = passive > 0 || asc > 0;
-        _points.Text = passive > 0
-            ? $"{passive} passive point{(passive == 1 ? "" : "s")} to spend  ›"
-            : $"Ascendancy ready at the altar  ›";
-    }
-
     /// <summary>A key cap with its action underneath; clicking it does the same as the key.</summary>
     private sealed partial class KeyChip : Control
     {
@@ -580,7 +490,8 @@ public partial class HideoutHud : CanvasLayer
 
         public override void _Ready()
         {
-            CustomMinimumSize = new Vector2(Mathf.Max(64f, Caption.Length * 7f + 10f), 52f);
+            // A key cap alone; what it does is its tooltip.
+            CustomMinimumSize = new Vector2(Mathf.Max(34f, Key.Length * 9f + 16f), 34f);
             MouseFilter = MouseFilterEnum.Stop;
             MouseDefaultCursorShape = CursorShape.PointingHand;
             MouseEntered += () => { _hover = true; QueueRedraw(); };
@@ -600,16 +511,14 @@ public partial class HideoutHud : CanvasLayer
         public override void _Draw()
         {
             Font font = ThemeDB.FallbackFont;
-            float capW = Mathf.Max(28f, font.GetStringSize(Key, HorizontalAlignment.Left, -1, 15).X + 14f);
-            var cap = new Rect2((Size.X - capW) / 2f, 3f, capW, 26f);
+            var cap = new Rect2(2f, 2f, Size.X - 4f, Size.Y - 7f);
             Color face = _hover ? new Color(1f, 0.95f, 0.82f) : new Color(0.88f, 0.84f, 0.75f);
             DrawRect(new Rect2(cap.Position + new Vector2(0f, 3f), cap.Size), new Color(0.35f, 0.3f, 0.25f));
             DrawRect(cap, face);
-            DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + 19f), Key, HorizontalAlignment.Center, cap.Size.X, 15, new Color(0.12f, 0.1f, 0.08f));
-            DrawString(font, new Vector2(0f, 47f), Caption, HorizontalAlignment.Center, Size.X, 12, _hover ? UiTheme.Gold : UiTheme.TextDim);
+            DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + 18f), Key, HorizontalAlignment.Center, cap.Size.X, 14, new Color(0.12f, 0.1f, 0.08f));
             if (Badge?.Invoke() is > 0 and var n)
             {
-                Vector2 c = new(cap.End.X + 1f, cap.Position.Y + 2f);
+                Vector2 c = new(cap.End.X - 3f, cap.Position.Y + 3f);
                 DrawCircle(c, 8f, UiTheme.Ember);
                 DrawString(font, c + new Vector2(-8f, 4.5f), n.ToString(), HorizontalAlignment.Center, 16f, 11, Colors.White);
             }

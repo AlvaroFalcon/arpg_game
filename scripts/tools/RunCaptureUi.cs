@@ -77,6 +77,11 @@ public partial class RunCapture
             LootFeed.Currency(reality, "kindling_shard", 2);
             await Wait(0.5f);
             await Snap("ui-hud-reality.png");
+            // Hovering the mirror shows the current life and mana.
+            GetViewport().WarpMouse(new Vector2(612f, 690f));
+            await Wait(0.3f);
+            await Snap("ui-hud-mirror-hover.png");
+            GetViewport().WarpMouse(new Vector2(640f, 300f));
 
             var map = reality.GetNode("Hud").FindChild("MapOverlay", true, false) as MapOverlay;
             map?.Toggle();
@@ -93,6 +98,22 @@ public partial class RunCapture
         GetTree().ChangeSceneToFile(ArpgGame.Core.Scenes.Hideout);
         await Wait(1.6f);
         await Snap("ui-hud-hideout.png");
+        if (GetTree().CurrentScene is Hideout hideout && hideout.GetNodeOrNull<HideoutHud>("HideoutHud") is { } hud)
+        {
+            hud.ToggleBigMap();
+            await Wait(0.5f);
+            await Snap("ui-hideout-map.png");
+            hud.CloseBigMap();
+        }
+
+        if (GetTree().CurrentScene?.GetNodeOrNull<CharacterPanels>("CharacterPanels") is { } panels)
+        {
+            panels.Sheet.Toggle();
+            await Wait(0.5f);
+            await Snap("ui-character-sheet.png");
+            panels.Sheet.Toggle();
+            await Wait(0.2f);
+        }
 
         await Launch();
         await Wait(2.5f);

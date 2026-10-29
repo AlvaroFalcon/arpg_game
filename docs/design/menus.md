@@ -807,8 +807,9 @@ the hideout and the Survival Rift.
   owner's correction after the first build, which drew the whole oval and took too much
   screen). Split down the middle: **life** fills the left half and **mana** the right,
   both rising from the screen edge like liquid (a gentle wave on
-  the surface, the lighter "recent damage" trail kept from the old bars). Current and
-  maximum sit inside each half. In the Rift, with no mana, the right half carries the
+  the surface, the lighter "recent damage" trail kept from the old bars). The current
+  value (no maximum) sits inside each half, only while the mouse is over the mirror or
+  the character panel (C) is open (owner, 2026-10-29; the maximum is in the panel). In the Rift, with no mana, the right half carries the
   danger gauge and its words sit over the right-hand skills.
 - **The rim is the experience bar**: a purple band that fills from the bottom left, up
   and over the top, down to the bottom right, cut into ten by black notches so the
@@ -854,4 +855,15 @@ gear if the owner wants it there too. HUD-editor id `loot_feed`.
 - Whether shards, jewels and skill gems (still text toasts top left) and gear should move
   into the loot feed as well.
 - A fifth skill key, if four turn out to be too few.
+
+### Hideout HUD after the owner's second pass (2026-10-29)
+
+- The **character plate** (portrait, name, level, class, best tier, XP, gold, the points
+  pill) left the HUD: it is now the head of the **character panel (C)**.
+- The **town directory** shows only while the big town map is open (M / Tab), top left,
+  as the map's legend.
+- The **quest tracker** is as wide as the minimap's frame (`QuestTracker.PanelWidth`).
+- The **menu bar** (I, C, K, P, J, H, ?, Esc) moved to the bottom right, 12 px off the
+  edges, as bare key caps a touch shorter than the flask boxes; what each does is its
+  tooltip, and J keeps its badge.
 
