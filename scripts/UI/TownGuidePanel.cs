@@ -31,7 +31,7 @@ public partial class TownGuidePanel : ModalPanel
 
     protected override void Build(VBoxContainer body)
     {
-        Label intro = UiTheme.Label("Your town between realities. Walk up to a station and press E — or click a place in the Town list (top right) to walk there.", 15, UiTheme.TextDim);
+        Label intro = UiTheme.Label("Your town between realities. Walk up to a station and press F — or click a place in the Town list (left) to walk there.", 15, UiTheme.TextDim);
         intro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         body.AddChild(intro);
         HBoxContainer columns = UiTheme.HBox(body, 20);
@@ -45,9 +45,9 @@ public partial class TownGuidePanel : ModalPanel
         keys.AddChild(UiTheme.Label("Controls", 18, UiTheme.Gold));
         foreach ((string key, string what) in new[]
         {
-            ("Click", "walk there"), ("E", "use the station you're next to"), ("I", "inventory · Crafting tab for orbs"),
-            ("C · K · P", "character · skills · passive tree"), ("J", "quest log"), ("H", "edit your town"), ("Q · R", "life and mana flasks"),
-            ("Space · Shift", "dodge · sprint"), ("M · Tab", "town map (click a place to walk there)"), ("Esc", "menu (settings, Edit HUD)"),
+            ("Click", "walk there"), ("F", "use the station you're next to"), ("I", "inventory · Crafting tab for orbs"),
+            ("C · K · P", "character · skills · passive tree"), ("J", "quest log"), ("H", "edit your town"), ("1 · 2", "life and mana flasks"),
+            ("Space · Shift", "dodge · sprint"), ("Tab", "town map (click a place to walk there)"), ("Esc", "menu (settings, Edit HUD)"),
         })
         {
             HBoxContainer row = UiTheme.HBox(keys, 8);

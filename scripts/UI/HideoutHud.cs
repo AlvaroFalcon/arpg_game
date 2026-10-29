@@ -47,9 +47,7 @@ public partial class HideoutHud : CanvasLayer
     private Label _banner = null!;
     private Label _bannerSub = null!;
     private float _bannerTime;
-    private HBoxContainer _skillRow = null!;
-    private readonly List<SkillSlotView> _slots = new();
-    private string _skillSignature = "";
+    private SkillBar _skillRow = null!;
     private string _plateSprite = "";
     private QuestTracker _tracker = null!;
     private QuestBadge _promptBadge = null!;
@@ -67,7 +65,7 @@ public partial class HideoutHud : CanvasLayer
     public IReadOnlyDictionary<string, QuestMarker> DirectoryMarkers => _rows.ToDictionary(r => r.Kind, r => r.Quest);
 
     /// <summary>The small town map above the directory (tests, captures).</summary>
-    public TownMap Minimap => _directory.GetParent().GetNode<TownMap>("Minimap");
+    public TownMap Minimap => (TownMap)_corner.Map!;
 
     /// <summary>The big map (M).</summary>
     public TownMap BigMap => _bigMap!;
@@ -176,16 +174,33 @@ public partial class HideoutHud : CanvasLayer
     /// <summary>The quest tracker (tests, captures).</summary>
     public QuestTracker Tracker => _tracker;
 
+    private HudCorner _corner = null!;
+
+    /// <summary>The top-right corner: the town minimap, the local time, the quests (tests).</summary>
+    public HudCorner Corner => _corner;
+
+    /// <summary>The top-right corner (docs/design/menus.md -> "HUD: top-right corner"): the
+    /// square town minimap, the clock and the quest tracker under it.</summary>
     private void BuildTracker()
     {
-        _tracker = new QuestTracker { Position = new Vector2(14f, 164f), OpenLog = id => Panels?.Quests.OpenOn(id) };
-        _root.AddChild(_tracker);
-        HudLayout.Register(_tracker, "quests", "Quests", _tracker.SetPreview);
+        _tracker = new QuestTracker { OpenLog = id => Panels?.Quests.OpenOn(id) };
+        _corner = new HudCorner
+        {
+            Map = new TownMap { Hideout = Hideout, Name = "Minimap" },
+            Tracker = _tracker,
+            BigMapOpen = () => BigMapOpen,
+        };
+        _root.AddChild(_corner);
+        _corner.Dock();
+        HudLayout.Register(_corner, "corner", "Minimap, clock & quests", _tracker.SetPreview, HudAvoid.Hide);
     }
 
-    /// <summary>Where the quest toast's card goes: 8 px under the tracker, or where the tracker would be.</summary>
-    public Vector2 ToastAnchor() =>
-        _tracker.GlobalPosition + new Vector2(0f, _tracker.Visible ? _tracker.Size.Y + 8f : 0f);
+    /// <summary>Where the quest toast's card goes: 8 px under the top-right corner, right-aligned with it.</summary>
+    public Vector2 ToastAnchor()
+    {
+        Rect2 corner = _corner.GetGlobalRect();
+        return new Vector2(corner.End.X - QuestToast.CardWidth, corner.End.Y + 8f);
+    }
 
     // --- menu bar (top centre) -----------------------------------------------------
 
@@ -236,15 +251,11 @@ public partial class HideoutHud : CanvasLayer
 
     private void BuildDirectory()
     {
-        var panel = new PanelContainer { Name = "TownDirectory" };
+        // Under the character plate, on the left: the top right holds the minimap, clock and quests.
+        var panel = new PanelContainer { Name = "TownDirectory", Position = new Vector2(14f, 164f) };
         panel.AddThemeStyleboxOverride("panel", Glass(new Color(0.55f, 0.75f, 1f)));
         _root.AddChild(panel);
-        panel.SetAnchorsPreset(Control.LayoutPreset.TopRight, true);
-        panel.GrowHorizontal = Control.GrowDirection.Begin;
-        panel.OffsetRight = -14f;
-        panel.OffsetTop = 14f;
         VBoxContainer column = UiTheme.VBox(panel, 2);
-        column.AddChild(new TownMap { Hideout = Hideout, Name = "Minimap", CustomMinimumSize = new Vector2(250f, 184f) });
         HBoxContainer head = UiTheme.HBox(column, 6);
         Label title = UiTheme.Label("TOWN", 13, new Color(0.65f, 0.8f, 1f));
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -333,42 +344,18 @@ public partial class HideoutHud : CanvasLayer
 
     private void UpdateSkills()
     {
-        var skills = CharacterBuild.Slots
-            .Select(slot => (slot, skill: Player.SkillUser.GetSkill(slot)))
-            .Where(t => t.skill is not null)
-            .ToList();
-        string signature = string.Join("|", skills.Select(t => $"{t.slot}{t.skill!.Definition.DisplayName}{t.skill.Level}{t.skill.Attached.Count}"));
-        if (signature != _skillSignature)
-        {
-            _skillSignature = signature;
-            foreach (SkillSlotView view in _slots)
-            {
-                view.QueueFree();
-            }
-
-            _slots.Clear();
-            foreach ((SkillSlotId slot, SkillInstance? skill) in skills)
-            {
-                var view = new SkillSlotView(skill!, SkillSlotView.LabelOf(slot));
-                _skillRow.AddChild(view);
-                _slots.Add(view);
-            }
-        }
-
-        foreach (SkillSlotView view in _slots)
-        {
-            view.Cooldown = Player.SkillUser.CooldownFraction(view.Skill);
-        }
+        _skillRow.Show(CharacterBuild.Slots.Select(slot => (SkillSlotView.LabelOf(slot), Player.SkillUser.GetSkill(slot))).ToList());
+        _skillRow.Cooldowns(Player.SkillUser.CooldownFraction);
     }
 
-    // --- E prompt (over the nearest station) ---------------------------------------
+    // --- F prompt (over the nearest station) ---------------------------------------
 
     private void BuildPrompt()
     {
         _prompt = new PanelContainer { Name = "Prompt", Visible = false, MouseFilter = Control.MouseFilterEnum.Ignore };
         _root.AddChild(_prompt);
         HBoxContainer row = UiTheme.HBox(_prompt, 10);
-        PanelContainer key = UiTheme.KeyCap("E", 20);
+        PanelContainer key = UiTheme.KeyCap("F", 20);
         key.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
         row.AddChild(key);
         VBoxContainer text = UiTheme.VBox(row, 0);

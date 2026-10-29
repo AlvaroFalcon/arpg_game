@@ -72,7 +72,7 @@ public partial class Profile
             return "bad gems";
         }
 
-        if (s.Loadout is null || s.Loadout.Count > CharacterData.LoadoutSlots
+        if (s.Loadout is null || s.Loadout.Count > CharacterData.LegacyLoadoutSlots
             || s.Loadout.Any(l => l is not null && ((l.SkillUid is { } uid && BadId(uid)) || l.SupportUids is null || l.SupportUids.Count > 8 || l.SupportUids.Any(BadId))))
         {
             return "bad skill loadout";

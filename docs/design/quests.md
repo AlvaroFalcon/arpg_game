@@ -1,5 +1,8 @@
 # Quests and the quest log
 
+> **Keys changed 2026-10-29** (docs/design/menus.md -> "Controls"): interact is **F** (was E), pick-up is **G** (was F), flasks are **1/2** (were Q/R), skills are LMB/RMB/Q/E. Older text below may still name the old keys.
+
+
 **Status: [IMPLEMENTED 2026-10-18]**. Planned from a UX review of the hideout (captures
 `review-*.png` in `docs/devlog/screenshots/`), built the same day; "Implementation" near the end
 lists what was built where and every place it departs from the plan (small). Captures of the

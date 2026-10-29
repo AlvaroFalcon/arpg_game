@@ -78,13 +78,14 @@ public partial class EndgameSmokeTest
             && GemShop.CannotBuy(c, player.Wallet, GemShop.Find("spark", false)!)!.StartsWith("You have this skill"),
             $"second purchase refused={!again}, gold {player.Wallet.GetBalance(Profile.GoldId)}");
 
-        // Supports stack up to the loadout slots; the seventh is refused.
+        // Supports stack up to the loadout slots (four); the next is refused.
+        int cap = GemLoot.MaxSupportCopies;
         c.Level = 14;
         SetGold(player, 5000);
         view.SetKind(true);
         view.Select(GemShop.Find("pierce", true)!);
         int bought6 = 0;
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < cap; i++)
         {
             if (view.Buy())
             {
@@ -94,9 +95,9 @@ public partial class EndgameSmokeTest
 
         long goldAt6 = player.Wallet.GetBalance(Profile.GoldId);
         bool seventh = view.Buy();
-        Check("GEMSHOP-SUPPORT-CAP", bought6 == 6 && !seventh && player.Wallet.GetBalance(Profile.GoldId) == goldAt6 && view.ReasonText == "You have 6 of 6, one per loadout slot"
-            && view.BuyButton.Disabled && c.Gems.Count(g => g.Id == "pierce" && g.IsSupport) == 6,
-            $"bought {bought6} of 6, seventh refused={!seventh}, reason '{view.ReasonText}'");
+        Check("GEMSHOP-SUPPORT-CAP", bought6 == cap && !seventh && player.Wallet.GetBalance(Profile.GoldId) == goldAt6 && view.ReasonText == $"You have {cap} of {cap}, one per loadout slot"
+            && view.BuyButton.Disabled && c.Gems.Count(g => g.Id == "pierce" && g.IsSupport) == cap,
+            $"bought {bought6} of {cap}, next refused={!seventh}, reason '{view.ReasonText}'");
 
         // Not enough gold says how much more.
         c.Level = 6;
@@ -144,12 +145,12 @@ public partial class EndgameSmokeTest
             var reread = new Profile { Persist = false };
             reread.LoadJson(profile.ToJson());
             CharacterData? back = reread.Characters.FirstOrDefault(k => k.Name == "GemBuyer");
-            saved = back is not null && back.Gems.Any(g => g.Id == "meteor" && !g.IsSupport && g.Level == 1) && back.Gems.Count(g => g.Id == "pierce" && g.IsSupport) == 6
+            saved = back is not null && back.Gems.Any(g => g.Id == "meteor" && !g.IsSupport && g.Level == 1) && back.Gems.Count(g => g.Id == "pierce" && g.IsSupport) == cap
                 && back.GemShopSeenLevel == 16 && profile.Active.Gold == player.Wallet.GetBalance(Profile.GoldId);
             reread.Free();
         }
 
-        Check("GEMSHOP-SAVED", saved, $"profile JSON keeps the bought Meteor, six Pierce and the seen level (profile present={profile is not null})");
+        Check("GEMSHOP-SAVED", saved, $"profile JSON keeps the bought Meteor, {cap} Pierce and the seen level (profile present={profile is not null})");
         GameEvents.Raised -= OnEvent;
         merchant.Character = null;
 

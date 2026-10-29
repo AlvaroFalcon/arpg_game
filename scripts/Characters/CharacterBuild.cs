@@ -23,7 +23,7 @@ namespace ArpgGame.Characters;
 public partial class CharacterBuild : Node, IBuildContext
 {
     /// <summary>Loadout index → input slot: LMB, RMB, 1, 2, 3, 4.</summary>
-    public static readonly SkillSlotId[] Slots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 };
+    public static readonly SkillSlotId[] Slots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2 };
 
     [Signal]
     public delegate void LevelledUpEventHandler(int level);
@@ -145,7 +145,7 @@ public partial class CharacterBuild : Node, IBuildContext
         Ascendancy.Strip(this);
     }
 
-    /// <summary>Puts the loadout's skill gems (with their supports) into slots 1-4.</summary>
+    /// <summary>Puts the loadout's skill gems (with their supports) into LMB, RMB, Q and E.</summary>
     public void EquipLoadout()
     {
         _slotGems.Clear();

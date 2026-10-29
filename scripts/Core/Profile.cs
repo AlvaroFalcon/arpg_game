@@ -701,6 +701,17 @@ public partial class Profile : Node
             c.Loadout[i] = s.Loadout[i] ?? new LoadoutSlot();
         }
 
+        // A save from the six-slot bar: skills on the old 3 and 4 move into a free slot
+        // if there is one; otherwise their gems simply go back to the collection.
+        for (int i = CharacterData.LoadoutSlots; i < s.Loadout.Count; i++)
+        {
+            if (s.Loadout[i] is { SkillUid: { Length: > 0 } } extra
+                && Array.FindIndex(c.Loadout, l => l.SkillUid is null) is >= 0 and var free)
+            {
+                c.Loadout[free] = extra;
+            }
+        }
+
         foreach ((string tier, int n) in s.Shards)
         {
             if (int.TryParse(tier, out int t))

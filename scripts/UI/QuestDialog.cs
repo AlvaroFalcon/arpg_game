@@ -8,7 +8,7 @@ using ArpgGame.World;
 namespace ArpgGame.UI;
 
 /// <summary>
-/// The quest dialogue — docs/design/quests.md -> "The quest dialogue". Opens when you press E
+/// The quest dialogue — docs/design/quests.md -> "The quest dialogue". Opens when you press F
 /// at a station that has something to say: the explanation of a new quest (primary: open the
 /// station on the tab that teaches it) or, with the objective met, the turn-in (primary:
 /// claim the reward). Enter or, after a short guard so the E that opened it cannot also

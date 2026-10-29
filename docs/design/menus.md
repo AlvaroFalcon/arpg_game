@@ -19,6 +19,9 @@ go through `Core/Scenes.Go`, which also unpauses and clears the panel stack.
 
 ## Main menu
 
+(The title and its three entries were redesigned on 2026-10-29: see "Title screen"
+below. Play is now **Start**; Training Grounds left the menu.)
+
 The arena, bosses and enemies drawn behind the title (the camera drifts), the menu,
 and a line of lifetime records once there are any (runs, victories, best time, best
 level, gold). Keyboard/gamepad focus works on every button.
@@ -80,20 +83,34 @@ game, joins the panel stack, Escape or the button closes):
   refund (gold); hover reads a node.
 - **Altar**: see docs/design/classes.md -> "Ascendancies".
 
-## Controls (2026-10-12)
+## Controls (2026-10-12, four skill keys since 2026-10-29)
 
 | Key | Action |
 |---|---|
 | WASD | move (Shift sprint, Space dodge, Ctrl force-move) |
-| LMB, RMB, 1, 2, 3, 4 | the six loadout skills, aimed at the cursor (realities, hideout) |
-| E | interact: Mirror, Altar, Stash, the exit portal after a boss |
-| F | pick up the nearest item (hold to keep picking; walks to it if out of reach) |
+| LMB, RMB, Q, E | the four loadout skills, aimed at the cursor (realities, hideout) |
+| 1 / 2 | life flask / mana flask |
+| F | interact: Mirror, Altar, Stash, stations, the exit portal after a boss; hold F by a downed ally to revive |
+| G | pick up the nearest item (hold to keep picking; walks to it if out of reach) |
+| Tab (or M) | the big map |
 | I / C / K / P | inventory, character sheet, skills, passive tree |
 | J | quest log, in the hideout and in realities (not in the Survival Rift; docs/design/quests.md) |
 | Esc | close the top panel, else pause |
 
 In the Survival Rift skills auto-cast and auto-aim (no mana). The boss's exit
-portal is used with E, never by walking onto it, since loot lands around it.
+portal is used with F, never by walking onto it, since loot lands around it.
+
+**Why four skill keys (owner, 2026-10-29).** LMB, RMB, Q and E sit under the hand that
+already holds WASD and the mouse: more accessible and easier to play. If something turns
+out to be missing a fifth key gets added, not before. That moved what used to live on
+those keys: flasks went from Q/R to **1/2** (PoE's flask row), interact from E to **F**
+(the usual "F to interact"), and pick-up from F to **G**, next to it. Pick-up stayed a key
+of its own instead of sharing F: loot lands around the exit portal, and one key for both
+would walk you into the portal, or keep picking up a full bag instead of leaving.
+Old saves had six slots (LMB, RMB, 1-4): the first four are kept (1 → Q, 2 → E), and a
+skill that sat on the old 3 or 4 moves into a slot left empty, else its gem just goes back
+to the collection (`Profile.FromSave`; `LOADOUT-LEGACY-SIX` in EndgameSmokeTest). The
+Survival Rift keeps up to six auto-cast skills (no keys there).
 
 **Character sheet (C)**: attributes with what each grants, defences (life, mana,
 stamina, armour, resistances, dodge), offence (speeds, critical, area,
@@ -454,7 +471,7 @@ ready quests **[built]**.
 - Controller support pass (focus works; dodge/aim on sticks does not yet).
 
 
-## In-game HUD: the bottom-centre cluster **[IMPLEMENTED 2026-10-12]**
+## In-game HUD: the bottom-centre cluster **[IMPLEMENTED 2026-10-12, REPLACED 2026-10-29 by "HUD: the mirror"]**
 
 Modelled on the owner's reference (AION 2). `UI/PlayerHudBar.cs`, shared by the
 reality and Survival Rift HUDs:
@@ -563,7 +580,8 @@ HUD (dark glass panels, gold accents, the AION-style cluster):
 - **Menu bar** (top centre): key caps for I, C, K, P, H, ? and Esc with what they do
   underneath. They are buttons too, so the keys are learnt by seeing them; P shows a
   badge with unspent passive points.
-- **Town directory** (top right): every station, coloured by its accent, with the
+- **Town directory** (top right; on the left under the plate since 2026-10-29, the
+  top right being the minimap, clock and quests): every station, coloured by its accent, with the
   quarter it's in, the distance and an arrow pointing at it from you. Clicking a row
   walks you there on the navigation mesh; the altar row gets a dot when ascendancy
   points are waiting. Since stations can be moved in edit mode, quarters and
@@ -580,7 +598,8 @@ HUD (dark glass panels, gold accents, the AION-style cluster):
   controls that matter in town.
 - A "Hideout" banner fades in on arrival (with "1 new quest · J opens your quests" when
   quests wait).
-- **Quest tracker** (under the plate) and the J chip: quests.md.
+- **Quest tracker** (in the top-right corner under the minimap and clock since
+  2026-10-29) and the J chip: quests.md.
 
 All new panels are movable in Edit HUD (`character`, `hideout_menu`, `town`,
 `vitals`, `skills`, `quests`). The whole HUD hides while the town editor is open.
@@ -752,4 +771,87 @@ Tests (`StatsSmokeTest`, through the real `Health.TakeDamage` path on a dummy):
   keep it short); a smarter layout (nudging columns apart) could come later.
 - Needs a human playtest: readability at 1080p/1440p and ultrawide, Compact in the
   Rift at high density, and co-op at internet latency.
+
+## UI from the owner's sketch **[IMPLEMENTED 2026-10-29]**
+
+The owner drew the title screen and the in-game HUD by hand
+([sketches/2026-10-29-ui-screens.pdf](sketches/2026-10-29-ui-screens.pdf)): six pages, a
+title, its menu, the vitals and skills, the top-right corner and the loot feed. The
+background of the title stays the drifting arena for now (a proper one comes later).
+
+### Title screen
+
+`UI/MainMenu.cs` + `UI/BrushMenuOption.cs`. Two steps:
+
+1. **Press any key to continue** under the title, pulsing gently. Any key, mouse button
+   or gamepad button goes on. Skipped when the menu has something to say at once (the
+   "party ended" notice) or is opened by the co-op flags (`--coop-host`, `--coop-join`)
+   or `--skip-title`; screens opened straight from code (tests, captures) drop it too.
+2. Three entries, text only: **Start** (the old Play: Solo / With friends), **Settings**,
+   **Quit**. Arrow keys move, Enter/Space or a click chooses; hovering selects, so mouse
+   and keyboard share one highlight. The selected one turns white and gets a **blurred
+   brush stroke** under it that sweeps in from the left (a few stacked translucent bands
+   tapered at both ends, plus dry-brush streaks; ember gold since our background is
+   dark, where the sketch's ink was black on white). The prompt sits where the menu
+   will be, so the title doesn't jump when it opens.
+
+Training Grounds (the sandbox, `scenes/Main.tscn`) is no longer on the menu: the sketch
+has three entries. The scene is still there for development.
+
+### HUD: the mirror
+
+`UI/PlayerHudBar.cs` (vitals) and `SkillBar` in `UI/HudWidgets.cs`, the same in realities,
+the hideout and the Survival Rift.
+
+- **An oval mirror** rising out of the bottom edge: only its **upper half** shows (the
+  owner's correction after the first build, which drew the whole oval and took too much
+  screen). Split down the middle: **life** fills the left half and **mana** the right,
+  both rising from the screen edge like liquid (a gentle wave on
+  the surface, the lighter "recent damage" trail kept from the old bars). Current and
+  maximum sit inside each half. In the Rift, with no mana, the right half carries the
+  danger gauge and its words sit over the right-hand skills.
+- **The rim is the experience bar**: a purple band that fills from the bottom left, up
+  and over the top, down to the bottom right, cut into ten by black notches so the
+  percentage reads at a glance. The level sits on a small gem at the top of the rim.
+- Around it: dodge charges over the gem, energy shield as a pale band inside the life
+  half, stamina over the left skills, the class resource (Rage, Combo...) over the right.
+- **Skills**: LMB and RMB left of the mirror, Q and E right of it. Every slot shows, an
+  empty one too, so the keys are learnt; LMB/RMB carry a little mouse with that button
+  lit, Q/E a key cap. The flasks (1, 2) are at the outer ends of the bar.
+
+HUD-editor ids are unchanged (`vitals`, `skills`). Rejected: keeping flasks under the
+mirror (they would cover its bottom, where the liquid is lowest and matters most).
+
+### HUD: top-right corner
+
+`UI/HudCorner.cs`: a **square minimap** held 18 px off the top and right edges (196 px,
+smaller than the sketch's), the **local time** (HH:mm, the computer's clock) under it,
+and under that, a little apart, the **quest tracker** when a quest is open. Opening the
+big map (Tab) hides the minimap; the clock and quests move up. In the hideout the minimap
+is the town map, and the town directory moved to the left under the character plate; in
+realities the reality's name, tier, monster level, portals and modifiers moved to the top
+left under the character's name; in the Survival Rift (no quests there, and no minimap
+solo) the corner is the clock, and the kill count moved under the timer. One HUD-editor
+panel, `corner` ("Minimap, clock & quests").
+
+### Loot feed
+
+`UI/LootFeed.cs`. On the left, a little above mid-height: one line per pickup, the item's
+icon in a small frame and its name (gold "+137", stacks "×2"), **sliding in from the left
+edge, staying four seconds and sliding back out to the left**; the lines under a leaving
+one close up. A repeat of a line that is still showing (more gold) adds to its count and
+starts its timer again; at most six lines.
+
+Anything can go in: `LootFeed.Report(new LootEntry(key, icon, name, colour, count))`
+(a static bus like `GameEvents`; with no view listening it costs nothing). Today gold and
+crafting currency report (`LootFeed.Gold`, `LootFeed.Currency`; in realities, the Rift and
+a co-op client's Rift), and their old text toasts are gone. `LootFeed.Item` is ready for
+gear if the owner wants it there too. HUD-editor id `loot_feed`.
+
+### Open questions
+
+- The title's background (the owner will make one).
+- Whether shards, jewels and skill gems (still text toasts top left) and gear should move
+  into the loot feed as well.
+- A fifth skill key, if four turn out to be too few.
 

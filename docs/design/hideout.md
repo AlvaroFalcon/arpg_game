@@ -1,5 +1,8 @@
 # The hideout town
 
+> **Keys changed 2026-10-29** (docs/design/menus.md -> "Controls"): interact is **F** (was E), pick-up is **G** (was F), flasks are **1/2** (were Q/R), skills are LMB/RMB/Q/E. Older text below may still name the old keys.
+
+
 **Status: [IMPLEMENTED 2026-10-13] first pass.** The owner asked for the hideout to
 become a city: a central plaza with the Mirror and the merchant, the forge inside a
 smithy, an edit mode to rearrange the props (the Mirror, the forge...), and a shop

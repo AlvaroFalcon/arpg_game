@@ -854,6 +854,10 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
 
                 who.GoldCollected += (long)pickup.Value;
                 player.Wallet.Add(Core.Profile.GoldId, (long)pickup.Value);
+                if (local)
+                {
+                    UI.LootFeed.Gold(this, (long)pickup.Value);
+                }
                 break;
             case PickupKind.Currency when Items.Crafting.Find(pickup.CurrencyKey) is { } currency:
                 who.OrbsCollected++;
@@ -861,7 +865,7 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
                 if (local)
                 {
                     Core.Sfx.Play(this, "pickup", -2f);
-                    EmitSignal(SignalName.Toast, currency.Name, currency.Color);
+                    UI.LootFeed.Currency(this, currency.Id, 1);
                 }
 
                 break;

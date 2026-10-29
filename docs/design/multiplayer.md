@@ -1,5 +1,8 @@
 # Multiplayer (co-op)
 
+> **Keys changed 2026-10-29** (docs/design/menus.md -> "Controls"): interact is **F** (was E), pick-up is **G** (was F), flasks are **1/2** (were Q/R), skills are LMB/RMB/Q/E. Older text below may still name the old keys.
+
+
 Status: **Survival Rift co-op implemented** (phases 1–2 of the owner's plan, 2026-10-15). Co-op level-ups (one party bar, rounds that pause everyone, a 10 s timer) 2026-10-17. **Party session 2026-10-18/19** (phase A): the party lives in the host's hideout between rifts, anyone home proposes a rift with a 30 s popup, "Invite friends" from the hideout's pause menu, edit permission for the host's town, and a loot bonus for playing together. See "Party session". Co-op Altered Realities are phase B.
 
 ## What it is

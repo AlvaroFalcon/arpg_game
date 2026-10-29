@@ -57,7 +57,7 @@ public partial class SkillsSmokeTest : Node2D
         // both need checking, or a real key doing nothing would pass silently.
         foreach (string action in new[]
                  {
-                     "skill_slot_1", "skill_slot_2", "skill_slot_3", "skill_slot_4",
+                     "skill_slot_1", "skill_slot_2",
                      "skill_slot_lmb", "skill_slot_rmb", "force_move",
                  })
         {

@@ -10,7 +10,7 @@ namespace ArpgGame.UI;
 /// Added by the Survival Rift and co-op realities (never offline). It reads E and shows
 /// one line above the skill bar:
 /// <list type="bullet">
-/// <item>next to a downed ally: "Hold E to revive Ana" (or "Bob is reviving Ana": one
+/// <item>next to a downed ally: "Hold F to revive Ana" (or "Bob is reviving Ana": one
 /// reviver at a time); while channelling: "Reviving Ana… 3.2 s — stay still";</item>
 /// <item>while down: "Getting up in 7 s… or wait for an ally" (or "Bob is reviving you…").</item>
 /// </list>
@@ -136,7 +136,7 @@ public partial class ReviveControl : CanvasLayer
             {
                 text = ReviverOf(Target) is { } other && other != Local
                     ? $"{NameOf(other)} is reviving {NameOf(Target)}"
-                    : $"Hold E to revive {NameOf(Target)}";
+                    : $"Hold F to revive {NameOf(Target)}";
             }
 
             if (held && Target is not null && channelling is null)

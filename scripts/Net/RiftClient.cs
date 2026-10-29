@@ -230,13 +230,14 @@ public partial class RiftClient : CoopClient
             case PickupKind.Gold:
                 Core.Sfx.Play(this, "pickup");
                 Local.Wallet.Add(Core.Profile.GoldId, (long)value);
+                UI.LootFeed.Gold(this, (long)value);
                 State.ApplyLocalCollected(kind, (long)value);
                 break;
             case PickupKind.Currency when Items.Crafting.Find(key) is { } currency:
                 Core.Sfx.Play(this, "pickup", -2f);
                 Local.Wallet.Add(currency.Id, 1);
                 State.ApplyLocalCollected(kind, 1);
-                State.ShowToast(currency.Name, currency.Color);
+                UI.LootFeed.Currency(this, currency.Id, 1);
                 break;
             case PickupKind.Nuke:
                 Core.Sfx.Play(this, "boss_warn");

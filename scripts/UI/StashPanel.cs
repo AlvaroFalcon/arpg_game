@@ -9,7 +9,7 @@ namespace ArpgGame.UI;
 
 /// <summary>
 /// The stash — docs/design/items.md -> "Stash". Opened at the chest in the
-/// hideout (E). Account-wide tabs (shared by every character, like PoE), each a
+/// hideout (F). Account-wide tabs (shared by every character, like PoE), each a
 /// 12×10 grid; the first is free and more are bought with gold, each costing
 /// double the last. Right-click moves an item between the stash tab and the
 /// inventory (PoE's ctrl-click); dragging rearranges within a grid.

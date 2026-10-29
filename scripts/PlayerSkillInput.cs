@@ -28,8 +28,6 @@ public partial class PlayerSkillInput : Node
     {
         (SkillSlotId.Slot1, "skill_slot_1"),
         (SkillSlotId.Slot2, "skill_slot_2"),
-        (SkillSlotId.Slot3, "skill_slot_3"),
-        (SkillSlotId.Slot4, "skill_slot_4"),
         (SkillSlotId.Lmb, "skill_slot_lmb"),
         (SkillSlotId.Rmb, "skill_slot_rmb"),
     };

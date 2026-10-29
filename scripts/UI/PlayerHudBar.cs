@@ -8,51 +8,70 @@ using ArpgGame.Items;
 namespace ArpgGame.UI;
 
 /// <summary>
-/// The bottom-centre player cluster — docs/design/menus.md -> "HUD". Modelled on
-/// the owner's reference (AION 2): a long red life bar and a cyan mana bar that
-/// meet at a central hexagonal badge holding the level, with an experience ring
-/// around it; under the bars the flasks (Q life, R mana) as bottles whose liquid
-/// shows the charges left; and dodge charges under the badge. The skill row
-/// below it is a separate control (<see cref="CreateSkillRow"/>), so the HUD
-/// editor can move it on its own. Custom-drawn rather than built from ProgressBars so the
-/// bars can be slanted, mirrored and drain towards the centre, with a lighter
-/// "recent damage" trail.
+/// The bottom-centre player cluster — docs/design/menus.md -> "HUD: the mirror". Drawn
+/// from the owner's sketch (2026-10-29): an oval mirror rising out of the bottom edge
+/// (only its upper half shows), split down the middle, life filling the left half and
+/// mana (or what stands in for it) the right, both rising from the screen edge like
+/// liquid; its rim is the experience bar, a purple band that fills from the bottom left,
+/// over the top, to the bottom right, cut into ten by black notches. Around it: the level on a
+/// small gem at the top, dodge charges above that, the flasks (1 life, 2 mana) at the
+/// outer ends of the skill bar, stamina over the left skills and the class resource over
+/// the right ones. The skills themselves are a separate control (<see cref="CreateSkillRow"/>,
+/// <see cref="SkillBar"/>) so the HUD editor can move them on their own. Custom-drawn so
+/// the halves can be clipped to the oval and drain with a lighter "recent damage" trail.
 /// </summary>
 public partial class PlayerHudBar : Control
 {
-    /// <summary>What fills the right-hand bar when there is no mana to show (the
-    /// Survival Rift: the danger level and what comes next).</summary>
+    /// <summary>What fills the right half when there is no mana to show (the Survival
+    /// Rift: the danger level and what comes next).</summary>
     public readonly record struct SideGauge(string Label, string Detail, float Fraction, Color Top, Color Bottom);
 
-    public const float Width = 920f;
-    public const float Height = 142f;
+    public const float Width = 640f;
+    public const float Height = 170f;
+
+    /// <summary>The mirror's half-width and half-height.</summary>
+    public const float MirrorRx = 70f;
+    public const float MirrorRy = 92f;
+
+    /// <summary>Room left either side of the mirror for the skill bar (<see cref="SkillBar.Gap"/>).</summary>
+    public const float MirrorClearance = MirrorRx + 22f;
 
     public Player Player = null!;
 
-    /// <summary>Level and experience fraction to show in the badge.</summary>
+    /// <summary>Level and experience fraction to show.</summary>
     public Func<(int Level, float Experience)> Progress = () => (1, 0f);
 
     /// <summary>The class resource (Rage, Combo...), if any.</summary>
     public Func<ClassResource?> Resource = () => null;
 
-    /// <summary>Right-hand bar when mana is hidden; null leaves that side empty.</summary>
+    /// <summary>Right half when mana is hidden; null leaves it empty.</summary>
     public Func<SideGauge?> RightGauge = () => null;
 
     private const float CenterX = Width / 2f;
-    private static readonly Vector2 Badge = new(CenterX, 60f);
-    private const float BadgeR = 46f;
-    private const float BarTop = 42f;
-    private const float BarH = 22f;
-    private const float BarInner = 52f; // gap from the centre to the bars' inner end
-    private const float BarLen = 350f;
-    private const float Slant = 12f;
+    /// <summary>The oval's centre sits on the screen's bottom edge: only its upper half
+    /// shows, like the sketch's mirror rising out of the frame.</summary>
+    private static readonly Vector2 Mirror = new(CenterX, Height);
 
-    private static readonly Color LifeTop = new(0.95f, 0.25f, 0.22f);
-    private static readonly Color LifeBottom = new(0.55f, 0.06f, 0.08f);
-    private static readonly Color ManaTop = new(0.35f, 0.9f, 1f);
-    private static readonly Color ManaBottom = new(0.05f, 0.42f, 0.7f);
-    private static readonly Color Track = new(0.05f, 0.04f, 0.07f, 0.88f);
+    /// <summary>Where the visible mirror ends (the screen's bottom edge): the liquids' floor.</summary>
+    private const float BaseY = Height;
+
+    /// <summary>The visible rim runs from the left end (π) over the top to the right end (2π).</summary>
+    private const float ArcFrom = Mathf.Pi;
+    private const float ArcTo = Mathf.Tau;
+    private const float RimW = 9f;
+
+    /// <summary>Top of the skill slots, in this control's coordinates (they sit on the same baseline).</summary>
+    private const float SlotTop = Height - 14f - SkillBar.SlotSize;
+
+    private static readonly Color LifeTop = new(0.98f, 0.3f, 0.26f);
+    private static readonly Color LifeBottom = new(0.5f, 0.04f, 0.07f);
+    private static readonly Color ManaTop = new(0.38f, 0.82f, 1f);
+    private static readonly Color ManaBottom = new(0.04f, 0.2f, 0.62f);
+    private static readonly Color Glass = new(0.04f, 0.03f, 0.07f, 0.92f);
     private static readonly Color Rim = new(0.9f, 0.76f, 0.42f);
+    private static readonly Color XpPurple = new(0.7f, 0.32f, 0.95f);
+    private static readonly Color XpTrack = new(0.1f, 0.06f, 0.14f, 0.95f);
+    private static readonly Color Track = new(0.05f, 0.04f, 0.07f, 0.88f);
 
     private float _lifeTrail = 1f;
     private float _manaTrail = 1f;
@@ -65,19 +84,19 @@ public partial class PlayerHudBar : Control
         Size = new Vector2(Width, Height);
     }
 
-    /// <summary>The skill row (LMB, RMB, 1-4), docked under the cluster. Its own
-    /// control so the HUD editor can move it separately.</summary>
-    public static HBoxContainer CreateSkillRow(Control root)
+    /// <summary>The skill bar (LMB, RMB | mirror | Q, E), docked on the cluster's baseline.
+    /// Its own control so the HUD editor can move it separately.</summary>
+    public static SkillBar CreateSkillRow(Control root)
     {
-        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", 8);
-        root.AddChild(row);
-        row.SetAnchorsPreset(LayoutPreset.CenterBottom, true);
-        row.OffsetLeft = -230f;
-        row.OffsetRight = 230f;
-        row.OffsetTop = -74f;
-        row.OffsetBottom = -8f;
-        return row;
+        var bar = new SkillBar { Name = "SkillBar" };
+        root.AddChild(bar);
+        bar.SetAnchorsPreset(LayoutPreset.CenterBottom, true);
+        bar.GrowHorizontal = GrowDirection.Both;
+        bar.OffsetLeft = -SkillBar.TotalWidth / 2f;
+        bar.OffsetRight = SkillBar.TotalWidth / 2f;
+        bar.OffsetTop = -14f - SkillBar.SlotSize - SkillBar.KeyRoom;
+        bar.OffsetBottom = -14f;
+        return bar;
     }
 
     /// <summary>Places the cluster at the bottom centre of a full-rect parent.</summary>
@@ -86,8 +105,8 @@ public partial class PlayerHudBar : Control
         SetAnchorsPreset(LayoutPreset.CenterBottom, true);
         OffsetLeft = -Width / 2f;
         OffsetRight = Width / 2f;
-        OffsetTop = -Height - 78f;
-        OffsetBottom = -78f;
+        OffsetTop = -Height;
+        OffsetBottom = 0f;
     }
 
     public override void _Process(double delta)
@@ -107,85 +126,94 @@ public partial class PlayerHudBar : Control
 
     private bool ShowMana => !Player.Stats.IgnoresResourceCosts && Player.Stats.Mana is not null;
 
+    /// <summary>A point on the mirror's oval (t = 0 right, π/2 bottom, π left, 3π/2 top).</summary>
+    private static Vector2 OnOval(float t, float grow = 0f) =>
+        Mirror + new Vector2(Mathf.Cos(t) * (MirrorRx + grow), Mathf.Sin(t) * (MirrorRy + grow));
+
     public override void _Draw()
     {
         Font font = ThemeDB.FallbackFont;
 
-        // --- the two bars ---
-        DrawBar(-1, Fraction(Player.Stats.Life), _lifeTrail, LifeTop, LifeBottom);
-        if (Player.Stats.Life is { } life)
+        // --- the glass and its two liquids ---
+        DrawColoredPolygon(UpperHalf(2f), Glass);
+        DrawHalf(-1, Fraction(Player.Stats.Life), _lifeTrail, LifeTop, LifeBottom);
+        SideGauge? gauge = null;
+        if (ShowMana)
         {
-            int maxLife = Mathf.RoundToInt(life.Max);
-            Text(font, $"{Mathf.Min(Mathf.CeilToInt(life.Current), maxLife):N0} / {maxLife:N0}", new Vector2(CenterX - BarInner - 10f, BarTop + 16f), 15, Colors.White, HorizontalAlignment.Right);
+            DrawHalf(1, Fraction(Player.Stats.Mana), _manaTrail, ManaTop, ManaBottom);
+        }
+        else if (RightGauge() is { } g)
+        {
+            gauge = g;
+            float f = Mathf.Clamp(g.Fraction, 0f, 1f);
+            DrawHalf(1, f, f, g.Top, g.Bottom);
         }
 
-        // Energy shield (docs/design/progression.md -> "Energy Shield"): a pale band
-        // along the top of the life bar, emptying towards the badge like life does.
-        // A co-op client never sees the host's shield numbers, so it shows none.
+        // Energy shield: a pale band hugging the inside of the life half, emptying
+        // downwards. A co-op client never sees the host's shield numbers, so it shows none.
         if (Player.Health is { MaxEnergyShield: > 0f } health && !Net.NetMode.ClientSide)
         {
             float frac = Mathf.Clamp(health.EnergyShield / health.MaxEnergyShield, 0f, 1f);
-            float inner = CenterX - BarInner;
-            DrawRect(new Rect2(inner - BarLen, BarTop - 9f, BarLen, 5f), Track);
-            if (frac > 0f)
-            {
-                DrawRect(new Rect2(inner - BarLen * frac, BarTop - 9f, BarLen * frac, 5f), new Color(0.62f, 0.86f, 1f));
-            }
+            DrawOvalArc(ArcFrom, ArcFrom + Mathf.Pi / 2f * frac, -7f, 3f, new Color(0.7f, 0.9f, 1f, 0.9f));
+        }
 
-            Text(font, $"Energy Shield {Mathf.CeilToInt(health.EnergyShield)} / {Mathf.RoundToInt(health.MaxEnergyShield)}", new Vector2(inner - BarLen, BarTop - 12f), 12, new Color(0.7f, 0.9f, 1f), HorizontalAlignment.Left);
+        // Glass: the split down the middle and a soft reflection top-left.
+        DrawLine(Mirror + new Vector2(0f, -MirrorRy), new Vector2(Mirror.X, BaseY), new Color(0.02f, 0.01f, 0.03f, 0.95f), 3f);
+        DrawLine(Mirror + new Vector2(0f, -MirrorRy + 4f), new Vector2(Mirror.X, BaseY), Rim with { A = 0.35f }, 1f);
+        DrawOvalArc(Mathf.Pi * 1.08f, Mathf.Pi * 1.42f, -14f, 4f, new Color(1f, 1f, 1f, 0.12f));
+        DrawOvalArc(Mathf.Pi * 1.12f, Mathf.Pi * 1.3f, -20f, 2f, new Color(1f, 1f, 1f, 0.1f));
+
+        // --- the rim: experience, ten notches ---
+        (int level, float xp) = Progress();
+        DrawOvalArc(ArcFrom, ArcTo, RimW / 2f + 1f, RimW + 4f, new Color(0.02f, 0.015f, 0.03f, 0.95f));
+        DrawOvalArc(ArcFrom, ArcTo, RimW / 2f + 1f, RimW, XpTrack);
+        float x = Mathf.Clamp(xp, 0f, 1f);
+        if (x > 0.002f)
+        {
+            // From the bottom left, up and over the top, down to the bottom right.
+            float end = ArcFrom + (ArcTo - ArcFrom) * x;
+            DrawOvalArc(ArcFrom, end, RimW / 2f + 1f, RimW - 2f, XpPurple);
+            DrawOvalArc(ArcFrom, end, RimW / 2f - 1f, 1.5f, new Color(1f, 0.85f, 1f, 0.45f));
+        }
+
+        for (int i = 1; i < 10; i++)
+        {
+            float t = ArcFrom + (ArcTo - ArcFrom) * i / 10f;
+            DrawLine(OnOval(t, -1f), OnOval(t, RimW + 3f), new Color(0f, 0f, 0f, 0.95f), 2.5f);
+        }
+
+        DrawOvalArc(ArcFrom, ArcTo, -1f, 1.5f, Rim with { A = 0.85f });
+        DrawOvalArc(ArcFrom, ArcTo, RimW + 3f, 2f, Rim);
+
+        // --- numbers inside each half ---
+        if (Player.Stats.Life is { } life)
+        {
+            int maxLife = Mathf.RoundToInt(life.Max);
+            Text(font, $"{Mathf.Min(Mathf.CeilToInt(life.Current), maxLife):N0}", new Vector2(Mirror.X - MirrorRx * 0.45f, BaseY - 26f), 17, Colors.White, HorizontalAlignment.Center);
+            Text(font, $"/{maxLife:N0}", new Vector2(Mirror.X - MirrorRx * 0.45f, BaseY - 11f), 11, new Color(1f, 0.8f, 0.78f), HorizontalAlignment.Center);
         }
 
         if (ShowMana)
         {
-            DrawBar(1, Fraction(Player.Stats.Mana), _manaTrail, ManaTop, ManaBottom);
             Stats.ResourcePool mana = Player.Stats.Mana!;
-            Text(font, $"{Mathf.FloorToInt(mana.Current):N0} / {Mathf.RoundToInt(mana.Max):N0}", new Vector2(CenterX + BarInner + 10f, BarTop + 16f), 15, Colors.White, HorizontalAlignment.Left);
+            Text(font, $"{Mathf.FloorToInt(mana.Current):N0}", new Vector2(Mirror.X + MirrorRx * 0.45f, BaseY - 26f), 17, Colors.White, HorizontalAlignment.Center);
+            Text(font, $"/{Mathf.RoundToInt(mana.Max):N0}", new Vector2(Mirror.X + MirrorRx * 0.45f, BaseY - 11f), 11, new Color(0.8f, 0.9f, 1f), HorizontalAlignment.Center);
         }
-        else if (RightGauge() is { } gauge)
+        else if (gauge is { } gg)
         {
-            // Life-only HUD: the right bar carries the run's pressure instead, so
-            // the cluster stays balanced around the badge.
-            DrawBar(1, Mathf.Clamp(gauge.Fraction, 0f, 1f), gauge.Fraction, gauge.Top, gauge.Bottom);
-            Text(font, gauge.Label, new Vector2(CenterX + BarInner + 10f, BarTop + 16f), 15, Colors.White, HorizontalAlignment.Left);
-            Text(font, gauge.Detail, new Vector2(CenterX + BarInner + 4f, BarTop + BarH + 22f), 13, gauge.Top.Lightened(0.35f), HorizontalAlignment.Left);
+            // The Rift: the right half carries the run's pressure; its words sit over the right skills.
+            Text(font, gg.Label, new Vector2(CenterX + MirrorClearance, SlotTop - 26f), 14, Colors.White, HorizontalAlignment.Left);
+            Text(font, gg.Detail, new Vector2(CenterX + MirrorClearance, SlotTop - 10f), 12, gg.Top.Lightened(0.35f), HorizontalAlignment.Left);
         }
 
-        // Stamina under the life bar, the class resource under the mana bar.
-        if (Player.MaxStamina > 0f)
-        {
-            float s = Mathf.Clamp(Mathf.Max(0f, Player.Stamina) / Player.MaxStamina, 0f, 1f);
-            float inner = CenterX - BarInner;
-            DrawRect(new Rect2(inner - BarLen * 0.8f, BarTop + BarH + 4f, BarLen * 0.8f, 4f), Track);
-            DrawRect(new Rect2(inner - BarLen * 0.8f * s, BarTop + BarH + 4f, BarLen * 0.8f * s, 4f), Player.Exhausted ? new Color(1f, 0.45f, 0.4f) : new Color(0.95f, 0.85f, 0.35f));
-        }
+        // --- the level on a gem at the top of the rim ---
+        Vector2 gem = Mirror + new Vector2(0f, -MirrorRy - RimW / 2f - 2f);
+        var diamond = new[] { gem + new Vector2(0f, -17f), gem + new Vector2(19f, 0f), gem + new Vector2(0f, 17f), gem + new Vector2(-19f, 0f) };
+        DrawColoredPolygon(diamond, new Color(0.13f, 0.08f, 0.2f));
+        DrawPolyline(new[] { diamond[0], diamond[1], diamond[2], diamond[3], diamond[0] }, Rim, 2f, true);
+        Text(font, level.ToString(), gem + new Vector2(0f, 6f), 16, Colors.White, HorizontalAlignment.Center);
 
-        if (Resource() is { } res)
-        {
-            float x = CenterX + BarInner;
-            float pipW = Mathf.Min(14f, (BarLen * 0.8f - 2f * res.Max) / Mathf.Max(1, res.Max));
-            for (int i = 0; i < res.Max; i++)
-            {
-                DrawRect(new Rect2(x + i * (pipW + 2f), BarTop + BarH + 4f, pipW, 5f), i < res.Value ? res.Color : Track);
-            }
-
-            // The label sits at the far end of the pips, clear of the mana flask.
-            Text(font, $"{res.Label} {res.Value}/{res.Max}", new Vector2(CenterX + BarInner + BarLen, BarTop + BarH + 22f), 12, new Color(0.75f, 0.72f, 0.85f), HorizontalAlignment.Right);
-        }
-
-        // --- flasks ---
-        if (Flasks.Of(Player) is { } flasks)
-        {
-            DrawFlask(font, new Rect2(CenterX - BarInner - 70f, 82f, 54f, 54f), flasks.Life, "Q", LifeTop, LifeBottom);
-            if (ShowMana && flasks.Mana.Enabled)
-            {
-                DrawFlask(font, new Rect2(CenterX + BarInner + 16f, 82f, 54f, 54f), flasks.Mana, "R", ManaTop, ManaBottom);
-            }
-        }
-
-        // --- the badge (drawn last so it sits over the bars' inner ends) ---
-        DrawBadge(font);
-
-        // Dodge charges: small diamonds under the badge.
+        // Dodge charges: small diamonds over the gem.
         if (Player.Dodge is { } dodge)
         {
             int max = dodge.MaxCharges;
@@ -193,95 +221,161 @@ public partial class PlayerHudBar : Control
             for (int i = 0; i < max; i++)
             {
                 float fill = i < dodge.Charges ? 1f : i == dodge.Charges ? dodge.RechargeProgress : 0f;
-                Diamond(new Vector2(start + i * 18f, 124f), 6.5f, fill);
+                Diamond(new Vector2(start + i * 18f, gem.Y - 30f), 6f, fill);
+            }
+        }
+
+        // Stamina over the left skills, the class resource over the right ones.
+        float sideLen = SkillBar.SideWidth;
+        float leftStart = CenterX - MirrorClearance - sideLen;
+        if (Player.MaxStamina > 0f)
+        {
+            float s = Mathf.Clamp(Mathf.Max(0f, Player.Stamina) / Player.MaxStamina, 0f, 1f);
+            DrawRect(new Rect2(leftStart, SlotTop - 9f, sideLen, 4f), Track);
+            // Drains towards the mirror like the old bar did towards the badge.
+            DrawRect(new Rect2(leftStart + sideLen * (1f - s), SlotTop - 9f, sideLen * s, 4f), Player.Exhausted ? new Color(1f, 0.45f, 0.4f) : new Color(0.95f, 0.85f, 0.35f));
+        }
+
+        if (Resource() is { } res)
+        {
+            float rx = CenterX + MirrorClearance;
+            float pipW = Mathf.Min(14f, (sideLen - 2f * res.Max) / Mathf.Max(1, res.Max));
+            for (int i = 0; i < res.Max; i++)
+            {
+                DrawRect(new Rect2(rx + i * (pipW + 2f), SlotTop - 9f, pipW, 5f), i < res.Value ? res.Color : Track);
+            }
+
+            Text(font, $"{res.Label} {res.Value}/{res.Max}", new Vector2(rx, SlotTop - 15f), 11, new Color(0.75f, 0.72f, 0.85f), HorizontalAlignment.Left);
+        }
+
+        // --- flasks at the outer ends of the skill bar ---
+        if (Flasks.Of(Player) is { } flasks)
+        {
+            const float fs = 46f;
+            float y = Height - 14f - fs;
+            DrawFlask(font, new Rect2(leftStart - 10f - fs, y, fs, fs), flasks.Life, "1", LifeTop, LifeBottom);
+            if (ShowMana && flasks.Mana.Enabled)
+            {
+                DrawFlask(font, new Rect2(CenterX + MirrorClearance + sideLen + 10f, y, fs, fs), flasks.Mana, "2", ManaTop, ManaBottom);
             }
         }
     }
 
-    /// <summary>A slanted bar on one side (-1 left, 1 right) that empties towards the badge.</summary>
-    private void DrawBar(int side, float value, float trail, Color top, Color bottom)
+    /// <summary>The visible (upper) half of the oval as a polygon, closed along the bottom edge.</summary>
+    private static Vector2[] UpperHalf(float grow, int steps = 40)
     {
-        float inner = CenterX + side * BarInner;
-        float outer = CenterX + side * (BarInner + BarLen);
-        Vector2[] Shape(float frac)
+        var pts = new Vector2[steps + 1];
+        for (int i = 0; i <= steps; i++)
         {
-            float end = inner + (outer - inner) * frac;
-            // The outer end is cut on a slant (wider at the bottom).
-            float slant = Mathf.Abs(end - outer) < Slant ? side * (Slant - Mathf.Abs(end - outer)) : 0f;
-            return new[]
-            {
-                new Vector2(inner, BarTop),
-                new Vector2(end - slant, BarTop),
-                new Vector2(end, BarTop + BarH),
-                new Vector2(inner, BarTop + BarH),
-            };
+            pts[i] = OnOval(ArcFrom + (ArcTo - ArcFrom) * i / steps, grow);
         }
 
-        Vector2[] track = Shape(1f);
-        // Frame: a dark plate a little larger than the bar, with a gold rim.
-        var plate = new[] { track[0] + new Vector2(0f, -3f), track[1] + new Vector2(side * 2f, -3f), track[2] + new Vector2(side * 4f, 3f), track[3] + new Vector2(0f, 3f) };
-        DrawColoredPolygon(plate, new Color(0.02f, 0.015f, 0.03f, 0.9f));
-        DrawColoredPolygon(track, Track);
+        return pts;
+    }
+
+    /// <summary>An arc of the oval from <paramref name="from"/> to <paramref name="to"/> (radians, see <see cref="OnOval"/>).</summary>
+    private void DrawOvalArc(float from, float to, float grow, float width, Color color)
+    {
+        int steps = Mathf.Max(2, Mathf.CeilToInt(Mathf.Abs(to - from) / Mathf.Tau * 96f));
+        var pts = new Vector2[steps + 1];
+        for (int i = 0; i <= steps; i++)
+        {
+            pts[i] = OnOval(from + (to - from) * i / steps, grow);
+        }
+
+        DrawPolyline(pts, color, width, true);
+    }
+
+    /// <summary>One half of the mirror (-1 left, 1 right) filled from the bottom up to
+    /// <paramref name="value"/>, with the paler trail above it and a gently moving surface.</summary>
+    private void DrawHalf(int side, float value, float trail, Color top, Color bottom)
+    {
         if (trail > value + 0.01f)
         {
-            DrawColoredPolygon(Shape(trail), new Color(1f, 0.85f, 0.6f, 0.55f));
-        }
-
-        if (value * BarLen > 2f)
-        {
-            Vector2[] fill = Shape(value);
-            DrawPolygon(fill, new[] { top, top, bottom, bottom });
-            // A glassy highlight along the top and a sheen sweeping along.
-            DrawLine(fill[0] + new Vector2(0f, 2f), fill[1] + new Vector2(-side * 2f, 2f), new Color(1f, 1f, 1f, 0.35f), 2f);
-            float sweep = (_time * 0.25f) % 1.4f - 0.2f;
-            if (sweep > 0f && sweep < value)
+            Vector2[]? t = HalfShape(side, trail, 0f);
+            if (t is not null)
             {
-                float x = inner + (outer - inner) * sweep;
-                DrawLine(new Vector2(x, BarTop + 1f), new Vector2(x - side * 6f, BarTop + BarH - 1f), new Color(1f, 1f, 1f, 0.18f), 4f);
+                DrawColoredPolygon(t, new Color(1f, 0.85f, 0.6f, 0.35f));
             }
         }
 
-        DrawPolyline(new[] { plate[0], plate[1], plate[2], plate[3] }, Rim with { A = 0.75f }, 1.5f, true);
+        Vector2[]? fill = HalfShape(side, value, value < 0.995f ? 1.6f : 0f);
+        if (fill is null)
+        {
+            return;
+        }
+
+        var colors = new Color[fill.Length];
+        float yTop = Mirror.Y - MirrorRy;
+        float span = BaseY - yTop;
+        for (int i = 0; i < fill.Length; i++)
+        {
+            float k = Mathf.Clamp((fill[i].Y - yTop) / span, 0f, 1f);
+            colors[i] = top.Lerp(bottom, k);
+        }
+
+        DrawPolygon(fill, colors);
+        // The surface catches the light.
+        if (value < 0.995f && value > 0.01f)
+        {
+            float y = SurfaceY(value);
+            float half = HalfWidthAt(y);
+            float x0 = side < 0 ? Mirror.X - half + 2f : Mirror.X + 2f;
+            DrawLine(new Vector2(x0, y + 1f), new Vector2(x0 + half - 4f, y + 1f), new Color(1f, 1f, 1f, 0.3f), 1.5f);
+        }
     }
 
-    private void DrawBadge(Font font)
+    /// <summary>The liquid's surface: empty at the screen edge, full at the top of the oval.</summary>
+    private static float SurfaceY(float value) => BaseY - (BaseY - (Mirror.Y - MirrorRy)) * Mathf.Clamp(value, 0f, 1f);
+
+    private static float HalfWidthAt(float y)
     {
-        (int level, float xp) = Progress();
-        // Experience ring around the badge.
-        DrawArc(Badge, BadgeR + 7f, 0f, Mathf.Tau, 64, new Color(0.05f, 0.04f, 0.08f, 0.9f), 6f, true);
-        if (xp > 0.001f)
+        float k = (y - Mirror.Y) / MirrorRy;
+        return MirrorRx * Mathf.Sqrt(Mathf.Max(0f, 1f - k * k));
+    }
+
+    /// <summary>The filled part of one half as a polygon: the centre line, the surface and the
+    /// oval's edge down to the bottom. Null when there is too little to draw.</summary>
+    private Vector2[]? HalfShape(int side, float value, float wave)
+    {
+        if (value <= 0.005f)
         {
-            DrawArc(Badge, BadgeR + 7f, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * Mathf.Clamp(xp, 0f, 1f), 64, UiTheme.Experience, 4f, true);
+            return null;
         }
 
-        // Hexagon, pointy top: dark centre, gold double rim.
-        var outer = new Vector2[6];
-        var inner = new Vector2[6];
-        for (int i = 0; i < 6; i++)
+        float surface = SurfaceY(value);
+        float bottomY = BaseY;
+        if (bottomY - surface < 1.5f)
         {
-            float a = -Mathf.Pi / 2f + i * Mathf.Tau / 6f;
-            outer[i] = Badge + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * BadgeR;
-            inner[i] = Badge + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (BadgeR - 7f);
+            return null;
         }
 
-        DrawColoredPolygon(outer, new Color(0.12f, 0.1f, 0.16f));
-        DrawPolygon(inner, new[] { new Color(0.22f, 0.18f, 0.32f), new Color(0.16f, 0.13f, 0.24f), new Color(0.08f, 0.06f, 0.12f), new Color(0.05f, 0.04f, 0.08f), new Color(0.08f, 0.06f, 0.12f), new Color(0.16f, 0.13f, 0.24f) });
-        DrawPolyline(new[] { outer[0], outer[1], outer[2], outer[3], outer[4], outer[5], outer[0] }, Rim, 2.5f, true);
-        DrawPolyline(new[] { inner[0], inner[1], inner[2], inner[3], inner[4], inner[5], inner[0] }, Rim with { A = 0.5f }, 1f, true);
-        // Little wings joining the bars.
-        foreach (int side in new[] { -1, 1 })
+        var pts = new List<Vector2>();
+        // The surface, from the centre line outwards, with a small travelling wave.
+        const int surfaceSteps = 8;
+        float half = HalfWidthAt(surface);
+        for (int i = 0; i <= surfaceSteps; i++)
         {
-            DrawColoredPolygon(new[]
-            {
-                Badge + new Vector2(side * (BadgeR - 6f), -10f),
-                Badge + new Vector2(side * (BarInner + 6f), BarTop - 2f - Badge.Y + 2f),
-                Badge + new Vector2(side * (BarInner + 6f), BarTop + BarH - Badge.Y + 2f),
-                Badge + new Vector2(side * (BadgeR - 6f), 10f),
-            }, Rim with { A = 0.9f });
+            float u = (float)i / surfaceSteps;
+            float y = surface + Mathf.Sin(_time * 2.4f + u * 5f + side) * wave * Mathf.Sin(u * Mathf.Pi);
+            pts.Add(new Vector2(Mirror.X + side * half * u, y));
         }
 
-        Text(font, level.ToString(), Badge + new Vector2(0f, 12f), 34, Colors.White, HorizontalAlignment.Center);
-        Text(font, $"{Mathf.FloorToInt(Mathf.Clamp(xp, 0f, 1f) * 100f)}%", Badge + new Vector2(0f, 30f), 11, UiTheme.Experience, HorizontalAlignment.Center);
+        // Down the oval's edge.
+        const int edgeSteps = 20;
+        for (int i = 1; i <= edgeSteps; i++)
+        {
+            float y = surface + (bottomY - surface) * i / edgeSteps;
+            pts.Add(new Vector2(Mirror.X + side * HalfWidthAt(y), y));
+        }
+
+        pts.Add(new Vector2(Mirror.X, bottomY));
+        if (side > 0)
+        {
+            pts.Reverse();
+        }
+
+        return pts.ToArray();
     }
 
     private void DrawFlask(Font font, Rect2 r, Flask flask, string key, Color top, Color bottom)
@@ -291,11 +385,8 @@ public partial class PlayerHudBar : Control
         {
             BgColor = new Color(0.05f, 0.04f, 0.08f, 0.9f),
             BorderColor = flask.Active ? top : Rim with { A = 0.7f },
-            CornerRadiusTopLeft = 6,
-            CornerRadiusTopRight = 6,
-            CornerRadiusBottomLeft = 6,
-            CornerRadiusBottomRight = 6,
         };
+        box.SetCornerRadiusAll(6);
         box.SetBorderWidthAll(flask.Active ? 2 : 1);
         if (flask.Active)
         {
@@ -306,16 +397,15 @@ public partial class PlayerHudBar : Control
         DrawStyleBox(box, r);
 
         // The bottle: a round body, a neck and a cork; liquid level = charges.
-        Vector2 c = r.Position + new Vector2(r.Size.X * 0.42f, r.Size.Y * 0.6f);
-        float br = r.Size.X * 0.25f;
-        DrawRect(new Rect2(c.X - 4f, c.Y - br - 9f, 8f, 10f), new Color(0.75f, 0.85f, 0.95f, 0.35f));
-        DrawRect(new Rect2(c.X - 5f, c.Y - br - 13f, 10f, 5f), new Color(0.55f, 0.36f, 0.2f));
+        Vector2 c = r.Position + new Vector2(r.Size.X * 0.5f, r.Size.Y * 0.6f);
+        float br = r.Size.X * 0.24f;
+        DrawRect(new Rect2(c.X - 3.5f, c.Y - br - 8f, 7f, 9f), new Color(0.75f, 0.85f, 0.95f, 0.35f));
+        DrawRect(new Rect2(c.X - 4.5f, c.Y - br - 12f, 9f, 4.5f), new Color(0.55f, 0.36f, 0.2f));
         DrawCircle(c, br, new Color(0.75f, 0.85f, 0.95f, 0.22f));
         float level = Mathf.Clamp(flask.Charges / flask.MaxCharges, 0f, 1f);
         if (level > 0.01f)
         {
-            // A circular segment: the arc below the liquid surface, from the right
-            // intersection round the bottom to the left one.
+            // A circular segment: the arc below the liquid surface.
             float surface = c.Y + br - 2f * br * level;
             float a1 = Mathf.Asin(Mathf.Clamp((surface - c.Y) / br, -1f, 1f));
             float a2 = Mathf.Pi - a1;
@@ -327,11 +417,11 @@ public partial class PlayerHudBar : Control
                 pts.Add(c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * br);
             }
 
-            Color liquid = empty ? bottom.Darkened(0.4f) : top.Lerp(bottom, 0.3f);
             if (a2 - a1 > 0.05f)
             {
-                DrawColoredPolygon(pts.ToArray(), liquid);
+                DrawColoredPolygon(pts.ToArray(), empty ? bottom.Darkened(0.4f) : top.Lerp(bottom, 0.3f));
             }
+
             DrawCircle(c + new Vector2(-br * 0.35f, -br * 0.3f), br * 0.18f, new Color(1f, 1f, 1f, 0.45f));
         }
 
@@ -343,8 +433,8 @@ public partial class PlayerHudBar : Control
             DrawRect(new Rect2(r.Position.X + 4f, r.End.Y - 5f, (r.Size.X - 8f) * flask.Partial, 2f), top with { A = 0.8f });
         }
 
-        Text(font, key, r.Position + new Vector2(5f, 14f), 13, Rim, HorizontalAlignment.Left);
-        Text(font, flask.Usable.ToString(), r.Position + new Vector2(r.Size.X - 5f, r.Size.Y - 7f), 17, empty ? new Color(1f, 0.4f, 0.35f) : Colors.White, HorizontalAlignment.Right);
+        SkillBar.DrawKeyCap(this, font, r.Position + new Vector2(3f, 3f), key);
+        Text(font, flask.Usable.ToString(), r.Position + new Vector2(r.Size.X - 4f, r.Size.Y - 6f), 14, empty ? new Color(1f, 0.4f, 0.35f) : Colors.White, HorizontalAlignment.Right);
         if (empty)
         {
             DrawRect(r, new Color(0f, 0f, 0f, 0.35f));

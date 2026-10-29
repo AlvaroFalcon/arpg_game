@@ -74,7 +74,7 @@ public partial class MovementSmokeTest : Node2D
         foreach (string action in new[]
                  {
                      "move_up", "move_down", "move_left", "move_right",
-                     "skill_slot_1", "skill_slot_2", "skill_slot_3", "skill_slot_4",
+                     "skill_slot_1", "skill_slot_2",
                      "skill_slot_lmb", "skill_slot_rmb", "force_move",
                  })
         {

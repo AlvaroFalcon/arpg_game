@@ -693,7 +693,7 @@ public partial class RealityController : Node2D, IPickupHandler
 
     public override void _Process(double delta)
     {
-        // The exit portal is used deliberately (E), never by walking over it:
+        // The exit portal is used deliberately (F), never by walking over it:
         // loot tends to land right on top of it.
         if (_exitPortal is null || _leaving)
         {
@@ -706,7 +706,7 @@ public partial class RealityController : Node2D, IPickupHandler
             _exitPrompt.Visible = near;
         }
 
-        // E next to a downed ally revives them (ReviveControl) rather than leaving.
+        // F next to a downed ally revives them (ReviveControl) rather than leaving.
         if (near && !GetTree().Paused && Input.IsActionJustPressed("interact") && Revive is not { WantsInteract: true })
         {
             UseExitPortal();
@@ -1081,6 +1081,7 @@ public partial class RealityController : Node2D, IPickupHandler
             case PickupKind.Gold:
                 Sfx.Play(this, "pickup");
                 player.Wallet.Add(Profile.GoldId, (long)value);
+                UI.LootFeed.Gold(this, (long)value);
                 break;
             case PickupKind.Shard when c is not null:
                 int tier = Mathf.Clamp(Mathf.RoundToInt(value), 1, RealityTiers.MaxTier);
@@ -1099,8 +1100,9 @@ public partial class RealityController : Node2D, IPickupHandler
                 break;
             case PickupKind.Currency when Crafting.Find(key) is { } currency:
                 Sfx.Play(this, "pickup", -2f);
-                player.Wallet.Add(currency.Id, Mathf.Clamp(Mathf.RoundToInt(value), 1, 1000));
-                EmitSignal(SignalName.Toast, currency.Name, currency.Color);
+                int orbs = Mathf.Clamp(Mathf.RoundToInt(value), 1, 1000);
+                player.Wallet.Add(currency.Id, orbs);
+                UI.LootFeed.Currency(this, currency.Id, orbs);
                 break;
             case PickupKind.Gem when c is not null && (!fromHost || UpgradeCatalog.Skills.Any(g => g.Id == key) || UpgradeCatalog.Supports.Any(g => g.Id == key)):
                 Sfx.Play(this, "levelup", -6f);
@@ -1147,7 +1149,7 @@ public partial class RealityController : Node2D, IPickupHandler
         NetHost?.Exit(_exitPortal!.GlobalPosition);
         Sfx.Play(this, "victory");
         Sfx.Music(this, "music_menu");
-        AnnounceAll(IsTutorial ? "Guardian defeated" : "Reality stabilised", "Collect your loot — press E at the portal to go home", new Color(1f, 0.85f, 0.4f));
+        AnnounceAll(IsTutorial ? "Guardian defeated" : "Reality stabilised", "Collect your loot — press F at the portal to go home", new Color(1f, 0.85f, 0.4f));
     }
 
     /// <summary>The boss's drops for <paramref name="owner"/> (null = this machine's player).</summary>
@@ -1227,7 +1229,7 @@ public partial class RealityController : Node2D, IPickupHandler
         _exitPortal = new Portal { ZIndex = -1 };
         AddChild(_exitPortal);
         _exitPortal.GlobalPosition = at;
-        _exitPrompt = UiTheme.Label("[E] Return to the hideout", 16, UiTheme.Gold, HorizontalAlignment.Center);
+        _exitPrompt = UiTheme.Label("[F] Return to the hideout", 16, UiTheme.Gold, HorizontalAlignment.Center);
         _exitPrompt.Size = new Vector2(260f, 22f);
         _exitPrompt.Position = new Vector2(-130f, -78f);
         _exitPrompt.Visible = false;
@@ -1458,7 +1460,7 @@ public partial class RealityController : Node2D, IPickupHandler
         if (IsHostSide && Party.Players.Count > 1 && Time.GetTicksMsec() > _confirmCloseUntil)
         {
             _confirmCloseUntil = Time.GetTicksMsec() + 4000;
-            EmitSignal(SignalName.Announced, "Your friends are still inside", "Press E again to close the reality for everyone", new Color(1f, 0.75f, 0.4f));
+            EmitSignal(SignalName.Announced, "Your friends are still inside", "Press F again to close the reality for everyone", new Color(1f, 0.75f, 0.4f));
             return;
         }
 
