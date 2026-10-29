@@ -18,7 +18,19 @@ public partial class VoxelActor : Node3D
     /// <summary>How far upright figures lean back from the camera (the camera pitch would be a full billboard facing it).</summary>
     public const float LeanDegrees = 30f;
 
+    /// <summary>Tools (look comparison): every figure flat, even those that still have a voxel model.</summary>
+    public static bool ForceFlat;
+
+    /// <summary>Meta set on a sprite shown as a flat figure (overhead bars, death bursts read it).</summary>
+    public const string FlatMeta = "flat_figure";
+
     public AnimatedSprite2D Sprite = null!;
+
+    /// <summary>Shown as its 2D frame on a camera-facing plane (docs/design/art-pipeline.md ->
+    /// "HD-2D with flat figures") instead of a voxel model. Set by <see cref="VoxelStage.Track"/>.</summary>
+    public bool Flat;
+
+    private Sprite3D? _paper;
     public VoxelStage Stage = null!;
 
     private MeshInstance3D _mesh = null!;
@@ -50,6 +62,21 @@ public partial class VoxelActor : Node3D
     {
         _mesh = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.On };
         AddChild(_mesh);
+        if (Flat || ForceFlat)
+        {
+            _paper = new Sprite3D
+            {
+                TextureFilter = BaseMaterial3D.TextureFilterEnum.Nearest,
+                Shaded = true,
+                AlphaCut = SpriteBase3D.AlphaCutMode.Discard,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.On,
+                PixelSize = 1f / 16f,
+                DoubleSided = true,
+            };
+            AddChild(_paper);
+            _mesh.Visible = false;
+            Sprite.SetMeta(FlatMeta, true);
+        }
         Sprite.SelfModulate = new Color(1f, 1f, 1f, 0f);
 
         // Projectiles and orbs fly at chest height and turn with their heading.
@@ -78,6 +105,9 @@ public partial class VoxelActor : Node3D
     private void MarkMeshDirty() => _meshDirty = true;
 
     private void MarkAnimDirty() => _animDirty = _meshDirty = true;
+
+    /// <summary>The 2D frame shown now on a flat figure (death bursts).</summary>
+    public Texture2D? CurrentFrame => _paper?.Texture;
 
     /// <summary>The mesh shown now (tests).</summary>
     public Mesh? CurrentMesh => _mesh.Mesh;
@@ -116,6 +146,13 @@ public partial class VoxelActor : Node3D
             }
 
             _frame = Sprite.Frame;
+            if (_paper is not null && _frames is not null && _anim is not null && _frames.GetFrameTexture(_anim, _frame) is { } tex)
+            {
+                _paper.Texture = tex;
+                // Feet on the origin like the voxel models (bottom-centre).
+                _paper.Offset = new Vector2(0f, _flat ? 0f : tex.GetHeight() / 2f);
+            }
+
             _mesh.Mesh = _animMeshes is { Length: > 0 } meshes ? meshes[Mathf.Clamp(_frame, 0, meshes.Length - 1)] : null;
             Tools.Perf.End(Tools.Perf.K.VoxMeshFor, tm);
         }
@@ -141,6 +178,31 @@ public partial class VoxelActor : Node3D
         }
 
         Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(feet, lying ? 0.1f : _height));
+        if (_paper is not null)
+        {
+            _paper.Modulate = Sprite.Modulate * _anchor.Modulate;
+            if (_flat || lying)
+            {
+                // Projectiles and downed players lie on the ground, like their voxel models did.
+                _paper.FlipH = false; // the actor's own scale already mirrors it
+                _paper.Billboard = BaseMaterial3D.BillboardModeEnum.Disabled;
+                _paper.TopLevel = false;
+                _paper.Transform = Transform3D.Identity;
+                _paper.Scale = new Vector3(1f, 1f, 1f);
+            }
+            else
+            {
+                // Upright: faces the camera exactly (engine billboard), at the 2D sprite's
+                // size, feet just above the floor slabs.
+                _paper.FlipH = Sprite.FlipH;
+                _paper.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
+                _paper.TopLevel = true;
+                _paper.GlobalTransform = new Transform3D(Basis.FromScale(new Vector3(s, s, s)), GlobalPosition + new Vector3(0f, 0.15f, 0f));
+            }
+
+            return;
+        }
+
         ApplyModulate(Sprite.Modulate * _anchor.Modulate);
     }
 

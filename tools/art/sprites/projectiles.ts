@@ -1,34 +1,18 @@
-import { recolor, sym, type SpriteSpec } from '../lib';
+import { pngGrid, recolor, sym, type SpriteSpec } from '../lib';
 
 const dir = 'assets/sprites/projectiles';
 
 // All projectiles face right (+X); the game rotates them to their heading.
 
-const fireLegend = { k: '#5a1a08', r: '#e8401c', o: '#ff8a2a', y: '#ffd23f', w: '#fff6d0' };
-const fireA = [
-  '..........',
-  '..rr.oo...',
-  '.rrooyyoo.',
-  'rroyywwyo.',
-  'rroyywwyo.',
-  '.rrooyyoo.',
-  '..rr.oo...',
-  '..........',
-];
-const fireB = [
-  '..........',
-  '.r..ooo...',
-  'rrrooyyoo.',
-  '.roywwwyo.',
-  'rroyywwyo.',
-  '.rrooyyoo.',
-  '...r.oo...',
-  '..........',
-];
+// The fireball comes from the approved ComfyUI strip (4 frames of 10x8, flying right):
+// docs/design/art-pipeline.md -> "HD-2D with flat figures", recipe in tools/comfyui/env.json.
+const FIREBALL_PNG = 'tools/comfyui/env/approved/fireball.png';
+const fireballLegend: Record<string, string> = {};
+const fireballFrames = [0, 1, 2, 3].map((i) => pngGrid(FIREBALL_PNG, fireballLegend, { x: i * 10, y: 0, w: 10, h: 8 }).map((r) => r.join('')));
 export const fireball: SpriteSpec = {
-  name: 'fireball', dir, legend: fireLegend,
-  frames: [{ rows: fireA, duration: 80 }, { rows: fireB, duration: 80 }],
-  animations: [{ name: 'fly', from: 0, to: 1 }], autoplay: 'fly',
+  name: 'fireball', dir, legend: fireballLegend,
+  frames: fireballFrames.map((rows) => ({ rows, duration: 80 })),
+  animations: [{ name: 'fly', from: 0, to: 3 }], autoplay: 'fly',
 };
 
 const iceLegend = { b: '#2a6fd6', c: '#6ec6ff', w: '#e8fbff' };

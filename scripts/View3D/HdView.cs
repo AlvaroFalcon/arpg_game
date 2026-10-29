@@ -12,8 +12,9 @@ namespace ArpgGame.View3D;
 /// then on new sprites (spawned monsters, projectiles, the class sprite) get a
 /// voxel actor as they appear, and heavy telegraphed hits kick up floor cubes.
 ///
-/// Off in headless runs (tests, the autoplay bot) and when the player turns
-/// "Voxel graphics" off in the settings: the game is then the classic 2D one.
+/// Off in headless runs (tests, the autoplay bot): the game is then the classic
+/// 2D one. Players can't turn it off (owner decision 2026-10-29: the "Voxel
+/// graphics" setting is gone).
 /// </summary>
 public partial class HdView : Node
 {
@@ -25,8 +26,11 @@ public partial class HdView : Node
     /// <summary>PerfBench --forcevoxel: build the voxel stage under the headless dummy renderer (its CPU cost, no GPU).</summary>
     public static bool ForceInHeadless;
 
+    /// <summary>Tools only (look comparison): the classic 2D view. Players can no longer turn the view off.</summary>
+    public static bool ForceOff;
+
     public static bool Enabled(Node context) =>
-        (DisplayServer.GetName() != "headless" || ForceInHeadless) && (Core.GameSettings.Get(context)?.VoxelGraphics ?? true);
+        (DisplayServer.GetName() != "headless" || ForceInHeadless) && !ForceOff;
 
     public override void _Ready()
     {

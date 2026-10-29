@@ -9,9 +9,9 @@
  * `assets/art_src/`, so any of them can be opened in the EasyPixel app, edited
  * by hand, and re-exported over the generated files.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { deflateSync } from 'node:zlib';
+import { deflateSync, inflateSync } from 'node:zlib';
 import {
   addFrame,
   addTag,
@@ -209,4 +209,105 @@ export function mulberry32(seed: number): () => number {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+// --- PNG sources (art made outside this pipeline) ----------------------------
+// docs/design/art-pipeline.md -> "HD-2D with flat figures": some art now comes from
+// tools/comfyui (generated, approved, cleaned by hand). Those PNGs are read back as
+// draw_grid rows so the sprite or tile still goes through the same document, Godot
+// export and voxel export as everything else.
+
+/** Decodes an 8-bit, non-interlaced RGB or RGBA PNG. */
+export function decodePng(path: string): { width: number; height: number; data: Uint8Array } {
+  const buf = readFileSync(join(PROJECT_ROOT, path));
+  let pos = 8;
+  let width = 0;
+  let height = 0;
+  let colorType = 6;
+  const idat: Buffer[] = [];
+  while (pos < buf.length) {
+    const len = buf.readUInt32BE(pos);
+    const type = buf.toString('ascii', pos + 4, pos + 8);
+    const body = buf.subarray(pos + 8, pos + 8 + len);
+    if (type === 'IHDR') {
+      width = body.readUInt32BE(0);
+      height = body.readUInt32BE(4);
+      colorType = body[9];
+      if (body[8] !== 8 || body[12] !== 0 || (colorType !== 6 && colorType !== 2)) {
+        throw new Error(`${path}: only 8-bit non-interlaced RGB/RGBA PNGs are supported`);
+      }
+    } else if (type === 'IDAT') {
+      idat.push(body);
+    } else if (type === 'IEND') {
+      break;
+    }
+    pos += 12 + len;
+  }
+  const bpp = colorType === 6 ? 4 : 3;
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = width * bpp;
+  const pixels = new Uint8Array(height * stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? pixels[y * stride + x - bpp] : 0;
+      const b = y > 0 ? pixels[(y - 1) * stride + x] : 0;
+      const c = x >= bpp && y > 0 ? pixels[(y - 1) * stride + x - bpp] : 0;
+      let v = line[x];
+      if (filter === 1) v += a;
+      else if (filter === 2) v += b;
+      else if (filter === 3) v += (a + b) >> 1;
+      else if (filter === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+        v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      }
+      pixels[y * stride + x] = v & 255;
+    }
+  }
+  const data = new Uint8Array(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    data[i * 4] = pixels[i * bpp];
+    data[i * 4 + 1] = pixels[i * bpp + 1];
+    data[i * 4 + 2] = pixels[i * bpp + 2];
+    data[i * 4 + 3] = bpp === 4 ? pixels[i * bpp + 3] : 255;
+  }
+  return { width, height, data };
+}
+
+const LEGEND_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!$%&*+-=?@^~<>/|:;,{}[]()';
+
+/**
+ * A region of a PNG as draw_grid rows ('.' = transparent). Colours missing from
+ * `legend` are added to it under unused characters, so the rows can share a legend
+ * with hand-typed art (a tileset).
+ */
+export function pngGrid(path: string, legend: Record<string, string>, box?: { x: number; y: number; w: number; h: number }): string[][] {
+  const img = decodePng(path);
+  const { x: bx, y: by, w, h } = box ?? { x: 0, y: 0, w: img.width, h: img.height };
+  const charOf = new Map<string, string>();
+  for (const [ch, hex] of Object.entries(legend)) charOf.set(hex.toLowerCase(), ch);
+  const grid: string[][] = [];
+  for (let y = 0; y < h; y++) {
+    const row: string[] = [];
+    for (let x = 0; x < w; x++) {
+      const i = ((by + y) * img.width + bx + x) * 4;
+      if (img.data[i + 3] < 128) {
+        row.push('.');
+        continue;
+      }
+      const hex = '#' + [0, 1, 2].map((k) => img.data[i + k].toString(16).padStart(2, '0')).join('');
+      let ch = charOf.get(hex);
+      if (!ch) {
+        ch = [...LEGEND_CHARS].find((c) => !(c in legend));
+        if (!ch) throw new Error(`${path}: too many colours for one legend`);
+        legend[ch] = hex;
+        charOf.set(hex, ch);
+      }
+      row.push(ch);
+    }
+    grid.push(row);
+  }
+  return grid;
 }

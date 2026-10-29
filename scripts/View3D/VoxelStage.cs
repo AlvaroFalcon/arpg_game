@@ -746,26 +746,47 @@ public partial class VoxelStage : Node3D
     /// <summary>Mirrors a 2D sprite with a voxel actor, if it has a voxel model.</summary>
     public void Track(AnimatedSprite2D sprite)
     {
-        if (VoxelLibrary.ModelPathFor(sprite.SpriteFrames) is not { } path || VoxelLibrary.Load(path) is null)
+        bool voxel = VoxelLibrary.ModelPathFor(sprite.SpriteFrames) is { } path && VoxelLibrary.Load(path) is not null;
+        // Figures without a voxel model (art migrated to flat sprites) are shown flat;
+        // anything else without one stays 2D-only, as before.
+        bool flat = !voxel && IsFigure(sprite);
+        if ((!voxel && !flat) || sprite.HasMeta("voxel_actor"))
         {
             return;
         }
 
-        if (sprite.HasMeta("voxel_actor"))
-        {
-            return;
-        }
-
-        var actor = new VoxelActor { Sprite = sprite, Stage = this };
+        var actor = new VoxelActor { Sprite = sprite, Stage = this, Flat = flat };
         sprite.SetMeta("voxel_actor", true);
         World.AddChild(actor);
     }
+
+    /// <summary>A character, monster or boss sprite (docs/design/art-pipeline.md ->
+    /// "HD-2D with flat figures"): one that walks around on a physics body.</summary>
+    private static bool IsFigure(AnimatedSprite2D sprite) =>
+        sprite.GetParent() is CharacterBody2D && sprite.SpriteFrames?.ResourcePath is { } p
+        && (p.StartsWith("res://assets/sprites/player/") || p.StartsWith("res://assets/sprites/enemies/") || p.StartsWith("res://assets/sprites/bosses/"));
 
     // --- effects -----------------------------------------------------------------------
 
     private void OnEnemyKilled(Enemy enemy)
     {
-        if (!IsInstanceValid(enemy) || enemy.Sprite is not { } sprite || VoxelLibrary.MeshFor(sprite) is not { } mesh)
+        if (!IsInstanceValid(enemy) || enemy.Sprite is not { } sprite)
+        {
+            return;
+        }
+
+        // Flat figures burst into their own pixels (DeathBurst: style and tuning in one place).
+        if (sprite.HasMeta(VoxelActor.FlatMeta))
+        {
+            if (DeathBurst.FrameOf(sprite) is { } frame)
+            {
+                DeathBurst.Play(World, frame, Ground(enemy.GlobalPosition), sprite.GlobalScale.X / 2f, enemy.IsBoss);
+            }
+
+            return;
+        }
+
+        if (VoxelLibrary.MeshFor(sprite) is not { } mesh)
         {
             return;
         }

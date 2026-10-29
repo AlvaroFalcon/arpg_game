@@ -1,0 +1,204 @@
+{
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "lora0": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "lora_name": "pytorch_lora_weights.comfyui.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "Image 1 shows four floor tiles of a pixel art game, seen from directly above. Create one new floor tile in exactly the same pixel art style, palette, colours, pixel size and level of detail: dark ashen grey stone slabs with thin dark cracks between them, seen straight from above, completely flat, no perspective, no lighting, no shadows, no border, the texture fills the whole image edge to edge and tiles seamlessly when repeated. Very few colours, chunky big pixels. 16-bit pixel art, game asset.",
+      "clip": [
+        "clip",
+        0
+      ]
+    }
+  },
+  "neg": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "pos",
+        0
+      ]
+    }
+  },
+  "ref0_load": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "ref_ashen_floor.png"
+    }
+  },
+  "ref0_scale": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "ref0_load",
+        0
+      ],
+      "upscale_method": "nearest-exact",
+      "megapixels": 1.0,
+      "resolution_steps": 1
+    }
+  },
+  "ref0_enc": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "ref0_scale",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "ref0_pos": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "pos",
+        0
+      ],
+      "latent": [
+        "ref0_enc",
+        0
+      ]
+    }
+  },
+  "ref0_neg": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "neg",
+        0
+      ],
+      "latent": [
+        "ref0_enc",
+        0
+      ]
+    }
+  },
+  "latent": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    }
+  },
+  "sigmas": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": 512,
+      "height": 512
+    }
+  },
+  "sampler": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "noise": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 261264115057734
+    }
+  },
+  "guider": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "lora0",
+        0
+      ],
+      "positive": [
+        "ref0_pos",
+        0
+      ],
+      "negative": [
+        "ref0_neg",
+        0
+      ],
+      "cfg": 1.0
+    }
+  },
+  "sample": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "noise",
+        0
+      ],
+      "guider": [
+        "guider",
+        0
+      ],
+      "sampler": [
+        "sampler",
+        0
+      ],
+      "sigmas": [
+        "sigmas",
+        0
+      ],
+      "latent_image": [
+        "latent",
+        0
+      ]
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "sample",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "save": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "filename_prefix": "spritegen/ashen_floor"
+    }
+  }
+}

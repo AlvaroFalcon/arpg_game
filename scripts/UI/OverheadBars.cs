@@ -21,11 +21,14 @@ public partial class OverheadBars : Node2D
     public float Lift = 46f;
 
     private Player _player = null!;
+    private AnimatedSprite2D? _sprite;
+    private float _flatLift;
     private float _trail = 1f;
 
     public override void _Ready()
     {
         _player = GetParent<Player>();
+        _sprite = _player.GetNodeOrNull<AnimatedSprite2D>("Sprite");
         ZIndex = 100;
         ZAsRelative = false;
         Position = new Vector2(0f, -Lift);
@@ -38,6 +41,15 @@ public partial class OverheadBars : Node2D
         if (!Visible)
         {
             return;
+        }
+
+        // A flat figure (docs/design/art-pipeline.md -> "HD-2D with flat figures") stands
+        // its full height above the feet on screen: lift the bars over its head.
+        if (_flatLift == 0f && _sprite is not null && _sprite.HasMeta(View3D.VoxelActor.FlatMeta)
+            && _sprite.SpriteFrames is { } frames && frames.HasAnimation("idle") && frames.GetFrameTexture("idle", 0) is { } frame)
+        {
+            _flatLift = Mathf.Max(Lift, frame.GetHeight() * Mathf.Abs(_sprite.GlobalScale.Y) + 10f);
+            Position = new Vector2(0f, -_flatLift);
         }
 
         float life = Fraction(_player.Stats.Life);
