@@ -162,7 +162,7 @@ through the tabs and compares sizes (it read 600 → 728 → 600 px before the f
 - **Display**: **window mode** — Windowed, **Borderless** (a window covering the
   screen; the default) or Fullscreen (exclusive); **window size** for windowed
   (1280×720, 1600×900, 1920×1080, 2560×1440, centred, clamped to the screen);
-  V-Sync; voxel graphics; Show FPS. The game lays out at 1280×720 and scales to
+  V-Sync; Show FPS (the voxel graphics toggle was removed on 2026-10-29: art-pipeline.md). The game lays out at 1280×720 and scales to
   the window (`canvas_items` stretch, `expand` aspect), so 1920×1080 is exactly
   ×1.5. Old settings files: `fullscreen=true` becomes Fullscreen, `false` (the old
   default) becomes Borderless.

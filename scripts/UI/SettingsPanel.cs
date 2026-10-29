@@ -61,7 +61,6 @@ public partial class SettingsPanel : PanelContainer
         size.Disabled = settings?.WindowMode != WindowModeKind.Windowed;
         AddToggle(display, "Use the whole screen on ultrawide (21:9, 32:9) — off: 16:9 with side bars", settings?.FillWideScreens ?? true, v => settings?.SetFillWideScreens(v));
         AddToggle(display, "V-Sync", settings?.VSync ?? true, v => settings?.SetVSync(v));
-        AddToggle(display, "Voxel graphics (HD-2D) — applies on the next scene", settings?.VoxelGraphics ?? true, v => settings?.SetVoxelGraphics(v));
         AddToggle(display, "Show FPS (F3)", settings?.ShowFps ?? false, v => settings?.SetShowFps(v));
 
         VBoxContainer gameplay = Tab(tabs, "Gameplay");

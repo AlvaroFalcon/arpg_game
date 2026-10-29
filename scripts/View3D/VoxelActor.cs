@@ -18,11 +18,18 @@ public partial class VoxelActor : Node3D
     /// <summary>How far upright figures lean back from the camera (the camera pitch would be a full billboard facing it).</summary>
     public const float LeanDegrees = 30f;
 
-    /// <summary>Prototype (look comparison): show the 2D frame as a flat sprite in the
-    /// 3D world instead of its voxel model — HD-2D "paper" figures.</summary>
-    public static bool Billboard;
+    /// <summary>Tools (look comparison): every figure flat, even those that still have a voxel model.</summary>
+    public static bool ForceFlat;
+
+    /// <summary>Meta set on a sprite shown as a flat figure (overhead bars, death bursts read it).</summary>
+    public const string FlatMeta = "flat_figure";
 
     public AnimatedSprite2D Sprite = null!;
+
+    /// <summary>Shown as its 2D frame on a camera-facing plane (docs/design/art-pipeline.md ->
+    /// "HD-2D with flat figures") instead of a voxel model. Set by <see cref="VoxelStage.Track"/>.</summary>
+    public bool Flat;
+
     private Sprite3D? _paper;
     public VoxelStage Stage = null!;
 
@@ -55,7 +62,7 @@ public partial class VoxelActor : Node3D
     {
         _mesh = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.On };
         AddChild(_mesh);
-        if (Billboard)
+        if (Flat || ForceFlat)
         {
             _paper = new Sprite3D
             {
@@ -68,6 +75,7 @@ public partial class VoxelActor : Node3D
             };
             AddChild(_paper);
             _mesh.Visible = false;
+            Sprite.SetMeta(FlatMeta, true);
         }
         Sprite.SelfModulate = new Color(1f, 1f, 1f, 0f);
 
@@ -97,6 +105,9 @@ public partial class VoxelActor : Node3D
     private void MarkMeshDirty() => _meshDirty = true;
 
     private void MarkAnimDirty() => _animDirty = _meshDirty = true;
+
+    /// <summary>The 2D frame shown now on a flat figure (death bursts).</summary>
+    public Texture2D? CurrentFrame => _paper?.Texture;
 
     /// <summary>The mesh shown now (tests).</summary>
     public Mesh? CurrentMesh => _mesh.Mesh;
@@ -169,15 +180,26 @@ public partial class VoxelActor : Node3D
         Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(feet, lying ? 0.1f : _height));
         if (_paper is not null)
         {
-            // Face the camera exactly (engine billboard), at the 2D sprite's size, feet on the ground.
-            if (!_flat)
+            _paper.Modulate = Sprite.Modulate * _anchor.Modulate;
+            if (_flat || lying)
             {
+                // Projectiles and downed players lie on the ground, like their voxel models did.
+                _paper.FlipH = false; // the actor's own scale already mirrors it
+                _paper.Billboard = BaseMaterial3D.BillboardModeEnum.Disabled;
+                _paper.TopLevel = false;
+                _paper.Transform = Transform3D.Identity;
+                _paper.Scale = new Vector3(1f, 1f, 1f);
+            }
+            else
+            {
+                // Upright: faces the camera exactly (engine billboard), at the 2D sprite's
+                // size, feet just above the floor slabs.
+                _paper.FlipH = Sprite.FlipH;
                 _paper.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
                 _paper.TopLevel = true;
-                _paper.GlobalTransform = new Transform3D(Basis.FromScale(new Vector3(Sprite.FlipH ? -s : s, s, s)), GlobalPosition + new Vector3(0f, 0.15f, 0f));
+                _paper.GlobalTransform = new Transform3D(Basis.FromScale(new Vector3(s, s, s)), GlobalPosition + new Vector3(0f, 0.15f, 0f));
             }
 
-            _paper.Modulate = Sprite.Modulate * _anchor.Modulate;
             return;
         }
 

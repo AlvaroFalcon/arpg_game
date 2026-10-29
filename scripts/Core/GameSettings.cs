@@ -57,9 +57,6 @@ public partial class GameSettings : Node
 
     public bool DamageNumbers => DamageNumberMode != DamageNumberMode.Off;
 
-    /// <summary>HD-2D voxel view (docs/design/art-pipeline.md -> "Voxels"); off = classic 2D sprites.</summary>
-    public bool VoxelGraphics { get; private set; } = true;
-
     /// <summary>Small life/mana bars over the player (docs/design/menus.md -> "Overhead bars").</summary>
     public bool OverheadBars { get; private set; } = true;
 
@@ -116,7 +113,6 @@ public partial class GameSettings : Node
     public void SetScreenShake(bool v) { ScreenShake = v; NotifyChanged(); }
     public void SetDamageNumbers(bool v) => SetDamageNumberMode(v ? DamageNumberMode.Full : DamageNumberMode.Off);
     public void SetDamageNumberMode(DamageNumberMode v) { DamageNumberMode = v; NotifyChanged(); }
-    public void SetVoxelGraphics(bool v) { VoxelGraphics = v; NotifyChanged(); }
 
     public void SetOverheadBars(bool v) { OverheadBars = v; NotifyChanged(); }
     public void SetAutoCast(bool v) { AutoCast = v; NotifyChanged(); }
@@ -241,7 +237,6 @@ public partial class GameSettings : Node
         DamageNumberMode = config.HasSectionKey("gameplay", "damage_number_mode")
             ? (DamageNumberMode)Mathf.Clamp((int)config.GetValue("gameplay", "damage_number_mode", (int)DamageNumberMode), 0, 2)
             : (bool)config.GetValue("gameplay", "damage_numbers", true) ? DamageNumberMode.Full : DamageNumberMode.Off;
-        VoxelGraphics = (bool)config.GetValue("display", "voxel_graphics", VoxelGraphics);
         OverheadBars = (bool)config.GetValue("display", "overhead_bars", OverheadBars);
         AutoCast = (bool)config.GetValue("gameplay", "auto_cast", AutoCast);
         AutoAim = (bool)config.GetValue("gameplay", "auto_aim", AutoAim);
@@ -262,7 +257,6 @@ public partial class GameSettings : Node
         config.SetValue("gameplay", "screen_shake", ScreenShake);
         config.SetValue("gameplay", "damage_numbers", DamageNumbers);
         config.SetValue("gameplay", "damage_number_mode", (int)DamageNumberMode);
-        config.SetValue("display", "voxel_graphics", VoxelGraphics);
         config.SetValue("display", "overhead_bars", OverheadBars);
         config.SetValue("gameplay", "auto_cast", AutoCast);
         config.SetValue("gameplay", "auto_aim", AutoAim);

@@ -151,8 +151,9 @@ world is a presentation layer underneath the 2D canvas:
   wall fragment fades only if it is closer to the camera than the player's chest
   and inside an ellipse around them on screen. The first version faded any nearby
   wall on the camera's side, so a wall you merely stood beside turned to noise.
-- **Off switch.** Settings → *Voxel graphics (HD-2D)*; headless runs (tests, the
-  autoplay bot) never create the stage.
+- **No off switch** (removed 2026-10-29, see "HD-2D with flat figures"): the old
+  Settings → *Voxel graphics* toggle is gone. Headless runs (tests, the autoplay
+  bot) never create the stage; `HdView.ForceOff` exists for the look capture only.
 
 ### Liquids **[IMPLEMENTED 2026-10-14]**
 
@@ -283,9 +284,27 @@ reference, palette locked to it); recipes and approved seeds in
 `tools/comfyui/env.json`. The voxel export (`tools/art/voxels.ts`) keeps building
 the terrain from the tilesets.
 
-**Prototype.** `VoxelActor.Billboard` (static, off by default) shows each figure as
-a `Sprite3D` of its current 2D frame (engine billboard, nearest filtering, shaded,
-alpha-cut so it casts a shadow) instead of its voxel mesh.
+**How it works [IMPLEMENTED 2026-10-29].** A figure is shown flat when it has **no
+voxel model**: `VoxelStage.Track` gives any character, monster or boss sprite (a
+`CharacterBody2D`'s sprite from `assets/sprites/player|enemies|bosses`) without a
+`.glb` a `VoxelActor` with `Flat` set, which draws a `Sprite3D` of the current 2D
+frame (engine billboard, nearest filtering, shaded, alpha-cut so it casts a shadow,
+flipped with `FlipH`, feet 0.15 m up so they clear the floor slabs). Projectiles and
+downed co-op players lie on the ground. Migrating a figure is therefore: its new sheet
+into `assets/sprites/...`, its `.glb` deleted, and its name added to `HAND_MADE` in
+`tools/art/sprites/anime.ts` so the art build neither repaints nor re-voxelises it.
+The overhead bars lift above a flat figure's head. `VoxelActor.ForceFlat` and
+`RunCapture --only=look` remain for comparisons.
+
+**Done:** the Arcanist (`player`), from the hand-cleaned sheet
+(`tools/comfyui/characters/arcanist/`), idle kept still.
+
+**Deaths.** Flat figures burst into their own pixels: `View3D/DeathBurst` turns the
+current frame's opaque pixels into cubes of their colours (cached per frame; one
+MultiMesh for every death of a frame). The effect lives in one place on purpose, so
+it is easy to change (owner): `DeathBurst.Style` (`Pixels` / `None`), the
+`Monster` and `Boss` presets (cubes, power, life, cube size in pixels), or replace
+`DeathBurst.Play` with another effect. Figures still in voxels keep `VoxelDebris`.
 
 **Migration plan** (each step reviewed by the owner before the next):
 
@@ -300,11 +319,15 @@ alpha-cut so it casts a shadow) instead of its voxel mesh.
    explosions with 2D/3D particles.
 5. Floors and liquids per biome from `spritegen.py tile`.
 
-**Open questions.** Props (barrels, braziers): flat figures or keep voxels as part
-of the scenery? Death bursts (`VoxelDebris`) break the current voxel frame into
-cubes: keep a voxel export only for debris, or burst the sprite's pixels? Monsters
-facing four directions or keep the left/right flip? Keep the "Voxel graphics"
-off switch (classic 2D) or drop it once flat figures ship?
+**Owner answers (2026-10-29).** Props stay voxels as part of the scenery, but will be
+regenerated soon with the ComfyUI workflows so their design matches. Deaths burst into
+pixels, configurable (above). Monsters will face four directions, like the player.
+The "Voxel graphics" switch is removed.
+
+**Still to do for the Arcanist and the classes:** the player never plays an `attack`
+animation (only idle/walk): casting should play `attack` / `attack_side` /
+`attack_up` and taking a hit `hurt`. The Arcanist's portrait (character select,
+altar) is still painted from its old `Look`; it needs one made from the new concept.
 
 ## Alternatives considered
 

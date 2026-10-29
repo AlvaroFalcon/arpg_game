@@ -26,8 +26,8 @@ public partial class RunCapture
             }
         }
 
-        GameSettings.Get(this)?.SetVoxelGraphics(look != "2d");
-        View3D.VoxelActor.Billboard = look == "billboard";
+        View3D.HdView.ForceOff = look == "2d";
+        View3D.VoxelActor.ForceFlat = look == "billboard";
         SetupDemoProfile();
         if (Profile.Get(this) is { } profile)
         {
@@ -70,6 +70,16 @@ public partial class RunCapture
         reality.Player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
         await Wait(1.3f);
         await Snap($"look-{look}-3-fight.png");
+
+        // The flat-figure death burst (View3D.DeathBurst), played on the player's frame
+        // beside them so it can be judged without killing anything.
+        if (View3D.HdView.Enabled(this) && reality.Player.GetNodeOrNull<AnimatedSprite2D>("Sprite") is { } sprite
+            && View3D.DeathBurst.FrameOf(sprite) is { } frame && reality.GetNodeOrNull<View3D.VoxelStage>("VoxelStage") is { } stage)
+        {
+            View3D.DeathBurst.Play(stage.World, frame, View3D.VoxelStage.Ground(reality.Player.GlobalPosition + new Vector2(90f, 0f)), 1f, true);
+            await Wait(0.18f);
+            await Snap($"look-{look}-4-burst.png");
+        }
 
         GD.Print("[CAPTURE] done");
         GetTree().Quit();

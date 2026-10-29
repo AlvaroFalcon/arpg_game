@@ -173,6 +173,51 @@ public partial class VoxelDebris : MultiMeshInstance3D
         parent.AddChild(debris);
     }
 
+    /// <summary>
+    /// Cubes from ready-made shapes (points and colours in model space, 1/16 m per
+    /// pixel), all bursts of a frame in one MultiMesh — what <see cref="DeathBurst"/>
+    /// uses for flat figures, whose shape is the pixels of their 2D frame.
+    /// <paramref name="cubeSize"/> is in metres before <c>Scale</c> (one art pixel is 1/16 m).
+    /// </summary>
+    public static void BurstShapes(Node3D parent, List<((Vector3 Point, Color Color)[] Points, Vector3 Centre, Vector3 At, float Scale, int Count)> bursts,
+        float power, float life, float cubeSize)
+    {
+        int total = 0;
+        foreach (var b in bursts)
+        {
+            total += b.Points.Length > 0 ? b.Count : 0;
+        }
+
+        if (total == 0)
+        {
+            return;
+        }
+
+        var debris = new VoxelDebris { Multimesh = NewMultiMesh(total), CastShadow = ShadowCastingSetting.On };
+        debris._cubes = new Cube[total];
+        debris._buffer = new float[total * Stride];
+        debris._life = life;
+        int i = 0;
+        foreach (var b in bursts)
+        {
+            if (b.Points.Length == 0)
+            {
+                continue;
+            }
+
+            for (int k = 0; k < b.Count; k++, i++)
+            {
+                (Vector3 p, Color c) = b.Points[Rng.RandiRange(0, b.Points.Length - 1)];
+                Cube cube = NewCube(p, b.Centre, b.At, b.Scale, power);
+                cube.Size = cubeSize * b.Scale * Rng.RandfRange(0.85f, 1.15f);
+                debris._cubes[i] = cube;
+                debris.SetColor(i, c);
+            }
+        }
+
+        parent.AddChild(debris);
+    }
+
     private static Cube NewCube(Vector3 p, Vector3 centre, Vector3 at, float scale, float power)
     {
         Vector3 outward = (p - centre).Normalized();
