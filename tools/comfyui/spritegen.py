@@ -711,6 +711,96 @@ def write_sprite_frames(path: Path, texture: str, fr: dict, count: int, anims: l
 
 # ---------------------------------------------------------------- workflows for the UI
 
+# Widget order (and output types) of every node class these graphs use, for the
+# canvas ("UI") format, which stores widget values as a positional list.
+UI_WIDGETS = {
+    "UNETLoader": ["unet_name", "weight_dtype"], "UnetLoaderGGUF": ["unet_name"],
+    "CLIPLoader": ["clip_name", "type", "device"], "VAELoader": ["vae_name"],
+    "LoraLoaderModelOnly": ["lora_name", "strength_model"], "CLIPTextEncode": ["text"],
+    "ConditioningZeroOut": [], "LoadImage": ["image", "#upload"],
+    "ImageScaleToTotalPixels": ["upscale_method", "megapixels", "resolution_steps"],
+    "VAEEncode": [], "VAEDecode": [], "ReferenceLatent": [],
+    "EmptyFlux2LatentImage": ["width", "height", "batch_size"], "Flux2Scheduler": ["steps", "width", "height"],
+    "KSamplerSelect": ["sampler_name"], "RandomNoise": ["noise_seed", "#fixed"], "CFGGuider": ["cfg"],
+    "SamplerCustomAdvanced": [], "SaveImage": ["filename_prefix"], "ModelSamplingAuraFlow": ["shift"],
+    "CFGNorm": ["strength"], "TextEncodeQwenImageEditPlus": ["prompt"],
+    "FluxKontextMultiReferenceLatentMethod": ["reference_latents_method"],
+    "KSampler": ["seed", "#fixed", "steps", "cfg", "sampler_name", "scheduler", "denoise"],
+}
+UI_OUTPUTS = {
+    "UNETLoader": ["MODEL"], "UnetLoaderGGUF": ["MODEL"], "CLIPLoader": ["CLIP"], "VAELoader": ["VAE"],
+    "LoraLoaderModelOnly": ["MODEL"], "CLIPTextEncode": ["CONDITIONING"], "ConditioningZeroOut": ["CONDITIONING"],
+    "LoadImage": ["IMAGE", "MASK"], "ImageScaleToTotalPixels": ["IMAGE"], "VAEEncode": ["LATENT"],
+    "VAEDecode": ["IMAGE"], "ReferenceLatent": ["CONDITIONING"], "EmptyFlux2LatentImage": ["LATENT"],
+    "Flux2Scheduler": ["SIGMAS"], "KSamplerSelect": ["SAMPLER"], "RandomNoise": ["NOISE"], "CFGGuider": ["GUIDER"],
+    "SamplerCustomAdvanced": ["LATENT", "LATENT"], "SaveImage": [], "ModelSamplingAuraFlow": ["MODEL"],
+    "CFGNorm": ["MODEL"], "TextEncodeQwenImageEditPlus": ["CONDITIONING"],
+    "FluxKontextMultiReferenceLatentMethod": ["CONDITIONING"], "KSampler": ["LATENT"],
+}
+UI_INPUT_TYPES = {"model": "MODEL", "clip": "CLIP", "vae": "VAE", "conditioning": "CONDITIONING",
+                  "positive": "CONDITIONING", "negative": "CONDITIONING", "latent": "LATENT",
+                  "latent_image": "LATENT", "samples": "LATENT", "pixels": "IMAGE", "image": "IMAGE",
+                  "images": "IMAGE", "image1": "IMAGE", "image2": "IMAGE", "image3": "IMAGE", "noise": "NOISE",
+                  "guider": "GUIDER", "sampler": "SAMPLER", "sigmas": "SIGMAS"}
+
+
+def api_to_ui(graph: dict, titles: dict[str, str] | None = None, note: str = "") -> dict:
+    """An API-format graph -> a canvas workflow (nodes laid out left to right by
+    depth), so it can live in ComfyUI's Workflows sidebar."""
+    titles = titles or {}
+    ids = {k: i + 1 for i, k in enumerate(graph)}
+    depth: dict[str, int] = {}
+
+    def d(k):
+        if k not in depth:
+            ins = [v[0] for v in graph[k]["inputs"].values() if isinstance(v, list)]
+            depth[k] = 1 + max((d(i) for i in ins), default=-1)
+        return depth[k]
+
+    for k in graph:
+        d(k)
+    rows: dict[int, int] = {}
+    nodes, links = [], []
+    out_links: dict[tuple[str, int], list[int]] = {}
+    for k, n in graph.items():
+        for name, v in n["inputs"].items():
+            if isinstance(v, list):
+                lid = len(links) + 1
+                links.append([lid, ids[v[0]], v[1], ids[k], None, None])
+                out_links.setdefault((v[0], v[1]), []).append(lid)
+    by_id = {l[0]: l for l in links}
+    for order, (k, n) in enumerate(sorted(graph.items(), key=lambda kv: depth[kv[0]])):
+        cls = n["class_type"]
+        col = depth[k]
+        row = rows.get(col, 0)
+        tall = 260 if cls in ("TextEncodeQwenImageEditPlus", "CLIPTextEncode", "LoadImage", "SaveImage") else 130
+        rows[col] = row + tall + 30
+        inputs = []
+        for name, v in n["inputs"].items():
+            if isinstance(v, list):
+                lid = next(l for l in out_links[(v[0], v[1])] if by_id[l][3] == ids[k] and by_id[l][4] is None)
+                by_id[lid][4] = len(inputs)
+                by_id[lid][5] = UI_INPUT_TYPES.get(name, "*")
+                inputs.append({"name": name, "type": UI_INPUT_TYPES.get(name, "*"), "link": lid})
+        widgets = []
+        for w in UI_WIDGETS[cls]:
+            widgets.append({"#upload": "image", "#fixed": "fixed"}[w] if w.startswith("#") else n["inputs"][w])
+        outputs = [{"name": t, "type": t, "links": out_links.get((k, i), []), "slot_index": i}
+                   for i, t in enumerate(UI_OUTPUTS[cls])]
+        node = {"id": ids[k], "type": cls, "pos": [40 + col * 360, 40 + row], "size": [320, tall - 20],
+                "flags": {}, "order": order, "mode": 0, "inputs": inputs, "outputs": outputs,
+                "properties": {"Node name for S&R": cls}, "widgets_values": widgets}
+        if k in titles:
+            node["title"] = titles[k]
+        nodes.append(node)
+    if note:
+        nodes.append({"id": len(nodes) + 1, "type": "MarkdownNote", "pos": [40, -380], "size": [700, 340],
+                      "flags": {}, "order": len(nodes), "mode": 0, "inputs": [], "outputs": [],
+                      "properties": {}, "widgets_values": [note], "title": "Cómo usar"})
+    return {"last_node_id": len(nodes), "last_link_id": len(links), "nodes": nodes, "links": links,
+            "groups": [], "config": {}, "extra": {"ds": {"scale": 0.7, "offset": [80, 420]}}, "version": 0.4}
+
+
 def cmd_export_workflows(cfg, args):
     """Writes the graphs this script queues as API-format JSON, to open in ComfyUI
     (drag the file onto the canvas) and tweak by hand. LoadImage nodes point at
@@ -727,8 +817,26 @@ def cmd_export_workflows(cfg, args):
     }
     graphs["4_qwen_sheet"] = build_qwen_sheet_graph(cfg, sheet_prompt(char), "approved_concept_768.png", 1,
                                                     "spritegen/sheet")
+    notes = {
+        "1_concept_from_reference": "**Concepto (frente)** desde tu imagen de referencia, FLUX.2 Klein 4B. "
+                                    "Elige la referencia en *Load Image* y cambia la semilla para más candidatos.",
+        "1_concept_from_text": "**Concepto (frente)** solo desde texto, FLUX.2 Klein 4B.",
+        "2_view_side": "**Vista de lado** desde el concepto aprobado (imagen 1). Para la espalda, usa el "
+                       "concepto en espejo y cambia el prompt.",
+        "3_anim_walk_side": "**Tira de animación** (4 frames): imagen 1 = vista aprobada, imagen 2 = guía de "
+                            "poses (`spritegen.py guides`).",
+        "4_qwen_sheet": "**Hoja completa 32x48** (Qwen Image Edit 2511 + LoRA pixel_4walk_32x48). Referencia: el "
+                        "concepto centrado en 768x768 (`arcanist_concept_768.png`). Sale una hoja de 6x4: por fila "
+                        "(abajo, izquierda, derecha, arriba) 3 andar, 2 ataque, 1 daño. ~4 min. Para reducir a "
+                        "32x48, limpiar y sacar el .aseprite: `spritegen.py sheet`.",
+    }
+    titles = {"ref0_load": "Imagen 1 (referencia)", "ref1_load": "Imagen 2 (guía de poses)", "ref": "Referencia 768x768",
+              "pos": "Prompt", "pos_raw": "Prompt", "neg_raw": "Prompt negativo (vacío)", "lora": "LoRA",
+              "sample": "Muestreo", "save": "Guardar"}
     for name, g in graphs.items():
         (WORKFLOWS / f"{name}.api.json").write_text(json.dumps(g, indent=2) + "\n")
+        ui = api_to_ui(g, titles, notes.get(name, ""))
+        (WORKFLOWS / f"spritegen_{name}.json").write_text(json.dumps(ui, indent=1, ensure_ascii=False) + "\n")
     print(f"Wrote {len(graphs)} workflows to {WORKFLOWS.relative_to(ROOT)}/")
 
 
