@@ -124,6 +124,63 @@ def build_graph(cfg: dict, prompt: str, refs: list[str], width: int, height: int
     return g
 
 
+SHEET_DIRECTIONS = ("facing down", "facing left", "facing right", "back view facing up")
+SHEET_ROWS = ("first", "second", "third", "fourth")
+
+
+def sheet_prompt(char: dict) -> str:
+    """The svntax 32x48 combat LoRA's own prompt (model card): a 6x4 grid, one row
+    per direction, 3 walk + 2 arm-swing attack + 1 hurt frame per row."""
+    rows = ", ".join(f"{SHEET_ROWS[i]} row is 3 walking frames {d}, 2 arm swing attack frames {d} and 1 hurt frame {d}"
+                     for i, d in enumerate(SHEET_DIRECTIONS))
+    return ("Create a pixel art spritesheet of the character in the image. Keep the appearance the same. "
+            f"The spritesheet is a 6 by 4 grid of four rows and six columns of frames - {rows}.")
+
+
+def square_reference(img: Image.Image, size: int) -> Image.Image:
+    """The reference fitted (whole body, aspect kept) on a white size x size canvas:
+    the LoRA was trained on 768x768 images."""
+    img = img.convert("RGB")
+    scale = size / max(img.size)
+    small = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
+    canvas = Image.new("RGB", (size, size), (255, 255, 255))
+    canvas.paste(small, ((size - small.width) // 2, (size - small.height) // 2))
+    return canvas
+
+
+def build_qwen_sheet_graph(cfg: dict, prompt: str, ref: str, seed: int, prefix: str) -> dict:
+    """API-format graph of ComfyUI's Qwen Image Edit 2511 template (GGUF unet, no
+    Lightning LoRA) with the spritesheet LoRA; the reference is also the latent, so
+    the output has its size."""
+    q = cfg["qwen_sheet"]
+    g: dict = {
+        "unet": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": q["unet_gguf"]}},
+        "lora": {"class_type": "LoraLoaderModelOnly",
+                 "inputs": {"model": ["unet", 0], "lora_name": q["lora"]["name"], "strength_model": q["lora"].get("strength", 1.0)}},
+        "shift": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["lora", 0], "shift": q.get("shift", 3.1)}},
+        "norm": {"class_type": "CFGNorm", "inputs": {"model": ["shift", 0], "strength": 1.0}},
+        "clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": q["text_encoder"], "type": "qwen_image", "device": "default"}},
+        "vae": {"class_type": "VAELoader", "inputs": {"vae_name": q["vae"]}},
+        "ref": {"class_type": "LoadImage", "inputs": {"image": ref}},
+        "pos_raw": {"class_type": "TextEncodeQwenImageEditPlus",
+                    "inputs": {"clip": ["clip", 0], "prompt": prompt, "vae": ["vae", 0], "image1": ["ref", 0]}},
+        "neg_raw": {"class_type": "TextEncodeQwenImageEditPlus",
+                    "inputs": {"clip": ["clip", 0], "prompt": "", "vae": ["vae", 0], "image1": ["ref", 0]}},
+        "pos": {"class_type": "FluxKontextMultiReferenceLatentMethod",
+                "inputs": {"conditioning": ["pos_raw", 0], "reference_latents_method": "index_timestep_zero"}},
+        "neg": {"class_type": "FluxKontextMultiReferenceLatentMethod",
+                "inputs": {"conditioning": ["neg_raw", 0], "reference_latents_method": "index_timestep_zero"}},
+        "latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["ref", 0], "vae": ["vae", 0]}},
+        "sample": {"class_type": "KSampler",
+                   "inputs": {"model": ["norm", 0], "positive": ["pos", 0], "negative": ["neg", 0], "latent_image": ["latent", 0],
+                              "seed": seed, "steps": q["steps"], "cfg": q["cfg"], "sampler_name": q.get("sampler", "euler"),
+                              "scheduler": q.get("scheduler", "simple"), "denoise": 1.0}},
+        "decode": {"class_type": "VAEDecode", "inputs": {"samples": ["sample", 0], "vae": ["vae", 0]}},
+        "save": {"class_type": "SaveImage", "inputs": {"images": ["decode", 0], "filename_prefix": prefix}},
+    }
+    return g
+
+
 class Comfy:
     def __init__(self, server: str):
         self.base = f"http://{server}"
@@ -417,6 +474,41 @@ def fit_frames(cells: list[Image.Image], char: dict) -> list[Image.Image]:
         frame.paste(small, (round(fw / 2 - foot_x), fh - fr.get("foot_margin", 2) - sh), small)
         out.append(frame)
     return out
+
+
+def dominant_downscale(img: Image.Image, factor: int, colours: int = 64) -> Image.Image:
+    """Pixel-art downscale (k-centroid style): each factor x factor block becomes its
+    most common colour after a light quantize, so outlines and flat fills stay crisp
+    instead of averaging into mud. Alpha: a block is opaque if most of it is."""
+    rgba = img.convert("RGBA")
+    w, h = rgba.width // factor, rgba.height // factor
+    q = rgba.convert("RGB").quantize(colours, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    pal = q.getpalette()
+    qp, ap = q.load(), rgba.getchannel("A").load()
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    op = out.load()
+    for by in range(h):
+        for bx in range(w):
+            counts: dict[int, int] = {}
+            opaque = 0
+            for y in range(by * factor, (by + 1) * factor):
+                for x in range(bx * factor, (bx + 1) * factor):
+                    if ap[x, y] > 127:
+                        opaque += 1
+                        counts[qp[x, y]] = counts.get(qp[x, y], 0) + 1
+            if opaque * 2 > factor * factor:
+                i = max(counts, key=counts.get)
+                op[bx, by] = (pal[3 * i], pal[3 * i + 1], pal[3 * i + 2], 255)
+    return out
+
+
+def sheet_cells(sheet: Image.Image, columns: int, rows: int, factor: int) -> list[list[Image.Image]]:
+    """A generated grid sheet -> rows of game-sized RGBA frames (background cleared
+    on the full-size sheet, then each cell downscaled)."""
+    clean = remove_background(sheet)
+    cw, ch = clean.width // columns, clean.height // rows
+    return [[dominant_downscale(clean.crop((c * cw, r * ch, (c + 1) * cw, (r + 1) * ch)), factor)
+             for c in range(columns)] for r in range(rows)]
 
 
 def palette_from(img: Image.Image, colours: int) -> Image.Image:

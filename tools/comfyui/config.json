@@ -18,5 +18,23 @@
   "anim_cell": [
     384,
     512
-  ]
+  ],
+  "qwen_sheet": {
+    "unet_gguf": "qwen-image-edit-2511-Q4_K_M.gguf",
+    "text_encoder": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "vae": "qwen_image_vae.safetensors",
+    "lora": {
+      "name": "pixel_4walk_32x48_qwen_image_edit_2511_v1.safetensors",
+      "strength": 1.0
+    },
+    "steps": 40,
+    "cfg": 4.0,
+    "shift": 3.1,
+    "sampler": "euler",
+    "scheduler": "simple",
+    "size": 768,
+    "columns": 6,
+    "rows": 4,
+    "downscale": 4
+  }
 }
