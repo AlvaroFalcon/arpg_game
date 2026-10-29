@@ -7,10 +7,16 @@
     "steps": 4,
     "cfg": 1.0,
     "sampler": "euler",
-    "negative": "blurry, smooth gradients, anti-aliasing, painterly, 3d render, photo, extra limbs, cropped, text, watermark, ground shadow"
+    "negative": "extra hands, extra arms, three hands, two hands on the staff, duplicated limbs, two staffs, floating hand, deformed hands, blurry, smooth gradients, anti-aliasing, painterly, 3d render, photo, cropped, text, watermark, ground shadow"
   },
   "loras": [],
   "reference_megapixels": 1.0,
-  "concept_size": [768, 1024],
-  "anim_cell": [384, 512]
+  "concept_size": [
+    768,
+    1024
+  ],
+  "anim_cell": [
+    384,
+    512
+  ]
 }
