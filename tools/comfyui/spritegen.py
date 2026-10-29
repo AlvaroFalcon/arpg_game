@@ -511,6 +511,32 @@ def sheet_cells(sheet: Image.Image, columns: int, rows: int, factor: int) -> lis
              for c in range(columns)] for r in range(rows)]
 
 
+def despeckle(frame: Image.Image, white: int = 225) -> Image.Image:
+    """Clears what background removal leaves behind on a small frame: lone opaque
+    pixels (at most one opaque 4-neighbour) and near-white pixels on the edge of
+    the sprite. Repeats until nothing changes."""
+    out = frame.convert("RGBA").copy()
+    px = out.load()
+    w, h = out.size
+
+    def opaque(x, y):
+        return 0 <= x < w and 0 <= y < h and px[x, y][3] > 127
+
+    changed = True
+    while changed:
+        changed = False
+        for y in range(h):
+            for x in range(w):
+                p = px[x, y]
+                if p[3] <= 127:
+                    continue
+                n = sum(opaque(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                if n <= 1 or (n < 4 and min(p[:3]) >= white):
+                    px[x, y] = (0, 0, 0, 0)
+                    changed = True
+    return out
+
+
 def palette_from(img: Image.Image, colours: int) -> Image.Image:
     rgba = img.convert("RGBA")
     solid = [p[:3] for p in rgba.getdata() if p[3] > 127]
