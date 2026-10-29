@@ -18,7 +18,12 @@ public partial class VoxelActor : Node3D
     /// <summary>How far upright figures lean back from the camera (the camera pitch would be a full billboard facing it).</summary>
     public const float LeanDegrees = 30f;
 
+    /// <summary>Prototype (look comparison): show the 2D frame as a flat sprite in the
+    /// 3D world instead of its voxel model — HD-2D "paper" figures.</summary>
+    public static bool Billboard;
+
     public AnimatedSprite2D Sprite = null!;
+    private Sprite3D? _paper;
     public VoxelStage Stage = null!;
 
     private MeshInstance3D _mesh = null!;
@@ -50,6 +55,20 @@ public partial class VoxelActor : Node3D
     {
         _mesh = new MeshInstance3D { CastShadow = GeometryInstance3D.ShadowCastingSetting.On };
         AddChild(_mesh);
+        if (Billboard)
+        {
+            _paper = new Sprite3D
+            {
+                TextureFilter = BaseMaterial3D.TextureFilterEnum.Nearest,
+                Shaded = true,
+                AlphaCut = SpriteBase3D.AlphaCutMode.Discard,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.On,
+                PixelSize = 1f / 16f,
+                DoubleSided = true,
+            };
+            AddChild(_paper);
+            _mesh.Visible = false;
+        }
         Sprite.SelfModulate = new Color(1f, 1f, 1f, 0f);
 
         // Projectiles and orbs fly at chest height and turn with their heading.
@@ -116,6 +135,13 @@ public partial class VoxelActor : Node3D
             }
 
             _frame = Sprite.Frame;
+            if (_paper is not null && _frames is not null && _anim is not null && _frames.GetFrameTexture(_anim, _frame) is { } tex)
+            {
+                _paper.Texture = tex;
+                // Feet on the origin like the voxel models (bottom-centre).
+                _paper.Offset = new Vector2(0f, _flat ? 0f : tex.GetHeight() / 2f);
+            }
+
             _mesh.Mesh = _animMeshes is { Length: > 0 } meshes ? meshes[Mathf.Clamp(_frame, 0, meshes.Length - 1)] : null;
             Tools.Perf.End(Tools.Perf.K.VoxMeshFor, tm);
         }
@@ -141,6 +167,20 @@ public partial class VoxelActor : Node3D
         }
 
         Transform = new Transform3D(basis * Basis.FromScale(scale), VoxelStage.Ground(feet, lying ? 0.1f : _height));
+        if (_paper is not null)
+        {
+            // Face the camera exactly (engine billboard), at the 2D sprite's size, feet on the ground.
+            if (!_flat)
+            {
+                _paper.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
+                _paper.TopLevel = true;
+                _paper.GlobalTransform = new Transform3D(Basis.FromScale(new Vector3(Sprite.FlipH ? -s : s, s, s)), GlobalPosition + new Vector3(0f, 0.15f, 0f));
+            }
+
+            _paper.Modulate = Sprite.Modulate * _anchor.Modulate;
+            return;
+        }
+
         ApplyModulate(Sprite.Modulate * _anchor.Modulate);
     }
 
