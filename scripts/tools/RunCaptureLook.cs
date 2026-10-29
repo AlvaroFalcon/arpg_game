@@ -70,6 +70,11 @@ public partial class RunCapture
         reality.Player.GetNode<PlayerSkillInput>("PlayerSkillInput").ForceAutoCast = true;
         await Wait(1.3f);
         await Snap($"look-{look}-3-fight.png");
+        for (int i = 0; i < 12; i++)
+        {
+            await Wait(0.06f);
+            await Snap($"look-{look}-5-anim-{i:00}.png");
+        }
 
         // The flat-figure death burst (View3D.DeathBurst), played on the player's frame
         // beside them so it can be judged without killing anything.

@@ -749,3 +749,4 @@ Needs a human playtest: readability at 1080p/1440p/ultrawide, Compact in a dense
 - Flat figures die in a pixel burst (`View3D/DeathBurst`). The style and the monster/boss presets are kept in one place so they are easy to change.
 - Settings → *Voxel graphics* removed (owner decision). Owner answers recorded in art-pipeline.md: props stay voxels (to regenerate later), monsters will face four directions.
 - Gap found: the player never plays `attack`/`hurt` animations.
+- Later the same day: casting now plays the attack animation (`Player.OnCastStarted`). The approved Ashen floor and 4-frame fireball are in the game; `tools/art` reads them back from PNG (`decodePng`/`pngGrid`), so its build and voxel export keep them. The Arcanist portrait is tracked in issue #35.

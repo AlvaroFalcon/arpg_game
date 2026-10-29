@@ -324,10 +324,22 @@ regenerated soon with the ComfyUI workflows so their design matches. Deaths burs
 pixels, configurable (above). Monsters will face four directions, like the player.
 The "Voxel graphics" switch is removed.
 
-**Still to do for the Arcanist and the classes:** the player never plays an `attack`
-animation (only idle/walk): casting should play `attack` / `attack_side` /
-`attack_up` and taking a hit `hurt`. The Arcanist's portrait (character select,
-altar) is still painted from its old `Look`; it needs one made from the new concept.
+**Attack animation [IMPLEMENTED 2026-10-29].** Every cast (`SkillUser.CastStarted`)
+plays `attack` + the facing suffix once from its first frame (a cast during it
+restarts it); walk/idle resume when it ends. On a co-op client other players'
+puppets don't cast, so they don't play it. `hurt` is not played (owner: not for
+now).
+
+**Pending:** the Arcanist's portrait (character select, altar) is still painted from
+its old `Look`; it will be made from the new concept with its own workflow
+(GitHub issue #35).
+
+**Ashen floor and fireball [IMPLEMENTED 2026-10-29].** `tools/art` reads the
+approved PNGs back as draw_grid rows (`decodePng`/`pngGrid` in `lib.ts`): the four
+Ashen floor tiles in `sprites/tiles.ts` and the 4-frame fireball in
+`sprites/projectiles.ts` now come from `tools/comfyui/env/approved/`, so the
+EasyPixel document, the Godot export and the voxel export (floor slabs, the
+fireball's model) all follow the approved art, and a rebuild reproduces it.
 
 ## Alternatives considered
 

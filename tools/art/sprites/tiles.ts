@@ -1,4 +1,4 @@
-import { mulberry32, type SpriteSpec } from '../lib';
+import { mulberry32, pngGrid, type SpriteSpec } from '../lib';
 
 // The Ashen Arena tileset: 16x16 tiles in a 4x2 atlas.
 //   row 0: four ash-stone floor variants
@@ -108,12 +108,19 @@ function atlas(tiles: string[][][], columns: number): string[] {
   return rows;
 }
 
+// The four Ashen floors come from the approved ComfyUI tile (a 2x2 block of 16x16
+// tiles, palette-locked to these stones): docs/design/art-pipeline.md -> "HD-2D with
+// flat figures", recipe in tools/comfyui/env.json. Lava, wall and rune are still drawn here.
+const ASHEN_FLOOR_PNG = 'tools/comfyui/env/approved/ashen_floor.png';
+const arenaLegend: Record<string, string> = { ...legend };
+const ashenFloors = [[0, 0], [16, 0], [0, 16], [16, 16]].map(([x, y]) => pngGrid(ASHEN_FLOOR_PNG, arenaLegend, { x, y, w: T, h: T }));
+
 export const arenaTiles: SpriteSpec = {
   name: 'ashen_arena',
   dir: 'assets/tiles',
-  legend,
+  legend: arenaLegend,
   frames: [{
-    rows: atlas([floorTile(1), floorTile(2), floorTile(3), floorTile(4), lavaTile(5), lavaTile(9), wallTile(), runeTile()], 4),
+    rows: atlas([...ashenFloors, lavaTile(5), lavaTile(9), wallTile(), runeTile()], 4),
     duration: 100,
   }],
   tileset: { tileWidth: 16, tileHeight: 16 },

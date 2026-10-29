@@ -76,6 +76,11 @@ public partial class Player : CharacterBody2D
     private AnimatedSprite2D? _sprite;
     private float _hurtFlash;
 
+    /// <summary>Seconds left of the attack animation started by the last cast
+    /// (docs/design/art-pipeline.md -> "HD-2D with flat figures"). Walking and idle
+    /// wait for it.</summary>
+    private float _attackTime;
+
     [Export]
     public PackedScene? DamageNumberScene;
 
@@ -196,6 +201,7 @@ public partial class Player : CharacterBody2D
         _navigationAgent = GetNode<NavigationAgent2D>("NavigationAgent2D");
         _stats = GetNode<ActorStats>("Stats");
         _skillUser = GetNode<SkillUser>("SkillUser");
+        _skillUser.CastStarted += OnCastStarted;
         Wallet = GetNode<Wallet>("Wallet");
         Equipment = GetNode<Items.Equipment>("Equipment");
         Inventory = GetNode<Items.Inventory>("Inventory");
@@ -503,6 +509,22 @@ public partial class Player : CharacterBody2D
         }
     }
 
+    /// <summary>A skill was cast: play the attack animation once, from its first frame
+    /// (a cast during the previous one restarts it).</summary>
+    private void OnCastStarted(int slotIndex)
+    {
+        if (_sprite?.SpriteFrames is not { } frames || !frames.HasAnimation("attack"))
+        {
+            return;
+        }
+
+        float speed = (float)frames.GetAnimationSpeed("attack");
+        _attackTime = speed > 0f ? frames.GetFrameCount("attack") / speed : 0.25f;
+        string anim = frames.HasAnimation("attack" + _facing) ? "attack" + _facing : "attack";
+        _sprite.Play(anim);
+        _sprite.Frame = 0;
+    }
+
     public override void _Process(double delta)
     {
         if (_sprite is null)
@@ -515,10 +537,12 @@ public partial class Player : CharacterBody2D
         // goes, and a co-op puppet (no aim replicated) faces where it moves.
         bool facesMotion = Puppet || (Dodge?.IsDashing ?? false);
         UpdateFacing(facesMotion ? (moving ? Velocity : Vector2.Zero) : AimPoint - GlobalPosition);
-        string anim = (moving ? "walk" : "idle") + _facing;
+        _attackTime -= (float)delta;
+        string baseAnim = _attackTime > 0f ? "attack" : moving ? "walk" : "idle";
+        string anim = baseAnim + _facing;
         if (_sprite.SpriteFrames?.HasAnimation(anim) != true)
         {
-            anim = moving ? "walk" : "idle";
+            anim = baseAnim;
         }
 
         if (_sprite.Animation != anim && _sprite.SpriteFrames?.HasAnimation(anim) == true)
