@@ -235,10 +235,23 @@ def concept_prompt(char: dict, from_reference: bool) -> str:
 
 
 def view_prompt(char: dict, view: str) -> str:
-    label = char["views"][view]["label"]
-    return (f"Show the exact same character from image 1 with the same design, colours, proportions, size and "
-            f"pixel art style, now in {label}, standing idle and holding the staff upright, the whole body visible. "
-            f"{char['style']}.")
+    spec = char["views"][view]
+    text = (f"Show the exact same character from image 1 with the same design, colours, proportions, size and "
+            f"pixel art style, now in {spec['label']}, standing idle and holding the staff upright, the whole body visible. ")
+    if spec.get("notes"):
+        text += spec["notes"] + " "
+    if char.get("keep"):
+        text += char["keep"] + " "
+    return text + f"{char['style']}."
+
+
+def view_reference(char: dict, view: str, front: Image.Image) -> Image.Image:
+    """The image a view is drawn from: the approved front, mirrored for views that
+    ask for it (the back: seen from behind, the staff hand and the bent hat tip
+    sit on the other side of the image, which the mirror already gets right)."""
+    if char["views"][view].get("mirror_reference"):
+        return front.transpose(Image.FLIP_LEFT_RIGHT)
+    return front
 
 
 def anim_prompt(char: dict, view: str, anim: str, guide: bool) -> str:
@@ -250,6 +263,8 @@ def anim_prompt(char: dict, view: str, anim: str, guide: bool) -> str:
             f"read left to right, of the exact same character from image 1 with the same design, colours, "
             f"proportions, size and pixel art style, in {label}. Every frame shows the whole body at the same "
             f"scale with the feet on the same baseline. ")
+    if char.get("keep"):
+        text += char["keep"] + " "
     if guide:
         text += ("Copy the body, arm, leg and staff pose of each grey mannequin in image 2, column by column; "
                  "image 2 is only a pose guide, never draw the mannequin. ")
@@ -272,7 +287,7 @@ def cmd_views(cfg, args):
         sys.exit("Approve a concept first: spritegen.py approve <char> concept <n>")
     views = args.only or [v for v in VIEW_ORDER if v != "front"]
     ref = Image.open(front).convert("RGB")
-    generate(cfg, args, [{"key": v, "prompt": view_prompt(char, v), "refs": [ref],
+    generate(cfg, args, [{"key": v, "prompt": view_prompt(char, v), "refs": [view_reference(char, v, ref)],
                           "size": tuple(cfg["concept_size"]), "out": OUT / char["name"] / "views"} for v in views])
 
 

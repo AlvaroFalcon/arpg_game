@@ -4,11 +4,30 @@
   "reference": "arcanist_ref.png",
   "description": "a chibi young wizard with messy brown hair and dark eyes, a big floppy dark-blue pointed wizard hat with a gold band and a round red gem on the front, a dark-blue robe with gold trim at the collar, cuffs and hem, a round red gem brooch at the collar, a brown belt with a round gold buckle, short brown boots, holding a carved wooden staff topped with a glowing red crystal",
   "style": "high quality pixel art game sprite in the style of a 16-bit JRPG, chibi proportions with a big head, crisp single-pixel dark outline, flat cel shading with a limited palette, full body, centred, plain flat pure white background, no ground shadow, no text, no border",
-  "frame": { "width": 64, "height": 96, "foot_margin": 2, "max_colors": 32 },
+  "frame": {
+    "width": 64,
+    "height": 96,
+    "foot_margin": 2,
+    "max_colors": 32
+  },
   "views": {
-    "front": { "suffix": "", "label": "front view, facing the camera (facing down the screen)" },
-    "back": { "suffix": "_up", "label": "back view, seen from behind, facing away from the camera (facing up the screen); the face is not visible, the hat and the back of the robe are", "from": "front" },
-    "side": { "suffix": "_side", "label": "side view in profile, facing to the right of the image", "from": "front" }
+    "front": {
+      "suffix": "",
+      "label": "front view, facing the camera (facing down the screen)"
+    },
+    "back": {
+      "suffix": "_up",
+      "label": "back view, seen from behind, facing away from the camera (facing up the screen); the face is not visible, the hat and the back of the robe are",
+      "from": "front",
+      "mirror_reference": true,
+      "notes": "Image 1 shows the front of the character; turn the character around in place so we see its back, keeping the staff and the bent hat tip on the same side of the image as in image 1. The red gem of the hat band and the brooch are on the front, so they are hidden. The staff is clearly visible, held upright beside the body with the red crystal at head height."
+    },
+    "side": {
+      "suffix": "_side",
+      "label": "side view in profile, facing to the right of the image",
+      "from": "front",
+      "notes": "The staff is held upright in the hand nearest to the viewer, on the right side of the body (the side the character faces), in front of the chest. It is the same short carved staff as in image 1 with the wooden cup holding the red crystal; its bottom touches the ground by the feet and the red crystal is level with the face, never above the hat brim. The red gem of the hat band is at the front of the hat, on the right."
+    }
   },
   "animations": {
     "idle": {
@@ -42,5 +61,6 @@
         "recovering: staff coming back to an upright position, a few fading sparks"
       ]
     }
-  }
+  },
+  "keep": "Keep every element of image 1 exactly: the same hat (a tall dark-blue pointed wizard hat with a wide round brim, a gold band, the tip bent over and drooping to the side), the same wooden staff (reaching from the feet up to head height, a straight carved wooden shaft with a round red crystal on top) held in the same hand, the same robe, belt, boots and hair. Do not add, remove or redesign anything."
 }
