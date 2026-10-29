@@ -282,7 +282,7 @@ public partial class CoopUiTestDriver : CoopTestDriver
         menu.BackToMenu();
         await Frames(3);
         string afterChooser = Focused();
-        Check("MENU-FOCUS", afterCoop == "With friends" && afterChooser == "Play",
+        Check("MENU-FOCUS", afterCoop == "With friends" && afterChooser == "Start",
             $"Back from the co-op screen focuses '{afterCoop}', Back from the chooser focuses '{afterChooser}'");
 
         menu.OpenPlayChooser();

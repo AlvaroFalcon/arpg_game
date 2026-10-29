@@ -29,18 +29,20 @@ public partial class RealityHud : CanvasLayer
     private Label _titleLabel = null!;
     private Label _infoLabel = null!;
     private Label _modsLabel = null!;
-    private HBoxContainer _skillRow = null!;
+    private SkillBar _skillRow = null!;
     private Label _banner = null!;
     private Label _bannerSub = null!;
     private Label _callout = null!;
     private VBoxContainer _toasts = null!;
     private Minimap _minimap = null!;
+    private HudCorner _corner = null!;
+
+    /// <summary>The top-right corner: minimap, clock, quests (tests).</summary>
+    public HudCorner Corner => _corner;
     private float _bannerTime;
     private float _calloutTime;
     private BossEnemy? _boss;
     private TargetFrame _target = null!;
-    private readonly List<SkillSlotView> _slots = new();
-    private string _skillSignature = "";
     private CharacterBuild? _build;
 
     public override void _Ready()
@@ -52,26 +54,30 @@ public partial class RealityHud : CanvasLayer
         root.AddChild(_levelLabel);
         _levelLabel.Position = new Vector2(16f, 16f);
 
-        // --- top-right: reality info + minimap ---
-        var info = new VBoxContainer();
+        // --- top-left, under the character: the reality's name, tier, state and modifiers ---
+        var info = new VBoxContainer { Name = "RealityInfo", MouseFilter = Control.MouseFilterEnum.Ignore };
         info.AddThemeConstantOverride("separation", 2);
         root.AddChild(info);
-        info.SetAnchorsPreset(Control.LayoutPreset.TopRight, true);
-        info.OffsetLeft = -330f;
-        info.OffsetRight = -16f;
-        info.OffsetTop = 16f;
-        info.GrowHorizontal = Control.GrowDirection.Begin;
-        _titleLabel = UiTheme.Label("", 20, RealityTiers.ShardColor(Reality.Tier), HorizontalAlignment.Right);
+        info.Position = new Vector2(16f, 44f);
+        _titleLabel = UiTheme.Label("", 18, RealityTiers.ShardColor(Reality.Tier));
         info.AddChild(_titleLabel);
-        _infoLabel = UiTheme.Label("", 15, UiTheme.Text, HorizontalAlignment.Right);
-        _infoLabel.CustomMinimumSize = new Vector2(314f, 0f);
+        _infoLabel = UiTheme.Label("", 14, UiTheme.Text);
+        _infoLabel.CustomMinimumSize = new Vector2(330f, 0f);
         info.AddChild(_infoLabel);
-        _modsLabel = UiTheme.Label("", 13, UiTheme.Ember, HorizontalAlignment.Right);
+        _modsLabel = UiTheme.Label("", 13, UiTheme.Ember);
         _modsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _modsLabel.CustomMinimumSize = new Vector2(314f, 0f);
+        _modsLabel.CustomMinimumSize = new Vector2(330f, 0f);
         info.AddChild(_modsLabel);
-        _minimap = new Minimap { Reality = Reality, CustomMinimumSize = new Vector2(220f, 170f), SizeFlagsHorizontal = Control.SizeFlags.ShrinkEnd };
-        info.AddChild(_minimap);
+
+        // --- top-right: the minimap, the local time, the quests (docs/design/menus.md -> "HUD: top-right corner") ---
+        _minimap = new Minimap { Reality = Reality };
+        MapOverlay overlay = new() { Reality = Reality, Name = "MapOverlay" };
+        _corner = new HudCorner
+        {
+            Map = _minimap,
+            Tracker = new QuestTracker { OpenLog = id => Reality.GetNodeOrNull<CharacterPanels>("CharacterPanels")?.Quests.OpenOn(id) },
+            BigMapOpen = () => overlay.Visible,
+        };
 
         // --- boss bar ---
         _target = new TargetFrame { Player = Player, Boss = () => Reality.BossFightActive ? _boss : null, Name = "TargetFrame" };
@@ -79,7 +85,9 @@ public partial class RealityHud : CanvasLayer
         _target.Dock(30f);
 
         // --- the Tab overlay map, under every other HUD element ---
-        root.AddChild(new MapOverlay { Reality = Reality, Name = "MapOverlay" });
+        root.AddChild(overlay);
+        root.AddChild(_corner);
+        _corner.Dock();
 
         // --- bottom centre: life, mana, level badge, flasks, skills ---
         _bar = new PlayerHudBar
@@ -100,8 +108,11 @@ public partial class RealityHud : CanvasLayer
         _toasts = new VBoxContainer();
         _toasts.AddThemeConstantOverride("separation", 2);
         root.AddChild(_toasts);
-        _toasts.Position = new Vector2(16f, 50f);
+        _toasts.Position = new Vector2(16f, 150f);
         _toasts.CustomMinimumSize = new Vector2(520f, 0f);
+
+        // --- loot feed (left, mid-height) ---
+        LootFeedView feed = AddLootFeed(root);
 
         // --- banners ---
         _banner = UiTheme.Label("", 44, UiTheme.Gold, HorizontalAlignment.Center);
@@ -127,11 +138,13 @@ public partial class RealityHud : CanvasLayer
 
         // Movable in the HUD editor (pause menu → Edit HUD).
         HudLayout.Register(_levelLabel, "character", "Character");
-        HudLayout.Register(info, "reality_info", "Reality info & minimap", avoid: HudAvoid.Hide);
+        HudLayout.Register(info, "reality_info", "Reality info", avoid: HudAvoid.Hide);
+        HudLayout.Register(_corner, "corner", "Minimap, clock & quests", on => _corner.Tracker?.SetPreview(on), HudAvoid.Hide);
         HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview, HudAvoid.Slide);
         HudLayout.Register(_bar, "vitals", "Life, mana & flasks");
         HudLayout.Register(_skillRow, "skills", "Skills");
         HudLayout.Register(_toasts, "toasts", "Notifications", on => PreviewToasts(_toasts, on));
+        HudLayout.Register(feed, "loot_feed", "Loot picked up", feed.SetPreview);
 
         Reality.Announced += ShowBanner;
         Reality.Toast += ShowToast;
@@ -147,6 +160,19 @@ public partial class RealityHud : CanvasLayer
         string mods = string.Join("\n", Reality.Modifiers.Select(m => RealityModifier.Find(m)?.Text ?? m));
         _modsLabel.Text = mods;
         _titleLabel.Text = $"{Reality.Layout.Name}  ·  T{Reality.Tier}";
+    }
+
+    /// <summary>The loot feed on the left edge, a little above mid-height (docs/design/menus.md -> "Loot feed").</summary>
+    public static LootFeedView AddLootFeed(Control root)
+    {
+        var feed = new LootFeedView();
+        root.AddChild(feed);
+        feed.SetAnchorsPreset(Control.LayoutPreset.CenterLeft, true);
+        feed.OffsetLeft = 0f;
+        feed.OffsetTop = -110f;
+        feed.OffsetRight = LootFeedView.RowWidth;
+        feed.OffsetBottom = -110f + LootFeedView.MaxRows * (LootFeedView.RowHeight + LootFeedView.RowGap);
+        return feed;
     }
 
     /// <summary>A placeholder line so the (usually empty) notification list has something to grab.</summary>
@@ -274,33 +300,9 @@ public partial class RealityHud : CanvasLayer
 
     private void UpdateSkills()
     {
-        // Fixed bar order matching the bindings: LMB, RMB, 1, 2, 3, 4.
-        var skills = CharacterBuild.Slots
-            .Select(slot => (slot, skill: Player.SkillUser.GetSkill(slot)))
-            .Where(t => t.skill is not null)
-            .ToList();
-        string signature = string.Join("|", skills.Select(t => $"{t.slot}{t.skill!.Definition.DisplayName}{t.skill.Level}{t.skill.Attached.Count}"));
-        if (signature != _skillSignature)
-        {
-            _skillSignature = signature;
-            foreach (SkillSlotView view in _slots)
-            {
-                view.QueueFree();
-            }
-
-            _slots.Clear();
-            foreach ((SkillSlotId slot, SkillInstance? skill) in skills)
-            {
-                var view = new SkillSlotView(skill!, SkillSlotView.LabelOf(slot));
-                _skillRow.AddChild(view);
-                _slots.Add(view);
-            }
-        }
-
-        foreach (SkillSlotView view in _slots)
-        {
-            view.Cooldown = Player.SkillUser.CooldownFraction(view.Skill);
-        }
+        // Fixed bar order matching the bindings: LMB, RMB | mirror | Q, E (empty slots show too).
+        _skillRow.Show(CharacterBuild.Slots.Select(slot => (SkillSlotView.LabelOf(slot), Player.SkillUser.GetSkill(slot))).ToList());
+        _skillRow.Cooldowns(Player.SkillUser.CooldownFraction);
     }
 
     /// <summary>The minimap (tests read its allies).</summary>

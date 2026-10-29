@@ -1,5 +1,8 @@
 # Items, Loot & Drops (first pass)
 
+> **Keys changed 2026-10-29** (docs/design/menus.md -> "Controls"): interact is **F** (was E), pick-up is **G** (was F), flasks are **1/2** (were Q/R), skills are LMB/RMB/Q/E. Older text below may still name the old keys.
+
+
 Status legend, matching `docs/design/skills.md`:
 - **[DECIDED]** — settled, implement as written.
 - **[PROPOSED]** — recommendation awaiting the project owner's confirmation. Repeated

@@ -84,7 +84,7 @@ public static class PartyRules
     // never goes down.
 
     /// <summary>How close (px) a living ally must stand to a downed player to start a revive
-    /// (the "Hold E to revive" prompt shows within this).</summary>
+    /// (the "Hold F to revive" prompt shows within this).</summary>
     public const float ReviveRadius = 70f;
 
     /// <summary>The host accepts a revive up to <see cref="ReviveRadius"/> plus this (px): a

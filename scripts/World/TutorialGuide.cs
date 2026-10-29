@@ -83,7 +83,7 @@ public partial class TutorialGuide : CanvasLayer
         _steps.Add(new Step
         {
             Title = "First blood",
-            Body = $"Monsters ahead in the yard. Aim with the mouse and press {Key("LMB")} to use {lmb}.\nSkills are bound to {Key("LMB")} {Key("RMB")} {Key("1")}-{Key("4")}.\nHurt? {Key("Q")} drinks a life flask, {Key("R")} a mana flask; red orbs from monsters refill them.",
+            Body = $"Monsters ahead in the yard. Aim with the mouse and press {Key("LMB")} to use {lmb}.\nSkills are bound to {Key("LMB")} {Key("RMB")} {Key("Q")} {Key("E")}.\nHurt? {Key("1")} drinks a life flask, {Key("2")} a mana flask; red orbs from monsters refill them.",
             Enter = () => _killsAtStart = Reality.Kills,
             Done = () => Reality.Kills >= _killsAtStart + 3 || RoomCleared("yard"),
         });
@@ -116,7 +116,7 @@ public partial class TutorialGuide : CanvasLayer
         _steps.Add(new Step
         {
             Title = "Home",
-            Body = $"Collect the loot, then press {Key("E")} at the portal.\nYour hideout holds the Mirror of Realities: it opens new realities from the Mirror Shards you find. Harder shards, better loot.",
+            Body = $"Collect the loot, then press {Key("F")} at the portal.\nYour hideout holds the Mirror of Realities: it opens new realities from the Mirror Shards you find. Harder shards, better loot.",
             Done = () => false,
         });
     }

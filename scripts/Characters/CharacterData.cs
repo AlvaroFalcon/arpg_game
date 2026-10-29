@@ -63,10 +63,14 @@ public sealed class LoadoutSlot
 public sealed class CharacterData
 {
     public const int MaxLevel = 70;
-    /// <summary>LMB, RMB, 1, 2, 3, 4 — see <see cref="SlotLabels"/>.</summary>
-    public const int LoadoutSlots = 6;
+    /// <summary>LMB, RMB, Q, E — see <see cref="SlotLabels"/> (docs/design/menus.md -> "Controls";
+    /// four since 2026-10-29, older saves had six and keep their first four).</summary>
+    public const int LoadoutSlots = 4;
 
-    public static readonly string[] SlotLabels = { "LMB", "RMB", "1", "2", "3", "4" };
+    /// <summary>How many slots a save from before the four-slot bar may hold (LMB, RMB, 1-4).</summary>
+    public const int LegacyLoadoutSlots = 6;
+
+    public static readonly string[] SlotLabels = { "LMB", "RMB", "Q", "E" };
 
     public string Name { get; set; } = "Hero";
     public string ClassId { get; set; } = "arcanist";

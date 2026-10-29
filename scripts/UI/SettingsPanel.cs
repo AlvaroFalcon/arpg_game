@@ -71,7 +71,7 @@ public partial class SettingsPanel : PanelContainer
             (int)(settings?.DamageNumberMode ?? DamageNumberMode.Full), i => settings?.SetDamageNumberMode((DamageNumberMode)i));
         AddToggle(gameplay, "Admin mode (testing: max-level test characters)", settings?.AdminMode ?? false, v => settings?.SetAdminMode(v));
         Label controls = UiTheme.Label(
-            "WASD move · Mouse aim · LMB/RMB/1-4 skills · Space dodge · Shift sprint · Q/R flasks\nI inventory · C character · K skills · P passive tree · J quests · Esc menu",
+            "WASD move · Mouse aim · LMB/RMB/Q/E skills · Space dodge · Shift sprint · 1/2 flasks\nF interact · G pick up · Tab map · I inventory · C character · K skills · P passive tree · J quests · Esc menu",
             15, UiTheme.TextDim, HorizontalAlignment.Center);
         controls.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         gameplay.AddChild(controls);

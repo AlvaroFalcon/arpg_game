@@ -742,8 +742,24 @@ public partial class EndgameSmokeTest : Node2D
         Check("STASH-TAB-COSTS", first == 150 && second == 300 && profile.NextStashTabCost == -1, $"tab 2: {first}, tab 3: {second}, after {Profile.MaxStashTabs}: {profile.NextStashTabCost}");
         profile.Free();
 
-        Check("LOADOUT-SIX-SLOTS", CharacterData.LoadoutSlots == 6 && CharacterBuild.Slots[0] == SkillSlotId.Lmb && CharacterBuild.Slots[1] == SkillSlotId.Rmb && CharacterBuild.Slots[5] == SkillSlotId.Slot4,
+        Check("LOADOUT-FOUR-SLOTS", CharacterData.LoadoutSlots == 4 && CharacterBuild.Slots.Length == 4 && CharacterBuild.Slots[0] == SkillSlotId.Lmb && CharacterBuild.Slots[1] == SkillSlotId.Rmb
+                && CharacterBuild.Slots[2] == SkillSlotId.Slot1 && CharacterBuild.Slots[3] == SkillSlotId.Slot2 && string.Join(",", CharacterData.SlotLabels) == "LMB,RMB,Q,E",
             $"{string.Join(", ", CharacterData.SlotLabels)}");
+
+        // A six-slot save: LMB, RMB, "1" kept; empty "2" (now E) takes the old "3"; the old "4" has no room.
+        var node = System.Text.Json.Nodes.JsonNode.Parse(Profile.SerializeCharacter(new CharacterData { Name = "Legacy", ClassId = "warrior" }))!;
+        var six = new System.Text.Json.Nodes.JsonArray();
+        foreach (string? uid in new[] { "a", "b", "c", null, "d", "e" })
+        {
+            six.Add(new System.Text.Json.Nodes.JsonObject { ["SkillUid"] = uid, ["SupportUids"] = new System.Text.Json.Nodes.JsonArray() });
+        }
+
+        node["Loadout"] = six;
+        string legacyJson = node.ToJsonString();
+        CharacterData migrated = Profile.DeserializeCharacter(legacyJson)!;
+        string kept = string.Join(",", migrated.Loadout.Select(l => l.SkillUid ?? "-"));
+        string? refused = Profile.ValidateCharacterJson(legacyJson, out _, out _);
+        Check("LOADOUT-LEGACY-SIX", kept == "a,b,c,d" && refused is null, $"loadout {kept}, validation {refused ?? "ok"}");
 
         var tab = new Items.Inventory { Columns = Profile.StashColumns, Rows = Profile.StashRows };
         Check("STASH-GRID-SIZE", tab.BuildOccupancyMask().GetLength(0) == 12 && tab.BuildOccupancyMask().GetLength(1) == 10, "stash tabs are 12x10 grids");

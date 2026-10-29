@@ -736,3 +736,20 @@ Needs a human playtest: readability at 1080p/1440p/ultrawide, Compact in a dense
 - **"Can't change this state while flushing queries".** Not a toggled `Disabled`: `DropSpawner`/`EquipmentDropSpawner` added the drop's Area2D inside `Health.Died`, which fires in a projectile's overlap signal. Found by bracketing `ResolveHit` with prints. The drop is now added at the end of the frame (the position and roll are fixed first).
 - **`grab_focus` outside the tree.** Deferred focus calls ran after the co-op view was rebuilt. All of them go through `UiTheme.FocusLater` (checks the control is valid and in the tree when it runs).
 - **Damage numbers: allies' hits dropped** (owner decision). `DamageNumberKind.Ally` and its style are gone; `ShowHit` skips hits from a non-local player. Protocol 8's extra bytes stay (a client's own hits use them). New check `DMGNUM-ALLY-HIT-NO-LINE`.
+
+## 2026-10-29: the owner's sketch, built (title, mirror HUD, four skill keys, top-right corner, loot feed)
+
+The owner drew six screens by hand (`docs/design/sketches/2026-10-29-ui-screens.pdf`) and left me to build them:
+
+- **Title screen.** "Press any key to continue", then three bare entries, Start, Settings, Quit, navigable with the arrows and the mouse. The selected one gets a blurred brush stroke under it that sweeps in from the left (`BrushMenuOption`: stacked translucent tapered bands plus dry-brush streaks). Training Grounds left the menu. The prompt sits where the menu will be so the title doesn't jump.
+- **Four skill keys: LMB, RMB, Q, E.** The owner's call: more accessible, and a fifth key gets added only if something is missing. That pushed flasks to 1/2, interact to F and pick-up to G. Pick-up stayed separate from interact on purpose: loot lands around the exit portal, so one shared key would either walk you into the portal or keep trying a full bag. Six-slot saves keep their first four; a skill on the old 3 or 4 moves into an empty slot (`LOADOUT-LEGACY-SIX`).
+- **The mirror.** The AION-style bars became an oval mirror: life fills the left half and mana the right, like liquid, and the rim is the experience bar, purple, cut into ten by black notches. The skill bar wraps around it (LMB/RMB with a little mouse icon, Q/E with key caps, every slot visible even when empty), flasks at its ends.
+- **Top-right corner.** A square minimap a little off the edges, the local time under it, the quest tracker under that. Tab hides the minimap. The hideout's town directory and the reality's info moved to the left to make room.
+- **Loot feed.** Gold and orbs slide in from the left with their icon and name, stay four seconds and slide back out; repeats merge ("Gold +137"). It's a static bus (`LootFeed.Report`) so anything can be added later.
+
+![Title](screenshots/ui-title.png)
+![Menu](screenshots/ui-menu-start.png)
+![Reality HUD](screenshots/ui-hud-reality.png)
+![Hideout HUD](screenshots/ui-hud-hideout.png)
+
+Needs the owner's playtest: whether the brush reads as "difuminado" enough, the mirror's size, and whether the new F/G split for interact/pick-up feels right.

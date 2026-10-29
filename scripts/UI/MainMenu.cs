@@ -48,23 +48,22 @@ public partial class MainMenu : Node2D
 		shade.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
 
 		_center = UiTheme.Center(_menuRoot);
-		_menu = UiTheme.VBox(_center, 14);
+		_menu = UiTheme.VBox(_center, 6);
 		_menu.AddChild(UiTheme.Label("ARPG GAME", 72, UiTheme.Gold, HorizontalAlignment.Center));
 		_menu.AddChild(UiTheme.Label("— Altered Realities —", 24, UiTheme.Ember, HorizontalAlignment.Center));
-		_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 24f) });
+		_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 40f) });
 		ShowNotice();
 
-		Button play = AddButton("Play", OpenPlayChooser);
-		_playButton = play;
+		// Three entries, text only, a brush stroke under the selected one (docs/design/menus.md -> "Title screen").
+		_playButton = AddButton("Start", OpenPlayChooser);
 		_settingsButton = AddButton("Settings", OpenSettings);
-		AddButton("Training Grounds (sandbox)", () => Scenes.Go(this, Scenes.Sandbox));
 		AddButton("Quit", () => GetTree().Quit());
 
 		Profile? profile = Profile.Get(this);
 		if (profile is not null && profile.HasCharacters)
 		{
 			Characters.CharacterData c = profile.Active;
-			_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 12f) });
+			_menu.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 18f) });
 			_menu.AddChild(UiTheme.Label(
 				$"{profile.Characters.Count} character{(profile.Characters.Count == 1 ? "" : "s")}  ·  last played: {c.Name}, level {c.Level} {c.AscendancyDef?.Name ?? c.Class.Name}, best tier {c.HighestTierCleared}",
 				16, UiTheme.TextDim, HorizontalAlignment.Center));
@@ -77,7 +76,7 @@ public partial class MainMenu : Node2D
 		version.OffsetTop = -34f;
 		version.OffsetRight = -16f;
 
-		UiTheme.FocusLater(play);
+		BuildTitle();
 
 		// scripts/coop_local.sh: --coop-host[=port] / --coop-join=address:port open the lobby at once
 		// (with --coop-code=CODE, and --coop-no-upnp for one PC).
@@ -166,6 +165,7 @@ public partial class MainMenu : Node2D
 	/// <summary>Play opens a two-way choice in place of the menu.</summary>
 	public void OpenPlayChooser()
 	{
+		DropTitle();
 		CloseChooser();
 		_menu.Visible = false;
 		_chooser = UiTheme.VBox(_center, 12);
@@ -223,6 +223,18 @@ public partial class MainMenu : Node2D
 
 	public override void _Input(InputEvent e)
 	{
+		if (_title is not null)
+		{
+			bool any = e is InputEventKey { Pressed: true, Echo: false } or InputEventMouseButton { Pressed: true } or InputEventJoypadButton { Pressed: true };
+			if (any)
+			{
+				GetViewport().SetInputAsHandled();
+				SkipTitle();
+			}
+
+			return;
+		}
+
 		if (ChooserOpen && _chooser!.IsVisibleInTree() && e.IsActionPressed("ui_cancel"))
 		{
 			GetViewport().SetInputAsHandled();
@@ -234,6 +246,7 @@ public partial class MainMenu : Node2D
 	/// chooser (With friends), Back returns there; from the command line, to the menu.</summary>
 	private void OpenCoop(int? hostPort = null, string? join = null, bool fromChooser = false)
 	{
+		DropTitle();
 		CloseChooser();
 		_menu.Visible = false;
 		var panel = new CoopPanel { AutoHostPort = hostPort, AutoJoin = join, AutoStartAt = AutoStartArg(), AutoCode = UserArg("coop-code"), NoUpnp = UserArg("coop-no-upnp") is not null, OfferChange = true };
@@ -264,14 +277,77 @@ public partial class MainMenu : Node2D
 
 	private Button AddButton(string text, System.Action action)
 	{
-		Button b = UiTheme.Button(text, action, 22, 340f);
-		b.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+		BrushMenuOption b = BrushMenuOption.Create(text, action);
 		_menu.AddChild(b);
 		return b;
 	}
 
+	/// <summary>Another screen opens straight away (tests, capture hooks): no title, no sound.</summary>
+	private void DropTitle()
+	{
+		if (_title is not null)
+		{
+			_title.QueueFree();
+			_title = null;
+			_pressAny = null;
+		}
+	}
+
+	// --- "Press any key to continue" (docs/design/menus.md -> "Title screen") -------------
+
+	private Control? _title;
+	private Label? _pressAny;
+
+	/// <summary>The press-any-key screen is showing (tests).</summary>
+	public bool TitleShowing => _title is not null;
+
+	/// <summary>The title alone and a pulsing "Press any key to continue"; the menu waits
+	/// behind it. Skipped when there is something to say or do at once (a party notice,
+	/// the co-op command-line flags).</summary>
+	private void BuildTitle()
+	{
+		bool skip = NoticeText is not null || UserArg("coop-host") is not null || UserArg("coop-join") is not null || UserArg("skip-title") is not null;
+		if (skip)
+		{
+			UiTheme.FocusLater(_playButton);
+			return;
+		}
+
+		_menu.Visible = false;
+		_title = UiTheme.VBox(_center, 6);
+		_title.Name = "TitleScreen";
+		_title.AddChild(UiTheme.Label("ARPG GAME", 72, UiTheme.Gold, HorizontalAlignment.Center));
+		_title.AddChild(UiTheme.Label("— Altered Realities —", 24, UiTheme.Ember, HorizontalAlignment.Center));
+		// The prompt sits where the menu will be, so the title doesn't move when it opens.
+		float menuHeight = _menu.GetCombinedMinimumSize().Y;
+		_title.AddChild(new Control { CustomMinimumSize = new Vector2(0f, 90f) });
+		_pressAny = UiTheme.Label("Press any key to continue", 24, UiTheme.Text, HorizontalAlignment.Center);
+		_pressAny.AddThemeConstantOverride("outline_size", 6);
+		_pressAny.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.75f));
+		_title.AddChild(_pressAny);
+		float used = _title.GetCombinedMinimumSize().Y;
+		_title.AddChild(new Control { CustomMinimumSize = new Vector2(0f, Mathf.Max(0f, menuHeight - used - 6f)) });
+	}
+
+	/// <summary>Leaves the title for the menu, Start selected.</summary>
+	public void SkipTitle()
+	{
+		if (_title is null)
+		{
+			return;
+		}
+
+		_title.QueueFree();
+		_title = null;
+		_pressAny = null;
+		_menu.Visible = true;
+		Sfx.Play(this, "ui", -6f);
+		UiTheme.FocusLater(_playButton);
+	}
+
 	private void OpenCharacters(bool create, CharacterSelect.PlayPurpose purpose)
 	{
+		DropTitle();
 		CloseChooser();
 		_menu.Visible = false;
 		var select = new CharacterSelect { StartInCreate = create, Purpose = purpose };
@@ -325,6 +401,7 @@ public partial class MainMenu : Node2D
 
 	private void OpenSettings()
 	{
+		DropTitle();
 		_menu.Visible = false;
 		SettingsPanel panel = SettingsPanel.Create(_center);
 		panel.Closed += () =>
@@ -337,6 +414,11 @@ public partial class MainMenu : Node2D
 	public override void _Process(double delta)
 	{
 		_t += (float)delta;
+		if (_pressAny is not null)
+		{
+			_pressAny.Modulate = new Color(1f, 1f, 1f, 0.45f + 0.55f * (0.5f + 0.5f * Mathf.Sin(_t * 2.6f)));
+		}
+
 		var arena = GetNode<Arena>("Arena");
 		_camera.GlobalPosition = arena.Center + new Vector2(Mathf.Sin(_t * 0.07f) * 260f, Mathf.Cos(_t * 0.05f) * 140f);
 	}

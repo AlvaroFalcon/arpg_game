@@ -29,7 +29,7 @@ public partial class RunHud : CanvasLayer
     private Label _levelLabel = null!;
     private Label _timerLabel = null!;
     private Label _killsLabel = null!;
-    private HBoxContainer _skillRow = null!;
+    private SkillBar _skillRow = null!;
     private Label _banner = null!;
     private Label _bannerSub = null!;
     private Label _callout = null!;
@@ -40,7 +40,6 @@ public partial class RunHud : CanvasLayer
     private float _calloutTime;
     private BossEnemy? _boss;
     private TargetFrame _target = null!;
-    private readonly List<SkillSlotView> _slots = new();
 
     // The reward panel of the endless phase (docs/design/run.md -> "Cash-out offer and the infinite Rift").
     private PanelContainer _rewardPanel = null!;
@@ -64,7 +63,6 @@ public partial class RunHud : CanvasLayer
     public string RewardNextText => _rwNext.Text;
     public string RewardLine1 => _rwLine1.Text;
     public string RewardLine2 => _rwLine2.Text;
-    private string _skillSignature = "";
 
     public override void _Ready()
     {
@@ -88,12 +86,17 @@ public partial class RunHud : CanvasLayer
         _timerLabel.OffsetRight = 100f;
         _timerLabel.OffsetTop = 14f;
 
-        _killsLabel = UiTheme.Label("0 kills", 20, UiTheme.TextDim, HorizontalAlignment.Right);
+        // Kills under the timer; the top right holds the local time like every HUD.
+        _killsLabel = UiTheme.Label("0 kills", 18, UiTheme.TextDim, HorizontalAlignment.Center);
         root.AddChild(_killsLabel);
-        _killsLabel.SetAnchorsPreset(Control.LayoutPreset.TopRight, true);
-        _killsLabel.OffsetLeft = -220f;
-        _killsLabel.OffsetRight = -16f;
-        _killsLabel.OffsetTop = 16f;
+        _killsLabel.SetAnchorsPreset(Control.LayoutPreset.CenterTop, true);
+        _killsLabel.OffsetLeft = -110f;
+        _killsLabel.OffsetRight = 110f;
+        _killsLabel.OffsetTop = 50f;
+        var corner = new HudCorner();
+        root.AddChild(corner);
+        corner.Dock();
+        corner.OffsetTop = 22f;
 
         BuildRewardPanel(root);
 
@@ -112,15 +115,19 @@ public partial class RunHud : CanvasLayer
         bar.Dock();
         _skillRow = PlayerHudBar.CreateSkillRow(root);
 
+        LootFeedView feed = RealityHud.AddLootFeed(root);
+
         // Movable in the HUD editor (pause menu → Edit HUD); ids shared with the realities.
         HudLayout.Register(_levelLabel, "run_level", "Level");
         HudLayout.Register(_timerLabel, "timer", "Timer");
         HudLayout.Register(_killsLabel, "kills", "Kills");
+        HudLayout.Register(corner, "corner", "Minimap, clock & quests");
         HudLayout.Register(_rewardPanel, "rift_reward", "Rift reward", PreviewReward);
         HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview, HudAvoid.Slide);
         HudLayout.Register(PartyMap, "party_map", "Party minimap (co-op)", on => PartyMap.HudEditing = on);
         HudLayout.Register(bar, "vitals", "Life & flask");
         HudLayout.Register(_skillRow, "skills", "Skills");
+        HudLayout.Register(feed, "loot_feed", "Loot picked up", feed.SetPreview);
 
         // --- banners ---
         _banner = UiTheme.Label("", 46, UiTheme.Gold, HorizontalAlignment.Center);
@@ -355,43 +362,26 @@ public partial class RunHud : CanvasLayer
 
     private void UpdateSkills()
     {
-        List<SkillInstance> skills = Build.Skills.ToList();
-        string signature = string.Join("|", skills.Select(s => $"{s.Definition.DisplayName}{s.Level}{s.Attached.Count}"));
-        if (signature != _skillSignature)
-        {
-            _skillSignature = signature;
-            foreach (SkillSlotView view in _slots)
-            {
-                view.QueueFree();
-            }
-
-            _slots.Clear();
-            foreach (SkillInstance skill in skills)
-            {
-                // Survival: everything auto-casts, so no key labels.
-                var view = new SkillSlotView(skill, "");
-                _skillRow.AddChild(view);
-                _slots.Add(view);
-            }
-        }
-
-        foreach (SkillSlotView view in _slots)
+        // Survival: everything auto-casts, so no key labels; half the skills each side of the mirror.
+        _skillRow.Show(Build.Skills.Select(skill => ("", (SkillInstance?)skill)).ToList());
+        var input = Player.GetNodeOrNull<PlayerSkillInput>("PlayerSkillInput");
+        _skillRow.Cooldowns(skill =>
         {
             // The auto-cast timer is what the player waits on in the Rift.
             float auto = 0f;
-            if (Player.GetNodeOrNull<PlayerSkillInput>("PlayerSkillInput") is { } input)
+            if (input is not null)
             {
                 foreach (SkillSlotId slot in new[] { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 })
                 {
-                    if (Player.SkillUser.GetSkill(slot) == view.Skill)
+                    if (Player.SkillUser.GetSkill(slot) == skill)
                     {
                         auto = input.AutoCastFraction(slot);
                     }
                 }
             }
 
-            view.Cooldown = Mathf.Max(Player.SkillUser.CooldownFraction(view.Skill), auto);
-        }
+            return Mathf.Max(Player.SkillUser.CooldownFraction(skill), auto);
+        });
     }
 
 }

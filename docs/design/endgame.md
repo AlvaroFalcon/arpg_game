@@ -1,5 +1,8 @@
 # Endgame: Mirror Shards and Altered Realities
 
+> **Keys changed 2026-10-29** (docs/design/menus.md -> "Controls"): interact is **F** (was E), pick-up is **G** (was F), flasks are **1/2** (were Q/R), skills are LMB/RMB/Q/E. Older text below may still name the old keys.
+
+
 Status: **[IMPLEMENTED]** (2026-10-11). Direction from the owner; the open
 questions of the first draft were answered by "go with your recommendations"
 (see "Decisions" at the end). This is now the core loop; the survivor run lives
