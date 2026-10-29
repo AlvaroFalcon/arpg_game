@@ -869,3 +869,6 @@ gear if the owner wants it there too. HUD-editor id `loot_feed`.
   edges, as bare key caps a touch shorter than the flask boxes; what each does is its
   tooltip, and J keeps its badge.
 
+- **No "New quest" card** any more (owner, 2026-10-29): a quest that unlocks plays its
+  `quest_new` sound and appears in the tracker (top right) and the quest log (J), nothing
+  else. The "quest complete" and reward cards stay (`QuestToast`, docs/design/quests.md).

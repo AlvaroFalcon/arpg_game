@@ -431,8 +431,8 @@ public partial class QuestSmokeTest : Node2D
         QuestToast toast = hideout.GetNode<QuestToast>("QuestToast");
         string banner = hud.BannerSub;
         Check("QUEST-ARRIVAL", QuestService.StatusOf(hideout, QuestCatalog.AscendId) == QuestStatus.New && banner == "1 new quest · J opens your quests"
-            && toast.Showing is { Kind: QuestToast.Kind.New, Title: "Choose an ascendancy" } && Sfx.RequestCount("quest_new") > newSounds,
-            $"entering the hideout with 4 ascendancy points: ascend is {QuestService.StatusOf(hideout, QuestCatalog.AscendId)}, banner '{banner}', toast {toast.Showing?.Kind} '{toast.Showing?.Title}', quest_new requested={Sfx.RequestCount("quest_new") > newSounds}");
+            && toast.Showing is null && toast.Queued == 0 && hud.Tracker.RowIds.Contains(QuestCatalog.AscendId) && Sfx.RequestCount("quest_new") > newSounds,
+            $"entering the hideout with 4 ascendancy points: ascend is {QuestService.StatusOf(hideout, QuestCatalog.AscendId)}, banner '{banner}', no new-quest card (showing {toast.Showing?.Kind} '{toast.Showing?.Title}', {toast.Queued} queued), in the tracker={hud.Tracker.RowIds.Contains(QuestCatalog.AscendId)}, quest_new requested={Sfx.RequestCount("quest_new") > newSounds}");
 
         // Markers: over the station, on the directory row, on both maps, on the E prompt, in the tracker, on the J chip.
         Vector2 altarAt = hideout.Data.Find("altar")!.Position;
@@ -534,7 +534,7 @@ public partial class QuestSmokeTest : Node2D
         Check("QUEST-JEWEL-CAP", jewelDialog && profile.Jewels.Found == JewelTree.Sockets && wallet.GetBalance(Profile.GoldId) == jewelGold0 + 2000,
             $"tree full ({JewelTree.Sockets} found): the turn-in opened={jewelDialog}, Found stays {profile.Jewels.Found}, gold +{wallet.GetBalance(Profile.GoldId) - jewelGold0} (1,000 and 1,000 instead of the jewel)");
 
-        // The toast: unlocks show on the same frame; held back while the guide is open.
+        // A new quest gets no card (owner, 2026-10-29): only its sound, the tracker and the log.
         hero.Quests.Clear();
         profile.Quests.Clear();
         hero.AscendancyPoints = 0;
@@ -546,21 +546,11 @@ public partial class QuestSmokeTest : Node2D
         int sounds = Sfx.RequestCount("quest_new");
         hero.TutorialDone = true;
         QuestService.Evaluate(hideout);
-        bool sameFrame = fresh.Showing is { Kind: QuestToast.Kind.New, Title: "Odran's wares" } && Sfx.RequestCount("quest_new") == sounds + 1;
+        bool unlocked = QuestService.StatusOf(hideout, QuestCatalog.OdranId) == QuestStatus.New;
+        await Process(2);
+        bool noNewCard = fresh.Showing is null && fresh.Queued == 0 && Sfx.RequestCount("quest_new") == sounds + 1;
+        Check("QUEST-TOAST", unlocked && noNewCard, $"an unlock (Odran's wares {QuestService.StatusOf(hideout, QuestCatalog.OdranId)}) requests quest_new and shows no card: showing {fresh.Showing?.Kind}, {fresh.Queued} queued, sounds +{Sfx.RequestCount("quest_new") - sounds}");
         fresh.QueueFree();
-        await Process(2);
-        var held = new QuestToast { Name = "HeldToast" };
-        hideout.AddChild(held);
-        hideout.OpenGuide();
-        await Process(1);
-        hero.HighestTierCleared = 2;
-        QuestService.Evaluate(hideout);
-        bool waits = held.Showing is null && held.Queued == 1;
-        hideout.GetNode<TownGuidePanel>("TownGuide").Close();
-        await Process(2);
-        bool thenShown = held.Showing is { Kind: QuestToast.Kind.New, Title: "The shard dealer" };
-        Check("QUEST-TOAST", sameFrame && waits && thenShown, $"an unlock shows its card on the same frame and requests quest_new={sameFrame}; with the guide open the card waits ({held.Queued} queued)={waits} and shows once it closes={thenShown}");
-        held.QueueFree();
 
         await LeaveHideout(hideout);
     }
@@ -681,12 +671,12 @@ public partial class QuestSmokeTest : Node2D
         reality.Boss!.Health.ApplyResolvedDamage(1e9f, reality.Player);
         await Process(1);
         bool unlocked = hero.AscendancyPoints == AscendancyCatalog.FirstPoints && QuestService.StatusOf(reality, QuestCatalog.AscendId) == QuestStatus.New;
-        bool shown = toast.Showing is { Kind: QuestToast.Kind.New, Title: "Choose an ascendancy" } && Sfx.RequestCount("quest_new") > before;
+        bool shown = toast.Showing is null && toast.Queued == 0 && Sfx.RequestCount("quest_new") > before;
         Pickup jewel = Pickup.Spawn(reality, PickupKind.Jewel, 1f, reality.Player.GlobalPosition);
         reality.OnPickup(jewel, reality.Player);
         bool jewelQuest = profile.Jewels.Found == 1 && QuestService.StatusOf(reality, QuestCatalog.JewelId) == QuestStatus.New;
         bool tier = hero.HighestTierCleared == AscendancyCatalog.Tier1Unlock;
-        Check("QUEST-BOSS-TOAST", unlocked && shown && jewelQuest && tier, $"a tier-{AscendancyCatalog.Tier1Unlock} boss kill: ascendancy points {hero.AscendancyPoints}, quest {QuestService.StatusOf(reality, QuestCatalog.AscendId)}; the toast showed within a frame={shown} ({toast.Showing?.Title}); a jewel pickup unlocks the Mirror's quest={jewelQuest}; the tier record is set={tier}");
+        Check("QUEST-BOSS-TOAST", unlocked && shown && jewelQuest && tier, $"a tier-{AscendancyCatalog.Tier1Unlock} boss kill: ascendancy points {hero.AscendancyPoints}, quest {QuestService.StatusOf(reality, QuestCatalog.AscendId)}; its sound played and no card showed={shown} ({toast.Showing?.Title}); a jewel pickup unlocks the Mirror's quest={jewelQuest}; the tier record is set={tier}");
         GetTree().Paused = false;
         PanelStack.Clear();
         reality.QueueFree();
