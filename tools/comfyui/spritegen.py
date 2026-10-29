@@ -854,7 +854,9 @@ def cmd_pack_sheet(cfg, args):
 
     for row, suffix in SHEET_PACK_ROWS:
         r = SHEET_ROW_INDEX[row]
-        add("idle" + suffix, [cell(r, 0)], speeds.get("idle", 2.381), True)  # still (owner: no bob)
+        # Still, on the passing frame: the one with both feet together (owner: frame 1
+        # is mid-stride and read as walking; no bob either).
+        add("idle" + suffix, [cell(r, 1)], speeds.get("idle", 2.381), True)
         add("walk" + suffix, [cell(r, 0), cell(r, 1), cell(r, 2), cell(r, 1)], speeds.get("walk", 8.333), True)
         add("attack" + suffix, [cell(r, 3), cell(r, 4)], 7.143, False)
         add("hurt" + suffix, [cell(r, 5)], 5.0, False)
