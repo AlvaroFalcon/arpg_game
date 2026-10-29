@@ -33,6 +33,20 @@ public partial class HideoutHud : CanvasLayer
     private Control _root = null!;
     private VBoxContainer _directory = null!;
     private Control _directoryHost = null!;
+    private Control _directoryPanel = null!;
+
+    /// <summary>Puts the directory just right of the big map's drawn area, top-aligned with it.</summary>
+    private void PlaceDirectory()
+    {
+        if (_bigMap is null || !_directoryHost.Visible)
+        {
+            return;
+        }
+
+        Rect2 area = _bigMap.MapArea;
+        float x = Mathf.Min(area.End.X + 10f, _root.Size.X - _directoryPanel.Size.X - 8f);
+        _directoryPanel.Position = new Vector2(x, area.Position.Y);
+    }
 
     /// <summary>The town directory shows (only with the big map; tests).</summary>
     public bool DirectoryShowing => _directoryHost.Visible;
@@ -78,13 +92,14 @@ public partial class HideoutHud : CanvasLayer
         _root = UiTheme.FullRect(this);
         _root.MouseFilter = Control.MouseFilterEnum.Ignore;
         BuildTracker();
-        BuildBigMap();
         BuildMenuBar();
-        BuildDirectory();
         BuildVitals();
         BuildPrompt();
         BuildBanner();
         BuildParty();
+        // The big map's veil goes over the whole HUD (vitals, skills, menu bar); its legend over the map.
+        BuildBigMap();
+        BuildDirectory();
     }
 
     private static StyleBoxFlat Glass(Color accent, int top = 2)
@@ -192,18 +207,22 @@ public partial class HideoutHud : CanvasLayer
 
     private void BuildDirectory()
     {
-        // Top left, and only while the big map is open (owner, 2026-10-29): it is the map's legend.
+        // Only while the big map is open, as its legend, next to the map's right edge
+        // (owner, 2026-10-29). Over the map's veil, which itself covers the rest of the HUD.
         _directoryHost = new Control { Name = "TownDirectoryHost", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
         _root.AddChild(_directoryHost);
-        var panel = new PanelContainer { Name = "TownDirectory", Position = new Vector2(14f, 14f) };
-        panel.AddThemeStyleboxOverride("panel", Glass(new Color(0.55f, 0.75f, 1f)));
+        var panel = new PanelContainer { Name = "TownDirectory" };
+        StyleBoxFlat glass = Glass(new Color(0.55f, 0.75f, 1f));
+        glass.SetContentMarginAll(6f);
+        panel.AddThemeStyleboxOverride("panel", glass);
         _directoryHost.AddChild(panel);
-        VBoxContainer column = UiTheme.VBox(panel, 2);
+        _directoryPanel = panel;
+        VBoxContainer column = UiTheme.VBox(panel, 1);
         HBoxContainer head = UiTheme.HBox(column, 6);
-        Label title = UiTheme.Label("TOWN", 13, new Color(0.65f, 0.8f, 1f));
+        Label title = UiTheme.Label("TOWN", 12, new Color(0.65f, 0.8f, 1f));
         title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
         head.AddChild(title);
-        head.AddChild(UiTheme.Label("click to walk there", 11, UiTheme.TextDim));
+        head.AddChild(UiTheme.Label("click to walk", 10, UiTheme.TextDim));
         _directory = UiTheme.VBox(column, 2);
         foreach (PropDef def in HideoutCatalog.Props.Where(p => p.Station))
         {
@@ -212,7 +231,7 @@ public partial class HideoutHud : CanvasLayer
             _rows.Add(row);
         }
 
-        HudLayout.Register(panel, "town", "Town directory", avoid: HudAvoid.Hide);
+
     }
 
     // --- big map (M / Tab) -----------------------------------------------------------
@@ -389,6 +408,7 @@ public partial class HideoutHud : CanvasLayer
         UpdateSkills();
         UpdatePrompt();
         _directoryHost.Visible = BigMapOpen;
+        PlaceDirectory();
         foreach (DirectoryRow row in _rows)
         {
             row.Refresh();
@@ -543,7 +563,7 @@ public partial class HideoutHud : CanvasLayer
 
         public override void _Ready()
         {
-            CustomMinimumSize = new Vector2(250f, 30f);
+            CustomMinimumSize = new Vector2(196f, 27f);
             MouseFilter = MouseFilterEnum.Stop;
             MouseDefaultCursorShape = CursorShape.PointingHand;
             UiTheme.InstantTooltip(this, () => $"{Def.Name}\n{Def.Blurb}");
@@ -586,22 +606,22 @@ public partial class HideoutHud : CanvasLayer
             }
 
             DrawRect(new Rect2(0f, 5f, 3f, Size.Y - 10f), Def.Accent);
-            DrawString(font, new Vector2(10f, 14f), Def.Name, HorizontalAlignment.Left, Size.X - 50f, 14, _hover ? Colors.White : UiTheme.Text);
-            DrawString(font, new Vector2(10f, 27f), _where, HorizontalAlignment.Left, Size.X - 50f, 11, UiTheme.TextDim);
+            DrawString(font, new Vector2(9f, 12f), Def.Name, HorizontalAlignment.Left, Size.X - 46f, 12, _hover ? Colors.White : UiTheme.Text);
+            DrawString(font, new Vector2(9f, 24f), _where, HorizontalAlignment.Left, Size.X - 46f, 10, UiTheme.TextDim);
             // A quest's marker wins over the ascendancy-points dot (the altar has both).
             if (_quest != QuestMarker.None)
             {
-                QuestGlyphs.DrawMarker(this, new Vector2(Size.X - 46f, Size.Y / 2f), 8f, _quest, 11f);
+                QuestGlyphs.DrawMarker(this, new Vector2(Size.X - 38f, Size.Y / 2f), 7f, _quest, 10f);
             }
             else if (_alert)
             {
-                DrawCircle(new Vector2(Size.X - 46f, 10f), 5f, UiTheme.Ember);
+                DrawCircle(new Vector2(Size.X - 38f, 9f), 4f, UiTheme.Ember);
             }
 
             // The arrow: which way to walk (gold and a fifth larger when a quest waits here).
             bool waiting = _quest is QuestMarker.New or QuestMarker.Ready;
-            float k = waiting ? 1.2f : 1f;
-            Vector2 c = new(Size.X - 16f, Size.Y / 2f);
+            float k = waiting ? 1.05f : 0.85f;
+            Vector2 c = new(Size.X - 14f, Size.Y / 2f);
             Vector2 f = Vector2.FromAngle(_angle);
             Vector2 s = new(-f.Y, f.X);
             DrawCircle(c, 11f * k, new Color(1f, 1f, 1f, 0.06f));

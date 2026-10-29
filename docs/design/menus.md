@@ -860,8 +860,10 @@ gear if the owner wants it there too. HUD-editor id `loot_feed`.
 
 - The **character plate** (portrait, name, level, class, best tier, XP, gold, the points
   pill) left the HUD: it is now the head of the **character panel (C)**.
-- The **town directory** shows only while the big town map is open (M / Tab), top left,
-  as the map's legend.
+- The **town directory** shows only while the big town map is open (M / Tab), as the
+  map's legend: smaller (196 px rows), top-aligned just right of the drawn map
+  (`TownMap.MapArea`). The big map's veil covers the whole HUD (vitals, skills, menu
+  bar); only the legend sits over it. Not movable in Edit HUD (it follows the map).
 - The **quest tracker** is as wide as the minimap's frame (`QuestTracker.PanelWidth`).
 - The **menu bar** (I, C, K, P, J, H, ?, Esc) moved to the bottom right, 12 px off the
   edges, as bare key caps a touch shorter than the flask boxes; what each does is its
