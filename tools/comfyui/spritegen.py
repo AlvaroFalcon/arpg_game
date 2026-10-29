@@ -854,10 +854,7 @@ def cmd_pack_sheet(cfg, args):
 
     for row, suffix in SHEET_PACK_ROWS:
         r = SHEET_ROW_INDEX[row]
-        stand = cell(r, 0)
-        bob = Image.new("RGBA", stand.size, (0, 0, 0, 0))
-        bob.alpha_composite(stand.crop((0, 0, fw, fh - 1)), (0, 1))
-        add("idle" + suffix, [stand, bob], speeds.get("idle", 2.381), True)
+        add("idle" + suffix, [cell(r, 0)], speeds.get("idle", 2.381), True)  # still (owner: no bob)
         add("walk" + suffix, [cell(r, 0), cell(r, 1), cell(r, 2), cell(r, 1)], speeds.get("walk", 8.333), True)
         add("attack" + suffix, [cell(r, 3), cell(r, 4)], 7.143, False)
         add("hurt" + suffix, [cell(r, 5)], 5.0, False)
