@@ -1645,10 +1645,10 @@ public partial class EndgameSmokeTest : Node2D
         await HideoutWalkChecks(hideout);
 
         // Opening the inventory never paints HUD over it: it draws above the HUD, the
-        // town directory fades and the menu bar slides out from under it.
+        // top-right corner (minimap, clock, quests) fades and the menu bar slides out from under it.
         var inv = hideout.Player.GetNode<UI.InventoryUI>("InventoryUI");
         var movables = GetTree().GetNodesInGroup(UI.HudLayout.Group).OfType<UI.HudMovable>().Where(m => m.IsAncestorOf(hud) || hud.IsAncestorOf(m)).ToList();
-        UI.HudMovable? town = movables.FirstOrDefault(m => m.Id == "town");
+        UI.HudMovable? town = movables.FirstOrDefault(m => m.Id == "corner");
         UI.HudMovable? menuBar = movables.FirstOrDefault(m => m.Id == "hideout_menu");
         inv.SetOpen(true);
         for (int i = 0; i < 40; i++)
@@ -1667,7 +1667,7 @@ public partial class EndgameSmokeTest : Node2D
 
         bool restored = town is not null && town.Target.Visible && menuBar is not null && menuBar.AvoidShift == Vector2.Zero;
         Check("HUD-AVOIDS-INVENTORY", inv.Layer > 10 && townHidden && menuClear && restored,
-            $"inventory layer {inv.Layer}, town directory hidden={townHidden}, menu bar clear of the panel={menuClear}, back in place after closing={restored} (town visible={town?.Target.Visible}, menu shift={menuBar?.AvoidShift}, blockers open={UI.HudLayout.OpenBlockers().Count})");
+            $"inventory layer {inv.Layer}, top-right corner hidden={townHidden}, menu bar clear of the panel={menuClear}, back in place after closing={restored} (town visible={town?.Target.Visible}, menu shift={menuBar?.AvoidShift}, blockers open={UI.HudLayout.OpenBlockers().Count})");
 
         await TooltipChecks(hideout);
         await GemShopChecks(hideout);
