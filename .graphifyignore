@@ -1,0 +1,12 @@
+# graphify: what the knowledge graph skips (gitignore syntax).
+# Art and screenshots would cost one vision pass each and add nothing about the code.
+*.png
+*.jpg
+*.webp
+*.ico
+*.pdf
+assets/
+docs/devlog/
+tools/art/node_modules/
+graphify-out/
+.claude/skills/

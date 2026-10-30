@@ -119,6 +119,12 @@ It auto-detects the Mono/.NET Godot binary (checks `$GODOT_BIN`, `godot4`/`godot
 | [security-expert](.claude/agents/security-expert.md) | Security reviews: co-op networking (RPCs, UPnP, join codes, rate limits), untrusted data (network payloads, saves), DoS, privacy; threat model + attack tests |
 | [ui-ux-expert](.claude/agents/ui-ux-expert.md) | Menus, HUD, flows and feedback/error states: reviews from real captures, redesigns and implements fixes (`docs/design/menus.md`) |
 
+## Knowledge graph (graphify)
+
+- `graphify-out/` holds a knowledge graph of the code (tree-sitter AST, free) and the design docs (LLM-extracted, cached in `graphify-out/cache/`), built by the project skill `.claude/skills/graphify/` (`/graphify`). The CLI is the PyPI package `graphifyy` (`pip install graphifyy`; cloud sessions install it in the environment's setup script; the skill installs it itself if missing). What it skips: `.graphifyignore` (art, screenshots, devlog).
+- For cross-cutting questions ("what touches `CastContext`?", "how does a curse reach `Health`?") try `graphify query "<question>"`, `graphify path "A" "B"` or `graphify explain "X"` before a wide grep, then read only the lines it points at. `graphify-out/GRAPH_REPORT.md` is the architecture overview (god nodes, communities). The graph can lag behind the code: trust the source when they disagree.
+- After code changes: `graphify update .` (AST only, no LLM cost) and commit `graphify-out/`. After design-doc changes: `/graphify . --update` (re-extracts only the changed docs). `graph.json` is rewritten whole on every build, so its large diffs in a PR are expected.
+
 ## MCP tools available
 
 - `mcp__godot__*` — scene creation, node manipulation, running/stopping the project, reading debug output. Prefer these over raw CLI when doing structured scene edits.
