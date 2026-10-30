@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using Godot;
 using ArpgGame.Characters;
 using ArpgGame.Core;
@@ -284,7 +285,7 @@ public partial class CharacterSelect : PanelContainer
             string skill = GemLoot.NameOf(cls.StartingSkill, false);
             string support = GemLoot.NameOf(cls.StartingSupport, true);
             v.AddChild(Wrapped($"Starts with {skill} + {support}.", 13, UiTheme.TextDim));
-            v.AddChild(Wrapped($"Ascends into: {string.Join(", ", cls.Ascendancies)}", 13, UiTheme.TextDim));
+            v.AddChild(Wrapped($"Ascends into: {string.Join(" or ", cls.Ascendancies.Select(id => ClassCatalog.GetAscendancy(id)?.Name ?? id))}", 13, UiTheme.TextDim));
             v.AddChild(UiTheme.Button(selected ? "Selected" : "Choose", () => { _newClass = id; ShowCreate(); }, 16, 240f));
         }
 

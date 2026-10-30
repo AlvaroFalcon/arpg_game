@@ -466,3 +466,12 @@ editor without keeping anything.
   rugs as flat props, seasonal items.
 - Should different characters get different hideout "themes", or is one shared town right?
 - NPCs deserve their own sprites rather than ascendancy ones.
+
+## Escaldón (2026-10-30)
+
+A new station east of the plaza (cell 35,21; placeholder: a weapon rack and the old
+Assassin sprite): **"Hone skills"**. It raises a skill gem's level for gold (up to 20)
+and opens the gem's upgrade tree — docs/design/skills.md -> "Rework of 2026-10-30".
+Old towns get it placed by `HideoutCatalog.EnsureDefaults` like any new station; the
+directory, prompt, guide and maps list it on their own.
+

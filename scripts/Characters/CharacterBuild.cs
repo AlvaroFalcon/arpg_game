@@ -100,6 +100,9 @@ public partial class CharacterBuild : Node, IBuildContext
         Stats.Intelligence.BaseValue = cls.Intelligence;
         AddMod(StatId.MaxLife, ModifierType.Flat, cls.BonusLife + (Data.Level - 1) * 4f);
         AddMod(StatId.MaxMana, ModifierType.Flat, cls.BonusMana + Mathf.Floor((Data.Level - 1) * 1.5f));
+        // Mana regeneration grows with the character (docs/design/skills.md -> "Mana and
+        // cooldowns"): a level-1 caster has to ration mana, a seasoned one less so.
+        AddMod(StatId.ManaRegen, ModifierType.Flat, (Data.Level - 1) * 0.15f);
         if (cls.BonusDodgeCharges != 0)
         {
             AddMod(StatId.DodgeCharges, ModifierType.Flat, cls.BonusDodgeCharges);

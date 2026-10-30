@@ -26,7 +26,7 @@ public partial class EndgameSmokeTest
         bool covered = skillIds.All(id => GemShop.Offers.Count(o => !o.Support && o.Id == id) == 1)
             && supportIds.All(id => GemShop.Offers.Count(o => o.Support && o.Id == id) == 1)
             && GemShop.Offers.All(o => o.Support ? supportIds.Contains(o.Id) : skillIds.Contains(o.Id))
-            && GemShop.Offers.Count(o => !o.Support) == 13 && GemShop.Offers.Count(o => o.Support) == 20;
+            && GemShop.Offers.Count(o => !o.Support) == 16 && GemShop.Offers.Count(o => o.Support) == 20;
         bool prices = GemShop.Find("spark", false)!.Price == 200 && GemShop.Find("meteor", false)!.Price == 800 && GemShop.Find("fireball", false)!.Price == 50
             && GemShop.Find("pierce", true)!.Price == 100 && GemShop.Find("brutality", true)!.Price == 580 && GemShop.Find("spell_echo", true)!.Price == 60;
         Check("GEMSHOP-COVERS-CATALOG", covered && prices, $"{GemShop.Offers.Count(o => !o.Support)} skills and {GemShop.Offers.Count(o => o.Support)} supports, each on sale once; price table checked");

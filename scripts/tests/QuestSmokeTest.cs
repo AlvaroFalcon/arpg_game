@@ -254,7 +254,7 @@ public partial class QuestSmokeTest : Node2D
             $"tier 1 → {(lockedAtOne ? "Locked" : "unlocked")}, tier 2 → {(newAtTwo ? "New" : "not New")}; the reward shard is of the best tier at turn-in: {string.Join(", ", shardSink.Shard.Select(kv => $"tier {kv.Key} ×{kv.Value}"))}");
 
         // Counted objectives (no tutorial quest counts, the model does).
-        Check("QUEST-EXPLAIN-TEXT", QuestCatalog.Get(QuestCatalog.AscendId)!.Explain(probeCtx).Contains("a Barbarian, a Paladin or a Samurai") && QuestCatalog.Get(QuestCatalog.ArehucazId)!.Explain(probeCtx).Contains("tier 5 costs"),
+        Check("QUEST-EXPLAIN-TEXT", QuestCatalog.Get(QuestCatalog.AscendId)!.Explain(probeCtx).Contains("a Juggernaut or a Paladin") && QuestCatalog.Get(QuestCatalog.ArehucazId)!.Explain(probeCtx).Contains("tier 5 costs"),
             "the altar's text lists the class's ascendancies, Arehucaz's names the best cleared tier and its price");
     }
 

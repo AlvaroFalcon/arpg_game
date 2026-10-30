@@ -1943,3 +1943,111 @@ Remaining, in rough order of when an answer is needed:
 9. **Should the `Priority` bands for `CastModifier` be an enum rather than a raw
    int?** Trivial now, and the answer will be obvious once there are five of them.
    Flagged only so it isn't discovered as a surprise.
+
+## Rework of 2026-10-30 **[IMPLEMENTED]**
+
+Owner's brief (a written list, `docs/design/classes.md` -> "The six evolutions" for
+the class half): Fireball slower and bursting on impact; Spark lightning-like, much
+slower, bouncing off walls and passing through one enemy; skills upgraded in a new
+way — an NPC, **Escaldón**, a tree per skill, levels bought with gold up to 20; and
+*"review the skills' cooldowns and mana costs: Fireball at the start of the game with
+the Arcanist is almost free to use, when a level 1 should have to manage mana"*.
+
+### Mana and cooldowns
+
+Before: a level-1 Arcanist had 119 mana and 7.2 mana/s of regeneration; Fireball cost
+3 mana per 0.45 s cast (6.7/s), so it could be cast forever.
+
+- **Regeneration:** base 1.5/s (was 5), +0.05 per Intelligence (was 0.1), **+0.15 per
+  character level** past 1. A level-1 Thaumaturge regenerates 2.6/s against Fireball's
+  10/s nonstop: a full bar lasts about 16 s of nonstop casting, then about one cast
+  every 2.3 s (`MANA-FIREBALL-NOT-FREE`). At level 21 regeneration is about 5.6/s and
+  the pool larger: roughly half of nonstop casting is sustained. The mana flask (2),
+  passives, gear and the Elementalist close the gap.
+- **Costs grow with the gem:** +2% per level past 1 (`SkillInstance.CostPerLevel`; a
+  level-20 gem costs about 40% more), against +12% damage per level.
+- **New costs and cooldowns** (level 1; mana / cooldown):
+
+| Skill | Before | Now |
+|---|---|---|
+| Fireball | 3, 22 damage, cast 0.45 s | 6, 30 damage (+ its burst), cast 0.6 s |
+| Spark | 3 | 5, cast 0.45 s |
+| Frost Shards | 4 | 6 |
+| Frost Nova | 6 / 1.6 s | 10 / 3 s |
+| Meteor | 10 / 2.8 s | 18 / 5 s |
+| Blades | 8 / 3.6 s | 12 / 6 s |
+| Cleave · Double Strike · Storm Strike | 2 · 2 · 2 | 3 · 2 · 4 |
+| Glacial Hammer · Throwing Knives | 3 · 3 | 5 · 4 |
+| Ground Slam | 4 / — | 7 / 1 s |
+| Sunder | 4 / — | 8 / 1.5 s |
+
+Attacks stay cheaper than spells: they pay with the risk of being in melee. The
+Survival Rift ignores mana, but its auto-cast interval includes the cooldowns, so
+Frost Nova, Meteor and Blades fire less often there now.
+
+**Measured with the bot** (`--mode=reality --class=arcanist --tier=5 --level=auto
+--runs=2`, same machine): before the rework, normal monsters died in 0.15–0.17 s
+(median) and 1 of 2 realities was cleared. A first pass (regeneration without the
+per-level growth, +5% cost per gem level, Fireball 8 mana) made it 1.8–2.6 s and 0 of
+2 — mana-starved, too harsh past the first levels. The final numbers: 0.5–0.65 s and
+**2 of 2 cleared** (tier 5, then tier 6). Killing is slower than when mana was free,
+on purpose; the monster life table (`MonsterScaling`) was calibrated with free
+casting and gem levels from kills, so recalibrate it with the bot across tiers before
+fine-tuning.
+
+### Fireball and Spark
+
+- **Fireball:** 340 px/s (was 520), 26 damage. Where it lands, on an enemy or a wall,
+  it **bursts** in a 55 px circle for half of its hit (`ExplodeRadius`,
+  `ExplodeDamageFraction` on `ProjectileSkillDefinition`; the blast is an `AreaBurst`
+  added after the overlap callback). The target takes the hit and the blast.
+- **Spark:** 260 px/s (was 640), range 720, two sparks. Its flight **zigzags** through
+  random knots up to 12 px either side (`Zigzag`), faces where it actually goes, and
+  leaves a short fading trail, so it reads as lightning without changing the sprite.
+  It **passes through one enemy** (pierce 1, chains moved to its tree) and **bounces
+  off walls** three times (`Bounces`, player projectiles only).
+  `FIREBALL-BURSTS`, `SPARK-PIERCES-ONE`, `SPARK-BOUNCES-AND-ZIGZAGS` in the new
+  `SkillReworkTest`. A co-op client draws a guest's spark flying straight (only the
+  host zigzags it); positions resync on each bounce.
+
+### Skill upgrade trees
+
+**Escaldón** (a new hideout station on the east side of the plaza; placeholder model:
+a weapon rack and the old Assassin sprite) opens `SkillTreePanel`: every skill gem
+the character owns on the left, the chosen one on the right with its level, the gold
+to raise it and its tree.
+
+- **Levels for gold, up to 20.** Level L → L+1 costs `30 · 1.45^(L−1)` gold (rounded
+  to 5): 30 for level 2, about 1,600 for level 11, 24,000 for level 20; about 77,000
+  for a gem from 1 to 20 — reachable, not given. Gems **no longer learn from kills**,
+  and a dropped copy of a skill you own turns into gold (a third of its next level).
+- **Points:** every level past 1 is a point for that gem's tree (`GemData.Tree`, saved
+  with the gem). Left click spends one; right click takes one back for 10 gold × the
+  gem's level.
+- **Shape:** three named branches per skill. A branch is a lesser node (usually three
+  ranks: 8% / 16% / 25%), a second lesser node that needs **2 points in the first**,
+  and at the end a notable that needs 2 points in the second — sometimes **two
+  notables of which you take one** (Volley or Frostfire, Ricochet or Arc Blast...).
+  Every tree has at least 19 ranks for the 19 points a level-20 gem has, most have
+  more, so two players' Fireballs can differ.
+- **What nodes do** (cast transforms, `SkillTreeModifier` over `CastContext`, applied
+  with the supports): more damage, area, speed, cost, cooldown, duration; ignite,
+  shock, freeze and **bleed** chances (bleeding is physical damage over time,
+  `Ailments`); pierce, chains, wall bounces, more projectiles, bursts on hit;
+  **Detonation** (kills burst for 30% of the hit); conversions to fire, cold,
+  lightning or **physical** (more damage and bleeding); echoes and extra strikes; for
+  curses: spread on death, more targets, stronger effect, vulnerability, bursting
+  bearers.
+- **Data:** `scripts/Skills/SkillTrees.cs` (the draft for all sixteen skills, with
+  shared node helpers); rules in `SkillTreeRules` (raise, lower, exclusivity,
+  sanitising a loaded gem). A first draft, to tune once played.
+  Checks: `SKILLTREE-EVERY-SKILL`, `-GOLD-CURVE`, `-RULES`, `-APPLIES`, `-SANITIZE`,
+  `ESCALDON` (EndgameSmokeTest).
+
+Rejected: points from character level (would tie skill power to the character
+again), a single shared skill tree (no decisions per skill), and free respecs (the
+cost of a point is what makes the choice mean something; it is kept small).
+
+Open questions: whether supports should stay now that trees convert and multiply; a
+visual pass on the tree (icons per node); whether Escaldón should also sell respecs
+of a whole tree at once.

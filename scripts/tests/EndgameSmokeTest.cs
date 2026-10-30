@@ -744,6 +744,38 @@ public partial class EndgameSmokeTest : Node2D
         Check("SKILLTREE-SANITIZE", bad.Tree.Count == 0 && fine.Tree.Count == 1, $"over-spent tree cleared={bad.Tree.Count == 0}, a valid one kept={fine.Tree.Count == 1}");
     }
 
+    /// <summary>Escaldón's station (docs/design/skills.md -> "Skill upgrade trees"): it stands in
+    /// the town, a level costs the curve's gold, a spent point reaches the equipped skill at once.</summary>
+    private async Task EscaldonChecks(Hideout hideout)
+    {
+        Player player = hideout.Player;
+        CharacterData? c = CharacterBuild.Of(player)?.Data;
+        GemData? gem = c?.Gems.FirstOrDefault(g => !g.IsSupport && c.Loadout.Any(l => l.SkillUid == g.Uid));
+        if (c is null || gem is null)
+        {
+            Check("ESCALDON", false, "no equipped skill gem on the hideout's character");
+            return;
+        }
+
+        SkillSlotId slot = CharacterBuild.Slots[System.Array.FindIndex(c.Loadout, l => l.SkillUid == gem.Uid)];
+        UI.SkillTreePanel panel = hideout.Escaldon;
+        panel.Open();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        panel.Select(gem);
+        int level = gem.Level;
+        long cost = SkillTrees.LevelCost(level);
+        player.Wallet.Add(Profile.GoldId, cost + 200);
+        long goldBefore = player.Wallet.GetBalance(Profile.GoldId);
+        bool raised = panel.RaiseLevel() && gem.Level == level + 1 && player.Wallet.GetBalance(Profile.GoldId) == goldBefore - cost;
+        string firstNode = SkillTrees.For(gem.Id)!.Nodes.First(n => n.Requires is null).Id;
+        bool spent = panel.RaiseNode(firstNode);
+        int modifiers = player.SkillUser.GetSkill(slot)?.TreeModifiers.Count ?? 0;
+        bool refunded = panel.LowerNode(firstNode) && player.SkillUser.GetSkill(slot)?.TreeModifiers.Count == modifiers - 1;
+        panel.Close();
+        Check("ESCALDON", hideout.Data.Find("escaldon") is not null && raised && spent && modifiers > 0 && refunded,
+            $"station placed={hideout.Data.Find("escaldon") is not null}; level {level} → {gem.Level} for {cost} gold={raised}; a point in {firstNode}={spent} reaches the equipped skill ({modifiers} tree modifier(s)); taken back={refunded} ('{panel.Message}')");
+    }
+
     private void ProfileChecks()
     {
         CharacterData c = CharacterData.Create("Saver", "rogue");
@@ -1749,6 +1781,7 @@ public partial class EndgameSmokeTest : Node2D
 
         await TooltipChecks(hideout);
         await GemShopChecks(hideout);
+        await EscaldonChecks(hideout);
 
         // Walls block, and click-to-move can path from the plaza into the smithy.
         Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);

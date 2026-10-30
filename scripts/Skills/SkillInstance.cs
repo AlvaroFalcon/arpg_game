@@ -49,8 +49,8 @@ public sealed class SkillInstance
     public const float DamagePerLevel = 0.12f;
 
     /// <summary>Each level past 1 also costs this much more mana (docs/design/skills.md ->
-    /// "Mana and cooldowns, 2026-10-30"): a level-20 gem costs about twice a level-1 one.</summary>
-    public const float CostPerLevel = 0.05f;
+    /// "Mana and cooldowns, 2026-10-30"): a level-20 gem costs about 40% more than a level-1 one.</summary>
+    public const float CostPerLevel = 0.02f;
 
     public float LevelDamageMultiplier => 1f + DamagePerLevel * (Level - 1);
 

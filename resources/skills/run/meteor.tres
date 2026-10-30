@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 22.0
+Amount = 18.0
 Mode = 0
 
 [resource]
