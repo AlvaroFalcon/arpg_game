@@ -872,3 +872,17 @@ gear if the owner wants it there too. HUD-editor id `loot_feed`.
 - **No "New quest" card** any more (owner, 2026-10-29): a quest that unlocks plays its
   `quest_new` sound and appears in the tracker (top right) and the quest log (J), nothing
   else. The "quest complete" and reward cards stay (`QuestToast`, docs/design/quests.md).
+
+### Sizes after the owner's third pass (2026-10-30)
+
+- **Stamina** left the HUD's bottom cluster: it is a thin yellow bar under the mana bar
+  over the character (`OverheadBars`; red while exhausted). With the overhead bars turned
+  off in Settings it doesn't show at all.
+- **Skill slots** are the size the flask boxes were (46 px; 36 px for the Rift's six
+  auto-cast skills), and the **flasks** shrank in proportion (38 px), with smaller key
+  caps, mouse icons, levels and support pips.
+- The **menu bar** (bottom right) is smaller again: 26 px key caps.
+- **Reality HUD, top left (2026-10-30):** the character's name and level are gone (they
+  are in the character panel, C), and the reality's info (name, tier, monster level,
+  portals, cleared, time, modifiers) shows only while the Tab map is open, over it.
+  The notifications moved up to the top left.

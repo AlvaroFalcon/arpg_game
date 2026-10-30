@@ -15,6 +15,7 @@ public partial class OverheadBars : Node2D
     private const float Width = 40f;
     private const float LifeH = 4f;
     private const float ManaH = 3f;
+    private const float StaminaH = 2f;
 
     /// <summary>Height above the character's feet, in world pixels.</summary>
     [Export]
@@ -63,7 +64,9 @@ public partial class OverheadBars : Node2D
     public override void _Draw()
     {
         bool mana = !_player.Stats.IgnoresResourceCosts && _player.Stats.Mana is not null;
-        float height = LifeH + (mana ? ManaH + 1f : 0f);
+        // Stamina under the mana bar (owner, 2026-10-29: its only place now).
+        bool stamina = _player.MaxStamina > 0f;
+        float height = LifeH + (mana ? ManaH + 1f : 0f) + (stamina ? StaminaH + 1f : 0f);
         var frame = new Rect2(-Width / 2f - 1f, -1f, Width + 2f, height + 2f);
         DrawRect(frame, new Color(0.03f, 0.02f, 0.05f, 0.85f));
 
@@ -82,6 +85,13 @@ public partial class OverheadBars : Node2D
         if (mana)
         {
             DrawRect(new Rect2(-Width / 2f, LifeH + 1f, Width * Fraction(_player.Stats.Mana), ManaH), new Color(0.2f, 0.7f, 1f));
+        }
+
+        if (stamina)
+        {
+            float s = Mathf.Clamp(Mathf.Max(0f, _player.Stamina) / _player.MaxStamina, 0f, 1f);
+            float y = LifeH + 1f + (mana ? ManaH + 1f : 0f);
+            DrawRect(new Rect2(-Width / 2f, y, Width * s, StaminaH), _player.Exhausted ? new Color(1f, 0.45f, 0.4f) : new Color(0.95f, 0.85f, 0.35f));
         }
 
         DrawRect(frame, new Color(0f, 0f, 0f, 0.9f), false, 1f);

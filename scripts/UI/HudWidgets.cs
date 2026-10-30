@@ -56,9 +56,9 @@ public partial class DodgePip : Control
 /// </summary>
 public partial class SkillBar : Control
 {
-    public const float SlotSize = 58f;
-    public const float SmallSlot = 44f;
-    public const float SlotGap = 8f;
+    public const float SlotSize = 46f;
+    public const float SmallSlot = 36f;
+    public const float SlotGap = 6f;
 
     /// <summary>Room each side for its slots: two big ones, or three small ones.</summary>
     public const float SideWidth = 3f * SmallSlot + 2f * 6f;
@@ -108,7 +108,7 @@ public partial class SkillBar : Control
         float centre = TotalWidth / 2f;
         for (int i = 0; i < slots.Count; i++)
         {
-            var view = new SkillSlotView(slots[i].Skill, slots[i].Key) { Size = new Vector2(size, size), CustomMinimumSize = new Vector2(size, size) };
+            var view = new SkillSlotView(slots[i].Skill, slots[i].Key) { CustomMinimumSize = new Vector2(size, size), Size = new Vector2(size, size) };
             AddChild(view);
             // Outwards from the mirror on each side, keeping the bar's order left to right.
             float x = i < left
@@ -131,11 +131,12 @@ public partial class SkillBar : Control
     /// <summary>A small light key cap ("Q", "1") with its top-left corner at <paramref name="at"/>.</summary>
     public static void DrawKeyCap(CanvasItem canvas, Font font, Vector2 at, string key, int size = 12)
     {
-        float w = Mathf.Max(17f, font.GetStringSize(key, HorizontalAlignment.Left, -1, size).X + 8f);
-        var cap = new Rect2(at, new Vector2(w, 17f));
+        float h = size + 5f;
+        float w = Mathf.Max(h, font.GetStringSize(key, HorizontalAlignment.Left, -1, size).X + 7f);
+        var cap = new Rect2(at, new Vector2(w, h));
         canvas.DrawRect(new Rect2(cap.Position + new Vector2(0f, 2f), cap.Size), new Color(0.3f, 0.26f, 0.22f));
         canvas.DrawRect(cap, new Color(0.9f, 0.86f, 0.77f));
-        canvas.DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + 13f), key, HorizontalAlignment.Center, w, size, new Color(0.12f, 0.1f, 0.08f));
+        canvas.DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + h - 4f), key, HorizontalAlignment.Center, w, size, new Color(0.12f, 0.1f, 0.08f));
     }
 
     /// <summary>A mouse with the left or right button lit, its top-left corner at <paramref name="at"/>.</summary>
@@ -196,7 +197,7 @@ public partial class SkillSlotView : Control
     {
         Skill = skill;
         _key = key;
-        CustomMinimumSize = new Vector2(64f, 64f);
+        CustomMinimumSize = new Vector2(SkillBar.SlotSize, SkillBar.SlotSize);
         MouseFilter = MouseFilterEnum.Ignore;
     }
 
@@ -219,11 +220,11 @@ public partial class SkillSlotView : Control
         // The key: a mouse with its button lit for LMB/RMB, a key cap otherwise.
         if (_key is "LMB" or "RMB")
         {
-            SkillBar.DrawMouse(this, new Vector2(4f, 4f), _key == "RMB", Size.X < 50f ? 0.8f : 1f);
+            SkillBar.DrawMouse(this, new Vector2(3f, 3f), _key == "RMB", Size.X < 40f ? 0.6f : 0.75f);
         }
         else if (_key.Length > 0)
         {
-            SkillBar.DrawKeyCap(this, font, new Vector2(3f, 3f), _key);
+            SkillBar.DrawKeyCap(this, font, new Vector2(2f, 2f), _key, 10);
         }
 
         if (Skill is null)
@@ -231,11 +232,11 @@ public partial class SkillSlotView : Control
             return;
         }
 
-        DrawStringOutline(font, new Vector2(0f, Size.Y - 5f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 4f, 13, 3, new Color(0f, 0f, 0f, 0.85f));
-        DrawString(font, new Vector2(0f, Size.Y - 5f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 4f, 13, UiTheme.Gold);
+        DrawStringOutline(font, new Vector2(0f, Size.Y - 4f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 3f, 10, 3, new Color(0f, 0f, 0f, 0.85f));
+        DrawString(font, new Vector2(0f, Size.Y - 4f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 3f, 10, UiTheme.Gold);
         for (int i = 0; i < Skill.Attached.Count; i++)
         {
-            DrawCircle(new Vector2(8f + i * 10f, Size.Y - 9f), 3.5f, new Color(0.3f, 0.9f, 0.45f));
+            DrawCircle(new Vector2(6f + i * 7f, Size.Y - 6f), 2.5f, new Color(0.3f, 0.9f, 0.45f));
         }
     }
 }

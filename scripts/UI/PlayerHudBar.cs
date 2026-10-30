@@ -248,16 +248,10 @@ public partial class PlayerHudBar : Control
             }
         }
 
-        // Stamina over the left skills, the class resource over the right ones.
+        // The class resource over the right skills (stamina lives under the bars over the
+        // character since 2026-10-29: OverheadBars).
         float sideLen = SkillBar.SideWidth;
         float leftStart = CenterX - MirrorClearance - sideLen;
-        if (Player.MaxStamina > 0f)
-        {
-            float s = Mathf.Clamp(Mathf.Max(0f, Player.Stamina) / Player.MaxStamina, 0f, 1f);
-            DrawRect(new Rect2(leftStart, SlotTop - 9f, sideLen, 4f), Track);
-            // Drains towards the mirror like the old bar did towards the badge.
-            DrawRect(new Rect2(leftStart + sideLen * (1f - s), SlotTop - 9f, sideLen * s, 4f), Player.Exhausted ? new Color(1f, 0.45f, 0.4f) : new Color(0.95f, 0.85f, 0.35f));
-        }
 
         if (Resource() is { } res)
         {
@@ -274,7 +268,7 @@ public partial class PlayerHudBar : Control
         // --- flasks at the outer ends of the skill bar ---
         if (Flasks.Of(Player) is { } flasks)
         {
-            const float fs = 46f;
+            const float fs = 38f;
             float y = Height - 14f - fs;
             DrawFlask(font, new Rect2(leftStart - 10f - fs, y, fs, fs), flasks.Life, "1", LifeTop, LifeBottom);
             if (ShowMana && flasks.Mana.Enabled)
@@ -456,8 +450,8 @@ public partial class PlayerHudBar : Control
             DrawRect(new Rect2(r.Position.X + 4f, r.End.Y - 5f, (r.Size.X - 8f) * flask.Partial, 2f), top with { A = 0.8f });
         }
 
-        SkillBar.DrawKeyCap(this, font, r.Position + new Vector2(3f, 3f), key);
-        Text(font, flask.Usable.ToString(), r.Position + new Vector2(r.Size.X - 4f, r.Size.Y - 6f), 14, empty ? new Color(1f, 0.4f, 0.35f) : Colors.White, HorizontalAlignment.Right);
+        SkillBar.DrawKeyCap(this, font, r.Position + new Vector2(2f, 2f), key, 10);
+        Text(font, flask.Usable.ToString(), r.Position + new Vector2(r.Size.X - 3f, r.Size.Y - 4f), 12, empty ? new Color(1f, 0.4f, 0.35f) : Colors.White, HorizontalAlignment.Right);
         if (empty)
         {
             DrawRect(r, new Color(0f, 0f, 0f, 0.35f));

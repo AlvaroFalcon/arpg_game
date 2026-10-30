@@ -160,7 +160,7 @@ public partial class HideoutHud : CanvasLayer
         var bar = new PanelContainer { Name = "MenuBar" };
         // Bottom right, a little off the edges, a touch shorter than the flask boxes (owner, 2026-10-29).
         StyleBoxFlat glass = Glass(UiTheme.PanelBorder, 1);
-        glass.SetContentMarginAll(3f);
+        glass.SetContentMarginAll(2f);
         bar.AddThemeStyleboxOverride("panel", glass);
         _root.AddChild(bar);
         bar.SetAnchorsPreset(Control.LayoutPreset.BottomRight, true);
@@ -511,7 +511,7 @@ public partial class HideoutHud : CanvasLayer
         public override void _Ready()
         {
             // A key cap alone; what it does is its tooltip.
-            CustomMinimumSize = new Vector2(Mathf.Max(34f, Key.Length * 9f + 16f), 34f);
+            CustomMinimumSize = new Vector2(Mathf.Max(26f, Key.Length * 7f + 12f), 26f);
             MouseFilter = MouseFilterEnum.Stop;
             MouseDefaultCursorShape = CursorShape.PointingHand;
             MouseEntered += () => { _hover = true; QueueRedraw(); };
@@ -535,12 +535,12 @@ public partial class HideoutHud : CanvasLayer
             Color face = _hover ? new Color(1f, 0.95f, 0.82f) : new Color(0.88f, 0.84f, 0.75f);
             DrawRect(new Rect2(cap.Position + new Vector2(0f, 3f), cap.Size), new Color(0.35f, 0.3f, 0.25f));
             DrawRect(cap, face);
-            DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + 18f), Key, HorizontalAlignment.Center, cap.Size.X, 14, new Color(0.12f, 0.1f, 0.08f));
+            DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + 13f), Key, HorizontalAlignment.Center, cap.Size.X, 11, new Color(0.12f, 0.1f, 0.08f));
             if (Badge?.Invoke() is > 0 and var n)
             {
                 Vector2 c = new(cap.End.X - 3f, cap.Position.Y + 3f);
-                DrawCircle(c, 8f, UiTheme.Ember);
-                DrawString(font, c + new Vector2(-8f, 4.5f), n.ToString(), HorizontalAlignment.Center, 16f, 11, Colors.White);
+                DrawCircle(c, 6f, UiTheme.Ember);
+                DrawString(font, c + new Vector2(-6f, 3.5f), n.ToString(), HorizontalAlignment.Center, 12f, 9, Colors.White);
             }
         }
     }
