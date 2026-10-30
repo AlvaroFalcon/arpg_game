@@ -25,7 +25,10 @@ public partial class RealityHud : CanvasLayer
     private Player Player => Reality.Player;
 
     private PlayerHudBar _bar = null!;
-    private Label _levelLabel = null!;
+    private Control _infoHost = null!;
+
+    /// <summary>The reality's info shows (only with the Tab map; tests).</summary>
+    public bool InfoShowing => _infoHost.Visible;
     private Label _titleLabel = null!;
     private Label _infoLabel = null!;
     private Label _modsLabel = null!;
@@ -50,15 +53,15 @@ public partial class RealityHud : CanvasLayer
         Layer = 10;
         Control root = UiTheme.FullRect(this);
 
-        _levelLabel = UiTheme.Label("", 20, UiTheme.Gold);
-        root.AddChild(_levelLabel);
-        _levelLabel.Position = new Vector2(16f, 16f);
 
         // --- top-left, under the character: the reality's name, tier, state and modifiers ---
+        // Only while the Tab map is open, over it (owner, 2026-10-30); the character's name
+        // and level left the HUD (they are in the character panel, C).
+        _infoHost = new Control { Name = "RealityInfoHost", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
         var info = new VBoxContainer { Name = "RealityInfo", MouseFilter = Control.MouseFilterEnum.Ignore };
         info.AddThemeConstantOverride("separation", 2);
-        root.AddChild(info);
-        info.Position = new Vector2(16f, 44f);
+        _infoHost.AddChild(info);
+        info.Position = new Vector2(16f, 16f);
         _titleLabel = UiTheme.Label("", 18, RealityTiers.ShardColor(Reality.Tier));
         info.AddChild(_titleLabel);
         _infoLabel = UiTheme.Label("", 14, UiTheme.Text);
@@ -86,6 +89,7 @@ public partial class RealityHud : CanvasLayer
 
         // --- the Tab overlay map, under every other HUD element ---
         root.AddChild(overlay);
+        root.AddChild(_infoHost);
         root.AddChild(_corner);
         _corner.Dock();
 
@@ -108,7 +112,7 @@ public partial class RealityHud : CanvasLayer
         _toasts = new VBoxContainer();
         _toasts.AddThemeConstantOverride("separation", 2);
         root.AddChild(_toasts);
-        _toasts.Position = new Vector2(16f, 150f);
+        _toasts.Position = new Vector2(16f, 16f);
         _toasts.CustomMinimumSize = new Vector2(520f, 0f);
 
         // --- loot feed (left, mid-height) ---
@@ -137,8 +141,7 @@ public partial class RealityHud : CanvasLayer
         _callout.OffsetTop = 90f;
 
         // Movable in the HUD editor (pause menu → Edit HUD).
-        HudLayout.Register(_levelLabel, "character", "Character");
-        HudLayout.Register(info, "reality_info", "Reality info", avoid: HudAvoid.Hide);
+        HudLayout.Register(info, "reality_info", "Reality info (Tab map)", on => _infoHost.Visible = on || _corner.BigMapOpen(), HudAvoid.Hide);
         HudLayout.Register(_corner, "corner", "Minimap, clock & quests", on => _corner.Tracker?.SetPreview(on), HudAvoid.Hide);
         HudLayout.Register(_target, "boss", "Target / boss life", _target.Preview, HudAvoid.Slide);
         HudLayout.Register(_bar, "vitals", "Life, mana & flasks");
@@ -235,15 +238,7 @@ public partial class RealityHud : CanvasLayer
     public override void _Process(double delta)
     {
         float dt = (float)delta;
-        CharacterData? c = Profile.Get(this)?.Active;
-        if (_build is not null)
-        {
-            _levelLabel.Text = $"{_build.Data.Name}  ·  Lv {_build.Data.Level} {_build.Data.AscendancyDef?.Name ?? _build.Data.Class.Name}";
-        }
-        else if (c is not null)
-        {
-            _levelLabel.Text = $"{c.Name}  ·  Lv {c.Level}";
-        }
+        _infoHost.Visible = _corner.BigMapOpen();
 
         int portals = Reality.PortalsLeft;
         string cleared = Reality.MonstersTotal > 0 ? $"{Mathf.RoundToInt(100f * Reality.Kills / Reality.MonstersTotal)}%" : "-";

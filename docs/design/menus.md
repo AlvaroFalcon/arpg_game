@@ -882,3 +882,7 @@ gear if the owner wants it there too. HUD-editor id `loot_feed`.
   auto-cast skills), and the **flasks** shrank in proportion (38 px), with smaller key
   caps, mouse icons, levels and support pips.
 - The **menu bar** (bottom right) is smaller again: 26 px key caps.
+- **Reality HUD, top left (2026-10-30):** the character's name and level are gone (they
+  are in the character panel, C), and the reality's info (name, tier, monster level,
+  portals, cleared, time, modifiers) shows only while the Tab map is open, over it.
+  The notifications moved up to the top left.
