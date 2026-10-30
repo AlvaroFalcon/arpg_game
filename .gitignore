@@ -20,3 +20,14 @@ build/
 # OMC/session state
 .omc/
 .claude/scheduled_tasks.lock
+
+# graphify: graph.json/graph.html and the AST cache are rebuilt locally in ~10 s
+# with `graphify update .`; the doc extractions (cache/semantic, the costly part),
+# the manifest, the labels and the report are committed.
+graphify-out/graph.json
+graphify-out/graph.html
+graphify-out/cache/ast/
+graphify-out/cache/stat-index.json
+graphify-out/cache/last_query_stamp
+graphify-out/.graphify_*
+!graphify-out/.graphify_labels.json
