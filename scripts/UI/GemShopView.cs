@@ -28,7 +28,6 @@ public partial class GemShopView : VBoxContainer
         ("all", "All", SkillTags.None), ("attack", "Attack", SkillTags.Attack), ("spell", "Spell", SkillTags.Spell),
         ("projectile", "Projectile", SkillTags.Projectile), ("melee", "Melee", SkillTags.Melee), ("area", "Area", SkillTags.Area),
         ("fire", "Fire", SkillTags.Fire), ("cold", "Cold", SkillTags.Cold), ("lightning", "Lightning", SkillTags.Lightning),
-        ("class", "My class", SkillTags.None),
     };
 
     private static readonly (string Id, string Label, SkillTags Tag)[] SupportFilters =
@@ -216,11 +215,6 @@ public partial class GemShopView : VBoxContainer
             return true;
         }
 
-        if (f.Id == "class")
-        {
-            return GemShop.FavouredBy(o.Id).Any(k => k.Id == c.ClassId);
-        }
-
         if (f.Id == "fits")
         {
             return GemShop.FitsAny(c, o);
@@ -371,20 +365,6 @@ public partial class GemShopView : VBoxContainer
 
         text.AddChild(Ignore(UiTheme.Label(TagText(o), 12, UiTheme.TextDim)));
 
-        if (!o.Support)
-        {
-            HBoxContainer pills = UiTheme.HBox(line, 3);
-            pills.MouseFilter = MouseFilterEnum.Ignore;
-            pills.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-            foreach (ClassDefinition k in GemShop.FavouredBy(o.Id))
-            {
-                var pill = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
-                pill.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.12f, 0.1f, 0.18f), UiTheme.PanelBorder, 1, 8, 6));
-                pill.AddChild(Ignore(UiTheme.Label(k.Name, 11, UiTheme.TextDim)));
-                pills.AddChild(pill);
-            }
-        }
-
         HBoxContainer state = UiTheme.HBox(line, 4);
         state.MouseFilter = MouseFilterEnum.Ignore;
         state.SizeFlagsVertical = SizeFlags.ShrinkCenter;
@@ -472,8 +452,8 @@ public partial class GemShopView : VBoxContainer
         }
         else
         {
-            string[] fav = GemShop.FavouredBy(o.Id).Select(k => k.Name).ToArray();
-            _detailFavoured.Text = fav.Length > 0 ? $"Favoured by: {string.Join(", ", fav)}" : "";
+            // Skills belong to no class (owner, 2026-10-30): no "favoured by" line.
+            _detailFavoured.Text = "";
             SkillDefinition? def = GemShop.SkillOf(o);
             _detailText.Text = def?.Description.Replace("\n", " ") ?? "";
             _detailNumbers.Text = def is null ? "" : $"Damage {def.BaseDamage:0.#} · use {def.BaseUseTime:0.00} s" + (def.Cooldown > 0f ? $" · cooldown {def.Cooldown:0.#} s" : "");

@@ -90,6 +90,16 @@ public sealed class DamagePayload
 
     public float IgniteDamageMultiplier = 1f;
 
+    /// <summary>Chance the hit makes its target bleed: physical damage over time
+    /// (skill upgrade trees, docs/design/skills.md -> "Skill upgrade trees").</summary>
+    public float BleedChance;
+
+    /// <summary>If the hit kills, the target bursts for this fraction of the hit around
+    /// it (<see cref="KillBlastRadius"/> px). 0 = no blast. The blast itself never blasts.</summary>
+    public float KillBlastFraction;
+
+    public float KillBlastRadius;
+
     /// <summary>The skill that dealt the hit, when one did. Presentation only: damage
     /// numbers show its icon (docs/design/menus.md -> "Damage numbers"); no rule reads it.</summary>
     public Skills.SkillDefinition? Skill;

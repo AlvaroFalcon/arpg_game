@@ -59,6 +59,10 @@ public partial class Hideout : Node2D
     private ArtificerPanel _artificer = null!;
     private DecorShopPanel _shop = null!;
     private ShardVendorPanel _dealer = null!;
+    private SkillTreePanel _escaldon = null!;
+
+    /// <summary>Escaldón's panel: skill levels and upgrade trees (tests).</summary>
+    public SkillTreePanel Escaldon => _escaldon;
     private TownGuidePanel _guide = null!;
     private HideoutHud _hud = null!;
     private QuestDialog _questDialog = null!;
@@ -124,8 +128,9 @@ public partial class Hideout : Node2D
         _shop = new DecorShopPanel { Player = _player, Data = OwnTown, HostName = IsGuest ? _session!.HostName : null, Name = "DecorShopPanel" };
         _guide = new TownGuidePanel { Data = Data, SeenOn = OwnTown, ShowMe = WalkTo, Name = "TownGuide" };
         _dealer = new ShardVendorPanel { Player = _player, Name = "ShardVendorPanel" };
+        _escaldon = new SkillTreePanel { Player = _player, Name = "SkillTreePanel" };
         _questDialog = new QuestDialog { Name = "QuestDialog" };
-        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer, _questDialog })
+        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer, _escaldon, _questDialog })
         {
             AddChild(panel);
         }
@@ -486,6 +491,7 @@ public partial class Hideout : Node2D
         "decorator" => _shop.Open,
         "arehucaz" => _dealer.Open,
         "forge" => _artificer.Open,
+        "escaldon" => _escaldon.Open,
         "stash" => _stash.Open,
         "altar" => _altar.Open,
         _ => null,
@@ -506,6 +512,7 @@ public partial class Hideout : Node2D
             "mirror" => Station("Mirror", def),
             "stash" => Station("Stash", def),
             "arehucaz" => Station("Arehucaz", def),
+            "escaldon" => Station("Escaldon", def, ("assassin", new Vector2(22f, 10f))),
             _ => Station($"Prop_{prop.Uid}", def),
         };
         if (node.GetParent() is null)

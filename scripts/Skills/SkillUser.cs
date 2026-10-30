@@ -189,6 +189,7 @@ public partial class SkillUser : Node
 
         SkillDefinition definition = instance.Definition;
         CastContext context = BuildCastContext(definition, aimDirection);
+        context.CostMultiplier = instance.LevelCostMultiplier;
         if (targetPoint is { } point)
         {
             context.TargetPoint = point;
@@ -198,7 +199,7 @@ public partial class SkillUser : Node
         List<CastModifier> modifiers = CollectCastModifiers(instance, context);
         ApplyCastModifiers(context, modifiers);
 
-        if (!_stats.IgnoresResourceCosts && !TryPayCosts(context.Costs, context.LifeCostFloorFraction, out ResourceType insufficientResource))
+        if (!_stats.IgnoresResourceCosts && !TryPayCosts(context.Costs, context.LifeCostFloorFraction, context.CostMultiplier, out ResourceType insufficientResource))
         {
             // Atomic: nothing was spent, and the cast never commits (no cooldown
             // or use-time is started) — see docs/design/skills.md -> "All-or-
@@ -281,6 +282,7 @@ public partial class SkillUser : Node
         // Per-skill supports first, then caster-wide keystones; the stable
         // priority sort in ApplyCastModifiers decides the real order.
         var modifiers = new List<CastModifier>(instance.Attached.OfType<CastModifier>());
+        modifiers.AddRange(instance.TreeModifiers);
         modifiers.AddRange(GlobalModifiers);
         return modifiers;
     }
@@ -306,7 +308,7 @@ public partial class SkillUser : Node
         }
     }
 
-    private bool TryPayCosts(List<CostEntry> costs, float lifeFloorFraction, out ResourceType insufficient)
+    private bool TryPayCosts(List<CostEntry> costs, float lifeFloorFraction, float costMultiplier, out ResourceType insufficient)
     {
         insufficient = default;
         var pending = new List<(ResourcePool pool, float amount)>();
@@ -340,6 +342,9 @@ public partial class SkillUser : Node
             {
                 amount *= _stats.ManaCostMultiplier.Value;
             }
+
+            // The skill's level (a stronger gem costs more) and its upgrade tree.
+            amount *= Mathf.Max(0f, costMultiplier);
 
             float floor = FloorFor(cost.Resource);
             if (cost.Resource == ResourceType.Life)
@@ -425,6 +430,9 @@ public partial class SkillUser : Node
             case MeleeSkillDefinition melee:
                 ExecuteMelee(instance, melee, context);
                 break;
+            case CurseSkillDefinition curse:
+                ExecuteCurse(instance, curse, context);
+                break;
             default:
                 GD.PushWarning($"SkillUser: no executor implemented for {instance.Definition.GetType().Name}");
                 break;
@@ -453,7 +461,10 @@ public partial class SkillUser : Node
             Tags = context.Tags,
             IgniteChance = _stats.Get(StatId.IgniteChance).Value + context.IgniteChanceBonus,
             ShockChance = _stats.Get(StatId.ShockChance).Value + context.ShockChanceBonus,
-            FreezeChance = _stats.Get(StatId.FreezeChance).Value,
+            FreezeChance = _stats.Get(StatId.FreezeChance).Value + context.FreezeChanceBonus,
+            BleedChance = context.BleedChance,
+            KillBlastFraction = context.KillBlastFraction,
+            KillBlastRadius = context.KillBlastRadius,
             CanInflictAilments = context.CanInflictAilments,
             IgniteDamageMultiplier = context.IgniteDamageMultiplier,
             KnockbackForce = knockback,
@@ -473,6 +484,49 @@ public partial class SkillUser : Node
 
         HitProfile hit = BuildHitProfile(instance, context, definition.Knockback);
         AreaBurst.Spawn(GetTree().CurrentScene, centre, radius, definition.Delay, definition.Tint, hit);
+    }
+
+    /// <summary>
+    /// Curses (docs/design/classes.md -> "The Witch's curses"): every hostile in the circle
+    /// at the target point — or the one nearest it, for a single-target curse — gets the
+    /// curse for its duration. A harmless ring shows where it landed.
+    /// </summary>
+    private void ExecuteCurse(SkillInstance instance, CurseSkillDefinition definition, CastContext context)
+    {
+        float radius = definition.Radius * context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
+        Vector2 offset = context.TargetPoint - _caster.GlobalPosition;
+        Vector2 centre = _caster.GlobalPosition + offset.LimitLength(definition.MaxRange);
+        HitProfile hit = BuildHitProfile(instance, context);
+        float duration = definition.Duration * context.DurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.SkillDuration).Value);
+
+        List<Health> targets = CombatQuery.HostilesInRadius(GetTree(), centre, radius, _stats.Faction);
+        if (definition.MaxTargets > 0)
+        {
+            targets.Sort((a, b) => a.GetParent<Node2D>().GlobalPosition.DistanceSquaredTo(centre).CompareTo(b.GetParent<Node2D>().GlobalPosition.DistanceSquaredTo(centre)));
+            int keep = definition.MaxTargets + context.CurseExtraTargets;
+            if (targets.Count > keep)
+            {
+                targets.RemoveRange(keep, targets.Count - keep);
+            }
+        }
+
+        foreach (Health target in targets)
+        {
+            Curses.On(target.GetParent())?.Apply(new CurseEffect
+            {
+                Kind = definition.Kind,
+                Duration = duration,
+                DamagePerSecond = definition.Kind == CurseKind.Corruption ? hit.Damage : 0f,
+                Potency = definition.Potency + context.CursePotencyBonus,
+                Spread = context.CurseSpread,
+                Vulnerability = context.CurseVulnerability,
+                DeathBurst = context.KillBlastFraction,
+                Source = _caster,
+                Tint = definition.Tint,
+            });
+        }
+
+        AreaBurst.Spawn(GetTree().CurrentScene, centre, definition.MaxTargets > 0 ? 34f : radius, 0f, definition.Tint, hit, harmless: true);
     }
 
     private void ExecuteMelee(SkillInstance instance, MeleeSkillDefinition definition, CastContext context)
@@ -495,7 +549,7 @@ public partial class SkillUser : Node
             return;
         }
 
-        for (int i = 0; i < Mathf.Max(1, definition.Strikes); i++)
+        for (int i = 0; i < Mathf.Max(1, definition.Strikes + context.ExtraCount); i++)
         {
             if (i == 0)
             {

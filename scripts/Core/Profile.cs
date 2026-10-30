@@ -701,6 +701,17 @@ public partial class Profile : Node
             c.Loadout[i] = s.Loadout[i] ?? new LoadoutSlot();
         }
 
+        foreach (GemData gem in c.Gems)
+        {
+            Skills.SkillTreeRules.Sanitize(gem);
+        }
+
+        // The roster of 2026-10-30 (docs/design/classes.md): an ascendancy that no longer
+        // exists, or moved to another class, becomes the closest one of this class, and
+        // nodes it no longer has are dropped (their points are free to spend again).
+        c.Ascendancy = ClassCatalog.MigrateAscendancy(c.ClassId, c.Ascendancy);
+        c.AscendancyNodes.IntersectWith(AscendancyCatalog.For(c.Ascendancy).Select(n => n.Id));
+
         // A save from the six-slot bar: skills on the old 3 and 4 move into a free slot
         // if there is one; otherwise their gems simply go back to the collection.
         for (int i = CharacterData.LoadoutSlots; i < s.Loadout.Count; i++)

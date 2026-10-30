@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="CurseSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/CurseSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_corruption.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 10.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Corruption"
+Description = "Curses the enemy nearest the cursor with a corruption that eats it away: shadow damage every second for 6 s. No resistance stops it."
+BaseDamage = 12.0
+AddedDamageEffectiveness = 1.0
+BaseUseTime = 0.5
+Tags = 24610
+Kind = 0
+Radius = 70.0
+MaxTargets = 1
+Duration = 6.0
+Potency = 0.0
+Tint = Color(0.72, 0.35, 1, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

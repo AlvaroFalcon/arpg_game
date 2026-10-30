@@ -148,7 +148,7 @@ public partial class ActorStats : Node
         StatId.MaxLife => 50f,
         StatId.LifeRegen => 0f,
         StatId.MaxMana => 50f,
-        StatId.ManaRegen => 5f,
+        StatId.ManaRegen => 1.5f,
         StatId.Armour => 0f,
         StatId.FireResistance => 0f,
         StatId.ColdResistance => 0f,
@@ -352,7 +352,7 @@ public partial class ActorStats : Node
         Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Flat, strength * 2f, AttributeDerivationSource));
         Get(StatId.Armour).AddModifier(new StatModifier(ModifierType.Flat, strength * 1f, AttributeDerivationSource));
         Get(StatId.MaxMana).AddModifier(new StatModifier(ModifierType.Flat, intelligence * 2f, AttributeDerivationSource));
-        Get(StatId.ManaRegen).AddModifier(new StatModifier(ModifierType.Flat, intelligence * 0.1f, AttributeDerivationSource));
+        Get(StatId.ManaRegen).AddModifier(new StatModifier(ModifierType.Flat, intelligence * 0.05f, AttributeDerivationSource));
         Get(StatId.CritChance).AddModifier(new StatModifier(ModifierType.Increased, dexterity * 0.5f, AttributeDerivationSource));
     }
 }

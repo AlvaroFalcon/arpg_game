@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 6.0
+Amount = 10.0
 Mode = 0
 
 [resource]
@@ -17,7 +17,7 @@ Description = "A ring of ice bursts around you, chilling and pushing enemies bac
 BaseDamage = 20.0
 AddedDamageEffectiveness = 1.0
 BaseUseTime = 0.35
-Cooldown = 1.6
+Cooldown = 3.0
 Tags = 1042
 Radius = 130.0
 Knockback = 260.0

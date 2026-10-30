@@ -56,7 +56,7 @@ public partial class RunCapture : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "look" ? LookScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "townmap" ? TownMapScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : _only == "settings" ? SettingsScript() : _only == "coop" ? CoopScript() : _only == "menus" ? MenusScript() : _only == "rift" ? RiftScript() : _only == "quests" ? QuestsScript() : _only == "damage" ? DamageScript() : _only == "ui" ? UiScript() : Script();
+        _ = _only is "endgame" or "panels" ? EndgameScript() : _only == "look" ? LookScript() : _only == "voxel" ? VoxelScript() : _only == "tutorial" ? TutorialScript() : _only == "facing" ? FacingScript() : _only == "hud" ? HudScript() : _only == "crafting" ? CraftingScript() : _only == "town" ? TownScript() : _only == "townmap" ? TownMapScript() : _only == "update" ? UpdateScript() : _only == "layouts" ? LayoutsScript() : _only == "caves" ? CavesScript() : _only == "settings" ? SettingsScript() : _only == "coop" ? CoopScript() : _only == "menus" ? MenusScript() : _only == "rift" ? RiftScript() : _only == "quests" ? QuestsScript() : _only == "damage" ? DamageScript() : _only == "ui" ? UiScript() : _only == "rework" ? ReworkScript() : Script();
     }
 
     /// <summary>`--only=settings`: the settings panel's three tabs (docs/design/menus.md -> "Settings").</summary>
@@ -287,9 +287,9 @@ public partial class RunCapture : Node
             profile.StashTabs[0].Add((Items.ItemFactory.RollRandom(18, Items.DropSource.MagicMonster, 1f, rng), new Vector2I((i % 4) * 3, (i / 4) * 3)));
         }
 
-        k.Ascendancy = "samurai";
+        k.Ascendancy = "juggernaut";
         k.AscendancyPoints = 4;
-        foreach (AscendancyNode node in AscendancyCatalog.For("samurai").Take(3))
+        foreach (AscendancyNode node in AscendancyCatalog.For("juggernaut").Take(3))
         {
             k.AscendancyNodes.Add(node.Id);
         }

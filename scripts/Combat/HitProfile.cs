@@ -22,6 +22,9 @@ public sealed class HitProfile
     public bool CanInflictAilments = true;
     public float KnockbackForce;
     public float IgniteDamageMultiplier = 1f;
+    public float BleedChance;
+    public float KillBlastFraction;
+    public float KillBlastRadius;
 
     /// <summary>The casting skill, for the damage number's icon (presentation only).</summary>
     public Skills.SkillDefinition? Skill;
@@ -36,6 +39,9 @@ public sealed class HitProfile
             FreezeChance = FreezeChance,
             CanInflictAilments = CanInflictAilments,
             IgniteDamageMultiplier = IgniteDamageMultiplier,
+            BleedChance = BleedChance,
+            KillBlastFraction = KillBlastFraction,
+            KillBlastRadius = KillBlastRadius,
             Knockback = knockbackDirection * KnockbackForce,
             Skill = Skill,
         };

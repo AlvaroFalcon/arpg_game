@@ -249,7 +249,7 @@ public partial class StatsSmokeTest : Node2D
     {
         bool ok = ActorStats.DefaultBase(StatId.MovementSpeed) == 130f
             && ActorStats.DefaultBase(StatId.MaxLife) == 50f
-            && ActorStats.DefaultBase(StatId.ManaRegen) == 5f
+            && ActorStats.DefaultBase(StatId.ManaRegen) == 1.5f
             && ActorStats.DefaultBase(StatId.CritChance) == 0.05f
             && ActorStats.DefaultBase(StatId.CritMultiplier) == 1.5f
             && ActorStats.DefaultBase(StatId.Armour) == 0f;

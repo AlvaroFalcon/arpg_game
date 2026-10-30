@@ -46,6 +46,20 @@ public partial class Projectile : Area2D
     private float _lastStep;
     private HitProfile? _hit;
 
+    // Blast on landing (Fireball) and the lightning zigzag (Spark).
+    private float _explodeRadius;
+    private float _explodeFraction;
+    private bool _exploded;
+    private float _zigzag;
+    private Vector2 _basePosition;
+    private bool _baseSet;
+    private float _knotFrom;
+    private float _knotTo;
+    private float _segmentStart;
+    private float _segmentLength = 1f;
+    private Line2D? _trail;
+    private readonly RandomNumberGenerator _zigRng = new();
+
     /// <summary>Max distance a chain may jump to its next target.</summary>
     private const float ChainRange = 300f;
 
@@ -118,6 +132,9 @@ public partial class Projectile : Area2D
         _forksRemaining = context.Projectile.Forks;
         _chainsRemaining = context.Projectile.Chains;
         _bouncesRemaining = context.CasterFaction == Faction.Player ? context.Projectile.Bounces : 0;
+        _explodeRadius = context.Projectile.ExplodeRadius;
+        _explodeFraction = context.Projectile.ExplodeDamageFraction;
+        _zigzag = context.Projectile.Zigzag;
         _sourceFaction = context.CasterFaction;
         _sourceActor = context.Caster;
         _tags = context.Tags;
@@ -157,6 +174,9 @@ public partial class Projectile : Area2D
         _forksRemaining = parent._forksRemaining - 1;
         _chainsRemaining = parent._chainsRemaining;
         _bouncesRemaining = parent._bouncesRemaining;
+        _explodeRadius = parent._explodeRadius;
+        _explodeFraction = parent._explodeFraction;
+        _zigzag = parent._zigzag;
         _hit = parent._hit;
         Scale = parent.Scale;
         if (parent.GetNodeOrNull<AnimatedSprite2D>("Sprite") is { SpriteFrames: { } frames })
@@ -233,7 +253,15 @@ public partial class Projectile : Area2D
 
         float step = _speed * (float)delta;
         _lastStep = step;
-        GlobalPosition += _direction * step;
+        if (_zigzag > 0f && !Cosmetic)
+        {
+            Zigzag(step);
+        }
+        else
+        {
+            GlobalPosition += _direction * step;
+        }
+
         _traveled += step;
 
         // Range is the authored, design-facing number (players reason in
@@ -243,6 +271,101 @@ public partial class Projectile : Area2D
         {
             QueueFree();
         }
+    }
+
+    /// <summary>
+    /// A lightning-like flight (Spark): the projectile follows its heading through
+    /// knots placed every 22–40 px at a random sideways offset (up to
+    /// <see cref="_zigzag"/> px), so the path is a jagged line rather than a wave, and
+    /// faces where it is actually going. A short fading trail draws the bolt behind it.
+    /// </summary>
+    private void Zigzag(float step)
+    {
+        if (!_baseSet)
+        {
+            _baseSet = true;
+            _basePosition = GlobalPosition;
+            _zigRng.Randomize();
+            NextKnot(0f);
+            _trail = new Line2D { Width = 2.5f, DefaultColor = new Color(0.75f, 0.9f, 1f, 0.85f), TopLevel = true, ZIndex = ZIndex, Antialiased = true };
+            var fade = new Gradient();
+            fade.SetColor(0, new Color(0.6f, 0.85f, 1f, 0f));
+            fade.SetColor(1, new Color(0.9f, 0.97f, 1f, 0.9f));
+            _trail.Gradient = fade;
+            AddChild(_trail);
+        }
+
+        Vector2 before = GlobalPosition;
+        _basePosition += _direction * step;
+        float along = _traveled + step - _segmentStart;
+        if (along >= _segmentLength)
+        {
+            NextKnot(_knotTo);
+            along = 0f;
+        }
+
+        float offset = Mathf.Lerp(_knotFrom, _knotTo, Mathf.Clamp(along / _segmentLength, 0f, 1f));
+        GlobalPosition = _basePosition + new Vector2(-_direction.Y, _direction.X) * offset;
+        Vector2 moved = GlobalPosition - before;
+        if (moved.LengthSquared() > 0.01f)
+        {
+            Rotation = moved.Angle();
+        }
+
+        if (_trail is not null)
+        {
+            _trail.AddPoint(GlobalPosition);
+            while (_trail.GetPointCount() > 9)
+            {
+                _trail.RemovePoint(0);
+            }
+        }
+    }
+
+    private void NextKnot(float from)
+    {
+        _knotFrom = from;
+        // Alternate sides most of the time, like a bolt's kinks.
+        float side = from > 0f ? -1f : from < 0f ? 1f : (_zigRng.Randf() < 0.5f ? -1f : 1f);
+        _knotTo = side * _zigRng.RandfRange(0.35f, 1f) * _zigzag;
+        _segmentStart = _traveled;
+        _segmentLength = _zigRng.RandfRange(22f, 40f);
+    }
+
+    /// <summary>The flight starts a fresh zigzag from where the projectile is now (after a bounce or a chain).</summary>
+    private void RestartZigzag()
+    {
+        if (!_baseSet)
+        {
+            return;
+        }
+
+        _basePosition = GlobalPosition;
+        NextKnot(0f);
+    }
+
+    /// <summary>Fireball: a blast where it lands, hitting everything around (once per projectile).</summary>
+    private void Explode()
+    {
+        if (_exploded || _explodeRadius <= 0f || _hit is null || Cosmetic)
+        {
+            return;
+        }
+
+        _exploded = true;
+        HitProfile blast = _hit.Clone();
+        blast.Damage *= _explodeFraction;
+        blast.Tags |= SkillTags.Area;
+        Node parent = GetTree().CurrentScene;
+        Vector2 at = GlobalPosition;
+        // Added after the overlap callback that caused it (no tree changes mid-flush).
+        Callable.From(() =>
+        {
+            if (IsInstanceValid(parent))
+            {
+                AreaBurst.Spawn(parent, at, _explodeRadius, 0f, new Color(1f, 0.55f, 0.2f), blast);
+            }
+        }).CallDeferred();
     }
 
     /// <summary>
@@ -272,6 +395,7 @@ public partial class Projectile : Area2D
 
         Rotation = _direction.Angle();
         _alreadyHit.Clear();
+        RestartZigzag();
         Turned?.Invoke(this);
     }
 
@@ -291,6 +415,7 @@ public partial class Projectile : Area2D
                 return;
             }
 
+            Explode();
             QueueFree();
             return;
         }
@@ -327,6 +452,7 @@ public partial class Projectile : Area2D
         switch (outcome.Kind)
         {
             case OnHitOutcomeKind.Despawn:
+                Explode();
                 QueueFree();
                 break;
             case OnHitOutcomeKind.Continue:
@@ -341,6 +467,7 @@ public partial class Projectile : Area2D
                 // A chain is a fresh leg: it gets a fresh range budget, or a
                 // long first flight would leave nothing to chain with.
                 _traveled = 0f;
+                RestartZigzag();
                 break;
             case OnHitOutcomeKind.Fork:
                 SpawnForkChildren();

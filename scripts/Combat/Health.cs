@@ -321,6 +321,13 @@ public partial class Health : Node
                 continue;
             }
 
+            // Shadow and Holy: no resistance or armour applies (docs/design/classes.md).
+            if (!ElementalMitigationStats.ContainsKey(type))
+            {
+                totalTaken += afterCrit;
+                continue;
+            }
+
             // Table lookup rather than a hand-written switch arm per element —
             // see ElementalMitigationStats' doc comment.
             (StatId resistId, StatId penetrationId) = ElementalMitigationStats[type];

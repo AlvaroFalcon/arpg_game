@@ -767,3 +767,22 @@ The owner drew six screens by hand (`docs/design/sketches/2026-10-29-ui-screens.
 ![Hideout HUD](screenshots/ui-hud-hideout.png)
 
 Needs the owner's playtest: whether the brush reads as "difuminado" enough, the mirror's size, and whether the new F/G split for interact/pick-up feels right.
+
+## 2026-10-30: classes and skills reworked (six evolutions, curses, skill trees, Escaldón, mana)
+
+The owner left a written brief overnight: classes and skills are the pillar of the game.
+
+- **Six evolutions.** The Arcanist is now the **Thaumaturge**; each base class evolves into two ascendancies: Witch / Elementalist, Samurai / Hunter, Juggernaut / Paladin, with nodes along the owner's focus for each. Behaviour nodes kept their ids so Hex, Overload, Iaido or Radiance moved without new code; Contagion and Undying are new. Old characters migrate on load to the closest evolution of their class with the points refunded.
+- **Skills belong to no class** — a class only picks the starting one. Odran's tab lost its class tags.
+- **Curses** (a new archetype): Corruption (shadow damage over time, sticks to one enemy), Curse of Elements (−25 resistances), Curse of Time (35% slow). New unresisted **Shadow** and **Holy** damage types.
+- **Fireball** is slow and bursts where it lands; **Spark** is slow, zigzags like lightning with a short trail, passes through one enemy and bounces off walls.
+- **Escaldón** and **skill upgrade trees**: gems level with gold (about 77k gold from 1 to 20), each level a point in the skill's own tree — three branches, lesser nodes with ranks, gated notables, some either/or. A draft tree for all sixteen skills; bleed, kill bursts and conversions to physical came with it.
+- **Mana:** base regeneration 1.5/s (+0.05 per Intelligence, +0.15 per character level), costs +2% per gem level, every skill re-costed. A level-1 Thaumaturge can no longer cast Fireball forever (10 mana/s against 2.6/s regeneration). A first pass was too harsh (the bot's reference Arcanist killed 12× slower and cleared nothing at tier 5); the final one clears 2/2, killing normals in ~0.6 s instead of 0.16 s.
+- **Infinite tiers** above 20: a draft for discussion in issue #41.
+
+![Escaldón: Fireball](screenshots/rework-escaldon-fireball.png)
+![Escaldón: Corruption](screenshots/rework-escaldon-corruption.png)
+![Fireball, Spark and curses](screenshots/rework-combat-2.png)
+![The Witch at the altar](screenshots/rework-altar-witch.png)
+
+Needs the owner's playtest and a bot recalibration of the monster life table (gems no longer level from kills, and the mana pass changes the reference character's damage).

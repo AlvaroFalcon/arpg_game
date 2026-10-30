@@ -100,6 +100,9 @@ public partial class CharacterBuild : Node, IBuildContext
         Stats.Intelligence.BaseValue = cls.Intelligence;
         AddMod(StatId.MaxLife, ModifierType.Flat, cls.BonusLife + (Data.Level - 1) * 4f);
         AddMod(StatId.MaxMana, ModifierType.Flat, cls.BonusMana + Mathf.Floor((Data.Level - 1) * 1.5f));
+        // Mana regeneration grows with the character (docs/design/skills.md -> "Mana and
+        // cooldowns"): a level-1 caster has to ration mana, a seasoned one less so.
+        AddMod(StatId.ManaRegen, ModifierType.Flat, (Data.Level - 1) * 0.15f);
         if (cls.BonusDodgeCharges != 0)
         {
             AddMod(StatId.DodgeCharges, ModifierType.Flat, cls.BonusDodgeCharges);
@@ -178,6 +181,7 @@ public partial class CharacterBuild : Node, IBuildContext
                 }
             }
 
+            instance.TreeModifiers.AddRange(SkillTrees.ModifiersFor(gem.Id, gem.Tree));
             SkillUser.EquipSkill(Slots[i], instance);
             _slotGems[Slots[i]] = gem;
         }
@@ -195,27 +199,14 @@ public partial class CharacterBuild : Node, IBuildContext
     }
 
     /// <summary>
-    /// Character and gem experience for a kill (docs/design/endgame.md ->
-    /// "Persistent character"). Equipped skill gems get half of it; a gem
-    /// level-up updates the live skill immediately.
+    /// Character experience for a kill (docs/design/endgame.md -> "Persistent
+    /// character"). Skill gems no longer learn from kills (2026-10-30): their levels
+    /// are bought with gold at Escaldón (docs/design/skills.md -> "Skill upgrade trees").
     /// </summary>
     public void GrantExperience(float amount)
     {
         float gain = amount * Mathf.Max(0f, Stats.Get(StatId.ExperienceGain).Value);
         int levels = Data.AddExperience(gain);
-        foreach ((SkillSlotId slot, GemData gem) in _slotGems)
-        {
-            if (gem.AddExperience(gain * 0.5f) && SkillUser.GetSkill(slot) is { } instance)
-            {
-                if (!RunOwnsSkills)
-                {
-                    instance.Level = gem.Level;
-                }
-
-                string name = UpgradeCatalog.FindSkill(gem.Id)?.Definition.DisplayName ?? gem.Id;
-                EmitSignal(SignalName.GemLevelled, name, gem.Level);
-            }
-        }
 
         if (levels > 0)
         {

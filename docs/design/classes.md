@@ -1,5 +1,10 @@
 # Classes and ascendancies
 
+> **Reworked 2026-10-30** (owner's brief, see "The six evolutions" at the end): the
+> Arcanist is now the **Thaumaturge**, each base class evolves into **two**
+> ascendancies (six in all), and skills no longer belong to any class. The sections
+> below keep the original 2026-10-11 roster for the record.
+
 Status: **[IMPLEMENTED]** (2026-10-11). Structure from the owner; names and
 mechanics were proposed and accepted ("go with your recommendations").
 
@@ -189,3 +194,70 @@ the `recolor`/`patch` helpers rather than eight unrelated sprites.
    weapon; `DerivesBaseFromWeapon` is still reserved).
 3. Class balance beyond the bot's floor: Rogue is the weakest gearless starter,
    Arcanist the strongest; revisit with real play and gear.
+
+## The six evolutions (2026-10-30) **[IMPLEMENTED]**
+
+Owner's brief: *"New classes we keep, reduced to six"* — a table of six classes, each
+evolving from a base class, with the focus of its upgrades — plus *"skills must not
+be tied to any class, only receive an initial one"* and *"some curse skills so the
+Witch makes sense"*. Sprites reuse what exists for now.
+
+| Base class | Evolves into | Focus of its nodes | Sprite |
+|---|---|---|---|
+| **Thaumaturge** (was Arcanist; id `arcanist`) | **Witch** | curse damage, elemental resistances, curses that spread | warlock |
+| | **Elementalist** | elemental damage, damage per element, elemental resistances, mana and its recovery | ascendant |
+| **Rogue** | **Samurai** | attack speed, critical damage and chance, movement speed | samurai |
+| | **Hunter** | projectile damage, critical damage, more and faster projectiles | ninja |
+| **Warrior** | **Juggernaut** (*Guerrero pesado*) | resistance to everything, defence, life, life regeneration | barbarian |
+| | **Paladin** | holy (light) damage, healing, elemental resistances, life | paladin |
+
+Each has eight or nine nodes (three notables), still six points (four at the tier-5
+trial, two at tier 12). Behaviour nodes keep the ids their code is keyed by
+(`AscendancyEffects`), so moved ones keep working: Hex and Wither (Witch), Overload,
+Penetration and Prismatic (Elementalist), Iaido, Parry and Bushido (Samurai — now the
+Rogue's), Mark the Prey (Hunter), Radiance, Consecration, Block, Renewal and Holy
+Aura (Paladin). New behaviour: **Contagion** (Witch: a cursed enemy's curses spread to
+two others when it dies; `Combat/Curses.cs`) and **Undying** (Juggernaut: 2% life
+regeneration per second, doubled below 35% life). Radiance now deals **holy** damage.
+The other old behaviours (Venom, Shadow Clone, Familiar, Fissures, War Cry, Time
+Field, Resonance, Insight...) were removed with their ascendancies.
+
+**Two new damage types**, **Shadow** (the Witch's Corruption) and **Holy** (the
+Paladin's light): no resistance or armour mitigates them, only "damage taken"
+multipliers (`DamageType`, `SkillTags.Shadow/Holy`, `Health.TakeDamage`).
+
+**Old saves** (`ClassCatalog.MigrateAscendancy`, on load): an ascendancy that no
+longer exists, or now belongs to another class, becomes the closest one of the
+character's class — Assassin → Samurai, Ninja → Hunter, Barbarian or (warrior)
+Samurai → Juggernaut, Ascendant → Elementalist, Warlock or Sage → Witch — and nodes
+the new one doesn't have are dropped, so those points can be spent again
+(`CLASS-ROSTER-MIGRATION`).
+
+**Skills belong to no class.** A class only decides the skill it starts with; Odran's
+Skill gems tab lost its class pills, "My class" filter and "Favoured by" line. (The
+Survival Rift still uses each class's list to pick a skill-less character's first
+skill and to favour new-skill cards — a rift-only rule.)
+
+### The Witch's curses
+
+A new archetype, `CurseSkillDefinition`: a cast marks the enemies inside a circle at
+the cursor (or the one nearest it) with an effect for a few seconds, kept on the enemy
+(`Curses` node, a small turning sigil over its head in the curse's colour). One curse
+of each kind per enemy; a new one refreshes it and keeps the stronger numbers. Any
+class can buy them from Odran.
+
+| Curse | What it does | Unlocks | Mana / cooldown |
+|---|---|---|---|
+| **Corruption** | Sticks to the enemy nearest the cursor: **shadow damage every second** for 6 s (the skill's damage is per second) | level 3 | 10 / — |
+| **Curse of Elements** | Every enemy in a circle: fire, cold and lightning resistance −25 for 6 s | level 8 | 14 / 4 s |
+| **Curse of Time** | Every enemy in a circle moves 35% slower for 5 s | level 12 | 16 / 6 s |
+
+Their upgrade trees (docs/design/skills.md -> "Skill upgrade trees") add the
+brief's ideas: Corruption spreading to one, two or three enemies when its bearer dies
+(and on from them), marking more enemies, a wide blight; the Elements curse making
+enemies take more damage of every kind, or spreading; Time's stronger slow.
+
+Rejected: curses as supports or auras (the brief asks for skills you cast), and
+giving Shadow a resistance (a fifth resistance with no gear to raise it would only
+punish players).
+

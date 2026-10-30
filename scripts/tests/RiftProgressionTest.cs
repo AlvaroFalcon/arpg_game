@@ -652,9 +652,9 @@ public partial class RiftProgressionTest : Node2D
         c.TutorialDone = true;
         c.Passives.UnionWith(PassiveTree.PathTo(c, "ks_juggernaut"));
         c.Passives.UnionWith(PassiveTree.PathTo(c, "ks_vampiric_pact"));
-        c.Ascendancy = "barbarian";
+        c.Ascendancy = "juggernaut";
         c.AscendancyPoints = 4;
-        c.AscendancyNodes.UnionWith(new[] { "barb_thick", "barb_bloodlust" });
+        c.AscendancyNodes.UnionWith(new[] { "jugg_vitality", "jugg_unbreakable" });
         c.Gems.First(g => !g.IsSupport).Level = 15;
         real.LoadJson(account.ToJson());
         account.Free();
@@ -683,9 +683,9 @@ public partial class RiftProgressionTest : Node2D
         int juggernaut = player.Stats.Armour.Modifiers.Count(m => m.Type == ModifierType.More && Mathf.IsEqualApprox(m.Value, 50f));
         Check("RIFT-TREE-KEYSTONE-ONCE", juggernaut == 1 && Enumerable.Range(0, 40).SelectMany(_ => run.Build.RollOffers(5, _rng)).All(o => o.Id != "juggernaut"),
             $"Juggernaut's 50% more Armour applied {juggernaut} time(s); never offered as a card");
-        Check("RIFT-APPLIES-ASCENDANCY", cb?.Ascendancy.Has("barb_thick") == true && HasModifier(player, StatId.MaxLife, source, ModifierType.Increased, 15f)
-            && HasModifier(player, StatId.Damage, source, ModifierType.More, 20f),
-            $"Barbarian nodes live={cb?.Ascendancy.Has("barb_thick")}, Thick Skin and Bloodlust on the run player");
+        Check("RIFT-APPLIES-ASCENDANCY", cb?.Ascendancy.Has("jugg_vitality") == true && HasModifier(player, StatId.MaxLife, source, ModifierType.Increased, 15f)
+            && HasModifier(player, StatId.DamageTaken, source, ModifierType.More, -15f),
+            $"Juggernaut nodes live={cb?.Ascendancy.Has("jugg_vitality")}, Vitality and Unbreakable on the run player");
         float life = player.Stats.Get(StatId.MaxLife).Value;
         bool runBaseline = player.Stats.Get(StatId.MaxLife).Modifiers.Any(m => Mathf.IsEqualApprox(m.Value, RunController.RunBonusLife) && m.Type == ModifierType.Flat);
         Check("RIFT-RUN-BONUSES-ALONGSIDE", runBaseline && life > 200f, $"max life {life:0} with the run's +{RunController.RunBonusLife} on top of the tree");

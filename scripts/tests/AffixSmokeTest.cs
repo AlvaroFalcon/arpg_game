@@ -389,8 +389,8 @@ public partial class AffixSmokeTest : Node2D
             $"20 Strength: MaxLife={_attributeStats.Get(StatId.MaxLife).Value} (expected 90), Armour={_attributeStats.Armour.Value} (expected 20)");
 
         Check("INTELLIGENCE-GRANTS-MANA-AND-REGEN",
-            Approx(_attributeStats.Get(StatId.MaxMana).Value, 50f + 30f * 2f) && Approx(_attributeStats.Get(StatId.ManaRegen).Value, 5f + 30f * 0.1f),
-            $"30 Intelligence: MaxMana={_attributeStats.Get(StatId.MaxMana).Value} (expected 110), ManaRegen={_attributeStats.Get(StatId.ManaRegen).Value} (expected 8)");
+            Approx(_attributeStats.Get(StatId.MaxMana).Value, 50f + 30f * 2f) && Approx(_attributeStats.Get(StatId.ManaRegen).Value, 1.5f + 30f * 0.05f),
+            $"30 Intelligence: MaxMana={_attributeStats.Get(StatId.MaxMana).Value} (expected 110), ManaRegen={_attributeStats.Get(StatId.ManaRegen).Value} (expected 3)");
 
         float expectedCrit = 0.05f * (1f + 40f * 0.5f / 100f);
         Check("DEXTERITY-GRANTS-INCREASED-CRIT-CHANCE",

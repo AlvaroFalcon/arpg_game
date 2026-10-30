@@ -26,6 +26,9 @@ public sealed class ProjectileParams
     public float HomingStrength;
     public float Size = 1f;
     public bool OnHitExplode;
+    public float ExplodeRadius;
+    public float ExplodeDamageFraction = 0.5f;
+    public float Zigzag;
 
     public static ProjectileParams FromDefinition(ProjectileSkillDefinition definition) => new()
     {
@@ -41,5 +44,8 @@ public sealed class ProjectileParams
         HomingStrength = definition.HomingStrength,
         Size = definition.Size,
         OnHitExplode = definition.OnHitExplode,
+        ExplodeRadius = definition.ExplodeRadius,
+        ExplodeDamageFraction = definition.ExplodeDamageFraction,
+        Zigzag = definition.Zigzag,
     };
 }

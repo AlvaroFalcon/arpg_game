@@ -665,10 +665,7 @@ public partial class EndgameSmokeTest : Node2D
 
     private void GemChecks()
     {
-        var gem = new GemData { Id = "fireball" };
-        bool levelled = gem.AddExperience(GemData.ExperienceToNext(1) + 1f);
-        var support = new GemData { Id = "pierce", IsSupport = true };
-        Check("GEM-XP", levelled && gem.Level == 2 && !support.AddExperience(1e6f) && support.Level == 1, $"skill level {gem.Level}, support stays 1");
+        SkillTreeChecks();
 
         CharacterData c = CharacterData.Create("Loot", "arcanist");
         int before = c.Gems.Count;
@@ -676,8 +673,9 @@ public partial class EndgameSmokeTest : Node2D
         bool added = c.Gems.Count == before + 1;
         (string dupText, _) = GemLoot.Collect(c, "frost_nova", false);
         GemData nova = c.Gems.First(g => g.Id == "frost_nova");
-        bool absorbed = c.Gems.Count == before + 1 && (nova.Level > 1 || nova.Experience > 0f);
-        Check("GEMLOOT-SKILL", added && absorbed, $"'{newText}' then '{dupText}'");
+        (_, long dupGold) = GemLoot.Collect(c, "frost_nova", false);
+        bool toGold = c.Gems.Count == before + 1 && nova.Level == 1 && dupGold == GemLoot.DuplicateGold(1) && dupGold > 0;
+        Check("GEMLOOT-SKILL", added && toGold, $"'{newText}' then '{dupText}' ({dupGold} gold, the gem stays level {nova.Level})");
 
         long gold = 0;
         for (int i = 0; i < GemLoot.MaxSupportCopies + 1; i++)
@@ -689,15 +687,104 @@ public partial class EndgameSmokeTest : Node2D
             $"{c.Gems.Count(g => g.Id == "pierce")} copies kept, {gold} gold from the surplus");
     }
 
+    /// <summary>docs/design/skills.md -> "Skill upgrade trees": every skill has a tree with
+    /// more ranks than a level-20 gem has points; points come from levels; deeper nodes need
+    /// points in the one before; either/or notables exclude each other; nodes change casts.</summary>
+    private void SkillTreeChecks()
+    {
+        var missing = Progression.UpgradeCatalog.Skills.Where(s => SkillTrees.For(s.Id) is null).Select(s => s.Id).ToList();
+        var broken = SkillTrees.All.Values.SelectMany(t => t.Nodes.Where(n => n.Requires is { } r && t.Node(r) is null).Select(n => $"{t.SkillId}/{n.Id}")).ToList();
+        var thin = SkillTrees.All.Values.Where(t => t.TotalRanks < GemData.MaxLevel - 1 || t.Branches.Length != 3).Select(t => $"{t.SkillId} ({t.TotalRanks})").ToList();
+        Check("SKILLTREE-EVERY-SKILL", missing.Count == 0 && broken.Count == 0 && thin.Count == 0,
+            $"no tree: {string.Join(",", missing)}; broken links: {string.Join(",", broken)}; too few ranks: {string.Join(",", thin)}");
+
+        long total = 0;
+        for (int l = 1; l < GemData.MaxLevel; l++)
+        {
+            total += SkillTrees.LevelCost(l);
+        }
+
+        bool rising = Enumerable.Range(1, GemData.MaxLevel - 2).All(l => SkillTrees.LevelCost(l + 1) > SkillTrees.LevelCost(l));
+        Check("SKILLTREE-GOLD-CURVE", SkillTrees.LevelCost(1) == 30 && rising && SkillTrees.LevelCost(GemData.MaxLevel) == 0 && total is > 50_000 and < 120_000,
+            $"level 2 costs {SkillTrees.LevelCost(1)}, level 20 {SkillTrees.LevelCost(GemData.MaxLevel - 1)}, all {total:N0} gold");
+
+        SkillTree tree = SkillTrees.For("fireball")!;
+        var gem = new GemData { Id = "fireball" };
+        bool noPoints = SkillTreeRules.CannotRaise(gem, tree, tree.Node("power")!) is not null;
+        gem.Level = 8; // 7 points
+        bool gated = SkillTreeRules.CannotRaise(gem, tree, tree.Node("blast")!) is not null;
+        SkillTreeRules.Raise(gem, tree, tree.Node("power")!);
+        SkillTreeRules.Raise(gem, tree, tree.Node("power")!);
+        bool open = SkillTreeRules.Raise(gem, tree, tree.Node("blast")!) && SkillTreeRules.Raise(gem, tree, tree.Node("blast")!) && SkillTreeRules.Raise(gem, tree, tree.Node("firestorm")!);
+        bool lockedParent = SkillTreeRules.CannotLower(gem, tree, tree.Node("blast")!) is not null;
+        SkillTreeRules.Raise(gem, tree, tree.Node("velocity")!);
+        SkillTreeRules.Raise(gem, tree, tree.Node("velocity")!);
+        bool outOfPoints = SkillTreeRules.CannotRaise(gem, tree, tree.Node("efficiency")!) is not null && gem.TreePointsFree == 0;
+        gem.Level = 12;
+        SkillTreeRules.Raise(gem, tree, tree.Node("efficiency")!);
+        SkillTreeRules.Raise(gem, tree, tree.Node("efficiency")!);
+        bool firstChoice = SkillTreeRules.Raise(gem, tree, tree.Node("volley")!);
+        bool exclusive = SkillTreeRules.CannotRaise(gem, tree, tree.Node("frostfire")!) is { } ex && ex.StartsWith("Excludes");
+        Check("SKILLTREE-RULES", noPoints && gated && open && lockedParent && outOfPoints && firstChoice && exclusive && gem.TreePointsSpent == 10,
+            $"level 1 has no points={noPoints}; Wider Blast needs Power first={gated}; Power 2 → Wider Blast 2 → Firestorm={open}; Wider Blast can't go back under Firestorm={lockedParent}; points run out={outOfPoints}; Volley excludes Frostfire={exclusive}; spent {gem.TreePointsSpent}");
+
+        var ctx = new CastContext(null!, null!, Combat.Faction.Player, Vector2.Zero, Vector2.Right) { Projectile = new ProjectileParams { Count = 1, ExplodeRadius = 55f, ExplodeDamageFraction = 0.5f, Speed = 340f } };
+        foreach (CastModifier m in SkillTrees.ModifiersFor("fireball", gem.Tree).OrderBy(m => m.Priority))
+        {
+            m.Apply(ctx);
+        }
+
+        Check("SKILLTREE-APPLIES", ctx.Projectile.ExplodeDamageFraction == 1f && ctx.Projectile.ExplodeRadius > 55f && ctx.ExtraCount == 1 && ctx.DamageMultiplier > 1f && ctx.CostMultiplier < 1f && ctx.Projectile.Speed > 340f,
+            $"blast {ctx.Projectile.ExplodeRadius:0} px at {ctx.Projectile.ExplodeDamageFraction:P0}, +{ctx.ExtraCount} projectile, damage ×{ctx.DamageMultiplier:0.00}, cost ×{ctx.CostMultiplier:0.00}, speed {ctx.Projectile.Speed:0}");
+
+        var bad = new GemData { Id = "fireball", Level = 3, Tree = new Dictionary<string, int> { ["power"] = 3, ["firestorm"] = 1 } };
+        SkillTreeRules.Sanitize(bad);
+        var fine = new GemData { Id = "fireball", Level = 3, Tree = new Dictionary<string, int> { ["power"] = 2 } };
+        SkillTreeRules.Sanitize(fine);
+        Check("SKILLTREE-SANITIZE", bad.Tree.Count == 0 && fine.Tree.Count == 1, $"over-spent tree cleared={bad.Tree.Count == 0}, a valid one kept={fine.Tree.Count == 1}");
+    }
+
+    /// <summary>Escaldón's station (docs/design/skills.md -> "Skill upgrade trees"): it stands in
+    /// the town, a level costs the curve's gold, a spent point reaches the equipped skill at once.</summary>
+    private async Task EscaldonChecks(Hideout hideout)
+    {
+        Player player = hideout.Player;
+        CharacterData? c = CharacterBuild.Of(player)?.Data;
+        GemData? gem = c?.Gems.FirstOrDefault(g => !g.IsSupport && c.Loadout.Any(l => l.SkillUid == g.Uid));
+        if (c is null || gem is null)
+        {
+            Check("ESCALDON", false, "no equipped skill gem on the hideout's character");
+            return;
+        }
+
+        SkillSlotId slot = CharacterBuild.Slots[System.Array.FindIndex(c.Loadout, l => l.SkillUid == gem.Uid)];
+        UI.SkillTreePanel panel = hideout.Escaldon;
+        panel.Open();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        panel.Select(gem);
+        int level = gem.Level;
+        long cost = SkillTrees.LevelCost(level);
+        player.Wallet.Add(Profile.GoldId, cost + 200);
+        long goldBefore = player.Wallet.GetBalance(Profile.GoldId);
+        bool raised = panel.RaiseLevel() && gem.Level == level + 1 && player.Wallet.GetBalance(Profile.GoldId) == goldBefore - cost;
+        string firstNode = SkillTrees.For(gem.Id)!.Nodes.First(n => n.Requires is null).Id;
+        bool spent = panel.RaiseNode(firstNode);
+        int modifiers = player.SkillUser.GetSkill(slot)?.TreeModifiers.Count ?? 0;
+        bool refunded = panel.LowerNode(firstNode) && player.SkillUser.GetSkill(slot)?.TreeModifiers.Count == modifiers - 1;
+        panel.Close();
+        Check("ESCALDON", hideout.Data.Find("escaldon") is not null && raised && spent && modifiers > 0 && refunded,
+            $"station placed={hideout.Data.Find("escaldon") is not null}; level {level} → {gem.Level} for {cost} gold={raised}; a point in {firstNode}={spent} reaches the equipped skill ({modifiers} tree modifier(s)); taken back={refunded} ('{panel.Message}')");
+    }
+
     private void ProfileChecks()
     {
         CharacterData c = CharacterData.Create("Saver", "rogue");
         c.Level = 14;
         c.Experience = 33f;
         c.Passives.Add(PassiveTree.Get("start_rogue")!.Links[0]);
-        c.Ascendancy = "assassin";
+        c.Ascendancy = "samurai";
         c.AscendancyPoints = 4;
-        c.AscendancyNodes.Add("assassin_venom");
+        c.AscendancyNodes.Add("sam_iaido");
         c.AddShards(7, 3);
         c.Gold = 999;
         c.HighestTierCleared = 6;
@@ -706,11 +793,34 @@ public partial class EndgameSmokeTest : Node2D
         string json = Profile.SerializeCharacter(c);
         CharacterData? back = Profile.DeserializeCharacter(json);
         bool ok = back is not null && back.Name == "Saver" && back.ClassId == "rogue" && back.Level == 14 && back.Passives.SetEquals(c.Passives)
-            && back.Ascendancy == "assassin" && back.AscendancyNodes.SetEquals(c.AscendancyNodes) && back.ShardCount(7) == 3 && back.Gold == 999
+            && back.Ascendancy == "samurai" && back.AscendancyNodes.SetEquals(c.AscendancyNodes) && back.ShardCount(7) == 3 && back.Gold == 999
             && back.Gems.Count == c.Gems.Count && back.Gems[0].Level == 5 && back.Gems[0].Uid == c.Gems[0].Uid
             && back.Loadout[0].SkillUid == c.Loadout[0].SkillUid && back.Loadout[0].SupportUids.SequenceEqual(c.Loadout[0].SupportUids)
             && back.HighestTierCleared == 6;
         Check("PROFILE-CHARACTER-ROUNDTRIP", ok, $"{json.Length} bytes of JSON");
+
+        // The roster of 2026-10-30: old ascendancies become the closest one of the class
+        // (a warrior Samurai — Samurai is the Rogue's now — becomes a Juggernaut), and
+        // nodes the new one doesn't have are dropped so their points can be spent again.
+        string Migrated(string classId, string old, string node, out bool kept)
+        {
+            CharacterData o = CharacterData.Create("Old", classId);
+            o.Ascendancy = old;
+            o.AscendancyPoints = 4;
+            o.AscendancyNodes.Add(node);
+            CharacterData m = Profile.DeserializeCharacter(Profile.SerializeCharacter(o))!;
+            kept = m.AscendancyNodes.Contains(node);
+            return $"{m.Ascendancy}/{m.AscendancyPointsFree}";
+        }
+
+        string a1 = Migrated("rogue", "assassin", "assassin_venom", out bool k1);
+        string a2 = Migrated("warrior", "samurai", "sam_iaido", out bool k2);
+        string a3 = Migrated("arcanist", "warlock", "war_hex", out bool k3);
+        string a4 = Migrated("warrior", "paladin", "pal_block", out bool k4);
+        Check("CLASS-ROSTER-MIGRATION", a1 == "samurai/4" && !k1 && a2 == "juggernaut/4" && !k2 && a3 == "witch/3" && k3 && a4 == "paladin/3" && k4
+            && ClassCatalog.Get("arcanist").Name == "Thaumaturge" && ClassCatalog.Ascendancies.Count == 6
+            && ClassCatalog.Classes.All(k => k.Ascendancies.Count == 2 && k.Ascendancies.All(id => ClassCatalog.GetAscendancy(id)?.ClassId == k.Id)),
+            $"assassin rogue → {a1} (node kept={k1}), samurai warrior → {a2} ({k2}), warlock → {a3} (Hex kept={k3}), paladin → {a4} ({k4}); {ClassCatalog.Ascendancies.Count} ascendancies");
     }
 
     // --- feedback batch (2026-10-12) -------------------------------------------------
@@ -1671,6 +1781,7 @@ public partial class EndgameSmokeTest : Node2D
 
         await TooltipChecks(hideout);
         await GemShopChecks(hideout);
+        await EscaldonChecks(hideout);
 
         // Walls block, and click-to-move can path from the plaza into the smithy.
         Vector2 from = HideoutTown.World(HideoutTown.SpawnCell);

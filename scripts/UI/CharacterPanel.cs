@@ -115,7 +115,7 @@ public partial class CharacterPanel : ModalPanel
         float str = V(StatId.Strength), dex = V(StatId.Dexterity), intel = V(StatId.Intelligence);
         Row(attributes, "Strength", N(str), $"+{N(str * 2f)} life, +{N(str)} armour");
         Row(attributes, "Dexterity", N(dex), $"+{N(dex * 0.5f)}% critical chance");
-        Row(attributes, "Intelligence", N(intel), $"+{N(intel * 2f)} mana, +{intel * 0.1f:0.#} mana/s");
+        Row(attributes, "Intelligence", N(intel), $"+{N(intel * 2f)} mana, +{intel * 0.05f:0.##} mana/s");
         if (build?.Resource is { } res)
         {
             Section(attributes, "Class");

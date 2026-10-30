@@ -8,7 +8,7 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 8.0
+Amount = 12.0
 Mode = 0
 
 [resource]
@@ -18,7 +18,7 @@ Description = "Summons blades that orbit you, cutting anything they touch."
 BaseDamage = 14.0
 AddedDamageEffectiveness = 0.6
 BaseUseTime = 0.3
-Cooldown = 3.6
+Cooldown = 6.0
 Tags = 50
 Count = 3
 Radius = 78.0

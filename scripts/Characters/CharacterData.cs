@@ -20,6 +20,16 @@ public sealed class GemData
 
     public const int MaxLevel = 20;
 
+    /// <summary>Ranks spent in the skill's upgrade tree, by node id (docs/design/skills.md ->
+    /// "Skill upgrade trees"). Every level past 1 is one point.</summary>
+    public Dictionary<string, int> Tree { get; set; } = new();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int TreePointsSpent => Tree.Values.Sum();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int TreePointsFree => IsSupport ? 0 : Mathf.Max(0, Level - 1 - TreePointsSpent);
+
     /// <summary>Gem experience to the next level.</summary>
     public static float ExperienceToNext(int level) => 60f * Mathf.Pow(level, 1.8f);
 
@@ -140,9 +150,8 @@ public sealed class CharacterData
 
     public int AscendancyPointsFree => AscendancyPoints - AscendancyNodes.Count;
 
-    /// <summary>Support sockets per skill: 2, +1 at level 12, +1 at level 28
-    /// (the Sage adds one more on top).</summary>
-    public int SupportSockets => 2 + (Level >= 12 ? 1 : 0) + (Level >= 28 ? 1 : 0) + (AscendancyNodes.Contains("sage_insight") ? 1 : 0);
+    /// <summary>Support sockets per skill: 2, +1 at level 12, +1 at level 28.</summary>
+    public int SupportSockets => 2 + (Level >= 12 ? 1 : 0) + (Level >= 28 ? 1 : 0);
 
     /// <summary>Adds experience; returns the number of levels gained.</summary>
     public int AddExperience(float amount)

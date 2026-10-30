@@ -14,6 +14,13 @@ public enum DamageType
     Fire,
     Cold,
     Lightning,
+
+    /// <summary>The Witch's curses (2026-10-30). Unresisted: nothing in the game
+    /// mitigates it but "damage taken" multipliers.</summary>
+    Shadow,
+
+    /// <summary>The Paladin's light (2026-10-30). Unresisted, like Shadow.</summary>
+    Holy,
 }
 
 /// <summary>
@@ -51,6 +58,16 @@ public static class DamageTypeResolution
         if ((tags & SkillTags.Lightning) != 0)
         {
             return DamageType.Lightning;
+        }
+
+        if ((tags & SkillTags.Shadow) != 0)
+        {
+            return DamageType.Shadow;
+        }
+
+        if ((tags & SkillTags.Holy) != 0)
+        {
+            return DamageType.Holy;
         }
 
         return DamageType.Physical;
