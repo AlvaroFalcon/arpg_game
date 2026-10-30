@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 10.0
+Amount = 22.0
 Mode = 0
 
 [resource]
@@ -17,7 +17,7 @@ Description = "Calls down a meteor at the target after a short delay. Huge damag
 BaseDamage = 50.0
 AddedDamageEffectiveness = 1.5
 BaseUseTime = 0.5
-Cooldown = 2.8
+Cooldown = 5.0
 Tags = 530
 Radius = 85.0
 Delay = 0.7

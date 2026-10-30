@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 4.0
+Amount = 7.0
 Mode = 0
 
 [resource]
@@ -17,6 +17,7 @@ Description = "Smashes the ground just ahead, knocking enemies back."
 BaseDamage = 34.0
 AddedDamageEffectiveness = 1.3
 BaseUseTime = 0.8
+Cooldown = 1.0
 Tags = 25
 Radius = 85.0
 Delay = 0.12

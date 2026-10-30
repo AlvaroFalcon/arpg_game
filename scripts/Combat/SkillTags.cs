@@ -52,4 +52,14 @@ public enum SkillTags
     /// docs/design/skills.md derives AttackSpeed/CastSpeed from Attack/Spell.
     /// </summary>
     Lightning = 1 << 12,
+
+    /// <summary>A curse skill (docs/design/classes.md -> "The Witch's curses"): it marks
+    /// enemies with an effect over time instead of (or as well as) hitting them.</summary>
+    Curse = 1 << 13,
+
+    /// <summary>Shadow damage (the Witch's Corruption). No resistance mitigates it.</summary>
+    Shadow = 1 << 14,
+
+    /// <summary>Holy (light) damage (the Paladin). No resistance mitigates it.</summary>
+    Holy = 1 << 15,
 }

@@ -287,9 +287,9 @@ public partial class RunCapture : Node
             profile.StashTabs[0].Add((Items.ItemFactory.RollRandom(18, Items.DropSource.MagicMonster, 1f, rng), new Vector2I((i % 4) * 3, (i / 4) * 3)));
         }
 
-        k.Ascendancy = "samurai";
+        k.Ascendancy = "juggernaut";
         k.AscendancyPoints = 4;
-        foreach (AscendancyNode node in AscendancyCatalog.For("samurai").Take(3))
+        foreach (AscendancyNode node in AscendancyCatalog.For("juggernaut").Take(3))
         {
             k.AscendancyNodes.Add(node.Id);
         }

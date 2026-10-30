@@ -8,24 +8,27 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 3.0
+Amount = 6.0
 Mode = 0
 
 [resource]
 script = ExtResource("s")
 DisplayName = "Spark"
-Description = "Fires crackling sparks that chain between enemies. Lightning hits can shock."
-BaseDamage = 12.0
+Description = "Releases slow, crackling sparks that zigzag like lightning, pass through one enemy and bounce off walls. Lightning hits can shock."
+BaseDamage = 14.0
 AddedDamageEffectiveness = 0.5
-BaseUseTime = 0.4
+BaseUseTime = 0.45
+Bounces = 3
+Pierce = 1
 Tags = 4102
-Speed = 640.0
-Range = 440.0
+Speed = 260.0
+Range = 720.0
 SpawnOffset = 20.0
 Count = 2
 SpreadDegrees = 18.0
-Chains = 1
+Chains = 0
 Size = 1.0
+Zigzag = 12.0
 Costs = [SubResource("Cost")]
 Frames = ExtResource("f")
 Icon = ExtResource("i")

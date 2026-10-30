@@ -43,6 +43,8 @@ public static class UiTheme
     public static readonly Color DamageCold = new(0.55f, 0.85f, 1f);
     public static readonly Color DamageLightning = new(0.84f, 0.74f, 1f);
     public static readonly Color DamagePoison = new(0.56f, 0.95f, 0.42f);
+    public static readonly Color DamageShadow = new(0.78f, 0.45f, 1f);
+    public static readonly Color DamageHoly = new(1f, 0.95f, 0.65f);
     public static readonly Color DamageCrit = new(1f, 0.72f, 0.16f);
     public static readonly Color DamageStreak = new(1f, 0.74f, 0.22f);
     public static readonly Color DamageTaken = new(1f, 0.3f, 0.28f);
@@ -53,6 +55,8 @@ public static class UiTheme
         Combat.DamageType.Fire => DamageFire,
         Combat.DamageType.Cold => DamageCold,
         Combat.DamageType.Lightning => DamageLightning,
+        Combat.DamageType.Shadow => DamageShadow,
+        Combat.DamageType.Holy => DamageHoly,
         _ => DamagePhysical,
     };
 

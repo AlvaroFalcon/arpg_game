@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CurseSkillDefinition" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/CurseSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_curse_elements.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 14.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Curse of Elements"
+Description = "Curses every enemy in an area: their fire, cold and lightning resistances drop by 25 for 6 s."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.45
+Cooldown = 4.0
+Tags = 8242
+Kind = 1
+Radius = 110.0
+MaxTargets = 0
+Duration = 6.0
+Potency = 25.0
+Tint = Color(1, 0.6, 0.3, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

@@ -115,10 +115,10 @@ public partial class RunCapture
         await Wait(0.5f);
         await Snap("quests-altar-strip.png");
         var altarPanel = hideout.GetNode<AscendancyPanel>("AscendancyPanel");
-        altarPanel.Choose("samurai");
+        altarPanel.Choose("juggernaut");
         await Wait(0.2f);
         await Snap("quests-altar-armed.png");
-        altarPanel.Choose("samurai");
+        altarPanel.Choose("juggernaut");
         await Wait(0.5f);
         await Snap("quests-altar-ready.png");
         altarPanel.Close();

@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 4.0
+Amount = 8.0
 Mode = 0
 
 [resource]
@@ -17,6 +17,7 @@ Description = "Splits the ground in a line ahead of you after a brief wind-up."
 BaseDamage = 36.0
 AddedDamageEffectiveness = 1.3
 BaseUseTime = 0.75
+Cooldown = 1.5
 Tags = 25
 Range = 320.0
 Line = true

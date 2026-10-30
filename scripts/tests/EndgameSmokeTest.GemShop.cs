@@ -172,9 +172,9 @@ public partial class EndgameSmokeTest
 
         GameEvents.Raised += OnAscend;
         altar.Open();
-        bool firstClick = altar.Choose("sage");
-        bool armed = !firstClick && ac.Ascendancy is null && altar.PendingChoice == "sage";
-        bool other = !altar.Choose("warlock") && ac.Ascendancy is null && altar.PendingChoice == "warlock";
+        bool firstClick = altar.Choose("witch");
+        bool armed = !firstClick && ac.Ascendancy is null && altar.PendingChoice == "witch";
+        bool other = !altar.Choose("elementalist") && ac.Ascendancy is null && altar.PendingChoice == "elementalist";
         bool timedOut = false;
         string expiryNote = "";
         if (!(ac.Ascendancy is not null))
@@ -192,8 +192,8 @@ public partial class EndgameSmokeTest
             expiryNote = $"waited {Time.GetTicksMsec() - t0} ms, pending={altar.PendingChoice}, open={altar.IsOpen}, ascendancy={ac.Ascendancy}, tree paused={GetTree().Paused}";
         }
 
-        altar.Choose("sage");
-        bool chosen = altar.Choose("sage") && ac.Ascendancy == "sage" && chosenEvents.SequenceEqual(new[] { "sage" });
+        altar.Choose("witch");
+        bool chosen = altar.Choose("witch") && ac.Ascendancy == "witch" && chosenEvents.SequenceEqual(new[] { "witch" });
         altar.Close();
         GameEvents.Raised -= OnAscend;
         Check("ALTAR-CONFIRM", armed && other && timedOut && chosen, $"first click arms without choosing={armed}, another card re-arms={other}, expires after {UI.AscendancyPanel.ConfirmSeconds} s={timedOut} ({expiryNote}), second click chooses={chosen}");

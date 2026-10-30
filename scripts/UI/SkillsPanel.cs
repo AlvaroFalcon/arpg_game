@@ -96,7 +96,7 @@ public partial class SkillsPanel : ModalPanel
         bool supports = _targetSocket >= 0 && targetSkill is not null;
         _hint.Text = supports
             ? $"Socketing a support into {CharacterData.SlotLabels[_targetSlot]} ({targetSkill!.DisplayName}) — only supports that fit it are listed. Right-click a socket to empty it."
-            : $"Choosing the skill for {CharacterData.SlotLabels[_targetSlot]}. Skill gems level with the kills they make; supports never level. Right-click to empty.";
+            : $"Choosing the skill for {CharacterData.SlotLabels[_targetSlot]}. Escaldón raises skill levels for gold; supports never level. Right-click to empty.";
 
         ClearChildren(_gems);
         IEnumerable<GemData> list = c.Gems.Where(g => g.IsSupport == supports).OrderBy(g => GemName(g)).ThenByDescending(g => g.Level);

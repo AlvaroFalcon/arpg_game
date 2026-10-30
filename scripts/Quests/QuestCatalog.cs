@@ -37,7 +37,7 @@ public static class QuestCatalog
             Explain = _ =>
                 "\"Welcome, welcome! Gold for your gear, and gear for your gold.\"\n\n"
                 + "**Trade:** right-click an item in your bag to sell it. Anything you sold this visit can be bought back for the same price until you walk away. He also sells four cheap crafting shards: Kindling, Flux, Graft and Ash.\n\n"
-                + $"**Skill gems:** every skill and support gem in the game, unlocked as your character levels. A bought gem goes straight to your skills (K) at level 1. Skill gems level up as you use them; you can own up to {GemLoot.MaxSupportCopies} of each support, one per loadout slot.",
+                + $"**Skill gems:** every skill and support gem in the game, unlocked as your character levels. A bought gem goes straight to your skills (K) at level 1. Escaldón raises a skill's level for gold and shapes it with its upgrade tree; you can own up to {GemLoot.MaxSupportCopies} of each support, one per loadout slot.",
             Objective = "Buy a gem from Odran's Skill gems tab",
             Hint = "Greyed-out gems unlock at a higher character level.",
             TurnIn = "Socket it in the Skills panel (K): click a slot, then the gem.",

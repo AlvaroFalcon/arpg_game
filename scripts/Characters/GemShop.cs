@@ -20,7 +20,7 @@ public sealed record GemOffer(string Id, bool Support, int Level)
 /// Odran's Skill gems tab, the rules — docs/design/hideout.md -> "Odran's Skill gems
 /// tab". Every skill and support of <see cref="UpgradeCatalog"/> is on sale from a
 /// character level, always at gem level 1 (a bought gem joins the character's
-/// collection like a dropped one and levels with use). A skill is bought once
+/// collection like a dropped one; Escaldón raises its level for gold). A skill is bought once
 /// (duplicates are not melted into experience: gold must not become skill power);
 /// a support up to <see cref="GemLoot.MaxSupportCopies"/> times, one per loadout
 /// slot. Static and node-free so it can be tested without a scene.
@@ -32,11 +32,12 @@ public static class GemShop
     private static readonly (int Level, string[] Ids)[] SkillTable =
     {
         (1, new[] { "fireball", "double_strike", "cleave" }),
+        (3, new[] { "corruption" }),
         (4, new[] { "spark", "throwing_knives", "ground_slam" }),
         (6, new[] { "frost_shards" }),
-        (8, new[] { "blades", "frost_nova" }),
+        (8, new[] { "blades", "frost_nova", "curse_elements" }),
         (10, new[] { "storm_strike" }),
-        (12, new[] { "sunder" }),
+        (12, new[] { "sunder", "curse_time" }),
         (14, new[] { "glacial_hammer" }),
         (16, new[] { "meteor" }),
     };
@@ -85,9 +86,6 @@ public static class GemShop
     /// <summary>Offers that unlocked since the character last opened the tab.</summary>
     public static int NewCount(CharacterData c) => Offers.Count(o => o.Level <= c.Level && o.Level > c.GemShopSeenLevel);
 
-    /// <summary>The classes whose Rift skill list favours a skill (no class favours a support).</summary>
-    public static IEnumerable<ClassDefinition> FavouredBy(string skillId) => ClassCatalog.Classes.Where(k => k.RiftSkills.Contains(skillId));
-
     /// <summary>A support that fits at least one skill the character owns.</summary>
     public static bool FitsAny(CharacterData c, GemOffer support) =>
         SupportOf(support) is { } def && c.Gems.Any(g => !g.IsSupport && UpgradeCatalog.FindSkill(g.Id)?.Definition is { } skill && def.Accepts(skill));
@@ -109,7 +107,7 @@ public static class GemShop
         int owned = Owned(c, o);
         if (!o.Support && owned > 0)
         {
-            return "You have this skill. Skill gems level up as you use them.";
+            return "You have this skill. Escaldón raises its level for gold.";
         }
 
         if (o.Support && owned >= MaxCopies(o))

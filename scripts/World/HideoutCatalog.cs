@@ -103,6 +103,8 @@ public static class HideoutCatalog
             Verb = "Browse", Blurb = "Floor tiles and decorations for your town.", Accent = new Color(0.55f, 0.85f, 0.75f) },
         new() { Id = "forge", Name = "Artificer's Forge", Sprite = "props/forge", Station = true, Radius = 22f, PickRadius = 40f,
             Verb = "Craft", Blurb = "Disenchant gear into dust and forge items with a chosen modifier.", Accent = new Color(1f, 0.55f, 0.25f) },
+        new() { Id = "escaldon", Name = "Escaldón", Sprite = "props/weapon_rack", Station = true, Radius = 10f, PickRadius = 36f,
+            Verb = "Hone skills", Blurb = "Raises your skills' levels for gold and shapes each one with its upgrade tree.", Accent = new Color(0.4f, 0.85f, 0.75f) },
         new() { Id = "stash", Name = "Stash", Sprite = "props/stash_chest", Station = true, Radius = 16f, PickRadius = 30f,
             Verb = "Open stash", Blurb = "Storage shared by all your characters.", Accent = new Color(0.8f, 0.6f, 0.4f) },
         new() { Id = "altar", Name = "Altar of Ascension", Station = true, PickRadius = 40f,
@@ -134,7 +136,7 @@ public static class HideoutCatalog
     private static readonly (string Kind, int X, int Y)[] DefaultLayout =
     {
         ("mirror", 25, 15), ("merchant", 30, 18), ("decorator", 20, 18), ("forge", 8, 12), ("stash", 40, 31),
-        ("altar", 10, 31), ("portal", 25, 3), ("arehucaz", 34, 7),
+        ("altar", 10, 31), ("portal", 25, 3), ("arehucaz", 34, 7), ("escaldon", 35, 21),
         ("training_dummy", 39, 12), ("training_dummy", 43, 14), ("training_dummy", 39, 17),
         ("brazier", 18, 9), ("brazier", 32, 9), ("brazier", 18, 21), ("brazier", 32, 21),
         ("lamp_post", 22, 6), ("lamp_post", 28, 6), ("lamp_post", 22, 26), ("lamp_post", 28, 26),

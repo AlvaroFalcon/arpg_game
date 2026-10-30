@@ -8,22 +8,24 @@
 [sub_resource type="Resource" id="Cost"]
 script = ExtResource("c")
 Resource = 0
-Amount = 3.0
+Amount = 8.0
 Mode = 0
 
 [resource]
 script = ExtResource("s")
 DisplayName = "Fireball"
-Description = "Hurls a ball of fire at the cursor. Fire hits can ignite."
-BaseDamage = 22.0
+Description = "Hurls a slow ball of fire that bursts where it lands, burning everything nearby. Fire hits can ignite."
+BaseDamage = 26.0
 AddedDamageEffectiveness = 1.0
-BaseUseTime = 0.45
+BaseUseTime = 0.6
 Tags = 518
-Speed = 520.0
+Speed = 340.0
 Range = 560.0
 SpawnOffset = 20.0
 Count = 1
 Size = 1.0
+ExplodeDamageFraction = 0.5
+ExplodeRadius = 55.0
 Costs = [SubResource("Cost")]
 Frames = ExtResource("f")
 Icon = ExtResource("i")

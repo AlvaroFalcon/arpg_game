@@ -82,6 +82,10 @@ public static class UpgradeCatalog
         new SkillEntry { Id = "frost_shards", ResourcePath = "res://resources/skills/run/frost_shards.tres" },
         new SkillEntry { Id = "storm_strike", ResourcePath = "res://resources/skills/run/storm_strike.tres" },
         new SkillEntry { Id = "glacial_hammer", ResourcePath = "res://resources/skills/run/glacial_hammer.tres" },
+        // docs/design/classes.md -> "The Witch's curses" (2026-10-30): open to every class.
+        new SkillEntry { Id = "corruption", ResourcePath = "res://resources/skills/run/corruption.tres" },
+        new SkillEntry { Id = "curse_elements", ResourcePath = "res://resources/skills/run/curse_elements.tres" },
+        new SkillEntry { Id = "curse_time", ResourcePath = "res://resources/skills/run/curse_time.tres" },
     };
 
     public static SkillEntry? FindSkill(string id)
@@ -110,7 +114,7 @@ public static class UpgradeCatalog
         return definition.DisplayName;
     }
 
-    private static void Convert(CastContext c, SkillTags to)
+    public static void Convert(CastContext c, SkillTags to)
     {
         c.Tags = (c.Tags & ~Elements) | to;
     }

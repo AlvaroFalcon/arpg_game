@@ -45,6 +45,8 @@ public partial class Ailments : Node
     public const float ShockDuration = 3f;
     public const float ShockPercent = 25f;
     public const float FreezeDuration = 0.6f;
+    public const float BleedDuration = 3f;
+    public const float BleedDamageRatio = 0.7f;
     public const float BossFreezeDuration = 0.25f;
     public const float BossFreezeLockout = 4f;
 
@@ -126,9 +128,21 @@ public partial class Ailments : Node
     private void OnHitResolved(DamagePayload payload, float taken)
     {
         LastHitApplied = AilmentHit.None;
-        if (!payload.CanInflictAilments || _health.IsDead)
+        if (_health.IsDead)
+        {
+            KillBlast(payload, taken);
+            return;
+        }
+
+        if (!payload.CanInflictAilments)
         {
             return;
+        }
+
+        // Bleeding (skill upgrades): physical damage over time, any damage type can cause it.
+        if (payload.BleedChance > 0f && taken > 0f && _rng.Randf() < payload.BleedChance)
+        {
+            AddPoison(taken * BleedDamageRatio, BleedDuration, payload.SourceActor);
         }
 
         foreach ((DamageType type, float amount) in payload.Components)
@@ -176,6 +190,28 @@ public partial class Ailments : Node
                     break;
             }
         }
+    }
+
+    /// <summary>A kill by a hit that carries a kill blast: the body bursts around it
+    /// (skill upgrades). The blast's own hits carry none, so it never cascades.</summary>
+    private void KillBlast(DamagePayload payload, float taken)
+    {
+        if (payload.KillBlastFraction <= 0f || payload.Components.Count == 0 || GetParent() is not Node2D body)
+        {
+            return;
+        }
+
+        var hit = new HitProfile
+        {
+            Damage = Mathf.Max(taken, payload.Total) * payload.KillBlastFraction,
+            Type = payload.Components[0].Type,
+            Source = payload.SourceActor,
+            Faction = payload.SourceFaction,
+            Tags = payload.Tags | SkillTags.Area,
+            CanInflictAilments = payload.CanInflictAilments,
+            Skill = payload.Skill,
+        };
+        AreaBurst.SpawnOnKill(GetTree().CurrentScene, body.GlobalPosition, payload.KillBlastRadius, UI.UiTheme.DamageColor(hit.Type), hit);
     }
 
     public void ApplyChill()

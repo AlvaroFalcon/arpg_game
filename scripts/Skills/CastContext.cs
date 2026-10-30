@@ -48,6 +48,24 @@ public sealed class CastContext
     /// own Damage stat resolution.</summary>
     public float DamageMultiplier = 1f;
 
+    /// <summary>Multiplier on every resource cost of this cast: the skill's level
+    /// (<see cref="SkillInstance.LevelCostMultiplier"/>) times any upgrade that makes it cheaper.</summary>
+    public float CostMultiplier = 1f;
+
+    // --- Curses (CurseSkillDefinition) ---
+
+    /// <summary>Enemies a curse jumps to when its bearer dies.</summary>
+    public int CurseSpread;
+
+    /// <summary>Added to the curse's potency (resistance lowered, % slow).</summary>
+    public float CursePotencyBonus;
+
+    /// <summary>% more damage taken by enemies under this curse (Elements upgrades).</summary>
+    public float CurseVulnerability;
+
+    /// <summary>Extra enemies a single-target curse marks (nearest to the point first).</summary>
+    public int CurseExtraTargets;
+
     /// <summary>Radius multiplier for area archetypes (nova, burst, orbit).</summary>
     public float AreaMultiplier = 1f;
 
@@ -73,9 +91,17 @@ public sealed class CastContext
 
     public float IgniteChanceBonus;
 
-    /// <summary>Multiplier on ignite damage (Warlock's Hellfire).</summary>
+    /// <summary>Multiplier on ignite damage (supports, skill upgrades).</summary>
     public float IgniteDamageMultiplier = 1f;
     public float ShockChanceBonus;
+    public float FreezeChanceBonus;
+
+    /// <summary>Chance hits make the target bleed (physical damage over time).</summary>
+    public float BleedChance;
+
+    /// <summary>Kills by this cast burst for this fraction of the hit (0 = none), in <see cref="KillBlastRadius"/> px.</summary>
+    public float KillBlastFraction;
+    public float KillBlastRadius = 70f;
     public bool CanInflictAilments = true;
 
     /// <summary>World point a targeted archetype lands on (meteor). Defaults to

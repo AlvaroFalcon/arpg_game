@@ -24,6 +24,9 @@ public static class GemLoot
     /// <summary>Adds the gem to the character; returns the toast text and any
     /// gold it was converted into (the caller credits the player's wallet, which
     /// is the source of truth for gold while an activity runs).</summary>
+    /// <summary>Gold for a copy of a skill gem already owned: a third of its next level, at least 25.</summary>
+    public static long DuplicateGold(int level) => System.Math.Max(25L, Skills.SkillTrees.LevelCost(level) / 3);
+
     public static (string Text, long Gold) Collect(CharacterData c, string id, bool support)
     {
         string name = NameOf(id, support);
@@ -45,9 +48,9 @@ public static class GemLoot
             return ($"New skill gem: {name} — equip it in the skills panel (K)", 0);
         }
 
-        // Worth roughly two levels of a low gem, a fraction of one late.
-        float xp = GemData.ExperienceToNext(best.Level) * 0.6f + 120f;
-        bool levelled = best.AddExperience(xp);
-        return (levelled ? $"{name} absorbed → level {best.Level}" : $"{name} absorbed (+gem experience)", 0);
+        // A copy of a skill you own becomes gold toward its next level at Escaldón
+        // (gems no longer learn from use or copies: docs/design/skills.md -> "Skill upgrade trees").
+        long gold = DuplicateGold(best.Level);
+        return ($"{name} (duplicate) → {gold:N0} gold", gold);
     }
 }

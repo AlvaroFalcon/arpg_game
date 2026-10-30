@@ -48,7 +48,17 @@ public sealed class SkillInstance
 
     public const float DamagePerLevel = 0.12f;
 
+    /// <summary>Each level past 1 also costs this much more mana (docs/design/skills.md ->
+    /// "Mana and cooldowns, 2026-10-30"): a level-20 gem costs about twice a level-1 one.</summary>
+    public const float CostPerLevel = 0.05f;
+
     public float LevelDamageMultiplier => 1f + DamagePerLevel * (Level - 1);
+
+    public float LevelCostMultiplier => 1f + CostPerLevel * (Level - 1);
+
+    /// <summary>The skill's upgrade-tree nodes as cast transforms (docs/design/skills.md ->
+    /// "Skill upgrade trees"), applied with the supports on every cast.</summary>
+    public List<CastModifier> TreeModifiers { get; } = new();
 
     public SkillInstance(SkillDefinition definition)
     {

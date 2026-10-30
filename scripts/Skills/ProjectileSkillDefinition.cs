@@ -102,4 +102,18 @@ public partial class ProjectileSkillDefinition : SkillDefinition
 
     [Export]
     public bool OnHitExplode;
+
+    /// <summary>Radius (px) of the blast where the projectile lands — on an enemy or a
+    /// wall — hitting everything around for <see cref="ExplodeDamageFraction"/> of its
+    /// damage (Fireball, docs/design/skills.md -> "Fireball and Spark, 2026-10-30"). 0 = none.</summary>
+    [Export]
+    public float ExplodeRadius;
+
+    [Export]
+    public float ExplodeDamageFraction = 0.5f;
+
+    /// <summary>Sideways jag (px) of a lightning-like flight: the projectile zigzags
+    /// along its heading through random knots and leaves a short crackling trail (Spark). 0 = straight.</summary>
+    [Export]
+    public float Zigzag;
 }

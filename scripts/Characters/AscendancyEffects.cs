@@ -13,8 +13,10 @@ namespace ArpgGame.Characters;
 /// Runtime behaviour of ascendancy nodes — docs/design/classes.md ->
 /// "Ascendancies". Stat-only nodes are applied as modifiers; the rest are
 /// hooks: an <see cref="IDamageHook"/> for conditional damage (executions,
-/// marks, block, evasion, iaido), listeners on hits, kills, casts and dodges,
-/// and a few per-frame effects (consecration, renewal, time field, familiar).
+/// marks, block, iaido), listeners on hits and kills, and a few per-frame effects
+/// (consecration, renewal, undying). The six evolutions of 2026-10-30 reuse the old
+/// behaviour ids where a node moved (war_hex now belongs to the Witch, asc_* to the
+/// Elementalist); the Witch's Contagion lives with the curses (Combat/Curses.cs).
 /// Everything is torn down by <see cref="Strip"/> so a respec or a rebuild
 /// never leaves a hook behind.
 /// </summary>
@@ -28,10 +30,7 @@ public partial class AscendancyEffects : Node, IDamageHook
     // Timers / state.
     private double _lastOutgoingHit = -100;
     private ulong _iaidoFrame;
-    private double _shadowstepUntil;
     private bool _parryReady;
-    private float _warcryTimer;
-    private bool _warcryReady;
     private int _overloadStacks;
     private float _overloadTimer;
     private DamageType? _lastElement;
@@ -39,9 +38,6 @@ public partial class AscendancyEffects : Node, IDamageHook
     private float _stillTime;
     private Vector2 _consecratedAt;
     private float _consecrationLeft;
-    private float _tick;
-    private float _familiarTimer;
-    private Node2D? _familiar;
 
     public bool Has(string id) => _nodes.Contains(id);
 
@@ -79,24 +75,8 @@ public partial class AscendancyEffects : Node, IDamageHook
         if (build.Resource is { } res)
         {
             res.BonusMax = Has("barb_rage_cap") ? 20 : 0;
-            res.RageGrantsAttackSpeed = Has("barb_wrath");
+            res.RageGrantsAttackSpeed = false;
             res.Invalidate();
-        }
-
-        if (Has("sage_echo"))
-        {
-            build.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(21, c =>
-            {
-                if ((c.Tags & SkillTags.Spell) != 0)
-                {
-                    c.Repeats += 1;
-                }
-            }));
-        }
-
-        if (Has("war_burn"))
-        {
-            build.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(30, c => c.IgniteDamageMultiplier *= 1.5f));
         }
 
         if (_nodes.Count > 0 && !_hooked)
@@ -106,17 +86,6 @@ public partial class AscendancyEffects : Node, IDamageHook
             Health.AnyHitResolved += OnAnyHit;
             Health.AnyHitNegated += OnHitNegated;
             Enemy.AnyKilled += OnKill;
-            build.SkillUser.CastFired += OnCast;
-            if (Player.Dodge is { } dodge)
-            {
-                dodge.Dodged += OnDodged;
-            }
-        }
-
-        if (Has("war_familiar") && _familiar is null)
-        {
-            _familiar = new Familiar();
-            Player.AddChild(_familiar);
         }
     }
 
@@ -130,19 +99,7 @@ public partial class AscendancyEffects : Node, IDamageHook
             Health.AnyHitResolved -= OnAnyHit;
             Health.AnyHitNegated -= OnHitNegated;
             Enemy.AnyKilled -= OnKill;
-            build.SkillUser.CastFired -= OnCast;
-            if (build.Player.Dodge is { } dodge)
-            {
-                dodge.Dodged -= OnDodged;
-            }
         }
-
-        if (_familiar is not null && IsInstanceValid(_familiar))
-        {
-            _familiar.QueueFree();
-        }
-
-        _familiar = null;
     }
 
     public override void _ExitTree()
@@ -164,7 +121,6 @@ public partial class AscendancyEffects : Node, IDamageHook
         float lifeFrac = target.GetParent().GetNodeOrNull<ActorStats>("Stats") is { Life: { } l } && l.Max > 0 ? l.Current / l.Max : 1f;
         double now = Now;
 
-        if (Has("assassin_executioner") && lifeFrac < 0.35f) m *= 1.4f;
         if (Has("assassin_mark") && enemy is { } e && (e.Rarity >= MonsterRarity.Rare || e.IsBoss)) m *= 1.3f;
         if (Has("sam_bushido") && Player.Stats.Life is { } pl && pl.Current >= pl.Max * 0.9f) m *= 1.2f;
         if (Has("pal_aura") && target.GetParent<Node2D>().GlobalPosition.DistanceTo(Player.GlobalPosition) < 140f) m *= 1.12f;
@@ -176,9 +132,7 @@ public partial class AscendancyEffects : Node, IDamageHook
             _iaidoFrame = Engine.GetPhysicsFrames();
         }
 
-        if (Has("ninja_shadowstep") && now < _shadowstepUntil) m *= 1.6f;
         if (Has("sam_parry") && _parryReady) m *= 2f;
-        if (Has("barb_warcry") && _warcryReady && (payload.Tags & SkillTags.Melee) != 0) m *= 1.8f;
 
         if (Has("asc_overload") && _overloadStacks > 0 && IsElemental(payload)) m *= 1f + 0.08f * _overloadStacks;
         return m;
@@ -192,12 +146,6 @@ public partial class AscendancyEffects : Node, IDamageHook
             return 0f;
         }
 
-        if (Has("ninja_evasive") && _rng.Randf() < 0.15f)
-        {
-            FloatingText(self.GetParent<Node2D>().GlobalPosition, "Evade", new Color(0.6f, 1f, 0.7f));
-            return 0f;
-        }
-
         return 1f;
     }
 
@@ -205,7 +153,7 @@ public partial class AscendancyEffects : Node, IDamageHook
     {
         foreach ((DamageType t, float _) in p.Components)
         {
-            if (t != DamageType.Physical)
+            if (t is DamageType.Fire or DamageType.Cold or DamageType.Lightning)
             {
                 return true;
             }
@@ -225,27 +173,7 @@ public partial class AscendancyEffects : Node, IDamageHook
 
         _lastOutgoingHit = Now;
         _parryReady = false;
-        if (Engine.GetPhysicsFrames() != _iaidoFrame)
-        {
-            _shadowstepUntil = 0;
-        }
-
-        if ((payload.Tags & SkillTags.Melee) != 0)
-        {
-            _warcryReady = false;
-        }
-
         var ailments = target.GetParent().GetNodeOrNull<Ailments>("Ailments");
-        if (Has("assassin_venom") && payload.IsCrit && ailments is not null)
-        {
-            bool toxic = Has("assassin_toxic");
-            ailments.AddPoison(taken * 0.6f * (toxic ? 1.5f : 1f), toxic ? 3f : 2f, Player);
-        }
-
-        if (Has("barb_leech") && _build.Resource is { Value: > 15 })
-        {
-            Player.Health?.Heal(taken * 0.03f);
-        }
 
         if (Has("war_hex") && ailments is not null)
         {
@@ -278,7 +206,7 @@ public partial class AscendancyEffects : Node, IDamageHook
         if (Has("pal_radiance") && (payload.Tags & SkillTags.Melee) != 0 && _radianceCooldown <= 0f)
         {
             _radianceCooldown = 0.25f;
-            var hit = new HitProfile { Damage = taken * 0.3f, Type = DamageType.Fire, Source = Player, Faction = Faction.Player, Tags = SkillTags.Fire | SkillTags.Area };
+            var hit = new HitProfile { Damage = taken * 0.3f, Type = DamageType.Holy, Source = Player, Faction = Faction.Player, Tags = SkillTags.Holy | SkillTags.Area };
             AreaBurst.Spawn(GetTree().CurrentScene, target.GetParent<Node2D>().GlobalPosition, 60f, 0f, new Color(1f, 0.9f, 0.5f), hit);
         }
     }
@@ -307,11 +235,6 @@ public partial class AscendancyEffects : Node, IDamageHook
         }
 
         ActorStats stats = Player.Stats;
-        if (Has("assassin_predator") && enemy.Rarity >= MonsterRarity.Rare)
-        {
-            Player.Health?.Heal((stats.Life?.Max ?? 0f) * 0.25f);
-        }
-
         if (Has("war_siphon"))
         {
             Player.Health?.Heal((stats.Life?.Max ?? 0f) * 0.03f);
@@ -319,60 +242,6 @@ public partial class AscendancyEffects : Node, IDamageHook
             {
                 mana.Current = Mathf.Min(mana.Max, mana.Current + mana.Max * 0.03f);
             }
-        }
-
-        if (Has("war_decay") && _rng.Randf() < 0.25f)
-        {
-            var hit = new HitProfile { Damage = (enemy.Stats.Life?.Max ?? 0f) * 0.1f, Type = DamageType.Physical, Source = Player, Faction = Faction.Player, Tags = SkillTags.Area };
-            AreaBurst.SpawnOnKill(GetTree().CurrentScene, enemy.GlobalPosition, 70f, new Color(0.7f, 0.4f, 1f), hit);
-        }
-
-        if (Has("ninja_fleet"))
-        {
-            Player.Dodge?.AdvanceRecharge(0.1f);
-        }
-    }
-
-    private void OnCast(int slot)
-    {
-        if (_build is null || !Has("barb_fissure") || _build.SkillUser.GetSkill((SkillSlotId)slot) is not { } skill)
-        {
-            return;
-        }
-
-        SkillTags tags = skill.Definition.Tags;
-        if ((tags & SkillTags.Melee) == 0 || (tags & SkillTags.Area) == 0)
-        {
-            return;
-        }
-
-        float damage = Stat.ComputeFormula(skill.Definition.BaseDamage, Player.Stats.GetModifiers(new ModifierQuery(StatId.Damage, tags)), skill.Definition.AddedDamageEffectiveness) * skill.LevelDamageMultiplier * 0.6f;
-        Vector2 aim = Player.GlobalPosition.DirectionTo(Player.GetGlobalMousePosition());
-        if (Core.GameSettings.Get(this)?.AutoAim == true && CombatQuery.NearestHostile(GetTree(), Player.GlobalPosition, Faction.Player, 500f, requireSight: true) is { } t)
-        {
-            aim = Player.GlobalPosition.DirectionTo(t.GlobalPosition);
-        }
-
-        var hit = new HitProfile { Damage = damage, Type = DamageType.Physical, Source = Player, Faction = Faction.Player, Tags = tags, KnockbackForce = 80f };
-        LineStrike.Spawn(GetTree().CurrentScene, Player.GlobalPosition, aim, 240f, 50f, 0.25f, hit);
-    }
-
-    private void OnDodged()
-    {
-        if (_build is null)
-        {
-            return;
-        }
-
-        if (Has("ninja_shadowstep"))
-        {
-            _shadowstepUntil = Now + 2.0;
-        }
-
-        if (Has("ninja_clone"))
-        {
-            float dmg = 25f + 8f * _build.Data.Level;
-            ShadowClone.Spawn(GetTree().CurrentScene, Player, dmg);
         }
     }
 
@@ -396,20 +265,16 @@ public partial class AscendancyEffects : Node, IDamageHook
             }
         }
 
-        if (Has("barb_warcry") && !_warcryReady)
-        {
-            _warcryTimer += dt;
-            if (_warcryTimer >= 8f)
-            {
-                _warcryTimer = 0f;
-                _warcryReady = true;
-            }
-        }
-
         ActorStats stats = Player.Stats;
         if (Has("pal_renewal"))
         {
             Player.Health?.Heal((stats.Life?.Max ?? 0f) * 0.015f * dt);
+        }
+
+        if (Has("jugg_undying") && stats.Life is { Max: > 0f } life)
+        {
+            float rate = life.Current < life.Max * 0.35f ? 0.04f : 0.02f;
+            Player.Health?.Heal(life.Max * rate * dt);
         }
 
         if (Has("pal_consecrate"))
@@ -433,34 +298,6 @@ public partial class AscendancyEffects : Node, IDamageHook
                 }
             }
         }
-
-        _tick -= dt;
-        if (_tick <= 0f)
-        {
-            _tick = 0.25f;
-            if (Has("sage_time"))
-            {
-                foreach (Health h in CombatQuery.HostilesInRadius(GetTree(), Player.GlobalPosition, 180f, Faction.Player))
-                {
-                    h.GetParent().GetNodeOrNull<Ailments>("Ailments")?.ApplyChill();
-                }
-            }
-        }
-
-        if (Has("war_familiar") && _familiar is not null)
-        {
-            _familiarTimer -= dt;
-            if (_familiarTimer <= 0f && CombatQuery.NearestHostile(GetTree(), Player.GlobalPosition, Faction.Player, 500f, requireSight: true) is { } target)
-            {
-                _familiarTimer = 1f;
-                var tags = SkillTags.Spell | SkillTags.Projectile;
-                float damage = Stat.ComputeFormula(8f + 2.2f * _build.Data.Level, stats.GetModifiers(new ModifierQuery(StatId.Damage, tags)));
-                var hit = new HitProfile { Damage = damage, Type = DamageType.Physical, Source = Player, Faction = Faction.Player, Tags = tags };
-                Vector2 from = _familiar.GlobalPosition;
-                var frames = GD.Load<SpriteFrames>("res://assets/sprites/projectiles/enemy_bolt.tres");
-                BossBullet.Spawn(GetTree().CurrentScene, from, from.DirectionTo(target.GlobalPosition) * 420f, hit, frames, 1.6f);
-            }
-        }
     }
 
     private void FloatingText(Vector2 at, string text, Color color)
@@ -474,25 +311,6 @@ public partial class AscendancyEffects : Node, IDamageHook
         tween.TweenProperty(label, "position:y", label.Position.Y - 24f, 0.6f);
         tween.Parallel().TweenProperty(label, "modulate:a", 0f, 0.6f);
         tween.TweenCallback(Callable.From(label.QueueFree));
-    }
-
-    /// <summary>The Warlock's familiar: a wisp circling the player.</summary>
-    private sealed partial class Familiar : Node2D
-    {
-        private float _t;
-
-        public override void _Process(double delta)
-        {
-            _t += (float)delta;
-            Position = new Vector2(Mathf.Cos(_t * 2.2f), Mathf.Sin(_t * 2.2f) * 0.6f) * 36f + new Vector2(0f, -10f);
-            QueueRedraw();
-        }
-
-        public override void _Draw()
-        {
-            DrawCircle(Vector2.Zero, 7f, new Color(0.6f, 0.25f, 1f, 0.5f));
-            DrawCircle(Vector2.Zero, 4f, new Color(0.9f, 0.7f, 1f));
-        }
     }
 }
 
@@ -527,54 +345,5 @@ public partial class ConsecratedGround : Node2D
         float a = Mathf.Min(1f, _left / 0.5f) * 0.25f;
         DrawCircle(Vector2.Zero, _radius, new Color(1f, 0.9f, 0.5f, a));
         DrawArc(Vector2.Zero, _radius, 0f, Mathf.Tau, 40, new Color(1f, 0.95f, 0.6f, a * 3f), 2f);
-    }
-}
-
-/// <summary>Ninja shadow clone: taunts nearby enemies (decoy group), then explodes.</summary>
-public partial class ShadowClone : Node2D
-{
-    private float _left = 2.5f;
-    private float _damage;
-    private Node2D _owner = null!;
-    private Sprite2D? _sprite;
-
-    public static void Spawn(Node parent, Player owner, float damage)
-    {
-        var clone = new ShadowClone { _damage = damage, _owner = owner, ZIndex = 0 };
-        if (owner.GetNodeOrNull<AnimatedSprite2D>("Sprite") is { SpriteFrames: { } frames } src)
-        {
-            clone._sprite = new Sprite2D
-            {
-                Texture = frames.GetFrameTexture(src.Animation, src.Frame),
-                Scale = src.Scale,
-                FlipH = src.FlipH,
-                Position = src.Position,
-                Modulate = new Color(0.4f, 0.3f, 0.6f, 0.75f),
-                TextureFilter = TextureFilterEnum.Nearest,
-            };
-            clone.AddChild(clone._sprite);
-        }
-
-        parent.AddChild(clone);
-        clone.GlobalPosition = owner.GlobalPosition;
-        clone.AddToGroup(Enemy.DecoyGroup);
-    }
-
-    public override void _Process(double delta)
-    {
-        _left -= (float)delta;
-        if (_sprite is not null)
-        {
-            _sprite.Modulate = new Color(0.4f, 0.3f, 0.6f, 0.4f + 0.35f * Mathf.Abs(Mathf.Sin(_left * 6f)));
-        }
-
-        if (_left > 0f)
-        {
-            return;
-        }
-
-        var hit = new HitProfile { Damage = _damage, Type = DamageType.Physical, Source = IsInstanceValid(_owner) ? _owner : null, Faction = Faction.Player, Tags = SkillTags.Area, KnockbackForce = 160f };
-        AreaBurst.Spawn(GetTree().CurrentScene, GlobalPosition, 100f, 0f, new Color(0.5f, 0.3f, 0.8f), hit);
-        QueueFree();
     }
 }
