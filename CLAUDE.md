@@ -123,7 +123,7 @@ It auto-detects the Mono/.NET Godot binary (checks `$GODOT_BIN`, `godot4`/`godot
 
 - `graphify-out/` holds a knowledge graph of the code (tree-sitter AST, free) and the design docs (LLM-extracted, cached in `graphify-out/cache/`), built by the project skill `.claude/skills/graphify/` (`/graphify`). The CLI is the PyPI package `graphifyy` (`pip install graphifyy`; cloud sessions install it in the environment's setup script; the skill installs it itself if missing). What it skips: `.graphifyignore` (art, screenshots, devlog).
 - For cross-cutting questions ("what touches `CastContext`?", "how does a curse reach `Health`?") try `graphify query "<question>"`, `graphify path "A" "B"` or `graphify explain "X"` before a wide grep, then read only the lines it points at. `graphify-out/GRAPH_REPORT.md` is the architecture overview (god nodes, communities). The graph can lag behind the code: trust the source when they disagree.
-- After code changes: `graphify update .` (AST only, no LLM cost) and commit `graphify-out/`. After design-doc changes: `/graphify . --update` (re-extracts only the changed docs). `graph.json` is rewritten whole on every build, so its large diffs in a PR are expected.
+- `graph.json`/`graph.html` (~10 MB, rewritten whole on every build) and the AST cache are git-ignored: **on a fresh checkout run `graphify update .` first** (~10 s, no LLM) — it rebuilds the whole graph, docs included, from the committed `graphify-out/cache/semantic/`. After code changes run it again; after design-doc changes run `/graphify . --update` (re-extracts only the changed docs) and commit `graphify-out/` (report, manifest, semantic cache).
 
 ## MCP tools available
 
