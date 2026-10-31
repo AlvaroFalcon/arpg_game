@@ -22,7 +22,7 @@ public partial class SkillsPanel : ModalPanel
 {
     public Player Player { get; set; } = null!;
 
-    protected override string Title => "Skills & Supports";
+    protected override string Title => Features.SupportGems ? "Skills & Supports" : "Skills";
 
     private VBoxContainer _slots = null!;
     private Label _hint = null!;
@@ -79,7 +79,7 @@ public partial class SkillsPanel : ModalPanel
             skillButton.GuiInput += e => RightClickClear(e, slotIndex, -1);
             row.AddChild(skillButton);
 
-            for (int s = 0; s < c.SupportSockets; s++)
+            for (int s = 0; s < (Features.SupportGems ? c.SupportSockets : 0); s++)
             {
                 int socket = s;
                 GemData? sup = s < slot.SupportUids.Count ? c.FindGem(slot.SupportUids[s]) : null;
@@ -96,7 +96,7 @@ public partial class SkillsPanel : ModalPanel
         bool supports = _targetSocket >= 0 && targetSkill is not null;
         _hint.Text = supports
             ? $"Socketing a support into {CharacterData.SlotLabels[_targetSlot]} ({targetSkill!.DisplayName}) — only supports that fit it are listed. Right-click a socket to empty it."
-            : $"Choosing the skill for {CharacterData.SlotLabels[_targetSlot]}. Escaldón raises skill levels for gold; supports never level. Right-click to empty.";
+            : $"Choosing the skill for {CharacterData.SlotLabels[_targetSlot]}. Escaldón raises skill levels for gold" + (Features.SupportGems ? "; supports never level" : "") + ". Right-click to empty.";
 
         ClearChildren(_gems);
         IEnumerable<GemData> list = c.Gems.Where(g => g.IsSupport == supports).OrderBy(g => GemName(g)).ThenByDescending(g => g.Level);

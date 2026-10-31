@@ -37,7 +37,17 @@ Godot game project. This file orients any agent (or future-you) working here.
 - Quitting a scene that used the NavigationServer can emit `FATAL: Condition "!rc_owner" is true.` at shutdown and leave the process hanging *after* everything ran successfully. Read the captured stdout to judge the result; kill the leftover process rather than treating the hang as a failure.
 
 - **Linux (cloud sessions):** the same toolchain works on Linux. Godot 4.1.1 mono for Linux unzipped anywhere (e.g. `/opt/godot/...`), .NET 6 via `dotnet-install.sh --channel 6.0 --install-dir ~/.dotnet`, and `GODOT_BIN` pointed at the real binary. A fresh checkout must be imported once with `"$GODOT_BIN" --headless --path . --editor --quit` (with `DOTNET_ROOT`/`PATH` set — without them the editor crashes on a missing hostfxr). Re-run that import after adding a new C# script that a scene references for the first time, and after re-exporting art (changed PNGs are only re-imported by the editor). Windowed captures work under Xvfb with the compatibility renderer: `xvfb-run -a -s "-screen 0 1280x720x24" "$GODOT_BIN" --path . --rendering-driver opengl3 res://scenes/tools/RunCapture.tscn -- --out=/tmp/shots`.
+- **Cloud sessions without .NET 6 (use this whenever `~/.dotnet` has no 6.0 SDK):** the container image ships only the .NET 8 SDK/runtime at `/usr/lib/dotnet`, and `dotnet-install.sh` can't be downloaded (the proxy refuses `dot.net`). Use .NET 8 instead: move `global.json` aside for the build/test command and **always put it back** (never commit its deletion), and run Godot on the 8 runtime with `DOTNET_ROOT=/usr/lib/dotnet DOTNET_ROLL_FORWARD=Major`. Verified on 2026-10-31 (the import, `dotnet build` and all 19 suites):
+  ```bash
+  mv global.json /tmp/global.json.bak; GODOT_BIN=/opt/godot/Godot_v4.1.1-stable_mono_linux_x86_64/Godot_v4.1.1-stable_mono_linux.x86_64 DOTNET_ROOT=/usr/lib/dotnet DOTNET_ROLL_FORWARD=Major ./scripts/run_all_tests.sh; mv /tmp/global.json.bak global.json
+  ```
+  Known side effect: on the 8 runtime Godot 4.1.1's C# bridge sometimes fails a scene change with `InvalidOperationException: Handle is not initialized` / `FATAL: gchandle.is_released()` and crashes (signal 4), seen in `CoopRealityTest` when the guest leaves. It happens on clean `main` too: re-run the suite before blaming your change. `SkillReworkTest`'s `SPARK-PIERCES-ONE` is also occasionally flaky.
 - **`pkill -f` patterns match your own shell.** A pattern like `pkill -f "Godot_v4"` also matches the bash command line that contains it and kills the very shell running it. Use a bracket trick: `pkill -9 -f "[G]odot_v4.1.1"`.
+
+## Git rules
+
+- **NEVER push directly to `main`** — not a commit, not a merge, not a tag — unless the owner explicitly says so for that specific push. Work goes on a branch and reaches `main` through a pull request the owner merges. (Every push to `main` publishes a release.)
+- Open PRs with the `create-pr` skill (`.claude/skills/create-pr/`): it fixes the description format (what's new, what changed, what to test, acceptance criteria).
 
 ## Scripts
 

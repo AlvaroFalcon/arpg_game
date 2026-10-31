@@ -583,8 +583,10 @@ public partial class EndgameSmokeTest : Node2D
     private void CharacterChecks()
     {
         CharacterData c = CharacterData.Create("Test", "warrior");
-        Check("CHAR-CREATE", c.Passives.Contains("start_warrior") && c.Gems.Count == 2 && c.Loadout[0].SkillUid is not null && c.Loadout[0].SupportUids.Count == 1,
-            $"{c.Gems.Count} gems, loadout0 skill={c.FindGem(c.Loadout[0].SkillUid)?.Id}");
+        Check("CHAR-CREATE", c.Passives.Contains("start_warrior") && c.Gems.Count == 1 && c.Loadout[0].SkillUid is not null && c.Loadout[0].SupportUids.Count == 0,
+            $"{c.Gems.Count} gems, loadout0 skill={c.FindGem(c.Loadout[0].SkillUid)?.Id}, {c.Loadout[0].SupportUids.Count} supports (parked)");
+        Check("SUPPORTS-PARKED", !Features.SupportGems && !GemShop.Offers.Any(o => o.Support) && GemShop.Catalog.Any(o => o.Support),
+            "no support on sale at Odran's; the catalog still knows them");
 
         Check("SHARD-SPEND", c.TrySpendShard(1) && !c.TrySpendShard(3), "tier 1 free, tier 3 needs a shard");
         c.AddShards(3, 2);
@@ -945,10 +947,12 @@ public partial class EndgameSmokeTest : Node2D
 
         CharacterData c = CharacterData.Create("Brick", "warrior");
         c.Level = 10;
+        // An old save's socketed support: parked supports do nothing.
+        c.Loadout[0].SupportUids.Add(c.AddGem(ClassCatalog.Get("warrior").StartingSupport, true).Uid);
         CharacterBuild build = CharacterBuild.Attach(player, c);
         await Frames(2);
         SkillInstance? slot1 = player.SkillUser.GetSkill(SkillSlotId.Lmb);
-        bool skillOk = slot1 is not null && slot1.Definition.DisplayName.Length > 0 && slot1.Attached.Count == 1;
+        bool skillOk = slot1 is not null && slot1.Definition.DisplayName.Length > 0 && slot1.Attached.Count == 0;
         Check("CLASS-BUILD", skillOk && player.Stats.Life.Max > baseLife && build.Resource?.Kind == ClassResourceKind.Rage,
             $"slot1={slot1?.Definition.DisplayName} supports={slot1?.Attached.Count}, life {baseLife:0} → {player.Stats.Life.Max:0}, resource {build.Resource?.Kind}");
 
@@ -1780,7 +1784,16 @@ public partial class EndgameSmokeTest : Node2D
             $"inventory layer {inv.Layer}, top-right corner hidden={townHidden}, menu bar clear of the panel={menuClear}, back in place after closing={restored} (town visible={town?.Target.Visible}, menu shift={menuBar?.AvoidShift}, blockers open={UI.HudLayout.OpenBlockers().Count})");
 
         await TooltipChecks(hideout);
-        await GemShopChecks(hideout);
+        // The tab's support rules stay covered while supports are parked.
+        Features.SupportGems = true;
+        try
+        {
+            await GemShopChecks(hideout);
+        }
+        finally
+        {
+            Features.SupportGems = false;
+        }
         await EscaldonChecks(hideout);
 
         // Walls block, and click-to-move can path from the plaza into the smithy.

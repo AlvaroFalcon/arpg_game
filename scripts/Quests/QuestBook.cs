@@ -186,7 +186,7 @@ public sealed class QuestBook
                 sink.Gold(JewelFallbackGold * reward.Amount);
                 return $"+{JewelFallbackGold * reward.Amount:N0} gold";
             case RewardKind.Gem:
-                bool support = GemShop.Offers.Any(o => o.Support && o.Id == reward.Id);
+                bool support = GemShop.Catalog.Any(o => o.Support && o.Id == reward.Id);
                 sink.Gem(reward.Id, support);
                 return GemLoot.NameOf(reward.Id, support);
             default:

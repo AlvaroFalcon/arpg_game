@@ -99,6 +99,9 @@ public partial class GemShopView : VBoxContainer
             top.AddChild(b);
         }
 
+        // With supports parked there is nothing to toggle between.
+        _skillsKind.Visible = _supportsKind.Visible = Features.SupportGems;
+
         top.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         _only = new CheckBox { Text = "Only what I can buy", FocusMode = FocusModeEnum.None };
         _only.AddThemeFontSizeOverride("font_size", 14);

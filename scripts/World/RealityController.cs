@@ -1016,7 +1016,7 @@ public partial class RealityController : Node2D, IPickupHandler
 
     public void DropGem(Vector2 at, Player? owner = null)
     {
-        bool support = _rng.Randf() < 0.6f;
+        bool support = Features.SupportGems && _rng.Randf() < 0.6f;
         string id = support
             ? UpgradeCatalog.Supports[_rng.RandiRange(0, UpgradeCatalog.Supports.Count - 1)].Id
             : UpgradeCatalog.Skills[_rng.RandiRange(0, UpgradeCatalog.Skills.Count - 1)].Id;

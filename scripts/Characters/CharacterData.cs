@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ArpgGame.Core;
 using ArpgGame.Items;
 using ArpgGame.Quests;
 
@@ -216,9 +217,12 @@ public sealed class CharacterData
         var data = new CharacterData { Name = name, ClassId = cls.Id };
         data.Passives.Add(cls.TreeStart);
         GemData skill = data.AddGem(cls.StartingSkill, false);
-        GemData support = data.AddGem(cls.StartingSupport, true);
         data.Loadout[0].SkillUid = skill.Uid;
-        data.Loadout[0].SupportUids.Add(support.Uid);
+        if (Features.SupportGems)
+        {
+            data.Loadout[0].SupportUids.Add(data.AddGem(cls.StartingSupport, true).Uid);
+        }
+
         return data;
     }
 }

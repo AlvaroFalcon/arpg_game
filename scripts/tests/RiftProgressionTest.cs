@@ -210,6 +210,8 @@ public partial class RiftProgressionTest : Node2D
         Check("ORDINARY-ROW-HAS-A-SKILL-CARD", everyRowHasSkill, "every ordinary row shows a new skill or a skill level");
         Check("ORDINARY-MOSTLY-SKILLS-AND-POWER-UPS", skillShare > 0.4f && powerShare > 0.25f && skillShare + powerShare > 0.8f,
             $"skills {skillShare:P0}, power-ups {powerShare:P0}, supports {categories.GetValueOrDefault(OfferCategory.Support) / (float)total:P0} of {total} cards");
+        Check("NO-SUPPORT-CARDS-WHILE-PARKED", Features.SupportGems || categories.GetValueOrDefault(OfferCategory.Support) == 0 && !build.ApplyKey("g:pierce:fireball"),
+            $"{categories.GetValueOrDefault(OfferCategory.Support)} support cards, a support key refused");
         bool noMana = Enumerable.Range(0, 200).SelectMany(_ => build.RollOffers(7, _rng)).All(o => o.Id is not ("mana_regen" or "max_mana" or "mana_cost"));
         Check("NO-MANA-CARDS-IN-RIFT", noMana, "no mana power-up in 200 rows (skills cost nothing in the Rift)");
         player.QueueFree();

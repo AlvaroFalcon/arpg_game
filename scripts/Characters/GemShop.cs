@@ -51,8 +51,11 @@ public static class GemShop
         (14, new[] { "concentrated_effect", "elemental_focus", "brutality" }),
     };
 
-    /// <summary>Every offer: skills then supports, by unlock level, then name.</summary>
-    public static readonly IReadOnlyList<GemOffer> Offers = Build();
+    /// <summary>Every gem the tab knows: skills then supports, by unlock level, then name.</summary>
+    public static readonly IReadOnlyList<GemOffer> Catalog = Build();
+
+    /// <summary>What is on sale: the catalog, minus supports while <see cref="Features.SupportGems"/> is off.</summary>
+    public static IEnumerable<GemOffer> Offers => Catalog.Where(o => Features.SupportGems || !o.Support);
 
     private static List<GemOffer> Build()
     {
