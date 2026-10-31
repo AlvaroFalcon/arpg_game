@@ -44,6 +44,11 @@ Godot game project. This file orients any agent (or future-you) working here.
   Known side effect: on the 8 runtime Godot 4.1.1's C# bridge sometimes fails a scene change with `InvalidOperationException: Handle is not initialized` / `FATAL: gchandle.is_released()` and crashes (signal 4), seen in `CoopRealityTest` when the guest leaves. It happens on clean `main` too: re-run the suite before blaming your change. `SkillReworkTest`'s `SPARK-PIERCES-ONE` is also occasionally flaky.
 - **`pkill -f` patterns match your own shell.** A pattern like `pkill -f "Godot_v4"` also matches the bash command line that contains it and kills the very shell running it. Use a bracket trick: `pkill -9 -f "[G]odot_v4.1.1"`.
 
+## Git rules
+
+- **NEVER push directly to `main`** — not a commit, not a merge, not a tag — unless the owner explicitly says so for that specific push. Work goes on a branch and reaches `main` through a pull request the owner merges. (Every push to `main` publishes a release.)
+- Open PRs with the `create-pr` skill (`.claude/skills/create-pr/`): it fixes the description format (what's new, what changed, what to test, acceptance criteria).
+
 ## Scripts
 
 - `scripts/run_all_tests.sh [filter]` — builds C#, runs every `scenes/tests/*.tscn` headless (19 suites), judges by the `RESULT:` line (never by exit codes or absence of FAIL), kills leftovers between runs. Per-suite timeout defaults to 180 s (`TEST_TIMEOUT_S`) for the multi-process co-op tests; after building it runs `dotnet build-server shutdown`, because idle `VBCSCompiler` processes (~1 GB each) starved the multi-process tests until guests ran at 1 fps.
