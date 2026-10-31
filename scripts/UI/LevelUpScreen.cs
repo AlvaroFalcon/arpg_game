@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ArpgGame.Core;
 using ArpgGame.Progression;
 using ArpgGame.Run;
 
@@ -188,7 +189,7 @@ public partial class LevelUpScreen : CanvasLayer
         bool skillLess = !Build.Skills.Any();
         _title.Text = skillLess ? "Choose your first skill" : "Start of the run — choose a skill card";
         SetHint(skillLess
-            ? "Your build grows from here: every level adds a skill, a support or a power-up."
+            ? (Features.SupportGems ? "Your build grows from here: every level adds a skill, a support or a power-up." : "Your build grows from here: every level adds a skill or a power-up.")
             : "Your skills start at level 1 here. Learn a new one or level one up.  (1 / 2 / 3)");
         _buildSummary.Text = skillLess ? "" : BuildSummary(Build);
         ShowRow(true);

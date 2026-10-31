@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ArpgGame.Core;
 using ArpgGame.Combat;
 using ArpgGame.Progression;
 using ArpgGame.Skills;
@@ -171,7 +172,7 @@ public partial class CharacterBuild : Node, IBuildContext
             }
 
             var instance = new SkillInstance(entry.Definition) { Level = gem.Level };
-            foreach (string uid in slot.SupportUids.Take(Data.SupportSockets))
+            foreach (string uid in Features.SupportGems ? slot.SupportUids.Take(Data.SupportSockets) : Enumerable.Empty<string>())
             {
                 if (Data.FindGem(uid) is { IsSupport: true } sup
                     && UpgradeCatalog.Supports.FirstOrDefault(s => s.Id == sup.Id) is { } def

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using ArpgGame.Core;
 using ArpgGame.Combat;
 using ArpgGame.Skills;
 using ArpgGame.Stats;
@@ -471,7 +472,7 @@ public partial class RunBuild : Node, IBuildContext
         List<Candidate> list = SkillCandidates(classOnly: false);
         foreach (SkillInstance skill in Skills)
         {
-            if (skill.Attached.Count >= MaxSupportsPerSkill)
+            if (!Features.SupportGems || skill.Attached.Count >= MaxSupportsPerSkill)
             {
                 continue;
             }
@@ -597,7 +598,7 @@ public partial class RunBuild : Node, IBuildContext
                 skill.Level++;
                 Log($"{skill.Definition.DisplayName} → Lv {skill.Level}");
                 return true;
-            case "g" when k.Length >= 3 && FindSkill(k[2]) is { } target && UpgradeCatalog.Supports.FirstOrDefault(x => x.Id == k[1]) is { } support:
+            case "g" when Features.SupportGems && k.Length >= 3 && FindSkill(k[2]) is { } target && UpgradeCatalog.Supports.FirstOrDefault(x => x.Id == k[1]) is { } support:
                 bool ok = AddSupport(target, support);
                 if (ok)
                 {

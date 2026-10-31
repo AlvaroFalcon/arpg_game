@@ -221,7 +221,7 @@ public partial class AutoplayBot
         }
 
         LoadoutSlot main = c.Loadout[0];
-        if (c.FindGem(main.SkillUid) is { } skillGem && UpgradeCatalog.Skills.FirstOrDefault(s => s.Id == skillGem.Id) is { } entry)
+        if (Features.SupportGems && c.FindGem(main.SkillUid) is { } skillGem && UpgradeCatalog.Skills.FirstOrDefault(s => s.Id == skillGem.Id) is { } entry)
         {
             foreach (string id in SupportPreference)
             {

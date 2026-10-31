@@ -2048,6 +2048,29 @@ Rejected: points from character level (would tie skill power to the character
 again), a single shared skill tree (no decisions per skill), and free respecs (the
 cost of a point is what makes the choice mean something; it is kept small).
 
-Open questions: whether supports should stay now that trees convert and multiply; a
+Open questions: a
 visual pass on the tree (icons per node); whether Escaldón should also sell respecs
 of a whole tree at once.
+
+### Support gems parked (2026-10-31) **[IMPLEMENTED]**
+
+The open question above, answered for now: the upgrade trees convert, multiply and
+add projectiles, so supports doubled up on the same job. They are **switched off, not
+deleted** — one flag, `Features.SupportGems` (`scripts/Core/Features.cs`), false:
+
+- No support drops in realities, none is on sale at Odran's (the Skills / Supports
+  toggle hides; `GemShop.Catalog` still lists them, `GemShop.Offers` is what is on
+  sale), no support card in the Survival Rift (and a `g:` card key is refused from
+  co-op peers), and a new character starts with its skill only.
+- The skills panel (K) shows no sockets and is titled "Skills".
+- Old saves keep their support gems and sockets untouched, but `CharacterBuild` does
+  not attach them, so they do nothing. The autoplay bot's reference character gets
+  none either (the monster life table should be recalibrated without them).
+- Everything else stays: `UpgradeCatalog.Supports`, `SupportGem`, `RunBuild.AddSupport`,
+  sockets in `CharacterData`, the network fields. The tests that cover the support
+  rules (GEMSHOP-*) switch the flag on around themselves; `SUPPORTS-PARKED`,
+  `NO-SUPPORT-CARDS-WHILE-PARKED` and `CLASS-BUILD` check the parked state.
+
+Bringing them back: set the flag to true and revisit the copy that was made
+conditional on it. A future workaround (e.g. supports as tree nodes, or as a rarer
+drop that adds a branch) is still open.
