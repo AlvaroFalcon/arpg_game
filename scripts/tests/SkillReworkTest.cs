@@ -94,14 +94,22 @@ public partial class SkillReworkTest : Node2D
         Node2D first = Dummy(at + new Vector2(160f, 0f));
         Node2D beside = Dummy(at + new Vector2(170f, 40f));
         await Seconds(0.1f);
-        Equip("fireball");
+        // Owner's sheet (2026-11-01): no burst by default; the tree's Impact Burst adds it.
+        SkillInstance fireball = Equip("fireball");
         Refill();
         CastFailure? fail = _skills.TryCast(SkillSlotId.Slot1, Vector2.Right);
         await Seconds(0.25f);
         bool slow = GetChildren().OfType<Projectile>().Any(p => p.Speed <= 360f);
         await Seconds(0.8f);
-        Check("FIREBALL-BURSTS", fail is null && slow && Missing(first) > 0f && Missing(beside) > 0f,
-            $"cast={fail?.ToString() ?? "ok"}, slow (≤360 px/s)={slow}, the target lost {Missing(first):0}, the one beside it {Missing(beside):0}");
+        float plainBeside = Missing(beside);
+        float plainFirst = Missing(first);
+        fireball.TreeModifiers.AddRange(SkillTrees.ModifiersFor("fireball", new System.Collections.Generic.Dictionary<string, int> { ["power"] = 2, ["blast"] = 2 }));
+        fireball.UseTimeRemaining = 0f;
+        Refill();
+        _skills.TryCast(SkillSlotId.Slot1, Vector2.Right);
+        await Seconds(1.05f);
+        Check("FIREBALL-BURSTS", fail is null && slow && plainFirst > 0f && plainBeside == 0f && Missing(beside) > 0f,
+            $"cast={fail?.ToString() ?? "ok"}, slow (≤360 px/s)={slow}, the target lost {plainFirst:0}, the one beside it {plainBeside:0} without the node, {Missing(beside):0} with Impact Burst");
         first.QueueFree();
         beside.QueueFree();
     }

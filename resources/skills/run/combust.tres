@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="AfflictionSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AfflictionSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_combust.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 12.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Combust"
+Description = "Detonates the ignites on every enemy in a circle: all the fire damage their stacks had left lands at once, 30% stronger."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.45
+Cooldown = 3.0
+Tags = 530
+Kind = 1
+Radius = 110.0
+MaxRange = 420.0
+Potency = 30.0
+Duration = 0.0
+Tint = Color(1, 0.5, 0.15, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

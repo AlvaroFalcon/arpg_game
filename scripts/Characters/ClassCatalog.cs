@@ -87,7 +87,7 @@ public static class ClassCatalog
             Mechanic = "Rage — dealing and taking hits fills Rage, which grants damage and reduces damage taken. It fades out of combat.",
             Strength = 22, Dexterity = 10, Intelligence = 8, BonusLife = 35,
             StartingSkill = "cleave", StartingSupport = "increased_area", Sprite = "warrior", TreeStart = "start_warrior",
-            RiftSkills = new[] { "cleave", "ground_slam", "sunder", "double_strike", "glacial_hammer" },
+            RiftSkills = new[] { "cleave", "sunder", "double_strike", "glacial_hammer", "exsanguinate" },
             Resource = ClassResourceKind.Rage,
             Ascendancies = new[] { "juggernaut", "paladin" },
         },

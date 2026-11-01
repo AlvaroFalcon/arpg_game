@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AuraSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AuraSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_vitality.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 15.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Vitality"
+Description = "Aura. While it is in a slot: 12% increased maximum life. Use: heals 25% of your maximum life, and you take 30% less damage for 4 s."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.3
+Cooldown = 25.0
+Tags = 65570
+Kind = 6
+ActiveDuration = 4.0
+Tint = Color(0.4, 1, 0.5, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

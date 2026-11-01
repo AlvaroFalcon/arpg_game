@@ -730,13 +730,14 @@ public partial class EndgameSmokeTest : Node2D
         Check("SKILLTREE-RULES", noPoints && gated && open && lockedParent && outOfPoints && firstChoice && exclusive && gem.TreePointsSpent == 10,
             $"level 1 has no points={noPoints}; Wider Blast needs Power first={gated}; Power 2 → Wider Blast 2 → Firestorm={open}; Wider Blast can't go back under Firestorm={lockedParent}; points run out={outOfPoints}; Volley excludes Frostfire={exclusive}; spent {gem.TreePointsSpent}");
 
-        var ctx = new CastContext(null!, null!, Combat.Faction.Player, Vector2.Zero, Vector2.Right) { Projectile = new ProjectileParams { Count = 1, ExplodeRadius = 55f, ExplodeDamageFraction = 0.5f, Speed = 340f } };
+        // Fireball no longer bursts by default (owner's sheet, 2026-11-01): Impact Burst adds it.
+        var ctx = new CastContext(null!, null!, Combat.Faction.Player, Vector2.Zero, Vector2.Right) { Projectile = new ProjectileParams { Count = 1, ExplodeRadius = 0f, ExplodeDamageFraction = 0f, Speed = 340f } };
         foreach (CastModifier m in SkillTrees.ModifiersFor("fireball", gem.Tree).OrderBy(m => m.Priority))
         {
             m.Apply(ctx);
         }
 
-        Check("SKILLTREE-APPLIES", ctx.Projectile.ExplodeDamageFraction == 1f && ctx.Projectile.ExplodeRadius > 55f && ctx.ExtraCount == 1 && ctx.DamageMultiplier > 1f && ctx.CostMultiplier < 1f && ctx.Projectile.Speed > 340f,
+        Check("SKILLTREE-APPLIES", ctx.Projectile.ExplodeDamageFraction == 1f && ctx.Projectile.ExplodeRadius >= 55f && ctx.ExtraCount == 1 && ctx.DamageMultiplier > 1f && ctx.CostMultiplier < 1f && ctx.Projectile.Speed > 340f,
             $"blast {ctx.Projectile.ExplodeRadius:0} px at {ctx.Projectile.ExplodeDamageFraction:P0}, +{ctx.ExtraCount} projectile, damage ×{ctx.DamageMultiplier:0.00}, cost ×{ctx.CostMultiplier:0.00}, speed {ctx.Projectile.Speed:0}");
 
         var bad = new GemData { Id = "fireball", Level = 3, Tree = new Dictionary<string, int> { ["power"] = 3, ["firestorm"] = 1 } };
@@ -854,11 +855,12 @@ public partial class EndgameSmokeTest : Node2D
         Check("STASH-TAB-COSTS", first == 150 && second == 300 && profile.NextStashTabCost == -1, $"tab 2: {first}, tab 3: {second}, after {Profile.MaxStashTabs}: {profile.NextStashTabCost}");
         profile.Free();
 
-        Check("LOADOUT-FOUR-SLOTS", CharacterData.LoadoutSlots == 4 && CharacterBuild.Slots.Length == 4 && CharacterBuild.Slots[0] == SkillSlotId.Lmb && CharacterBuild.Slots[1] == SkillSlotId.Rmb
-                && CharacterBuild.Slots[2] == SkillSlotId.Slot1 && CharacterBuild.Slots[3] == SkillSlotId.Slot2 && string.Join(",", CharacterData.SlotLabels) == "LMB,RMB,Q,E",
+        Check("LOADOUT-SEVEN-SLOTS", CharacterData.LoadoutSlots == 7 && CharacterBuild.Slots.Length == 7 && CharacterBuild.Slots[0] == SkillSlotId.Lmb && CharacterBuild.Slots[1] == SkillSlotId.Rmb
+                && CharacterBuild.Slots[2] == SkillSlotId.Slot1 && CharacterBuild.Slots[3] == SkillSlotId.Slot2 && CharacterBuild.Slots[4] == SkillSlotId.Slot3 && CharacterBuild.Slots[5] == SkillSlotId.Slot4
+                && CharacterBuild.Slots[6] == SkillSlotId.Space && string.Join(",", CharacterData.SlotLabels) == "LMB,RMB,Q,E,R,T,Space",
             $"{string.Join(", ", CharacterData.SlotLabels)}");
 
-        // A six-slot save: LMB, RMB, "1" kept; empty "2" (now E) takes the old "3"; the old "4" has no room.
+        // A six-slot save (LMB, RMB, 1-4): since the seven-slot bar its 3 and 4 land on R and T.
         var node = System.Text.Json.Nodes.JsonNode.Parse(Profile.SerializeCharacter(new CharacterData { Name = "Legacy", ClassId = "warrior" }))!;
         var six = new System.Text.Json.Nodes.JsonArray();
         foreach (string? uid in new[] { "a", "b", "c", null, "d", "e" })
@@ -871,7 +873,7 @@ public partial class EndgameSmokeTest : Node2D
         CharacterData migrated = Profile.DeserializeCharacter(legacyJson)!;
         string kept = string.Join(",", migrated.Loadout.Select(l => l.SkillUid ?? "-"));
         string? refused = Profile.ValidateCharacterJson(legacyJson, out _, out _);
-        Check("LOADOUT-LEGACY-SIX", kept == "a,b,c,d" && refused is null, $"loadout {kept}, validation {refused ?? "ok"}");
+        Check("LOADOUT-LEGACY-SIX", kept == "a,b,c,-,d,e,-" && refused is null, $"loadout {kept}, validation {refused ?? "ok"}");
 
         var tab = new Items.Inventory { Columns = Profile.StashColumns, Rows = Profile.StashRows };
         Check("STASH-GRID-SIZE", tab.BuildOccupancyMask().GetLength(0) == 12 && tab.BuildOccupancyMask().GetLength(1) == 10, "stash tabs are 12x10 grids");

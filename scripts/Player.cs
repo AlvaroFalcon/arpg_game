@@ -194,6 +194,7 @@ public partial class Player : CharacterBody2D
         if (Health is not null)
         {
             Health.Damaged += OnDamaged;
+            Health.HitResolved += OnHitKnockback;
         }
 
         Health.AnyHitNegated += OnAnyHitNegated;
@@ -636,6 +637,19 @@ public partial class Player : CharacterBody2D
         return 1f;
     }
 
+    private Vector2 _knockback;
+
+    /// <summary>Whether big hits can push this player now (Titan Aura's active says no).</summary>
+    public bool Unstoppable => _stats.Get(StatId.KnockbackImmunity).Value >= 1f;
+
+    private void OnHitKnockback(DamagePayload payload, float taken)
+    {
+        if (payload.Knockback != Vector2.Zero && !Unstoppable && !Puppet)
+        {
+            _knockback = (_knockback + payload.Knockback).LimitLength(520f);
+        }
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         float speed = _stats.MovementSpeed.Value;
@@ -656,6 +670,19 @@ public partial class Player : CharacterBody2D
         }
 
         PollPickupKey((float)delta);
+
+        // Knockback from a heavy hit (bosses, rares): a short shove that decays fast. Titan
+        // Aura's active (KnockbackImmunity) ignores it (docs/design/skills.md -> "Auras").
+        if (_knockback != Vector2.Zero && Dodge is not { IsDashing: true })
+        {
+            _knockback = _knockback.MoveToward(Vector2.Zero, 1400f * (float)delta);
+            Velocity = _knockback;
+            MoveAndSlide();
+            if (_knockback.LengthSquared() > 3600f)
+            {
+                return;
+            }
+        }
 
         // A dash owns movement for its whole duration (docs/design/dodge.md).
         if (Dodge is { IsDashing: true })

@@ -60,6 +60,10 @@ public sealed class SkillInstance
     /// "Skill upgrade trees"), applied with the supports on every cast.</summary>
     public List<CastModifier> TreeModifiers { get; } = new();
 
+    /// <summary>A totem gem's socketed skill (docs/design/skills.md -> "Totems"): the gem the
+    /// totem casts, with its own level and tree. Null for every other skill.</summary>
+    public SkillInstance? Socketed { get; set; }
+
     public SkillInstance(SkillDefinition definition)
     {
         Definition = definition;

@@ -298,6 +298,7 @@ public partial class RealityHud : CanvasLayer
         // Fixed bar order matching the bindings: LMB, RMB | mirror | Q, E (empty slots show too).
         _skillRow.Show(CharacterBuild.Slots.Select(slot => (SkillSlotView.LabelOf(slot), Player.SkillUser.GetSkill(slot))).ToList());
         _skillRow.Cooldowns(Player.SkillUser.CooldownFraction);
+        _skillRow.Actives(Player.SkillUser.Auras.ActiveFraction);
     }
 
     /// <summary>The minimap (tests read its allies).</summary>

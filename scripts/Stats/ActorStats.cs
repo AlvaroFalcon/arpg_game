@@ -193,6 +193,11 @@ public partial class ActorStats : Node
         StatId.ElementalDamageTaken => 1f,
         StatId.PhysicalDamageTaken => 1f,
         StatId.EnergyShield => 0f,
+        StatId.BleedChance => 0f,
+        StatId.BleedDuration => 1f,
+        StatId.BleedStacksPerHit => 0f,
+        StatId.IgniteDuration => 1f,
+        StatId.KnockbackImmunity => 0f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 

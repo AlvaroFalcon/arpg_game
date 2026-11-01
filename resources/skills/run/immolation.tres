@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="AuraSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AuraSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_immolation.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 8.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Immolation Aura"
+Description = "Switch on / off. While on, burns every enemy within 110 px for 14 fire damage per second (it can ignite) — and costs you 2% of your maximum life every second."
+BaseDamage = 14.0
+AddedDamageEffectiveness = 0.4
+BaseUseTime = 0.3
+Cooldown = 0.5
+Tags = 66066
+Kind = 0
+ActiveDuration = 6.0
+Tint = Color(1, 0.5, 0.2, 1)
+Radius = 110.0
+LifeDrainPercent = 2.0
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

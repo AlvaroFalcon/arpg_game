@@ -60,8 +60,9 @@ public partial class SkillBar : Control
     public const float SmallSlot = 36f;
     public const float SlotGap = 6f;
 
-    /// <summary>Room each side for its slots: two big ones, or three small ones.</summary>
-    public const float SideWidth = 3f * SmallSlot + 2f * 6f;
+    /// <summary>Room each side for its slots: two big ones, or up to four small ones
+    /// (LMB, RMB, Q, E | R, T, Space since 2026-11-01).</summary>
+    public const float SideWidth = 4f * SmallSlot + 3f * 6f;
 
     public const float Gap = 2f * PlayerHudBar.MirrorClearance;
     public const float TotalWidth = Gap + 2f * SideWidth;
@@ -128,6 +129,16 @@ public partial class SkillBar : Control
         }
     }
 
+    /// <summary>Lights the slots of auras whose active is running (Immolation: switched on);
+    /// the value is the fraction of the active left.</summary>
+    public void Actives(System.Func<SkillInstance, float> fraction)
+    {
+        foreach (SkillSlotView view in _views)
+        {
+            view.Active = view.Skill is null ? 0f : fraction(view.Skill);
+        }
+    }
+
     /// <summary>A small light key cap ("Q", "1") with its top-left corner at <paramref name="at"/>.</summary>
     public static void DrawKeyCap(CanvasItem canvas, Font font, Vector2 at, string key, int size = 12)
     {
@@ -169,6 +180,20 @@ public partial class SkillSlotView : Control
     public SkillInstance? Skill { get; }
     private readonly string _key;
     private float _cooldown;
+    private float _active;
+
+    /// <summary>An aura's active running (0..1 left); draws a glowing frame.</summary>
+    public float Active
+    {
+        set
+        {
+            if (!Mathf.IsEqualApprox(_active, value))
+            {
+                _active = value;
+                QueueRedraw();
+            }
+        }
+    }
 
     public float Cooldown
     {
@@ -189,8 +214,9 @@ public partial class SkillSlotView : Control
         SkillSlotId.Rmb => "RMB",
         SkillSlotId.Slot1 => "Q",
         SkillSlotId.Slot2 => "E",
-        SkillSlotId.Slot3 => "3",
-        _ => "4",
+        SkillSlotId.Slot3 => "R",
+        SkillSlotId.Slot4 => "T",
+        _ => "Space",
     };
 
     public SkillSlotView(SkillInstance? skill, string key)
@@ -217,6 +243,13 @@ public partial class SkillSlotView : Control
         }
 
         DrawRect(rect, (Skill is null ? UiTheme.PanelBorder : UiTheme.Gold) with { A = 0.8f }, false, 2f);
+        if (_active > 0f)
+        {
+            var glow = new Color(0.55f, 1f, 0.6f);
+            DrawRect(rect.Grow(1f), glow, false, 2.5f);
+            DrawRect(new Rect2(2f, Size.Y - 4f, (Size.X - 4f) * _active, 2f), glow);
+        }
+
         // The key: a mouse with its button lit for LMB/RMB, a key cap otherwise.
         if (_key is "LMB" or "RMB")
         {

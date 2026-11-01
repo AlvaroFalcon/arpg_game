@@ -23,6 +23,9 @@ public sealed class HitProfile
     public float KnockbackForce;
     public float IgniteDamageMultiplier = 1f;
     public float BleedChance;
+    public float BleedDurationMultiplier = 1f;
+    public int BleedStacks = 1;
+    public float IgniteDurationMultiplier = 1f;
     public float KillBlastFraction;
     public float KillBlastRadius;
 
@@ -40,6 +43,9 @@ public sealed class HitProfile
             CanInflictAilments = CanInflictAilments,
             IgniteDamageMultiplier = IgniteDamageMultiplier,
             BleedChance = BleedChance,
+            BleedDurationMultiplier = BleedDurationMultiplier,
+            BleedStacks = BleedStacks,
+            IgniteDurationMultiplier = IgniteDurationMultiplier,
             KillBlastFraction = KillBlastFraction,
             KillBlastRadius = KillBlastRadius,
             Knockback = knockbackDirection * KnockbackForce,

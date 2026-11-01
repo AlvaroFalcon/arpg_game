@@ -2,7 +2,7 @@
 namespace ArpgGame.Skills;
 
 /// <summary>
-/// The six equipped-skill slots — keys 1-4, LMB, RMB — per docs/design/skills.md
+/// The equipped-skill slots — Q, E, R, T (Slot1-4), LMB, RMB and Space — per docs/design/skills.md
 /// -> "Six slots, uniform semantics". A plain enum rather than a bare int index so
 /// call sites read as slot names; <see cref="Skills.SkillUser.SlotCount"/> is the
 /// actual count, kept as a separate concern from this naming so a 7th slot is a
@@ -16,6 +16,10 @@ public enum SkillSlotId
     Slot4,
     Lmb,
     Rmb,
+
+    /// <summary>Space: a movement skill (Blink, Leap Slam), or the dodge roll when empty —
+    /// docs/design/skills.md -> "The Space slot". Never auto-cast in the Survival Rift.</summary>
+    Space,
 }
 
 /// <summary>

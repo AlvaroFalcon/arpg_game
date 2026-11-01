@@ -421,7 +421,12 @@ public partial class Enemy : CharacterBody2D
         }
 
         float dealt = amount * _damageMultiplier;
-        health.TakeDamage(new DamagePayload(dealt, ContactType, this, Faction.Enemy, SkillTags.Melee, DamageDeliveryKind.Hit));
+        // Heavy bodies shove (docs/design/skills.md -> "Auras": what Titan Aura's active resists).
+        float shove = IsBoss ? 260f : Rarity >= MonsterRarity.Rare ? 150f : 0f;
+        health.TakeDamage(new DamagePayload(dealt, ContactType, this, Faction.Enemy, SkillTags.Melee, DamageDeliveryKind.Hit)
+        {
+            Knockback = shove > 0f ? GlobalPosition.DirectionTo(target.GlobalPosition) * shove : Vector2.Zero,
+        });
         if (HasMod("vampiric"))
         {
             Health.Heal(dealt * 0.5f + (Stats.Life?.Max ?? 0f) * 0.02f);

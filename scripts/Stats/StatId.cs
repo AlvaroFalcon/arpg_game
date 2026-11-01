@@ -93,4 +93,11 @@ public enum StatId
 
     // Survival Rift power-ups (docs/design/progression.md -> "Energy Shield").
     EnergyShield = 45,          // Flat: a shield that takes hits before Life and recharges after a pause
+
+    // Auras and the stacking ailments (docs/design/skills.md -> "Auras, totems and stacks").
+    BleedChance = 46,           // Flat 0..1: chance a physical attack hit makes the target bleed
+    BleedDuration = 47,         // Multiplier on how long each bleed stack lasts (base 1)
+    BleedStacksPerHit = 48,     // Flat: extra bleed stacks a successful bleed roll adds (base 0)
+    IgniteDuration = 49,        // Multiplier on how long each ignite stack lasts (base 1)
+    KnockbackImmunity = 50,     // Flat: 1 or more = big hits never push the actor
 }

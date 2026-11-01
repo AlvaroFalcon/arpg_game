@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="AreaSkillDefinition" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="MovementSkillDefinition" load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scripts/Skills/AreaSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/MovementSkillDefinition.cs" id="s"]
 [ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
 [ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_ground_slam.png" id="i"]
 
@@ -12,17 +12,17 @@ Mode = 0
 
 [resource]
 script = ExtResource("s")
-DisplayName = "Ground Slam"
-Description = "Smashes the ground just ahead, knocking enemies back."
+DisplayName = "Leap Slam"
+Description = "Leaps up to 260 px towards the cursor, untouchable in the air, and slams the ground where you land, knocking enemies back."
 BaseDamage = 34.0
 AddedDamageEffectiveness = 1.3
-BaseUseTime = 0.8
-Cooldown = 1.0
-Tags = 25
-Radius = 85.0
-Delay = 0.12
-AtTarget = true
-MaxRange = 130.0
+BaseUseTime = 0.5
+Cooldown = 2.0
+Tags = 89
+Kind = 1
+Range = 260.0
+TravelTime = 0.38
+LandRadius = 85.0
 Knockback = 220.0
 Tint = Color(0.85, 0.65, 0.4, 1)
 Costs = [SubResource("Cost")]

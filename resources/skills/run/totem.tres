@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="TotemSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/TotemSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_totem.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 14.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Spell Totem"
+Description = "Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy every 0.9 s, at 70% of that skill's damage. Its tree boosts what it casts."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.5
+Cooldown = 4.0
+Tags = 131106
+Duration = 8.0
+CastInterval = 0.9
+MaxTotems = 1
+Reach = 420.0
+MaxRange = 260.0
+DamageEffectiveness = 0.7
+Tint = Color(0.95, 0.75, 0.45, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

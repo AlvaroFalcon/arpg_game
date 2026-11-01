@@ -39,29 +39,87 @@ public partial class Ailments : Node
 {
     public const float ChillDuration = 2f;
     public const float ChillSlowPercent = 30f;
+    /// <summary>How long one ignite stack burns (docs/design/skills.md -> "Stacking bleed
+    /// and ignite"): every successful ignite adds its own stack, up to <see cref="MaxStacks"/>.</summary>
     public const float IgniteDuration = 3f;
-    public const float IgniteDamageRatio = 0.9f;
+
+    /// <summary>One ignite stack deals this fraction of its hit over its duration (was 0.9
+    /// of the strongest hit when ignites replaced each other).</summary>
+    public const float IgniteDamageRatio = 0.5f;
     public const float IgniteTick = 0.5f;
+
+    /// <summary>Most bleed (and ignite) stacks one enemy can carry.</summary>
+    public const int MaxStacks = 99;
+
+    /// <summary>Oil (the Douse skill): fire damage taken is multiplied by 1 + potency/100, and
+    /// every fire hit ignites an oiled enemy.</summary>
+    public const float OilDuration = 6f;
     public const float ShockDuration = 3f;
     public const float ShockPercent = 25f;
     public const float FreezeDuration = 0.6f;
-    public const float BleedDuration = 3f;
-    public const float BleedDamageRatio = 0.7f;
+    /// <summary>How long one bleed stack lasts: short on purpose, so a high stack count needs
+    /// fast, steady hits (owner's brief, 2026-11-01).</summary>
+    public const float BleedDuration = 4f;
+
+    /// <summary>One bleed stack deals this fraction of its hit (as taken) over its duration.</summary>
+    public const float BleedDamageRatio = 0.5f;
     public const float BossFreezeDuration = 0.25f;
     public const float BossFreezeLockout = 4f;
 
     private static readonly object ChillSource = new();
     private static readonly object CurseSource = new();
 
-    /// <summary>Poison stacks: each is (damage per second, seconds left).
-    /// Independent and stacking, unlike ignite (docs/design/classes.md -> Assassin).</summary>
-    private readonly System.Collections.Generic.List<(float Dps, float Left)> _poisons = new();
-    private float _poisonTick;
-    private Node2D? _poisonSource;
+    /// <summary>One stack of a stacking ailment: damage per second, seconds left, and the
+    /// duration it started with (the target frame draws how much of it is left).</summary>
+    public struct Stack
+    {
+        public float Dps;
+        public float Left;
+        public float Duration;
+    }
+
+    /// <summary>Bleed stacks (physical damage over time): each its own damage and timer,
+    /// up to <see cref="MaxStacks"/> (docs/design/skills.md -> "Stacking bleed and ignite").</summary>
+    private readonly System.Collections.Generic.List<Stack> _bleeds = new();
+    private float _bleedTick;
+    private Node2D? _bleedSource;
+
+    /// <summary>Ignite stacks (fire damage over time), same rules as bleeding.</summary>
+    private readonly System.Collections.Generic.List<Stack> _ignites = new();
 
     public float CurseRemaining { get; private set; }
     public bool IsCursed => CurseRemaining > 0f;
-    public int PoisonStacks => _poisons.Count;
+
+    public int BleedStacks => _bleeds.Count;
+    public int IgniteStacks => _ignites.Count;
+
+    /// <summary>Older name of <see cref="BleedStacks"/> (the stacking damage over time was
+    /// called poison before bleeding got its own rules).</summary>
+    public int PoisonStacks => _bleeds.Count;
+
+    public System.Collections.Generic.IReadOnlyList<Stack> Bleeds => _bleeds;
+    public System.Collections.Generic.IReadOnlyList<Stack> Ignites => _ignites;
+
+    /// <summary>Seconds of oil left (Douse); while oiled, fire hits always ignite and fire
+    /// damage taken is raised by <see cref="OilPotency"/>%.</summary>
+    public float OilRemaining { get; private set; }
+    public float OilPotency { get; private set; }
+    public bool IsOiled => OilRemaining > 0f;
+
+    /// <summary>Douse's Accelerant: ignites on this oiled enemy last this much longer.</summary>
+    public float OilIgniteBonus { get; private set; }
+
+    /// <summary>Fraction (0..1) left on the stack that runs out next, for the target frame.</summary>
+    public static float NextToExpire(System.Collections.Generic.IReadOnlyList<Stack> stacks)
+    {
+        float best = 1f;
+        foreach (Stack st in stacks)
+        {
+            best = Mathf.Min(best, st.Duration > 0f ? st.Left / st.Duration : 0f);
+        }
+
+        return best;
+    }
     private static readonly object ShockSource = new();
 
     private ActorStats _stats = null!;
@@ -69,15 +127,28 @@ public partial class Ailments : Node
     private readonly RandomNumberGenerator _rng = new();
 
     public float ChillRemaining { get; private set; }
-    public float IgniteRemaining { get; private set; }
     public float ShockRemaining { get; private set; }
 
-    private float _ignitePerSecond;
+    /// <summary>Seconds left on the longest-lasting ignite stack (0 = not burning).</summary>
+    public float IgniteRemaining
+    {
+        get
+        {
+            float best = 0f;
+            foreach (Stack st in _ignites)
+            {
+                best = Mathf.Max(best, st.Left);
+            }
+
+            return best;
+        }
+    }
+
     private float _igniteTickTimer;
     private Node2D? _igniteSource;
 
     public bool IsChilled => ChillRemaining > 0f;
-    public bool IsIgnited => IgniteRemaining > 0f;
+    public bool IsIgnited => _ignites.Count > 0;
     public bool IsShocked => ShockRemaining > 0f;
 
     /// <summary>Seconds of freeze left: a frozen enemy neither moves nor acts.</summary>
@@ -102,7 +173,7 @@ public partial class Ailments : Node
     public byte TintCode =>
         IsFrozen ? (byte)1
         : IsIgnited ? (byte)2
-        : PoisonStacks > 0 ? (byte)3
+        : BleedStacks > 0 ? (byte)3
         : IsCursed ? (byte)4
         : IsShocked ? (byte)5
         : IsChilled ? (byte)6
@@ -139,10 +210,14 @@ public partial class Ailments : Node
             return;
         }
 
-        // Bleeding (skill upgrades): physical damage over time, any damage type can cause it.
+        // Bleeding (skill upgrades, Bloodthirst): physical damage over time, any damage type
+        // can cause it. Every successful roll adds its own stack(s) with its own timer.
         if (payload.BleedChance > 0f && taken > 0f && _rng.Randf() < payload.BleedChance)
         {
-            AddPoison(taken * BleedDamageRatio, BleedDuration, payload.SourceActor);
+            for (int i = 0; i < Mathf.Max(1, payload.BleedStacks); i++)
+            {
+                AddBleed(taken * BleedDamageRatio, BleedDuration * Mathf.Max(0.1f, payload.BleedDurationMultiplier), payload.SourceActor);
+            }
         }
 
         foreach ((DamageType type, float amount) in payload.Components)
@@ -172,11 +247,12 @@ public partial class Ailments : Node
                     }
 
                     break;
-                case DamageType.Fire when _rng.Randf() < payload.IgniteChance:
+                case DamageType.Fire when IsOiled || _rng.Randf() < payload.IgniteChance:
                 {
-                    float before = IgniteRemaining;
-                    ApplyIgnite(taken * IgniteDamageRatio * payload.IgniteDamageMultiplier, payload.SourceActor);
-                    if (IgniteRemaining > before)
+                    int before = _ignites.Count;
+                    ApplyIgnite(taken * IgniteDamageRatio * payload.IgniteDamageMultiplier, payload.SourceActor,
+                        IgniteDuration * Mathf.Max(0.1f, payload.IgniteDurationMultiplier) * (IsOiled ? 1f + OilIgniteBonus : 1f));
+                    if (_ignites.Count > before || before == MaxStacks)
                     {
                         LastHitApplied |= AilmentHit.Ignite;
                     }
@@ -241,30 +317,113 @@ public partial class Ailments : Node
         FreezeRemaining = Mathf.Max(FreezeRemaining, boss ? BossFreezeDuration : FreezeDuration);
     }
 
-    public void ApplyIgnite(float totalDamage, Node2D? source)
+    /// <summary>Adds an ignite stack dealing <paramref name="totalDamage"/> over its duration.
+    /// At <see cref="MaxStacks"/> the weakest stack gives way to a stronger one.</summary>
+    public void ApplyIgnite(float totalDamage, Node2D? source, float duration = IgniteDuration)
     {
-        float perSecond = totalDamage / IgniteDuration;
-        if (IsIgnited && perSecond < _ignitePerSecond)
+        if (totalDamage <= 0f)
         {
             return;
         }
 
-        _ignitePerSecond = perSecond;
-        IgniteRemaining = IgniteDuration;
-        _igniteTickTimer = IgniteTick;
+        if (_ignites.Count == 0)
+        {
+            _igniteTickTimer = IgniteTick;
+        }
+
+        AddStack(_ignites, totalDamage, duration);
         _igniteSource = source;
     }
 
-    /// <summary>Adds a poison stack (max 12) dealing <paramref name="total"/> over <paramref name="duration"/> s.</summary>
-    public void AddPoison(float total, float duration, Node2D? source)
+    /// <summary>Adds a bleed stack dealing <paramref name="total"/> over <paramref name="duration"/> s.</summary>
+    public void AddBleed(float total, float duration, Node2D? source)
     {
-        if (_poisons.Count >= 12)
+        if (total <= 0f)
         {
-            _poisons.RemoveAt(0);
+            return;
         }
 
-        _poisons.Add((total / duration, duration));
-        _poisonSource = source;
+        AddStack(_bleeds, total, duration);
+        _bleedSource = source;
+    }
+
+    /// <summary>Older name of <see cref="AddBleed"/>.</summary>
+    public void AddPoison(float total, float duration, Node2D? source) => AddBleed(total, duration, source);
+
+    private static void AddStack(System.Collections.Generic.List<Stack> stacks, float total, float duration)
+    {
+        duration = Mathf.Max(0.5f, duration);
+        var stack = new Stack { Dps = total / duration, Left = duration, Duration = duration };
+        if (stacks.Count < MaxStacks)
+        {
+            stacks.Add(stack);
+            return;
+        }
+
+        int weakest = 0;
+        for (int i = 1; i < stacks.Count; i++)
+        {
+            if (stacks[i].Dps * stacks[i].Left < stacks[weakest].Dps * stacks[weakest].Left)
+            {
+                weakest = i;
+            }
+        }
+
+        if (stacks[weakest].Dps * stacks[weakest].Left < total)
+        {
+            stacks[weakest] = stack;
+        }
+    }
+
+    /// <summary>All the damage the ignite stacks have left, removing them (Combust).</summary>
+    public float ConsumeIgnites() => Consume(_ignites);
+
+    /// <summary>All the damage the bleed stacks have left, removing them (Exsanguinate).</summary>
+    public float ConsumeBleeds() => Consume(_bleeds);
+
+    private static float Consume(System.Collections.Generic.List<Stack> stacks)
+    {
+        float total = 0f;
+        foreach (Stack st in stacks)
+        {
+            total += st.Dps * Mathf.Max(0f, st.Left);
+        }
+
+        stacks.Clear();
+        return total;
+    }
+
+    /// <summary>Douses the owner in oil for <paramref name="duration"/> s: fire damage taken
+    /// +<paramref name="potency"/>%, and fire hits always ignite. A stronger oil wins.</summary>
+    public void ApplyOil(float potency, float duration, float igniteDurationBonus = 0f)
+    {
+        OilIgniteBonus = OilRemaining > 0f ? Mathf.Max(OilIgniteBonus, igniteDurationBonus) : igniteDurationBonus;
+        OilPotency = OilRemaining > 0f ? Mathf.Max(OilPotency, potency) : potency;
+        OilRemaining = Mathf.Max(OilRemaining, duration);
+        _health.FireDamageTakenMultiplier = 1f + OilPotency / 100f;
+    }
+
+    /// <summary>Sums the damage per second of a stack list and ages it by one tick.</summary>
+    private static float TickStacks(System.Collections.Generic.List<Stack> stacks, float step)
+    {
+        float dps = 0f;
+        for (int i = stacks.Count - 1; i >= 0; i--)
+        {
+            Stack st = stacks[i];
+            float active = Mathf.Min(step, st.Left);
+            dps += st.Dps * active / step;
+            st.Left -= step;
+            if (st.Left <= 0.0001f)
+            {
+                stacks.RemoveAt(i);
+            }
+            else
+            {
+                stacks[i] = st;
+            }
+        }
+
+        return dps;
     }
 
     /// <summary>Vulnerability curse: <paramref name="percent"/>% more damage taken (Warlock).</summary>
@@ -334,42 +493,37 @@ public partial class Ailments : Node
             }
         }
 
-        if (_poisons.Count > 0)
+        if (OilRemaining > 0f)
         {
-            _poisonTick -= dt;
-            if (_poisonTick <= 0f)
+            OilRemaining -= dt;
+            if (OilRemaining <= 0f)
             {
-                _poisonTick = 0.5f;
-                float dps = 0f;
-                for (int i = _poisons.Count - 1; i >= 0; i--)
-                {
-                    (float d, float left) = _poisons[i];
-                    dps += d;
-                    left -= 0.5f;
-                    if (left <= 0f)
-                    {
-                        _poisons.RemoveAt(i);
-                    }
-                    else
-                    {
-                        _poisons[i] = (d, left);
-                    }
-                }
+                OilPotency = 0f;
+                _health.FireDamageTakenMultiplier = 1f;
+            }
+        }
 
-                Node2D? source = _poisonSource is not null && IsInstanceValid(_poisonSource) ? _poisonSource : null;
+        if (_bleeds.Count > 0)
+        {
+            _bleedTick -= dt;
+            if (_bleedTick <= 0f)
+            {
+                _bleedTick = 0.5f;
+                float dps = TickStacks(_bleeds, 0.5f);
+                Node2D? source = _bleedSource is not null && IsInstanceValid(_bleedSource) ? _bleedSource : null;
                 _health.ApplyResolvedDamage(dps * 0.5f, source);
             }
         }
 
-        if (IgniteRemaining > 0f)
+        if (_ignites.Count > 0)
         {
-            IgniteRemaining -= dt;
             _igniteTickTimer -= dt;
             if (_igniteTickTimer <= 0f)
             {
                 _igniteTickTimer += IgniteTick;
+                float dps = TickStacks(_ignites, IgniteTick);
                 Node2D? source = _igniteSource is not null && IsInstanceValid(_igniteSource) ? _igniteSource : null;
-                _health.ApplyResolvedDamage(_ignitePerSecond * IgniteTick, source);
+                _health.ApplyResolvedDamage(dps * IgniteTick, source);
             }
         }
     }

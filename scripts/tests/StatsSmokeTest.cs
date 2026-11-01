@@ -235,8 +235,8 @@ public partial class StatsSmokeTest : Node2D
             $"named accessor Armour.Value={_targetStats.Armour.Value} after Get(Armour).BaseValue=50 (expected 50 — same Stat instance)");
 
         Check("REGISTRY-STAT-COUNT",
-            System.Enum.GetValues<StatId>().Length == 46,
-            $"StatId has {System.Enum.GetValues<StatId>().Length} entries, expected 46 (23 from docs/design/stats.md's third pass + 14 run stats from docs/design/progression.md + 2 stamina stats from docs/design/movement.md + AutoCastSpeed from docs/design/run.md + 5 passive-tree stats: LifeLeech, ManaOnKill, FreezeChance, ElementalDamageTaken, PhysicalDamageTaken + EnergyShield from docs/design/progression.md)");
+            System.Enum.GetValues<StatId>().Length == 51,
+            $"StatId has {System.Enum.GetValues<StatId>().Length} entries, expected 51 (23 from docs/design/stats.md's third pass + 14 run stats from docs/design/progression.md + 2 stamina stats from docs/design/movement.md + AutoCastSpeed from docs/design/run.md + 5 passive-tree stats: LifeLeech, ManaOnKill, FreezeChance, ElementalDamageTaken, PhysicalDamageTaken + EnergyShield from docs/design/progression.md + 5 aura/stack stats from docs/design/skills.md)");
 
         // Reset for the mitigation checks below, which assume a clean Armour.
         _targetStats.Get(StatId.Armour).BaseValue = 0f;

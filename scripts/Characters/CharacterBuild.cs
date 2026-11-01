@@ -23,8 +23,8 @@ namespace ArpgGame.Characters;
 [GlobalClass]
 public partial class CharacterBuild : Node, IBuildContext
 {
-    /// <summary>Loadout index → input slot: LMB, RMB, 1, 2, 3, 4.</summary>
-    public static readonly SkillSlotId[] Slots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2 };
+    /// <summary>Loadout index → input slot: LMB, RMB, Q, E, R, T, Space.</summary>
+    public static readonly SkillSlotId[] Slots = { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4, SkillSlotId.Space };
 
     [Signal]
     public delegate void LevelledUpEventHandler(int level);
@@ -149,7 +149,7 @@ public partial class CharacterBuild : Node, IBuildContext
         Ascendancy.Strip(this);
     }
 
-    /// <summary>Puts the loadout's skill gems (with their supports) into LMB, RMB, Q and E.</summary>
+    /// <summary>Puts the loadout's skill gems (with their supports) into LMB, RMB, Q, E, R, T and Space.</summary>
     public void EquipLoadout()
     {
         _slotGems.Clear();
@@ -171,7 +171,22 @@ public partial class CharacterBuild : Node, IBuildContext
                 continue;
             }
 
+            // The Space slot takes movement skills only (an edited save can't put Fireball on Space).
+            if (Slots[i] == SkillSlotId.Space && !SkillRules.FitsSpace(entry.Definition))
+            {
+                SkillUser.ClearSlot(Slots[i]);
+                continue;
+            }
+
             var instance = new SkillInstance(entry.Definition) { Level = gem.Level };
+            if (entry.Definition is TotemSkillDefinition && Data.FindGem(gem.Socket) is { IsSupport: false } held
+                && held.Uid != gem.Uid && UpgradeCatalog.FindSkill(held.Id) is { } heldEntry && SkillRules.FitsTotem(heldEntry.Definition))
+            {
+                var inner = new SkillInstance(heldEntry.Definition) { Level = held.Level };
+                inner.TreeModifiers.AddRange(SkillTrees.ModifiersFor(held.Id, held.Tree));
+                instance.Socketed = inner;
+            }
+
             foreach (string uid in Features.SupportGems ? slot.SupportUids.Take(Data.SupportSockets) : Enumerable.Empty<string>())
             {
                 if (Data.FindGem(uid) is { IsSupport: true } sup

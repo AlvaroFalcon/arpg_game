@@ -99,6 +99,60 @@ public sealed class CastContext
     /// <summary>Chance hits make the target bleed (physical damage over time).</summary>
     public float BleedChance;
 
+    /// <summary>Multiplier on how long this cast's bleed stacks last.</summary>
+    public float BleedDurationMultiplier = 1f;
+
+    /// <summary>Extra bleed stacks each successful bleed roll adds.</summary>
+    public int ExtraBleedStacks;
+
+    /// <summary>Multiplier on how long this cast's ignite stacks last.</summary>
+    public float IgniteDurationMultiplier = 1f;
+
+    /// <summary>Aura, totem and affliction knobs (docs/design/skills.md -> "Auras, totems
+    /// and stacks"); null for every other archetype.</summary>
+    public AuraParams? Aura;
+
+    /// <summary>Extra totems a totem skill may have up at once.</summary>
+    public int ExtraTotems;
+
+    /// <summary>Afflictions (Douse, Combust, Exsanguinate): potency added to the effect
+    /// (oil: % more fire damage taken; detonations: % more of the consumed damage).</summary>
+    public float AfflictionPotency;
+
+    /// <summary>Combust/Exsanguinate: the burst also hits enemies around each detonated
+    /// one for this fraction of the consumed damage (0 = no splash).</summary>
+    public float DetonationSplash;
+
+    /// <summary>Combust/Exsanguinate: a detonated enemy keeps this many stacks back.</summary>
+    public int StacksKept;
+
+    /// <summary>Douse: the oil also slows by this %.</summary>
+    public float OilSlow;
+
+    /// <summary>Multiplier on how far the skill reaches (movement range, totem sight).</summary>
+    public float RangeMultiplier = 1f;
+
+    /// <summary>Knockback (px/s) added to the skill's own (Frost Nova's Gale, Leap Slam).</summary>
+    public float ExtraKnockback;
+
+    /// <summary>Movement skills: extra seconds untouchable after arriving.</summary>
+    public float ExtraInvulnerability;
+
+    /// <summary>Blink: % more movement speed for 3 s after arriving.</summary>
+    public float AfterMoveSpeed;
+
+    /// <summary>Blink: the point left behind bursts for this fraction of the skill's damage.</summary>
+    public float DepartBurst;
+
+    /// <summary>Blink: the arrival point bursts too (same fraction, at least 60%).</summary>
+    public bool ArriveBurst;
+
+    /// <summary>Douse: ignites on an oiled enemy last this much longer (0.5 = +50%).</summary>
+    public float OilIgniteDuration;
+
+    /// <summary>Leap Slam: the landing repeats this many more times (aftershocks).</summary>
+    public int Aftershocks;
+
     /// <summary>Kills by this cast burst for this fraction of the hit (0 = none), in <see cref="KillBlastRadius"/> px.</summary>
     public float KillBlastFraction;
     public float KillBlastRadius = 70f;

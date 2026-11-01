@@ -13,14 +13,14 @@ Mode = 0
 [resource]
 script = ExtResource("s")
 DisplayName = "Frost Nova"
-Description = "A ring of ice bursts around you, chilling and pushing enemies back."
+Description = "A ring of ice bursts around you, chilling enemies. (Its tree can make it push them back.)"
 BaseDamage = 20.0
 AddedDamageEffectiveness = 1.0
 BaseUseTime = 0.35
 Cooldown = 3.0
 Tags = 1042
 Radius = 130.0
-Knockback = 260.0
+Knockback = 0.0
 Tint = Color(0.45, 0.8, 1, 1)
 Costs = [SubResource("Cost")]
 Icon = ExtResource("i")

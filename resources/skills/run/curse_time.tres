@@ -12,7 +12,7 @@ Mode = 0
 
 [resource]
 script = ExtResource("s")
-DisplayName = "Curse of Time"
+DisplayName = "Curse of the World"
 Description = "Curses every enemy in an area: they move 35% slower for 5 s."
 BaseDamage = 0.0
 AddedDamageEffectiveness = 0.0
