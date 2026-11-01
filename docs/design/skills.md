@@ -2074,3 +2074,155 @@ deleted** — one flag, `Features.SupportGems` (`scripts/Core/Features.cs`), fal
 Bringing them back: set the flag to true and revisit the copy that was made
 conditional on it. A future workaround (e.g. supports as tree nodes, or as a rarer
 drop that adds a branch) is still open.
+
+## Auras, totems and stacks (2026-11-01) **[IMPLEMENTED]**
+
+Owner's brief (a message plus the edited sheet `skill-trees - Habilidades.csv`, the
+export of `scenes/tools/DumpSkillTrees.tscn`): two more skill buttons on R and T; seven
+auras with a passive and an active effect; bleed and ignite that stack up to 99, each
+stack with its own timer, shown on the enemy's debuff bar; totems that hold a skill;
+a skill that oils enemies for fire, and skills that cash in fire and bleed stacks;
+the sheet's per-skill notes; and a simple visual editor for the trees.
+
+### The sheet's changes
+
+| Skill | Change |
+|---|---|
+| Fireball | No burst by default. The Inferno branch's second node, **Impact Burst** (40 / 55 / 70 px, half the hit), adds it; Firestorm (full hit) still follows. |
+| Spark | Mana 5 → **7**. |
+| Frost Nova | No push back by default. **Gale** (Reach branch) now adds it: 120 / 180 / 260 force and 10 / 15 / 22% more damage. |
+| Curse of Time | Renamed **Curse of the World** (id `curse_time` unchanged, so saves keep it). |
+| Ground Slam | Reworked into **Leap Slam** (id `ground_slam`): a jump of up to 260 px towards the cursor, untouchable in the air, slamming 85 px on landing with knockback. Cooldown 1 → **2 s** (it is an escape now). New tree: Quake (Power, Reach, *Aftershock*), Fault (unchanged), Bound (*Long Jump*, Patience, *Earthshaker*). Old gems' trees are refunded by `SkillTreeRules.Sanitize` (their node ids are gone). |
+| (note) Space | Customisable: see "The Space slot". |
+
+### Six skill buttons, and the Space slot
+
+- **R and T** fire loadout slots 5 and 6 (`skill_slot_3` / `skill_slot_4`, the old
+  `Slot3`/`Slot4` of the six-slot bar). `PlayerSkillInput.Bindings` appends them, so the
+  co-op `HeldSlots` bits of LMB, RMB, Q and E keep their meaning; the snapshot's six cast
+  timers already covered them. A save from the old six-slot bar gets its 3 and 4 back on
+  R and T; a four-slot save simply has them empty.
+- **Space** is a seventh slot (`SkillSlotId.Space`, loadout index 6) that only takes
+  **movement skills** (`MovementSkillDefinition`, `SkillRules.FitsSpace`): **Blink** (new,
+  level 6: a 230 px hop, walls stop it, 2.5 s) and **Leap Slam**. Empty, Space is the dodge
+  roll as before. `Dodge` owns the body for both (`Dodge.Travel`: a fixed number of
+  physics frames, no dodge charge spent); a co-op guest sends the press like a dodge and
+  the host casts it. Movement skills are never auto-cast: the Survival Rift neither
+  offers them nor fires the Space slot.
+- The skill bar shows seven slots (four left of the mirror, three right); the skills panel
+  (K) has seven rows, the Space row listing only movement skills.
+
+Rejected: Space as a plain eighth hotkey (the roll would have needed a key of its own,
+and a Fireball on Space is not what the owner asked for); a separate "movement skill"
+field on the character (a slot keeps the same rules, UI and saving as the others).
+
+### Stacking bleed and ignite
+
+`Ailments` keeps two stack lists (`Ailments.Stack`: damage per second, seconds left, its
+own duration), up to **99** stacks each (`MaxStacks`); past the cap a new stack replaces
+the weakest one if it is stronger. Every successful roll adds a stack:
+
+- **Bleed**: 50% of the hit (as taken) over **4 s** per stack (was 70% over 3 s, max 12).
+  Short on purpose: a high count needs fast, steady hits. Bloodthirst's active and
+  `StatId.BleedStacksPerHit` add more stacks per roll; `StatId.BleedDuration` and the
+  trees' `BleedDurationMultiplier` stretch them.
+- **Ignite**: 50% of the hit over 3 s per stack (was 90% of the strongest hit, one at a
+  time). `StatId.IgniteDuration` / `IgniteDurationMultiplier` stretch them.
+- Both tick every 0.5 s. The **target frame** shows each as an icon with its stack count;
+  the fill is what is left of the stack that runs out next. Co-op guests still see only
+  the tint (the stacks are not replicated).
+- New stats (`StatId` 46–50): `BleedChance` (physical *attacks* get it on every hit),
+  `BleedDuration`, `BleedStacksPerHit`, `IgniteDuration`, `KnockbackImmunity`.
+
+Open: the per-stack ratios (0.5) are a first guess. Ignite with 100% chance on a fast
+fire skill now builds several stacks; measure with the bot before tuning.
+
+### Oil and detonations
+
+`AfflictionSkillDefinition` (circle at the cursor, 420 px reach):
+
+- **Douse** (level 5, 10 mana, 4 s): oils every enemy in 95 px for 6 s — **25% more fire
+  damage taken** (`Health.FireDamageTakenMultiplier`) and **every fire hit ignites** them.
+  Tree: Slick (Potency, Lingering, *Tar*: slows 30%), Spill (Reach, Efficiency,
+  Shockwave), Rhythm (Patience, Haste, *Accelerant*: ignites on oiled enemies last 50%
+  longer).
+- **Combust** (level 10, 12 mana, 3 s): every ignited enemy in 110 px takes **all the fire
+  damage its stacks had left, at once, +30%**; the stacks are gone. Tree: *Chain Reaction*
+  (the burst splashes 50% around and ignites), *Embers Remain* (keep 3 stacks), Overwhelm.
+- **Exsanguinate** (level 10, 10 mana, 3 s): the same for bleed stacks (physical).
+  *Blood Nova*, *Open Wounds*.
+
+The detonation is resolved damage (the stacks were already mitigated when they were
+applied), raised by the gem's level and the tree's damage multipliers.
+
+### Auras
+
+`AuraSkillDefinition` + `AuraController` (owned by `SkillUser`). An aura's **passive**
+holds while its gem sits in any slot (rebuilt on every loadout change from the gem's
+resolved cast context, so its level and tree apply); its **active** is the button: a
+stronger dose for a few seconds, then the cooldown. Every modifier carries its own
+source object, so unequipping removes exactly what it granted. Numbers scale 3% per gem
+level (`AuraCatalog.EffectPerLevel`). The slot glows green while an active runs.
+
+| Aura (level) | Passive | Active (duration / cooldown) |
+|---|---|---|
+| Immolation (6) | — (a toggle) | Switched on: 14 fire damage per second to everything within 110 px (can ignite), costing **2% of max life per second** (never below 1). Press again to switch off. |
+| Elemental Ward (8) | +10 fire, cold, lightning resistance | +40 more to all three (6 s / 20 s) |
+| Elemental Storm (12) | 15% increased fire, cold and lightning damage | 30% more elemental damage (6 s / 18 s) |
+| Precision (10) | +3% crit chance, +20% crit multiplier | +10% chance, +60% multiplier (5 s / 18 s) |
+| Bloodthirst (8) | Physical attacks +15% bleed chance; bleeds last 25% longer | Every bleed adds 3 stacks instead of 1, +20% chance (6 s / 16 s) |
+| Titan (10) | +40 armour, 30% increased armour | 80% more armour and **no knockback** (6 s / 20 s) |
+| Vitality (6) | 12% increased maximum life | Heals 25% of max life; 30% less damage taken (4 s / 25 s) |
+
+Trees (three branches each; the user's 5 / 10 / 25 for Elemental Ward is its *Warding*
+node): passive and active potency (*Resolve*, *Surge*), duration and cooldown, and one
+build-changing notable per branch — e.g. Immolation's *Blood Pyre* (more damage, double
+drain) or *Cinder Skin* (less damage taken while on); Titan's *Immovable* (the passive
+alone stops knockback); Elemental Storm's three branches (Fire, Frost, Thunder) each end
+in a **focus** that excludes the other two: twice the bonus, for that element only.
+
+**Knockback on the player** is new, so Titan has something to resist: rare monsters
+(150) and bosses (260) shove the player on contact; `StatId.KnockbackImmunity` ≥ 1 stops
+it. Movement skills and the dodge are not interrupted by it.
+
+Rejected: auras that reserve mana (PoE): with the 2026-10-30 mana pass, a reservation
+would have priced auras out of early characters; a cooldown on a stronger dose keeps
+the button worth pressing.
+
+### Totems
+
+`TotemSkillDefinition` + `Combat.Totem`. **Spell Totem** (level 8, 14 mana, 4 s) places a
+pole at the cursor (260 px reach) for 8 s; every 0.9 s it casts the skill **socketed into
+the totem gem** (`GemData.Socket`, chosen in the skills panel with the "+ skill for the
+totem" button) at the nearest enemy it can see within 420 px, at 70% of that skill's
+damage. The socketed gem keeps its own level and tree, and the totem's tree adds on top
+(`SkillUser.CastFrom`: the cast comes from the totem, costs nothing and leaves the gem's
+own timers alone). One totem at a time; a new one replaces the oldest.
+
+Tree: Elements (Power, *Attunement*: more elemental damage, *Conduit*: ignite/shock/freeze
+chances), Form (*Splitting*: projectiles fork, Velocity, Volley or Shockwave), Ritual
+(*Quickened*: casts faster, Lingering, *Ancestral Ring*: +1 totem). Any skill that hits
+fits (`SkillRules.FitsTotem`); auras, movement skills and other totems do not. A totem
+with nothing socketed refuses to be cast (no mana spent). Totems cannot be hit for now.
+
+Open questions: totems as targets for monsters; a totem model in the voxel view (it is a
+drawn pole on the 2D canvas); whether a socketed skill should also need to be owned at a
+level (it is any owned gem).
+
+### The skill tree editor
+
+`tools/skill-tree-editor/` — a single HTML page, **Escaldón's Workbench**: skills on the
+left, the tree in the middle (branches as rows, a column per depth, lines for
+"requires", a golden box around either/or notables), the selected node on the right
+(name, kind, every rank's text, requires and points needed, either/or group, notes).
+The owner adds nodes (+ at the end of a branch), removes them (marked, not deleted, so the
+change shows), edits skill numbers, and writes notes. A **change list** under the tree
+compares everything with the game's data and can be copied as text.
+
+- Data: `scenes/tools/DumpSkillTrees.tscn` also writes `user://skill_trees.json`, copied
+  to `docs/design/skill-trees.json`; `python3 tools/skill-tree-editor/build.py` injects
+  it into `template.html` → `index.html` (open it in any browser; drafts stay in that
+  browser; Exportar JSON / Copiar cambios to hand them over).
+- The same page is published as a claude.ai Artifact whose **Guardar** republishes the
+  page with the edits inside it (the `artifact` capability), so Claude can read the
+  saved version in a later session and apply it.

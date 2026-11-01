@@ -786,3 +786,18 @@ The owner left a written brief overnight: classes and skills are the pillar of t
 ![The Witch at the altar](screenshots/rework-altar-witch.png)
 
 Needs the owner's playtest and a bot recalibration of the monster life table (gems no longer level from kills, and the mana pass changes the reference character's damage).
+
+## 2026-11-01: auras, totems, oil and stacking bleed (the owner's skill sheet)
+
+The owner sent back the skill sheet (`skill-trees - Habilidades.csv`) with notes, plus a brief: two more skill buttons, seven auras, totems, fire and bleed combos, and a visual tree editor. Everything is in `docs/design/skills.md` -> "Auras, totems and stacks".
+
+- **Seven buttons.** R and T are skill slots again (the old six-slot bar's 3 and 4 come back there from old saves), and **Space** became a slot that only takes movement skills: **Blink** (new) or **Leap Slam** (Ground Slam reworked into a warrior's jump that slams on landing). An empty Space is still the dodge roll.
+- **Bleed and ignite stack to 99**, each stack with its own timer, so keeping thirty bleeds up means hitting steadily. The target frame shows the count and how long the next stack has left.
+- **Douse** oils enemies (more fire damage taken, every fire hit ignites); **Combust** and **Exsanguinate** cash in every ignite or bleed stack at once.
+- **Seven auras**: a passive while equipped, a stronger active on the button. Immolation is a toggle that burns around you and costs life every second. Titan's active makes you immovable, which needed a new thing to resist: rares and bosses now shove the player on contact.
+- **Spell Totem**: socket any skill gem into it (skills panel, K); the totem casts it at the nearest enemy, and its tree adds forks, cast speed, duration, a second totem.
+- **The sheet's notes**: Fireball no longer bursts unless you take *Impact Burst*, Frost Nova only pushes with *Gale*, Spark costs 7, Curse of Time is Curse of the World.
+- **Escaldón's Workbench** (`tools/skill-tree-editor/`): an HTML page to add, remove and edit nodes visually; it lists every change against the game and can save itself as a claude.ai page that I can read back.
+- New icons drawn as 16×16 grids in the house frame (`tools/art/python/skill_icons.py`), and a new suite, `SkillKitTest` (24 checks, all green).
+
+Needs the owner's playtest: the per-stack bleed/ignite ratios (0.5 of the hit) and the aura numbers are first guesses; totems have only a drawn pole, no voxel model; monsters don't target totems yet.
