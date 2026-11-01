@@ -18,8 +18,19 @@ public partial class RunCapture
     {
         SetupDemoProfile();
         Profile profile = Profile.Get(this)!;
-        CharacterData k = profile.CreateCharacter("Kaela", "warrior");
-        k.Level = 30;
+        bool late = OS.GetCmdlineUserArgs().Contains("--late");
+        CharacterData k = profile.CreateCharacter("Kaela", late ? "arcanist" : "warrior");
+        k.Level = late ? 70 : 30;
+        if (late)
+        {
+            k.Ascendancy = "elementalist";
+            k.AscendancyPoints = 6;
+            k.AddGem("spark", false, 12);
+            k.AddGem("immolation", false, 5);
+            k.Loadout[1].SkillUid = k.Gems.First(g => g.Id == "spark").Uid;
+            k.Loadout[4].SkillUid = k.Gems.First(g => g.Id == "immolation").Uid;
+        }
+
         k.Gold = 12_000;
         k.TutorialDone = true;
         k.GemShopSeenLevel = 8;

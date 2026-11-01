@@ -31,7 +31,10 @@ public partial class CharacterPanels : Node
         AddChild(Quests);
     }
 
-    public override void _Process(double delta)
+    public override void _Process(double delta) => PollToggles();
+
+    /// <summary>The panel keys (tests call it right after a key press, as a real frame would).</summary>
+    public void PollToggles()
     {
         // One panel at a time; a key toggles its own panel.
         Toggle("toggle_skills", Skills);
@@ -45,7 +48,8 @@ public partial class CharacterPanels : Node
 
     private void Toggle(string action, ModalPanel panel)
     {
-        if (!Input.IsActionJustPressed(action))
+        // Exact match: P toggles the passive tree, Ctrl+Shift+P (the playground) must not.
+        if (!Input.IsActionJustPressed(action, exactMatch: true))
         {
             return;
         }

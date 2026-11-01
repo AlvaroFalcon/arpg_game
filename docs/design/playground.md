@@ -53,6 +53,17 @@ node-free `Combat.DpsTracker`:
 `DPS-TRACKER` and `DPS-METER` (PlaygroundTest) check the arithmetic, the sources, that
 someone else's damage is ignored, and a real cast against the dummy.
 
+## Bug: the playground loaded dead (fixed 2026-11-01)
+
+The owner's first try: a black screen, an empty skill bar and a banner that never faded.
+Ctrl+Shift+P is also **P**, and the panel keys matched actions loosely (extra modifiers
+ignored), so the passive tree opened — and paused the game — in the same frame the
+playground was launched; the playground loaded paused, with a freed panel on the stack.
+Fixed three ways: the panel keys now match exactly (`CharacterPanels.PollToggles`,
+`exactMatch`), the hideout launches the playground a moment later (closing any panel that
+opened), and **every reality now starts unpaused with an empty panel stack**. `NOT-PAUSED`
+(PlaygroundTest) launches with a pausing panel open on the way out and fails on the old code.
+
 ## Nothing is saved
 
 On the way in, the hideout captures and saves the real character, then turns

@@ -120,6 +120,11 @@ public partial class RealityController : Node2D, IPickupHandler
 
     public override void _Ready()
     {
+        // A reality always starts running with no panel open: a panel that opened on the way out
+        // of the last scene (P of Ctrl+Shift+P opened the passive tree in the same frame) would
+        // otherwise leave the whole reality paused with a freed panel on the stack.
+        GetTree().Paused = false;
+        PanelStack.Clear();
         AddToGroup(Group);
         AddToGroup(Pickup.HandlerGroup);
         _rng.Randomize();
