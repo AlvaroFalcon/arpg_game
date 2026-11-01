@@ -2223,6 +2223,9 @@ compares everything with the game's data and can be copied as text.
   to `docs/design/skill-trees.json`; `python3 tools/skill-tree-editor/build.py` injects
   it into `template.html` → `index.html` (open it in any browser; drafts stay in that
   browser; Exportar JSON / Copiar cambios to hand them over).
-- The same page is published as a claude.ai Artifact whose **Guardar** republishes the
-  page with the edits inside it (the `artifact` capability), so Claude can read the
-  saved version in a later session and apply it.
+- The same page is published as a claude.ai Artifact
+  (https://claude.ai/artifact/Ciif2bpuYHGhtm27wjTePM, private to the owner) whose
+  **Guardar** republishes the page with the edits inside it (the `artifact` capability),
+  so Claude can read the saved version in a later session (the Artifact tool's `read`)
+  and apply it. After a change to the trees, rebuild `index.html` and republish it to the
+  same URL — but read the saved version first, so the owner's unapplied edits aren't lost.

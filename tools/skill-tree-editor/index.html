@@ -1,0 +1,511 @@
+<title>Escaldón's Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style id="page-style">
+/* Layout: a smith's bench — skills on a rack (left), the tree on the anvil (centre), the node in hand (right). */
+:root {
+  --bg: #f3efe8; --panel: #fbf8f2; --ink: #2a2230; --muted: #6f6574; --line: #d9d0c4;
+  --ember: #c4501f; --ember-soft: #f6dccd; --steel: #3d5d8a; --steel-soft: #dce5f2;
+  --gold: #a87a1c; --new: #2f7d4f; --new-soft: #d8eedf; --cut: #a8323a; --cut-soft: #f5d9db;
+  --notable-bg: #fff4e0;
+  --display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
+  --body: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #17141c; --panel: #201b27; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
+  --ember: #f07a42; --ember-soft: #43271c; --steel: #8fb0e0; --steel-soft: #1f2a3c;
+  --gold: #e0b450; --new: #6fd197; --new-soft: #1c3527; --cut: #f0737b; --cut-soft: #3e1d22;
+  --notable-bg: #33281a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #17141c; --panel: #201b27; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
+  --ember: #f07a42; --ember-soft: #43271c; --steel: #8fb0e0; --steel-soft: #1f2a3c;
+  --gold: #e0b450; --new: #6fd197; --new-soft: #1c3527; --cut: #f0737b; --cut-soft: #3e1d22;
+  --notable-bg: #33281a; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); margin: 0; }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 32px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+header.top h1 { font: 700 26px/1.1 var(--display); margin: 0; letter-spacing: .02em; color: var(--ember); text-wrap: balance; }
+header.top .sub { color: var(--muted); font-size: 13px; }
+header.top .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+button, .btn { font: 600 13px var(--body); border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button:hover { border-color: var(--ember); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .node:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+button.primary { background: var(--ember); border-color: var(--ember); color: #fff; }
+button.danger { color: var(--cut); }
+button[disabled] { opacity: .5; cursor: default; }
+.status { font-size: 12px; color: var(--muted); min-height: 1.4em; }
+.grid { display: grid; grid-template-columns: 230px minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .grid { grid-template-columns: 200px minmax(0, 1fr); } .inspector { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+.rack h2, .inspector h2, .bench h2 { font: 700 15px var(--display); letter-spacing: .04em; margin: 0 0 8px; color: var(--muted); }
+.rack input[type=search] { width: 100%; margin-bottom: 8px; }
+.skill-list { list-style: none; margin: 0; padding: 0; max-height: 70vh; overflow: auto; }
+.skill-list li button { width: 100%; text-align: left; display: flex; justify-content: space-between; gap: 6px; border: 0; border-radius: 5px; padding: 6px 8px; background: transparent; font-weight: 500; }
+.skill-list li button[aria-current="true"] { background: var(--ember-soft); color: var(--ink); }
+.skill-list .type { font: 400 11px var(--mono); color: var(--muted); }
+.chip { display: inline-block; font: 600 10px/1 var(--mono); padding: 3px 5px; border-radius: 4px; letter-spacing: .04em; text-transform: uppercase; }
+.chip.new { background: var(--new-soft); color: var(--new); }
+.chip.changed { background: var(--steel-soft); color: var(--steel); }
+.chip.removed { background: var(--cut-soft); color: var(--cut); }
+label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); font-weight: 600; }
+input, select, textarea { font: 14px var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; width: 100%; min-width: 0; }
+textarea { resize: vertical; min-height: 54px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.fields .wide { grid-column: 1 / -1; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.bench-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin-bottom: 10px; }
+.bench-head h2 { font: 700 24px var(--display); color: var(--ink); margin: 0; }
+.bench-head .meta { font: 12px var(--mono); color: var(--muted); }
+details.skill-fields { margin-bottom: 12px; }
+details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--steel); margin-bottom: 8px; }
+.tree-scroll { overflow-x: auto; padding-bottom: 6px; }
+.tree { position: relative; display: grid; gap: 14px; min-width: 640px; padding-top: 10px; }
+.tree svg.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.branch { display: grid; grid-template-columns: 130px repeat(var(--cols), minmax(150px, 1fr)) 56px; gap: 14px; align-items: center; position: relative; }
+.branch-name input { font: 700 15px var(--display); background: transparent; border-color: transparent; padding: 4px; }
+.branch-name input:hover, .branch-name input:focus { border-color: var(--line); }
+.branch-name .hint { font: 11px var(--mono); color: var(--muted); padding-left: 5px; }
+.cell { display: grid; gap: 8px; align-content: center; min-height: 72px; position: relative; }
+.cell.either { border: 1px dashed var(--gold); border-radius: 8px; padding: 18px 6px 6px; }
+.cell.either::before { content: "elige una"; position: absolute; top: 2px; left: 8px; font: 600 10px var(--mono); color: var(--gold); text-transform: uppercase; letter-spacing: .06em; }
+.node { position: relative; z-index: 1; text-align: left; border: 1.5px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 9px; display: grid; gap: 2px; cursor: pointer; width: 100%; font-weight: 400; }
+.node.notable { background: var(--notable-bg); border-color: var(--gold); border-radius: 18px; }
+.node[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ember-soft); border-color: var(--ember); }
+.node .n-name { font-weight: 600; font-size: 14px; }
+.node .n-rank { font-size: 12px; color: var(--muted); }
+.node .n-meta { font: 10px var(--mono); color: var(--muted); }
+.node.st-new { border-color: var(--new); }
+.node.st-changed { border-color: var(--steel); }
+.node.st-removed { border-color: var(--cut); opacity: .55; text-decoration: line-through; }
+.node .chip { position: absolute; top: -8px; right: 8px; }
+.add-node { width: 40px; height: 40px; border-radius: 50%; font-size: 20px; padding: 0; color: var(--ember); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 18px; height: 12px; border: 1.5px solid var(--line); border-radius: 3px; background: var(--panel); }
+.swatch.notable { border-color: var(--gold); border-radius: 8px; background: var(--notable-bg); }
+.inspector .empty { color: var(--muted); font-size: 13px; }
+.ranks { display: grid; gap: 6px; }
+.rank-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 30px; gap: 6px; align-items: center; }
+.rank-row .r { font: 600 12px var(--mono); color: var(--muted); text-align: right; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.changes { margin-top: 18px; }
+.changes h2 { font: 700 18px var(--display); margin: 0 0 8px; }
+.changes ol { margin: 0; padding-left: 20px; font-size: 13px; display: grid; gap: 3px; }
+.changes .none { color: var(--muted); font-size: 13px; }
+.changes pre { white-space: pre-wrap; font: 12px/1.5 var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; max-height: 280px; overflow: auto; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (prefers-reduced-motion: no-preference) { .node { transition: box-shadow .15s, border-color .15s; } }
+</style>
+
+<div id="root"></div>
+
+<script type="application/json" id="tree-data">{"skills":[{"branches":["Inferno","Wildfire","Form"],"cooldown":0,"damage":30,"description":"Hurls a slow ball of fire. Fire hits can ignite. (Its tree can make it burst on impact.)","id":"fireball","mana":6,"name":"Fireball","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"blast","kind":"Lesser","name":"Impact Burst","ranks":["Bursts on impact: 40 px, half the hit","Bursts on impact: 55 px, half the hit","Bursts on impact: 70 px, half the hit"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"firestorm","kind":"Notable","name":"Firestorm","ranks":["The burst deals the full hit instead of half"],"requires":"blast","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"kindle","kind":"Lesser","name":"Kindle","ranks":["+10% chance to ignite","+20% chance to ignite","+30% chance to ignite"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"searing","kind":"Lesser","name":"Searing","ranks":["Ignites deal 20% more damage","Ignites deal 40% more damage","Ignites deal 70% more damage"],"requires":"kindle","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"searing","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"velocity","kind":"Lesser","name":"Velocity","ranks":["10% faster projectiles","20% faster projectiles","35% faster projectiles"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"velocity","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"fireball_form","id":"volley","kind":"Notable","name":"Volley","ranks":["+1 projectile, 10% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"fireball_form","id":"frostfire","kind":"Notable","name":"Frostfire","ranks":["Converts the damage to cold"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Projectile, Fire","type":"Projectile","unlock":1,"useTime":0.600000023841858,"note":""},{"branches":["Charge","Storm","Path"],"cooldown":0,"damage":14,"description":"Releases slow, crackling sparks that zigzag like lightning, pass through one enemy and bounce off walls. Lightning hits can shock.","id":"spark","mana":7,"name":"Spark","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"static","kind":"Lesser","name":"Static","ranks":["+10% chance to shock","+20% chance to shock","+30% chance to shock"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"spark_charge","id":"ricochet","kind":"Notable","name":"Ricochet","ranks":["Projectiles chain to 2 more enemies"],"requires":"static","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"spark_charge","id":"arc_blast","kind":"Notable","name":"Arc Blast","ranks":["Sparks burst on hit (40 px, 40% of the hit)"],"requires":"static","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"haste","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"spark_storm","id":"volley","kind":"Notable","name":"Volley","ranks":["+1 projectile, 10% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"spark_storm","id":"piercing","kind":"Notable","name":"Piercing","ranks":["Projectiles pass through 2 more enemies"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"bounce","kind":"Lesser","name":"Rebound","ranks":["+1 wall bounce","+2 wall bounces","+3 wall bounces"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"range","kind":"Lesser","name":"Long Arc","ranks":["Sparks fly 15% farther","Sparks fly 30% farther","Sparks fly 50% farther"],"requires":"bounce","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"spark_path","id":"grounded","kind":"Notable","name":"Grounded","ranks":["Converts the damage to physical: 15% more damage and +25% chance to cause bleeding"],"requires":"range","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"spark_path","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"range","requiresRanks":2,"note":""}],"tags":"Spell, Projectile, Lightning","type":"Projectile","unlock":4,"useTime":0.449999988079071,"note":""},{"branches":["Winter","Reach","Rhythm"],"cooldown":3,"damage":20,"description":"A ring of ice bursts around you, chilling enemies. (Its tree can make it push them back.)","id":"frost_nova","mana":10,"name":"Frost Nova","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"rime","kind":"Lesser","name":"Rime","ranks":["+5% chance to freeze","+10% chance to freeze","+15% chance to freeze"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"rime","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"knock","kind":"Lesser","name":"Gale","ranks":["Pushes enemies back (120 force), 10% more damage","Pushes enemies back (180 force), 15% more damage","Pushes enemies back (260 force), 22% more damage"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"wide","kind":"Notable","name":"Shockwave","ranks":["40% more area, 10% less damage"],"requires":"knock","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"nova_rhythm","id":"echo","kind":"Notable","name":"Echo","ranks":["The skill repeats once, 20% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"nova_rhythm","id":"static_nova","kind":"Notable","name":"Static Nova","ranks":["Converts the damage to lightning"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Area, Cold","type":"Area","unlock":8,"useTime":0.349999994039536,"note":""},{"branches":["Steel","Storm","Time"],"cooldown":6,"damage":14,"description":"Summons blades that orbit you, cutting anything they touch.","id":"blades","mana":12,"name":"Ethereal Blades","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"laceration","kind":"Lesser","name":"Laceration","ranks":["10% chance to cause bleeding","20% chance to cause bleeding","30% chance to cause bleeding"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"laceration","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"more_blades","kind":"Lesser","name":"Blade Count","ranks":["+1 blade","+2 blades"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"blades_storm","id":"ember_blades","kind":"Notable","name":"Ember Blades","ranks":["Converts the damage to fire"],"requires":"more_blades","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"blades_storm","id":"frost_blades","kind":"Notable","name":"Frost Blades","ranks":["Converts the damage to cold"],"requires":"more_blades","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"patience","requiresRanks":2,"note":""}],"tags":"Spell, Area, Duration","type":"Orbit","unlock":8,"useTime":0.300000011920929,"note":""},{"branches":["Impact","Crater","Sky"],"cooldown":5,"damage":50,"description":"Calls down a meteor at the target after a short delay. Huge damage, small area.","id":"meteor","mana":18,"name":"Meteor","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"kindle","kind":"Lesser","name":"Kindle","ranks":["+10% chance to ignite","+20% chance to ignite","+30% chance to ignite"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"kindle","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"searing","kind":"Lesser","name":"Searing","ranks":["Ignites deal 20% more damage","Ignites deal 40% more damage","Ignites deal 70% more damage"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"searing","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"meteor_sky","id":"echo","kind":"Notable","name":"Echo","ranks":["The skill repeats once, 20% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"meteor_sky","id":"comet","kind":"Notable","name":"Comet","ranks":["Converts the damage to cold"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Area, Fire","type":"Area","unlock":16,"useTime":0.5,"note":""},{"branches":["Might","Arc","Blood"],"cooldown":0,"damage":24,"description":"A wide swing that hits every enemy in front of you. Scales with weapon damage.","id":"cleave","mana":3,"name":"Cleave","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"haste","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"cleave_arc","id":"wide","kind":"Notable","name":"Shockwave","ranks":["40% more area, 10% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"cleave_arc","id":"flurry","kind":"Notable","name":"Flurry","ranks":["Strikes one more time, 15% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"laceration","kind":"Lesser","name":"Laceration","ranks":["10% chance to cause bleeding","20% chance to cause bleeding","30% chance to cause bleeding"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"rend","kind":"Lesser","name":"Rend","ranks":["10% more damage","20% more damage","30% more damage"],"requires":"laceration","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"cleave_blood","id":"flame_cleave","kind":"Notable","name":"Flame Edge","ranks":["Converts the damage to fire"],"requires":"rend","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"cleave_blood","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"rend","requiresRanks":2,"note":""}],"tags":"Attack, Melee, Area","type":"Melee","unlock":1,"useTime":0.550000011920929,"note":""},{"branches":["Quake","Fault","Bound"],"cooldown":2,"damage":34,"description":"Leaps up to 260 px towards the cursor, untouchable in the air, and slams the ground where you land, knocking enemies back.","id":"ground_slam","mana":7,"name":"Leap Slam","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"aftershock","kind":"Notable","name":"Aftershock","ranks":["The landing slams again 0.35 s later for 60% of the hit"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"laceration","kind":"Lesser","name":"Laceration","ranks":["10% chance to cause bleeding","20% chance to cause bleeding","30% chance to cause bleeding"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"fault","kind":"Lesser","name":"Fault Line","ranks":["10% more damage","20% more damage","30% more damage"],"requires":"laceration","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"slam_fault","id":"magma","kind":"Notable","name":"Magma","ranks":["Converts the damage to fire"],"requires":"fault","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"slam_fault","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"fault","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"long_jump","kind":"Lesser","name":"Long Jump","ranks":["Leaps 15% farther","Leaps 30% farther","Leaps 50% farther"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"long_jump","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"earthshaker","kind":"Notable","name":"Earthshaker","ranks":["Lands harder: +150 knockback and 25% more area"],"requires":"patience","requiresRanks":2,"note":""}],"tags":"Attack, Melee, Area, Movement","type":"Movement","unlock":4,"useTime":0.5,"note":""},{"branches":["Rift","Length","Rhythm"],"cooldown":1.5,"damage":36,"description":"Splits the ground in a line ahead of you after a brief wind-up.","id":"sunder","mana":8,"name":"Sunder","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"laceration","kind":"Lesser","name":"Laceration","ranks":["10% chance to cause bleeding","20% chance to cause bleeding","30% chance to cause bleeding"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"laceration","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"split","kind":"Lesser","name":"Split Earth","ranks":["10% more damage","20% more damage","30% more damage"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"sunder_length","id":"volcanic","kind":"Notable","name":"Volcanic Rift","ranks":["Converts the damage to fire"],"requires":"split","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"sunder_length","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"split","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"echo","kind":"Notable","name":"Echo","ranks":["The skill repeats once, 20% less damage"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Attack, Melee, Area","type":"Melee","unlock":12,"useTime":0.75,"note":""},{"branches":["Precision","Tempo","Wounds"],"cooldown":0,"damage":15,"description":"Two quick stabs in a narrow arc. Fast, precise, crit-friendly.","id":"double_strike","mana":2,"name":"Double Strike","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"haste","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"flurry","kind":"Notable","name":"Flurry","ranks":["Strikes one more time, 15% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"laceration","kind":"Lesser","name":"Laceration","ranks":["10% chance to cause bleeding","20% chance to cause bleeding","30% chance to cause bleeding"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"deep","kind":"Lesser","name":"Deep Cuts","ranks":["10% more damage","20% more damage","30% more damage"],"requires":"laceration","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"ds_wounds","id":"venom_strike","kind":"Notable","name":"Storm Edge","ranks":["Converts the damage to lightning"],"requires":"deep","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"ds_wounds","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"deep","requiresRanks":2,"note":""}],"tags":"Attack, Melee","type":"Melee","unlock":1,"useTime":0.419999986886978,"note":""},{"branches":["Edge","Fan","Venom"],"cooldown":0,"damage":8,"description":"Throws a fan of knives that pierce one enemy each.","id":"throwing_knives","mana":4,"name":"Throwing Knives","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"knives_edge","id":"piercing","kind":"Notable","name":"Piercing","ranks":["Projectiles pass through 2 more enemies"],"requires":"haste","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"knives_edge","id":"ricochet","kind":"Notable","name":"Ricochet","ranks":["Projectiles chain to 2 more enemies"],"requires":"haste","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"velocity","kind":"Lesser","name":"Velocity","ranks":["10% faster projectiles","20% faster projectiles","35% faster projectiles"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"spread","kind":"Lesser","name":"Wide Fan","ranks":["10% more damage","20% more damage","30% more damage"],"requires":"velocity","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"volley","kind":"Notable","name":"Volley","ranks":["+1 projectile, 10% less damage"],"requires":"spread","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"laceration","kind":"Lesser","name":"Laceration","ranks":["10% chance to cause bleeding","20% chance to cause bleeding","30% chance to cause bleeding"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"laceration","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"knives_venom","id":"poisoned_tips","kind":"Notable","name":"Elemental Tips","ranks":["Converts the damage to lightning"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"knives_venom","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Attack, Projectile","type":"Projectile","unlock":4,"useTime":0.5,"note":""},{"branches":["Ice","Volley","Shatter"],"cooldown":0,"damage":9,"description":"Hurls a fan of ice shards. Cold hits chill enemies.","id":"frost_shards","mana":6,"name":"Frost Shards","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"rime","kind":"Lesser","name":"Rime","ranks":["+5% chance to freeze","+10% chance to freeze","+15% chance to freeze"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"rime","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"velocity","kind":"Lesser","name":"Velocity","ranks":["10% faster projectiles","20% faster projectiles","35% faster projectiles"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"velocity","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"shards_volley","id":"volley","kind":"Notable","name":"Volley","ranks":["+1 projectile, 10% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"shards_volley","id":"piercing","kind":"Notable","name":"Piercing","ranks":["Projectiles pass through 2 more enemies"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"brittle","kind":"Lesser","name":"Brittle","ranks":["10% more damage, shards fly 5% slower","20% more damage, shards fly 10% slower","30% more damage, shards fly 15% slower"],"requires":"haste","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"brittle","requiresRanks":2,"note":""}],"tags":"Spell, Projectile, Cold","type":"Projectile","unlock":6,"useTime":0.449999988079071,"note":""},{"branches":["Thunder","Tempo","Conduit"],"cooldown":0,"damage":20,"description":"A lightning-charged thrust in a narrow arc. Lightning hits can shock.","id":"storm_strike","mana":4,"name":"Storm Strike","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"static","kind":"Lesser","name":"Static","ranks":["+10% chance to shock","+20% chance to shock","+30% chance to shock"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"static","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"haste","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"flurry","kind":"Notable","name":"Flurry","ranks":["Strikes one more time, 15% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"charged","kind":"Lesser","name":"Charged","ranks":["10% more damage","20% more damage","30% more damage"],"requires":"reach","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"storm_conduit","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"charged","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"storm_conduit","id":"thunder_steel","kind":"Notable","name":"Bare Steel","ranks":["Converts the damage to physical: 15% more damage and +25% chance to cause bleeding"],"requires":"charged","requiresRanks":2,"note":""}],"tags":"Attack, Melee, Lightning","type":"Melee","unlock":10,"useTime":0.400000005960464,"note":""},{"branches":["Glacier","Weight","Rhythm"],"cooldown":0,"damage":30,"description":"A heavy overhead blow that shatters frost over a wide arc. Cold hits chill enemies.","id":"glacial_hammer","mana":5,"name":"Glacial Hammer","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"rime","kind":"Lesser","name":"Rime","ranks":["+5% chance to freeze","+10% chance to freeze","+15% chance to freeze"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"rime","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"heavy","kind":"Lesser","name":"Heavy Head","ranks":["10% more damage","20% more damage","30% more damage"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"hammer_weight","id":"kill_blast","kind":"Notable","name":"Detonation","ranks":["Kills burst for 30% of the hit around the body"],"requires":"heavy","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"hammer_weight","id":"wide","kind":"Notable","name":"Shockwave","ranks":["40% more area, 10% less damage"],"requires":"heavy","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"haste","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"flurry","kind":"Notable","name":"Flurry","ranks":["Strikes one more time, 15% less damage"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Attack, Melee, Area, Cold","type":"Melee","unlock":14,"useTime":0.699999988079071,"note":""},{"branches":["Rot","Plague","Reach"],"cooldown":0,"damage":12,"description":"Curses the enemy nearest the cursor with a corruption that eats it away: shadow damage every second for 6 s. No resistance stops it.","id":"corruption","mana":10,"name":"Corruption","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"virulence","kind":"Lesser","name":"Virulence","ranks":["Spreads to 1 enemy when its bearer dies","Spreads to 2 enemies when its bearer dies"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"pandemic","kind":"Notable","name":"Pandemic","ranks":["Spreads to 3 enemies, and on from them"],"requires":"virulence","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"multi","kind":"Lesser","name":"Many Hosts","ranks":["Marks 1 more enemy near the first","Marks 2 more enemies near the first"],"requires":"haste","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"blight_field","kind":"Notable","name":"Blight Field","ranks":["Marks every enemy in a wide circle, 20% less damage over time"],"requires":"multi","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Curse, Shadow","type":"Curse","unlock":3,"useTime":0.5,"note":""},{"branches":["Weakness","Reach","Ruin"],"cooldown":4,"damage":0,"description":"Curses every enemy in an area: their fire, cold and lightning resistances drop by 25 for 6 s.","id":"curse_elements","mana":14,"name":"Curse of Elements","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"weakness","kind":"Lesser","name":"Weakness","ranks":["Resistances drop 5 more","Resistances drop 10 more","Resistances drop 15 more"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"weakness","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"exposure","kind":"Notable","name":"Exposure","ranks":["Cursed enemies also take 15% more damage of every kind"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"hex_contagion","kind":"Notable","name":"Contagion","ranks":["Spreads to 2 enemies when its bearer dies"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"hex_burst","kind":"Notable","name":"Ruin","ranks":["Cursed enemies burst when they die, for 10% of their maximum life"],"requires":"haste","requiresRanks":2,"note":""}],"tags":"Spell, Area, Duration, Curse","type":"Curse","unlock":8,"useTime":0.449999988079071,"note":""},{"branches":["Stillness","Reach","Echo"],"cooldown":6,"damage":0,"description":"Curses every enemy in an area: they move 35% slower for 5 s.","id":"curse_time","mana":16,"name":"Curse of the World","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"drag","kind":"Lesser","name":"Drag","ranks":["5% stronger slow","10% stronger slow","15% stronger slow"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"drag","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"stasis","kind":"Notable","name":"Stasis","ranks":["Slow +20% more, and the curse is 20% shorter"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"time_contagion","kind":"Notable","name":"Ripple","ranks":["Spreads to 2 enemies when its bearer dies"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"time_frailty","kind":"Notable","name":"Frailty","ranks":["Slowed enemies also take 10% more damage"],"requires":"haste","requiresRanks":2,"note":""}],"tags":"Spell, Area, Duration, Curse","type":"Curse","unlock":12,"useTime":0.449999988079071,"note":""},{"branches":["Rift","Distance","Arcane"],"cooldown":2.5,"damage":12,"description":"Vanishes and reappears up to 230 px towards the cursor, untouchable for an instant. Walls stop it.","id":"blink","mana":6,"name":"Blink","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"flicker","kind":"Notable","name":"Flicker","ranks":["40% shorter cooldown, 30% shorter range"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"far_step","kind":"Lesser","name":"Far Step","ranks":["Blinks 15% farther","Blinks 30% farther","Blinks 50% farther"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"phasing","kind":"Lesser","name":"Phasing","ranks":["Untouchable 0.1 s longer after arriving","Untouchable 0.2 s longer after arriving","Untouchable 0.3 s longer after arriving"],"requires":"far_step","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"elusive","kind":"Notable","name":"Elusive","ranks":["30% more movement speed for 3 s after arriving"],"requires":"phasing","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"static_wake","kind":"Lesser","name":"Static Wake","ranks":["The point you leave bursts for 30% of the skill's damage","The point you leave bursts for 60% of the skill's damage","The point you leave bursts for 100% of the skill's damage"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"static_wake","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"frozen_arrival","kind":"Notable","name":"Frozen Arrival","ranks":["Where you arrive bursts too, as cold (chills)"],"requires":"power","requiresRanks":2,"note":""}],"tags":"Spell, Movement","type":"Movement","unlock":6,"useTime":0.25,"note":""},{"branches":["Inferno","Sacrifice","Wildfire"],"cooldown":0.5,"damage":14,"description":"Switch on / off. While on, burns every enemy within 110 px for 14 fire damage per second (it can ignite) — and costs you 2% of your maximum life every second.","id":"immolation","mana":8,"name":"Immolation Aura","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"kindling_heart","kind":"Notable","name":"Kindling Heart","ranks":["Its burns have +40% chance to ignite"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"tempered","kind":"Lesser","name":"Tempered Flesh","ranks":["Drains 15% less life","Drains 30% less life","Drains 45% less life"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"pyre_ward","kind":"Lesser","name":"Pyre Ward","ranks":["While on: +10 fire resistance","While on: +20 fire resistance","While on: +30 fire resistance"],"requires":"tempered","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"immo_sacrifice","id":"blood_pyre","kind":"Notable","name":"Blood Pyre","ranks":["40% more damage, drains twice the life"],"requires":"pyre_ward","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"immo_sacrifice","id":"cinder_skin","kind":"Notable","name":"Cinder Skin","ranks":["While on: 15% less damage taken"],"requires":"pyre_ward","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"kindle","kind":"Lesser","name":"Kindle","ranks":["+10% chance to ignite","+20% chance to ignite","+30% chance to ignite"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"searing","kind":"Lesser","name":"Searing","ranks":["Ignites deal 20% more damage","Ignites deal 40% more damage","Ignites deal 70% more damage"],"requires":"kindle","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"smoulder","kind":"Notable","name":"Smoulder","ranks":["Its ignites last 50% longer"],"requires":"searing","requiresRanks":2,"note":""}],"tags":"Spell, Area, Fire, Aura","type":"Aura (toggle)","unlock":6,"useTime":0.300000011920929,"note":""},{"branches":["Bulwark","Surge","Rhythm"],"cooldown":20,"damage":0,"description":"Aura. While it is in a slot: +10 to fire, cold and lightning resistance. Use: +40 more to all three for 6 s.","id":"elemental_ward","mana":15,"name":"Elemental Ward","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"warding","kind":"Lesser","name":"Warding","ranks":["Passive: +5 more to all three resistances","Passive: +10 more to all three resistances","Passive: +25 more to all three resistances"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"resolve","kind":"Lesser","name":"Resolve","ranks":["The passive is 10% stronger","The passive is 20% stronger","The passive is 30% stronger"],"requires":"warding","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"elemental_body","kind":"Notable","name":"Elemental Body","ranks":["Passive: also 8% less elemental damage taken"],"requires":"resolve","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"surge","kind":"Lesser","name":"Surge","ranks":["The active is 10% stronger","The active is 20% stronger","The active is 30% stronger"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"surge","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"elemental_shell","kind":"Notable","name":"Elemental Shell","ranks":["Active: also 20% less elemental damage taken"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"steady_ward","kind":"Notable","name":"Steady Ward","ranks":["The active lasts 60% longer, 20% weaker"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Aura","type":"Aura","unlock":8,"useTime":0.300000011920929,"note":""},{"branches":["Fire","Frost","Thunder"],"cooldown":18,"damage":0,"description":"Aura. While it is in a slot: 15% increased fire, cold and lightning damage. Use: 30% more elemental damage for 6 s. Its tree can focus it on one element.","id":"elemental_storm","mana":15,"name":"Elemental Storm","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"embers","kind":"Lesser","name":"Embers","ranks":["Passive: 5% increased fire damage","Passive: 10% increased fire damage","Passive: 15% increased fire damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"wildfire","kind":"Lesser","name":"Wildfire","ranks":["Passive: +5% chance to ignite","Passive: +10% chance to ignite","Passive: +15% chance to ignite"],"requires":"embers","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"storm_focus","id":"fire_focus","kind":"Notable","name":"Inferno Focus","ranks":["The storm is all fire: twice its bonus, to fire damage only; the active also +25% chance to ignite"],"requires":"wildfire","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"frostbite","kind":"Lesser","name":"Frostbite","ranks":["Passive: 5% increased cold damage","Passive: 10% increased cold damage","Passive: 15% increased cold damage"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"hoarfrost","kind":"Lesser","name":"Hoarfrost","ranks":["Passive: +3% chance to freeze","Passive: +6% chance to freeze","Passive: +10% chance to freeze"],"requires":"frostbite","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"storm_focus","id":"cold_focus","kind":"Notable","name":"Glacier Focus","ranks":["The storm is all cold: twice its bonus, to cold damage only; the active also +10% chance to freeze"],"requires":"hoarfrost","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"static_charge","kind":"Lesser","name":"Static Charge","ranks":["Passive: 5% increased lightning damage","Passive: 10% increased lightning damage","Passive: 15% increased lightning damage"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"conduction","kind":"Lesser","name":"Conduction","ranks":["Passive: +5% chance to shock","Passive: +10% chance to shock","Passive: +15% chance to shock"],"requires":"static_charge","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"storm_focus","id":"lightning_focus","kind":"Notable","name":"Tempest Focus","ranks":["The storm is all lightning: twice its bonus, to lightning damage only; the active also +25% chance to shock"],"requires":"conduction","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Aura","type":"Aura","unlock":12,"useTime":0.300000011920929,"note":""},{"branches":["Focus","Lethality","Rhythm"],"cooldown":18,"damage":0,"description":"Aura. While it is in a slot: +3% critical strike chance and +20% critical strike multiplier. Use: +10% chance and +60% multiplier for 5 s.","id":"precision","mana":12,"name":"Precision","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"keen","kind":"Lesser","name":"Keen Eye","ranks":["Passive: +1% critical strike chance","Passive: +2% critical strike chance","Passive: +3% critical strike chance"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"deadly","kind":"Lesser","name":"Deadly","ranks":["Passive: +10% critical strike multiplier","Passive: +20% critical strike multiplier","Passive: +30% critical strike multiplier"],"requires":"keen","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"sharpshooter","kind":"Notable","name":"Sharpshooter","ranks":["The passive is 50% stronger, the active 20% weaker"],"requires":"deadly","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"surge","kind":"Lesser","name":"Surge","ranks":["The active is 10% stronger","The active is 20% stronger","The active is 30% stronger"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"surge","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"opening_strike","kind":"Notable","name":"Opening Strike","ranks":["Active: also 20% increased attack and cast speed"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"flow","kind":"Notable","name":"Flow","ranks":["Active: also 15% increased movement speed"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Aura","type":"Aura","unlock":10,"useTime":0.300000011920929,"note":""},{"branches":["Wounds","Frenzy","Rhythm"],"cooldown":16,"damage":0,"description":"Aura. While it is in a slot: physical attacks have +15% chance to cause bleeding, and bleeds last 25% longer. Use: for 6 s every bleed adds 3 stacks instead of 1, and +20% bleed chance.","id":"bloodthirst","mana":12,"name":"Bloodthirst","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"deep_wounds","kind":"Lesser","name":"Deep Wounds","ranks":["Passive: bleeds last 10% longer","Passive: bleeds last 20% longer","Passive: bleeds last 35% longer"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"hemophilia","kind":"Lesser","name":"Hemophilia","ranks":["Passive: +5% chance to cause bleeding","Passive: +10% chance to cause bleeding","Passive: +15% chance to cause bleeding"],"requires":"deep_wounds","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"haemorrhage","kind":"Notable","name":"Haemorrhage","ranks":["Passive: every bleed adds one more stack, but bleeds last 25% shorter"],"requires":"hemophilia","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"surge","kind":"Lesser","name":"Surge","ranks":["The active is 10% stronger","The active is 20% stronger","The active is 30% stronger"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"surge","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"blood_frenzy","kind":"Notable","name":"Blood Frenzy","ranks":["Active: also 20% increased attack speed"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"sanguine","kind":"Notable","name":"Sanguine Thirst","ranks":["Active: also 2% of damage leeched as life"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Aura","type":"Aura","unlock":8,"useTime":0.300000011920929,"note":""},{"branches":["Bastion","Colossus","Rhythm"],"cooldown":20,"damage":0,"description":"Aura. While it is in a slot: +40 armour and 30% increased armour. Use: 80% more armour for 6 s, and nothing can knock you back.","id":"titan","mana":12,"name":"Titan Aura","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"plating","kind":"Lesser","name":"Plating","ranks":["Passive: 10% more increased armour","Passive: 20% more increased armour","Passive: 30% more increased armour"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"girth","kind":"Lesser","name":"Girth","ranks":["Passive: 3% increased maximum life","Passive: 6% increased maximum life","Passive: 10% increased maximum life"],"requires":"plating","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"immovable","kind":"Notable","name":"Immovable","ranks":["The passive alone stops every knockback"],"requires":"girth","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"surge","kind":"Lesser","name":"Surge","ranks":["The active is 10% stronger","The active is 20% stronger","The active is 30% stronger"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"surge","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"stone_skin","kind":"Notable","name":"Stone Skin","ranks":["Active: also 15% less physical damage taken"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"retaliation","kind":"Notable","name":"Retaliation","ranks":["Active: also +30 thorns damage"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Aura","type":"Aura","unlock":10,"useTime":0.300000011920929,"note":""},{"branches":["Vigour","Mending","Rhythm"],"cooldown":25,"damage":0,"description":"Aura. While it is in a slot: 12% increased maximum life. Use: heals 25% of your maximum life, and you take 30% less damage for 4 s.","id":"vitality","mana":15,"name":"Vitality","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"vigour","kind":"Lesser","name":"Vigour","ranks":["Passive: 3% more increased maximum life","Passive: 6% more increased maximum life","Passive: 10% more increased maximum life"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"regrowth","kind":"Lesser","name":"Regrowth","ranks":["Passive: +1 life regeneration per second","Passive: +2 life regeneration per second","Passive: +4 life regeneration per second"],"requires":"vigour","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"colossal_heart","kind":"Notable","name":"Colossal Heart","ranks":["The passive is 50% stronger; the active heals 40% less"],"requires":"regrowth","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"mending","kind":"Lesser","name":"Mending","ranks":["The active heals 5% more of your life","The active heals 10% more of your life","The active heals 15% more of your life"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"fortify","kind":"Lesser","name":"Fortify","ranks":["Active: 5% less damage taken on top","Active: 10% less damage taken on top","Active: 15% less damage taken on top"],"requires":"mending","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"second_wind","kind":"Notable","name":"Second Wind","ranks":["Active: also 30% increased movement speed"],"requires":"fortify","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"renewal","kind":"Notable","name":"Renewal","ranks":["20% shorter cooldown, and the active heals 10% more of your life"],"requires":"efficiency","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Aura","type":"Aura","unlock":6,"useTime":0.300000011920929,"note":""},{"branches":["Elements","Form","Ritual"],"cooldown":4,"damage":0,"description":"Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy every 0.9 s, at 70% of that skill's damage. Its tree boosts what it casts.","id":"totem","mana":14,"name":"Spell Totem","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"attunement","kind":"Lesser","name":"Attunement","ranks":["10% more elemental damage","20% more elemental damage","30% more elemental damage"],"requires":"power","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"conduit","kind":"Notable","name":"Conduit","ranks":["+15% chance to ignite and shock, +5% to freeze"],"requires":"attunement","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"splitting","kind":"Lesser","name":"Splitting","ranks":["Its projectiles fork 1 time on hit","Its projectiles fork 2 times on hit"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"velocity","kind":"Lesser","name":"Velocity","ranks":["10% faster projectiles","20% faster projectiles","35% faster projectiles"],"requires":"splitting","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"totem_form","id":"volley","kind":"Notable","name":"Volley","ranks":["+1 projectile, 10% less damage"],"requires":"velocity","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"totem_form","id":"wide","kind":"Notable","name":"Shockwave","ranks":["40% more area, 10% less damage"],"requires":"velocity","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"quickened","kind":"Lesser","name":"Quickened","ranks":["The totem casts 8% faster","The totem casts 16% faster","The totem casts 25% faster"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"quickened","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"ancestral_ring","kind":"Notable","name":"Ancestral Ring","ranks":["+1 totem at once, 15% less damage"],"requires":"lingering","requiresRanks":2,"note":""}],"tags":"Spell, Duration, Totem","type":"Totem","unlock":8,"useTime":0.5,"note":""},{"branches":["Slick","Spill","Rhythm"],"cooldown":4,"damage":0,"description":"Splashes oil over every enemy in a circle for 6 s: they take 25% more fire damage, and every fire hit ignites them.","id":"douse","mana":10,"name":"Douse","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"potency","kind":"Lesser","name":"Potency","ranks":["+10% to its effect","+20% to its effect","+35% to its effect"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"lingering","kind":"Lesser","name":"Lingering","ranks":["15% longer duration","30% longer duration","50% longer duration"],"requires":"potency","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"tar","kind":"Notable","name":"Tar","ranks":["The oil also slows by 30%"],"requires":"lingering","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"wide","kind":"Notable","name":"Shockwave","ranks":["40% more area, 10% less damage"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"accelerant","kind":"Notable","name":"Accelerant","ranks":["Ignites on oiled enemies last 50% longer"],"requires":"haste","requiresRanks":2,"note":""}],"tags":"Spell, Area, Duration","type":"Affliction","unlock":5,"useTime":0.449999988079071,"note":""},{"branches":["Blaze","Reach","Rhythm"],"cooldown":3,"damage":0,"description":"Detonates the ignites on every enemy in a circle: all the fire damage their stacks had left lands at once, 30% stronger.","id":"combust","mana":12,"name":"Combust","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"potency","kind":"Lesser","name":"Potency","ranks":["+10% to its effect","+20% to its effect","+35% to its effect"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"potency","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"chain_reaction","kind":"Notable","name":"Chain Reaction","ranks":["Each detonation splashes 50% of its damage around and ignites what it hits"],"requires":"power","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"embers_remain","kind":"Notable","name":"Embers Remain","ranks":["Each detonated enemy keeps 3 of its ignite stacks"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"haste","requiresRanks":2,"note":""}],"tags":"Spell, Area, Fire","type":"Affliction","unlock":10,"useTime":0.449999988079071,"note":""},{"branches":["Hemorrhage","Reach","Rhythm"],"cooldown":3,"damage":0,"description":"Tears open the wounds of every enemy in a circle: all the physical damage their bleed stacks had left lands at once, 30% stronger.","id":"exsanguinate","mana":10,"name":"Exsanguinate","nodes":[{"branch":0,"depth":0,"exclusive":"","id":"potency","kind":"Lesser","name":"Potency","ranks":["+10% to its effect","+20% to its effect","+35% to its effect"],"requires":"","requiresRanks":0,"note":""},{"branch":0,"depth":1,"exclusive":"","id":"power","kind":"Lesser","name":"Power","ranks":["8% more damage","16% more damage","25% more damage"],"requires":"potency","requiresRanks":2,"note":""},{"branch":0,"depth":2,"exclusive":"","id":"blood_nova","kind":"Notable","name":"Blood Nova","ranks":["Each detonation splashes 50% of its damage around and makes what it hits bleed"],"requires":"power","requiresRanks":2,"note":""},{"branch":1,"depth":0,"exclusive":"","id":"reach","kind":"Lesser","name":"Reach","ranks":["10% more area","20% more area","30% more area"],"requires":"","requiresRanks":0,"note":""},{"branch":1,"depth":1,"exclusive":"","id":"efficiency","kind":"Lesser","name":"Efficiency","ranks":["8% less mana cost","16% less mana cost","25% less mana cost"],"requires":"reach","requiresRanks":2,"note":""},{"branch":1,"depth":2,"exclusive":"","id":"open_wounds","kind":"Notable","name":"Open Wounds","ranks":["Each detonated enemy keeps 3 of its bleed stacks"],"requires":"efficiency","requiresRanks":2,"note":""},{"branch":2,"depth":0,"exclusive":"","id":"patience","kind":"Lesser","name":"Patience","ranks":["10% shorter cooldown","20% shorter cooldown","30% shorter cooldown"],"requires":"","requiresRanks":0,"note":""},{"branch":2,"depth":1,"exclusive":"","id":"haste","kind":"Lesser","name":"Haste","ranks":["5% faster to use","10% faster to use","15% faster to use"],"requires":"patience","requiresRanks":2,"note":""},{"branch":2,"depth":2,"exclusive":"","id":"brutal","kind":"Notable","name":"Overwhelm","ranks":["35% more damage, 25% more mana cost"],"requires":"haste","requiresRanks":2,"note":""}],"tags":"Attack, Area","type":"Affliction","unlock":10,"useTime":0.449999988079071,"note":""}]}</script>
+<script id="app-src">
+(function () {
+  "use strict";
+  const SHELL = `<div class="wrap" id="app">
+  <header class="top">
+    <h1>Escaldón's Workbench</h1>
+    <span class="sub">Árboles de mejora de cada habilidad: añade, quita o edita nodos y guarda.</span>
+    <div class="actions">
+      <button id="btn-save" class="primary" type="button">Guardar</button>
+      <button id="btn-copy" type="button">Copiar cambios</button>
+      <button id="btn-export" type="button">Exportar JSON</button>
+      <label class="btn" for="file-import" style="display:inline-block">Importar JSON<input id="file-import" type="file" accept="application/json,.json" class="sr"></label>
+      <button id="btn-reset" class="danger" type="button">Deshacer todo</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+  </header>
+
+  <div class="grid">
+    <nav class="panel rack" aria-label="Habilidades">
+      <h2>Habilidades</h2>
+      <input id="search" type="search" placeholder="Buscar…" aria-label="Buscar habilidad">
+      <ul class="skill-list" id="skill-list"></ul>
+      <div class="row"><button id="btn-new-skill" type="button">+ Habilidad nueva</button></div>
+    </nav>
+
+    <main class="panel bench" id="bench"></main>
+
+    <aside class="panel inspector" id="inspector" aria-label="Nodo seleccionado"></aside>
+  </div>
+
+  <section class="changes" id="changes"></section>
+</div>`;
+  document.getElementById("root").innerHTML = SHELL;
+  const STORE_KEY = "escaldon-workbench-draft-v1";
+  const raw = JSON.parse(document.getElementById("tree-data").textContent);
+  // base = what the game has (from DumpSkillTrees); skills = the edited copy.
+  const state = {
+    base: raw.base || raw.skills.map(s => JSON.parse(JSON.stringify(s))),
+    skills: raw.edited || raw.skills,
+    savedAt: raw.savedAt || null,
+    note: raw.note || "",
+  };
+  let current = state.skills[0] ? state.skills[0].id : null;
+  let selected = null;
+  let dirty = false;
+
+  try {
+    const draft = localStorage.getItem(STORE_KEY);
+    if (draft) {
+      const d = JSON.parse(draft);
+      if (d && d.savedAt === state.savedAt && Array.isArray(d.skills)) { state.skills = d.skills; state.note = d.note || ""; dirty = true; }
+    }
+  } catch (e) { /* storage unavailable: work in memory */ }
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const skill = id => state.skills.find(s => s.id === id);
+  const baseSkill = id => state.base.find(s => s.id === id);
+  const baseNode = (sid, nid) => (baseSkill(sid)?.nodes || []).find(n => n.id === nid);
+  const slug = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "node";
+
+  function nodeStatus(sid, n) {
+    if (n.removed) return "removed";
+    const b = baseNode(sid, n.id);
+    if (!b) return "new";
+    const keys = ["name", "kind", "branch", "depth", "requires", "requiresRanks", "exclusive", "note"];
+    if (keys.some(k => (b[k] ?? "") !== (n[k] ?? "")) || JSON.stringify(b.ranks) !== JSON.stringify(n.ranks)) return "changed";
+    return "";
+  }
+  function skillStatus(s) {
+    const b = baseSkill(s.id);
+    if (!b) return "new";
+    const keys = ["name", "unlock", "damage", "useTime", "cooldown", "mana", "description", "note"];
+    if (keys.some(k => (b[k] ?? "") !== (s[k] ?? "")) || JSON.stringify(b.branches) !== JSON.stringify(s.branches)) return "changed";
+    if (s.nodes.some(n => nodeStatus(s.id, n)) || b.nodes.length !== s.nodes.length) return "changed";
+    return "";
+  }
+
+  function touch() {
+    dirty = true;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
+    renderList(); renderChanges();
+    setStatus("Cambios sin guardar.");
+  }
+  function setStatus(t) { $("status").textContent = t; }
+
+  // --- the rack ---------------------------------------------------------------
+  function renderList() {
+    const q = $("search").value.trim().toLowerCase();
+    const ul = $("skill-list");
+    ul.innerHTML = "";
+    for (const s of state.skills) {
+      if (q && !(s.name + " " + s.id + " " + s.type).toLowerCase().includes(q)) continue;
+      const st = skillStatus(s);
+      const li = document.createElement("li");
+      li.innerHTML = `<button type="button" aria-current="${s.id === current}"><span>${esc(s.name)}<br><span class="type">${esc(s.type)} · nv ${esc(s.unlock)}</span></span>${st ? `<span class="chip ${st}">${st === "new" ? "nueva" : "cambios"}</span>` : ""}</button>`;
+      li.firstChild.addEventListener("click", () => { current = s.id; selected = null; renderAll(); });
+      ul.appendChild(li);
+    }
+  }
+
+  // --- the bench ----------------------------------------------------------------
+  function renderBench() {
+    const s = skill(current);
+    const bench = $("bench");
+    if (!s) { bench.innerHTML = `<p class="empty">Elige una habilidad.</p>`; return; }
+    const cols = Math.max(3, ...s.nodes.map(n => n.depth + 1));
+    const points = s.nodes.filter(n => !n.removed && !n.exclusive).reduce((a, n) => a + n.ranks.length, 0)
+      + new Set(s.nodes.filter(n => !n.removed && n.exclusive).map(n => n.exclusive)).size;
+    bench.innerHTML = `
+      <div class="bench-head"><h2>${esc(s.name)}</h2><span class="meta">${esc(s.id)} · ${esc(s.type)} · ${esc(s.tags)}</span>
+        <span class="meta num">${points} rangos en el árbol · una gema de nivel 20 tiene 19 puntos</span></div>
+      <details class="skill-fields" ${skillStatus(s) === "new" ? "open" : ""}><summary>Datos de la habilidad</summary>
+        <div class="fields">
+          <label>Nombre<input id="f-name" value="${esc(s.name)}"></label>
+          <label>Nivel para comprarla<input id="f-unlock" class="num" type="number" min="1" value="${esc(s.unlock)}"></label>
+          <label>Daño base<input id="f-damage" class="num" type="number" step="any" value="${esc(s.damage)}"></label>
+          <label>Tiempo de uso (s)<input id="f-useTime" class="num" type="number" step="any" value="${esc(s.useTime)}"></label>
+          <label>Cooldown (s)<input id="f-cooldown" class="num" type="number" step="any" value="${esc(s.cooldown)}"></label>
+          <label>Maná (nivel 1)<input id="f-mana" class="num" type="number" step="any" value="${esc(s.mana)}"></label>
+          <label class="wide">Descripción<textarea id="f-description">${esc(s.description)}</textarea></label>
+          <label class="wide">Notas para Claude<textarea id="f-note" placeholder="Qué quieres cambiar y por qué">${esc(s.note || "")}</textarea></label>
+        </div>
+      </details>
+      <div class="tree-scroll"><div class="tree" id="tree"><svg class="links" id="links" aria-hidden="true"></svg></div></div>
+      <div class="legend"><span><i class="swatch"></i>Menor (varios rangos)</span><span><i class="swatch notable"></i>Notable (1 rango)</span>
+        <span>Línea: requiere puntos en el nodo anterior</span><span>Recuadro dorado: elige uno de los dos</span></div>`;
+    for (const k of ["name", "unlock", "damage", "useTime", "cooldown", "mana", "description", "note"]) {
+      const el = $("f-" + k);
+      el.addEventListener("change", () => {
+        s[k] = el.type === "number" ? Number(el.value) : el.value;
+        touch(); if (k === "name") renderBench();
+      });
+    }
+
+    const tree = $("tree");
+    const branches = s.branches.length ? s.branches : ["Rama 1", "Rama 2", "Rama 3"];
+    s.branches = branches;
+    branches.forEach((bname, bi) => {
+      const row = document.createElement("div");
+      row.className = "branch";
+      row.style.setProperty("--cols", cols);
+      const name = document.createElement("div");
+      name.className = "branch-name";
+      name.innerHTML = `<input aria-label="Nombre de la rama ${bi + 1}" value="${esc(bname)}"><div class="hint">rama ${bi + 1}</div>`;
+      name.querySelector("input").addEventListener("change", e => { s.branches[bi] = e.target.value; touch(); });
+      row.appendChild(name);
+      for (let d = 0; d < cols; d++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        const here = s.nodes.filter(n => n.branch === bi && n.depth === d);
+        if (here.length > 1 && here.every(n => n.exclusive && n.exclusive === here[0].exclusive)) cell.classList.add("either");
+        for (const n of here) cell.appendChild(nodeCard(s, n));
+        row.appendChild(cell);
+      }
+      const add = document.createElement("button");
+      add.type = "button"; add.className = "add-node"; add.title = "Añadir un nodo al final de esta rama"; add.setAttribute("aria-label", `Añadir nodo a ${bname}`);
+      add.textContent = "+";
+      add.addEventListener("click", () => addNode(s, bi));
+      row.appendChild(add);
+      tree.appendChild(row);
+    });
+    requestAnimationFrame(() => drawLinks(s));
+  }
+
+  function nodeCard(s, n) {
+    const st = nodeStatus(s.id, n);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `node ${n.kind === "Notable" ? "notable" : ""} ${st ? "st-" + st : ""}`;
+    b.dataset.id = n.id;
+    b.setAttribute("aria-pressed", String(selected === n.id));
+    const ranks = n.ranks.length > 1 ? `${n.ranks.length} rangos · ${esc(n.ranks[0])} → ${esc(n.ranks[n.ranks.length - 1])}` : esc(n.ranks[0] || "—");
+    const req = n.requires ? `necesita ${n.requiresRanks || 1} en ${esc((s.nodes.find(x => x.id === n.requires) || {}).name || n.requires)}` : "inicio de rama";
+    b.innerHTML = `${st ? `<span class="chip ${st}">${st === "new" ? "nuevo" : st === "removed" ? "quitar" : "cambio"}</span>` : ""}
+      <span class="n-name">${esc(n.name)}</span><span class="n-rank">${ranks}</span><span class="n-meta">${req}</span>`;
+    b.addEventListener("click", () => { selected = n.id; renderBench(); renderInspector(); });
+    return b;
+  }
+
+  function drawLinks(s) {
+    const tree = $("tree"), svg = $("links");
+    if (!tree || !svg) return;
+    const box = tree.getBoundingClientRect();
+    const css = getComputedStyle(document.documentElement);
+    let html = "";
+    for (const n of s.nodes) {
+      if (!n.requires) continue;
+      const a = tree.querySelector(`.node[data-id="${CSS.escape(n.requires)}"]`);
+      const b = tree.querySelector(`.node[data-id="${CSS.escape(n.id)}"]`);
+      if (!a || !b) continue;
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top;
+      const x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top;
+      const mx = (x1 + x2) / 2;
+      const colour = n.removed ? css.getPropertyValue("--cut") : css.getPropertyValue("--muted");
+      html += `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none" stroke="${colour.trim()}" stroke-width="1.6" ${n.removed ? 'stroke-dasharray="4 3"' : ""}/>`;
+      html += `<text x="${mx}" y="${(y1 + y2) / 2 - 4}" font-size="10" font-family="IBM Plex Mono, monospace" fill="${css.getPropertyValue("--muted").trim()}" text-anchor="middle">${n.requiresRanks || 1}</text>`;
+    }
+    svg.innerHTML = html;
+  }
+
+  function addNode(s, bi) {
+    const inBranch = s.nodes.filter(n => n.branch === bi && !n.removed);
+    const depth = inBranch.length ? Math.max(...inBranch.map(n => n.depth)) + 1 : 0;
+    const parent = inBranch.filter(n => n.depth === depth - 1)[0];
+    let id = "new_node", i = 1;
+    while (s.nodes.some(n => n.id === id)) id = "new_node_" + (++i);
+    const n = { id, name: "Nodo nuevo", kind: depth >= 2 ? "Notable" : "Lesser", branch: bi, depth,
+      ranks: depth >= 2 ? ["Qué hace"] : ["Rango 1", "Rango 2", "Rango 3"], requires: parent ? parent.id : "", requiresRanks: parent ? 2 : 0, exclusive: "", note: "" };
+    s.nodes.push(n);
+    selected = n.id;
+    touch(); renderBench(); renderInspector();
+  }
+
+  // --- the inspector --------------------------------------------------------------
+  function renderInspector() {
+    const box = $("inspector");
+    const s = skill(current);
+    const n = s && s.nodes.find(x => x.id === selected);
+    if (!n) {
+      box.innerHTML = `<h2>Nodo</h2><p class="empty">Pulsa un nodo del árbol para editarlo, o + al final de una rama para añadir uno.</p>`;
+      return;
+    }
+    const others = s.nodes.filter(x => x.id !== n.id && !x.removed);
+    const label = { new: "nuevo", changed: "cambio", removed: "quitar" }[nodeStatus(s.id, n)] || "";
+    box.innerHTML = `<h2>Nodo ${label ? `<span class="chip ${nodeStatus(s.id, n)}">${label}</span>` : ""}</h2>
+      <div class="fields">
+        <label class="wide">Nombre<input id="n-name" value="${esc(n.name)}"></label>
+        <label>Tipo<select id="n-kind"><option value="Lesser">Menor</option><option value="Notable">Notable</option></select></label>
+        <label>Rama<select id="n-branch">${s.branches.map((b, i) => `<option value="${i}">${esc(b)}</option>`).join("")}</select></label>
+        <label>Columna<input id="n-depth" class="num" type="number" min="0" max="6" value="${n.depth}"></label>
+        <label>Puntos necesarios<input id="n-reqranks" class="num" type="number" min="0" max="5" value="${n.requiresRanks || 0}"></label>
+        <label class="wide">Requiere<select id="n-requires"><option value="">— nada (inicio de rama) —</option>${others.map(o => `<option value="${esc(o.id)}">${esc(o.name)} (${esc(o.id)})</option>`).join("")}</select></label>
+        <label class="wide">Grupo "elige uno" (mismo texto en los nodos que se excluyen)<input id="n-exclusive" value="${esc(n.exclusive)}" placeholder="vacío = no excluye"></label>
+      </div>
+      <label>Qué hace cada rango</label>
+      <div class="ranks" id="n-ranks">${n.ranks.map((r, i) => `<div class="rank-row"><span class="r">${i + 1}</span><input data-rank="${i}" value="${esc(r)}" aria-label="Rango ${i + 1}"><button type="button" data-del="${i}" aria-label="Quitar rango ${i + 1}" ${n.ranks.length < 2 ? "disabled" : ""}>×</button></div>`).join("")}</div>
+      <div class="row"><button id="n-addrank" type="button">+ Rango</button></div>
+      <label style="margin-top:10px">Notas para Claude<textarea id="n-note" placeholder="Idea, valores, por qué">${esc(n.note || "")}</textarea></label>
+      <p class="n-meta" style="font:11px var(--mono);color:var(--muted)">id: ${esc(n.id)}</p>
+      <div class="row">${n.removed ? `<button id="n-restore" type="button">Recuperar nodo</button>` : `<button id="n-delete" class="danger" type="button">Quitar nodo</button>`}</div>`;
+    $("n-kind").value = n.kind;
+    $("n-branch").value = String(n.branch);
+    $("n-requires").value = n.requires || "";
+    const set = (k, v) => { n[k] = v; touch(); renderBench(); renderInspector(); };
+    $("n-name").addEventListener("change", e => { const was = baseNode(s.id, n.id); n.name = e.target.value; if (!was && n.id.startsWith("new_node")) { let id = slug(n.name); while (s.nodes.some(x => x !== n && x.id === id)) id += "_2"; s.nodes.forEach(x => { if (x.requires === n.id) x.requires = id; }); n.id = id; selected = id; } touch(); renderBench(); renderInspector(); });
+    $("n-kind").addEventListener("change", e => set("kind", e.target.value));
+    $("n-branch").addEventListener("change", e => set("branch", Number(e.target.value)));
+    $("n-depth").addEventListener("change", e => set("depth", Math.max(0, Number(e.target.value))));
+    $("n-reqranks").addEventListener("change", e => set("requiresRanks", Math.max(0, Number(e.target.value))));
+    $("n-requires").addEventListener("change", e => set("requires", e.target.value));
+    $("n-exclusive").addEventListener("change", e => set("exclusive", e.target.value.trim()));
+    $("n-note").addEventListener("change", e => { n.note = e.target.value; touch(); });
+    box.querySelectorAll("input[data-rank]").forEach(el => el.addEventListener("change", e => { n.ranks[Number(e.target.dataset.rank)] = e.target.value; touch(); renderBench(); }));
+    box.querySelectorAll("button[data-del]").forEach(el => el.addEventListener("click", e => { n.ranks.splice(Number(e.currentTarget.dataset.del), 1); set("ranks", n.ranks); }));
+    $("n-addrank").addEventListener("click", () => { n.ranks.push(""); set("ranks", n.ranks); });
+    const del = $("n-delete");
+    if (del) del.addEventListener("click", () => {
+      if (!baseNode(s.id, n.id)) { s.nodes = s.nodes.filter(x => x !== n); s.nodes.forEach(x => { if (x.requires === n.id) x.requires = ""; }); selected = null; touch(); renderBench(); renderInspector(); }
+      else set("removed", true);
+    });
+    const restore = $("n-restore");
+    if (restore) restore.addEventListener("click", () => { delete n.removed; touch(); renderBench(); renderInspector(); });
+  }
+
+  // --- the change list ---------------------------------------------------------
+  function changeLines() {
+    const out = [];
+    for (const s of state.skills) {
+      const b = baseSkill(s.id);
+      if (!b) { out.push(`NUEVA HABILIDAD ${s.name} (${s.id}): ${s.type}, nv ${s.unlock}, daño ${s.damage}, uso ${s.useTime}s, cd ${s.cooldown}s, maná ${s.mana}. ${s.description}${s.note ? " — Nota: " + s.note : ""}`); }
+      else {
+        for (const k of ["name", "unlock", "damage", "useTime", "cooldown", "mana", "description"]) if ((b[k] ?? "") !== (s[k] ?? "")) out.push(`${s.name}: ${k} ${JSON.stringify(b[k])} → ${JSON.stringify(s[k])}`);
+        if (JSON.stringify(b.branches) !== JSON.stringify(s.branches)) out.push(`${s.name}: ramas ${b.branches.join(" / ")} → ${s.branches.join(" / ")}`);
+        if (s.note && s.note !== (b.note || "")) out.push(`${s.name}: nota — ${s.note}`);
+      }
+      for (const n of s.nodes) {
+        const st = nodeStatus(s.id, n);
+        const where = `${s.name} / ${s.branches[n.branch] || "rama " + (n.branch + 1)} / ${n.name}`;
+        if (st === "new") out.push(`${where}: NODO NUEVO (${n.kind === "Notable" ? "notable" : "menor"}, columna ${n.depth + 1}${n.requires ? `, requiere ${n.requiresRanks} en ${n.requires}` : ""}${n.exclusive ? `, elige-uno "${n.exclusive}"` : ""}): ${n.ranks.join(" | ")}${n.note ? " — Nota: " + n.note : ""}`);
+        else if (st === "removed") out.push(`${where}: QUITAR NODO (${n.id})${n.note ? " — Nota: " + n.note : ""}`);
+        else if (st === "changed") {
+          const o = baseNode(s.id, n.id), diffs = [];
+          for (const k of ["name", "kind", "branch", "depth", "requires", "requiresRanks", "exclusive"]) if ((o[k] ?? "") !== (n[k] ?? "")) diffs.push(`${k} ${JSON.stringify(o[k])} → ${JSON.stringify(n[k])}`);
+          if (JSON.stringify(o.ranks) !== JSON.stringify(n.ranks)) diffs.push(`rangos ${o.ranks.join(" | ")} → ${n.ranks.join(" | ")}`);
+          if (n.note && n.note !== (o.note || "")) diffs.push(`nota — ${n.note}`);
+          out.push(`${where} (${n.id}): ${diffs.join("; ")}`);
+        }
+      }
+    }
+    return out;
+  }
+  function renderChanges() {
+    const lines = changeLines();
+    $("changes").innerHTML = `<h2>Cambios respecto al juego</h2>
+      <label>Nota general<textarea id="g-note" placeholder="Cualquier cosa que quieras decirme sobre esta tanda de cambios">${esc(state.note)}</textarea></label>
+      ${lines.length ? `<ol>${lines.map(l => `<li>${esc(l)}</li>`).join("")}</ol>` : `<p class="none">Aún no hay cambios. Lo que edites aparecerá aquí, listo para copiar.</p>`}`;
+    $("g-note").addEventListener("change", e => { state.note = e.target.value; touch(); });
+  }
+
+  // --- saving -------------------------------------------------------------------
+  function payload(savedAt) {
+    return { savedAt, note: state.note, base: state.base, edited: state.skills, skills: state.skills };
+  }
+  function documentFor(data) {
+    const json = JSON.stringify(data).replace(/</g, "\\u003c");
+    const style = document.getElementById("page-style").outerHTML;
+    const app = document.getElementById("app-src").textContent;
+    const head = Array.from(document.querySelectorAll("title, meta[name='claude:viewport-fit-sides'], link[href*='fonts']")).map(e => e.outerHTML).join("\n");
+    const close = "</" + "script>";
+    return "<!doctype html><html><head><meta charset=utf8><meta name=viewport content=\"width=device-width,initial-scale=1,viewport-fit=cover\"><style>" + RESET + "</style></head><body>"
+      + head + "\n" + style + "\n<div id=\"root\"></div>\n<script type=\"application/json\" id=\"tree-data\">" + json + close
+      + "\n<script id=\"app-src\">" + app + close + "\n</body></html>";
+  }
+  const RESET = ":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}";
+
+  let artifact = null;
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("artifact").then(a => { artifact = a; }).catch(() => { artifact = null; });
+  }
+
+  async function save() {
+    const when = new Date().toISOString();
+    if (artifact) {
+      $("btn-save").disabled = true;
+      setStatus("Guardando…");
+      try {
+        await artifact.publish(documentFor(payload(when)));
+        try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+        setStatus("Guardado. Claude puede leer esta versión.");
+      } catch (e) {
+        const code = e && e.code;
+        setStatus(code === "conflict" ? "Otra persona guardó a la vez; la página se recarga con su versión." : code === "not_granted" || code === "not_writer" ? "Solo lectura: exporta el JSON y pásaselo a Claude." : "No se pudo guardar: " + (e && e.message || e));
+      } finally { $("btn-save").disabled = false; }
+      return;
+    }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
+    setStatus("Guardado en este navegador. Para pasárselo a Claude: Exportar JSON y adjúntalo en el chat (o Copiar cambios).");
+  }
+
+  async function copyChanges() {
+    const text = (state.note ? "Nota: " + state.note + "\n" : "") + changeLines().map((l, i) => `${i + 1}. ${l}`).join("\n");
+    try { await navigator.clipboard.writeText(text || "Sin cambios"); setStatus("Cambios copiados: pégalos en el chat."); }
+    catch (e) {
+      $("changes").insertAdjacentHTML("beforeend", `<pre id="copy-fallback">${esc(text)}</pre>`);
+      const r = document.createRange(); r.selectNodeContents($("copy-fallback")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      setStatus("No pude copiar solo: el texto está seleccionado abajo, cópialo con Ctrl+C.");
+    }
+  }
+
+  async function exportJson() {
+    const text = JSON.stringify(payload(new Date().toISOString()), null, 2);
+    if (window.claude && typeof window.claude.use === "function") {
+      const downloads = await window.claude.use("downloads").catch(() => null);
+      if (downloads) {
+        try { await downloads.save({ filename: "skill-trees-edited.json", data: text }); setStatus("JSON exportado."); return; } catch (e) { /* fall through */ }
+      }
+    }
+    try {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+      a.download = "skill-trees-edited.json"; a.click();
+      setStatus("JSON exportado.");
+    } catch (e) { setStatus("No se pudo exportar: usa Copiar cambios."); }
+  }
+
+  $("file-import").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      const list = d.edited || d.skills;
+      if (!Array.isArray(list)) throw new Error("no trae 'skills'");
+      state.skills = list; state.note = d.note || state.note;
+      if (Array.isArray(d.base) && !raw.base) state.base = d.base;
+      current = state.skills[0] && state.skills[0].id; selected = null;
+      touch(); renderAll(); setStatus("Importado " + f.name + ".");
+    } catch (err) { setStatus("Ese archivo no es un JSON del banco de trabajo: " + err.message); }
+  });
+  $("btn-save").addEventListener("click", save);
+  $("btn-copy").addEventListener("click", copyChanges);
+  $("btn-export").addEventListener("click", exportJson);
+  let resetArmed = false;
+  $("btn-reset").addEventListener("click", e => {
+    if (!resetArmed) { resetArmed = true; e.currentTarget.textContent = "¿Seguro? Pulsa otra vez"; setTimeout(() => { resetArmed = false; $("btn-reset").textContent = "Deshacer todo"; }, 4000); return; }
+    state.skills = JSON.parse(JSON.stringify(state.base)); state.note = ""; selected = null; resetArmed = false;
+    $("btn-reset").textContent = "Deshacer todo";
+    try { localStorage.removeItem(STORE_KEY); } catch (err) { /* ignore */ }
+    renderAll(); setStatus("Vuelto a lo que tiene el juego.");
+  });
+  $("btn-new-skill").addEventListener("click", () => {
+    let id = "new_skill", i = 1;
+    while (skill(id)) id = "new_skill_" + (++i);
+    state.skills.push({ id, name: "Habilidad nueva", type: "?", tags: "", unlock: 1, damage: 0, useTime: 0.5, cooldown: 0, mana: 5, description: "", note: "", branches: ["Rama 1", "Rama 2", "Rama 3"], nodes: [] });
+    current = id; selected = null; touch(); renderAll();
+  });
+  $("search").addEventListener("input", renderList);
+  window.addEventListener("resize", () => { const s = skill(current); if (s) drawLinks(s); });
+
+  function renderAll() { renderList(); renderBench(); renderInspector(); renderChanges(); }
+  renderAll();
+  setStatus(dirty ? "Tienes un borrador sin guardar de la última vez." : state.savedAt ? "Última versión guardada: " + new Date(state.savedAt).toLocaleString() : "Datos sacados del juego. Edita y guarda.");
+})();
+</script>

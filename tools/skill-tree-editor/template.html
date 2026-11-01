@@ -63,7 +63,7 @@ textarea { resize: vertical; min-height: 54px; }
 details.skill-fields { margin-bottom: 12px; }
 details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--steel); margin-bottom: 8px; }
 .tree-scroll { overflow-x: auto; padding-bottom: 6px; }
-.tree { position: relative; display: grid; gap: 14px; min-width: 640px; }
+.tree { position: relative; display: grid; gap: 14px; min-width: 640px; padding-top: 10px; }
 .tree svg.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .branch { display: grid; grid-template-columns: 130px repeat(var(--cols), minmax(150px, 1fr)) 56px; gap: 14px; align-items: center; position: relative; }
 .branch-name input { font: 700 15px var(--display); background: transparent; border-color: transparent; padding: 4px; }
@@ -329,7 +329,8 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
       return;
     }
     const others = s.nodes.filter(x => x.id !== n.id && !x.removed);
-    box.innerHTML = `<h2>Nodo ${nodeStatus(s.id, n) ? `<span class="chip ${nodeStatus(s.id, n)}">${nodeStatus(s.id, n)}</span>` : ""}</h2>
+    const label = { new: "nuevo", changed: "cambio", removed: "quitar" }[nodeStatus(s.id, n)] || "";
+    box.innerHTML = `<h2>Nodo ${label ? `<span class="chip ${nodeStatus(s.id, n)}">${label}</span>` : ""}</h2>
       <div class="fields">
         <label class="wide">Nombre<input id="n-name" value="${esc(n.name)}"></label>
         <label>Tipo<select id="n-kind"><option value="Lesser">Menor</option><option value="Notable">Notable</option></select></label>
