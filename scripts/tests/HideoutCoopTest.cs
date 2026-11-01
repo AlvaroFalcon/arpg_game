@@ -787,9 +787,9 @@ public partial class HideoutCoopGuest : CoopTestDriver
             }
             case "buy_gem":
             {
-                MerchantPanel shop = town!.GetNode<MerchantPanel>("MerchantPanel");
+                SkillTreePanel shop = town!.Escaldon;
                 shop.Open();
-                shop.ShowTab(MerchantTab.SkillGems);
+                shop.ShowTab(EscaldonTab.BuySkills);
                 long before = town.Player.Wallet.GetBalance(Profile.GoldId);
                 GemOffer? offer = GemShop.Offers.FirstOrDefault(o => GemShop.CannotBuy(_profile.Active, town.Player.Wallet, o) is null);
                 bool ok = false;

@@ -125,7 +125,7 @@ public sealed class CharacterData
     /// <summary><see cref="RealitiesCleared"/> at Arehucaz's last restock.</summary>
     public int ShardVendorSince { get; set; }
 
-    /// <summary>The character level at which the player last opened Odran's Skill gems
+    /// <summary>The character level at which the player last opened Escaldón's Buy skills
     /// tab; gems unlocked since then are "new" (<see cref="GemShop.NewCount"/>).</summary>
     public int GemShopSeenLevel { get; set; }
 

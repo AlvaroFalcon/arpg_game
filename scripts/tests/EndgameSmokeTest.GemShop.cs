@@ -17,7 +17,7 @@ public partial class EndgameSmokeTest
         player.Wallet.Add(Profile.GoldId, gold);
     }
 
-    /// <summary>docs/design/hideout.md -> "Odran's Skill gems tab" (GEMSHOP-*) and the altar's confirm (ALTAR-CONFIRM).</summary>
+    /// <summary>docs/design/skills.md -> "Escaldón sells the skills" (GEMSHOP-*) and the altar's confirm (ALTAR-CONFIRM).</summary>
     private async Task GemShopChecks(Hideout hideout)
     {
         // The catalogue is covered exactly once, at the plan's prices.
@@ -37,7 +37,7 @@ public partial class EndgameSmokeTest
         CharacterData c = profile is not null ? profile.CreateCharacter("GemBuyer", "arcanist") : CharacterData.Create("GemBuyer", "arcanist");
         c.Level = 3;
         c.GemShopSeenLevel = 3;
-        var merchant = hideout.GetNode<UI.MerchantPanel>("MerchantPanel");
+        var merchant = hideout.Escaldon; // the skill shop moved from Odran to Escaldón (2026-11-01)
         merchant.Character = c;
         var bought = new List<(string Key, int Value)>();
         void OnEvent(string id, int value, string key)
@@ -51,7 +51,7 @@ public partial class EndgameSmokeTest
         GameEvents.Raised += OnEvent;
         SetGold(player, 500);
         merchant.Open();
-        merchant.ShowTab(UI.MerchantTab.SkillGems);
+        merchant.ShowTab(UI.EscaldonTab.BuySkills);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         UI.GemShopView view = merchant.Gems;
 
@@ -127,7 +127,7 @@ public partial class EndgameSmokeTest
         c.Level = 16;
         merchant.Open();
         bool dot = merchant.GemsTabDot;
-        merchant.ShowTab(UI.MerchantTab.SkillGems);
+        merchant.ShowTab(UI.EscaldonTab.BuySkills);
         bool cleared = !merchant.GemsTabDot && c.GemShopSeenLevel == 16;
         view.SetKind(false);
         bool newTag = view.RowStateText("meteor").Contains("NEW");

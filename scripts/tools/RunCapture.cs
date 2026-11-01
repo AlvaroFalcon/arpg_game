@@ -459,25 +459,29 @@ public partial class RunCapture : Node
         await Wait(0.3f);
         await HoverFirstItem(merchant, player);
         await Snap("panel-merchant.png");
-        // Odran's Skill gems tab (docs/design/hideout.md): skills, supports, and a purchase.
+        // Escaldón's Buy skills tab (docs/design/skills.md): skills, supports, and a purchase.
         if (ArpgGame.Core.Profile.Get(this) is { } gemProfile)
         {
             gemProfile.Active.Level = 9;
             gemProfile.Active.GemShopSeenLevel = 3;
         }
 
-        merchant.ShowTab(MerchantTab.SkillGems);
-        await Wait(0.3f);
-        await Snap("odran-gems-skills.png");
-        merchant.Gems.SetKind(true);
-        await Wait(0.2f);
-        await Snap("odran-gems-supports.png");
-        merchant.Gems.SetKind(false);
-        merchant.Gems.Select(Characters.GemShop.Find("frost_shards", false)!);
-        merchant.Gems.Buy();
-        await Wait(0.3f);
-        await Snap("odran-gems-bought.png");
         merchant.Close();
+        // The skill shop is Escaldón's Buy skills tab since 2026-11-01.
+        SkillTreePanel escaldon = hideout.GetNode<SkillTreePanel>("SkillTreePanel");
+        escaldon.Open();
+        escaldon.ShowTab(EscaldonTab.BuySkills);
+        await Wait(0.3f);
+        await Snap("escaldon-buy-skills.png");
+        escaldon.Gems.SetKind(true);
+        await Wait(0.2f);
+        await Snap("escaldon-buy-supports.png");
+        escaldon.Gems.SetKind(false);
+        escaldon.Gems.Select(Characters.GemShop.Find("frost_shards", false)!);
+        escaldon.Gems.Buy();
+        await Wait(0.3f);
+        await Snap("escaldon-buy-bought.png");
+        escaldon.Close();
 
         var inventoryUi = player.GetNode<InventoryUI>("InventoryUI");
         inventoryUi.SetOpen(true);

@@ -1161,7 +1161,7 @@ public partial class Hideout : Node2D
         switch (tab)
         {
             case "gems":
-                _merchant.ShowTab(MerchantTab.SkillGems);
+                _escaldon.ShowTab(EscaldonTab.BuySkills);
                 break;
             case "disenchant":
                 _artificer.Show(ArtificerPanel.Tab.Disenchant);

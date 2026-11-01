@@ -47,7 +47,7 @@ public partial class SkillsPanel : ModalPanel
         _gems.AddThemeConstantOverride("h_separation", 6);
         _gems.AddThemeConstantOverride("v_separation", 6);
         scroll.AddChild(_gems);
-        body.AddChild(UiTheme.Label("More gems: reality bosses drop them, and Odran sells every one (Skill gems tab).", 13, UiTheme.TextDim));
+        body.AddChild(UiTheme.Label("More gems: reality bosses drop them, and Escaldón sells every one (Buy skills tab).", 13, UiTheme.TextDim));
         _detail = UiTheme.Label("", 15, UiTheme.Text);
         _detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _detail.CustomMinimumSize = new Vector2(940f, 44f);
@@ -149,7 +149,7 @@ public partial class SkillsPanel : ModalPanel
         if (_gems.GetChildCount() == 0)
         {
             _gems.AddChild(UiTheme.Label(supports ? "No support gems that fit this skill yet — rare monsters and bosses drop them."
-                : space ? "No movement skills yet — Odran sells Blink and Leap Slam." : "No skill gems.", 16, UiTheme.TextDim));
+                : space ? "No movement skills yet — Escaldón sells Blink and Leap Slam." : "No skill gems.", 16, UiTheme.TextDim));
         }
     }
 
