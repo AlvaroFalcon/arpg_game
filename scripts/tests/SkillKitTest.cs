@@ -89,6 +89,7 @@ public partial class SkillKitTest : Node2D
         _player.Stats.Get(StatId.MaxLife).AddModifier(new StatModifier(ModifierType.Flat, 900f, "test"));
 
         SheetChecks();
+        PathChecks();
         SlotChecks();
         await StackChecks();
         await AfflictionChecks();
@@ -136,6 +137,26 @@ public partial class SkillKitTest : Node2D
         var inRift = fresh.Where(id => id is "blink" or "totem" or "immolation" or "precision" && SkillRules.InRift(UpgradeCatalog.FindSkill(id)!.Definition)).ToList();
         Check("NEW-SKILLS-LISTED", missing.Count == 0 && inRift.Count == 0,
             $"{fresh.Length} new skills; missing a definition/icon/tree/shop entry: [{string.Join(",", missing)}]; wrongly offered in the Rift: [{string.Join(",", inRift)}]");
+    }
+
+    /// <summary>A node reachable from two nodes (Escaldón's Workbench graphs): either path opens
+    /// it, and a refund that would leave it with no way in is refused.</summary>
+    private void PathChecks()
+    {
+        var a = new SkillTreeNode { Id = "a", Name = "A", MaxRank = 3 };
+        var b = new SkillTreeNode { Id = "b", Name = "B", MaxRank = 3, Branch = 1 };
+        var c = new SkillTreeNode { Id = "c", Name = "C", Kind = SkillTreeNodeKind.Notable, Requires = "a", RequiresRanks = 2, AlsoFrom = new[] { ("b", 1) } };
+        var tree = new SkillTree { SkillId = "test", Branches = new[] { "x", "y", "z" }, Nodes = new[] { a, b, c } };
+        var gem = new Characters.GemData { Id = "test", Level = 10 };
+        bool closed = SkillTreeRules.CannotRaise(gem, tree, c) is { } why && why.Contains(" or ");
+        SkillTreeRules.Raise(gem, tree, b);
+        bool viaB = SkillTreeRules.Raise(gem, tree, c);
+        bool bLocked = SkillTreeRules.CannotLower(gem, tree, b) is not null;
+        SkillTreeRules.Raise(gem, tree, a);
+        SkillTreeRules.Raise(gem, tree, a);
+        bool bFree = SkillTreeRules.CannotLower(gem, tree, b) is null;
+        Check("TREE-TWO-PATHS", closed && viaB && bLocked && bFree,
+            $"closed with no points (\"Needs … or …\")={closed}; opened by 1 point in B={viaB}; B can't be refunded while it is C's only way in={bLocked}; once A has 2 points it can={bFree}");
     }
 
     private void SlotChecks()

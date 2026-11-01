@@ -38,6 +38,14 @@ public sealed class SkillTreeNode
     public string? Requires { get; init; }
     public int RequiresRanks { get; init; } = 1;
 
+    /// <summary>More ways in (Escaldón's Workbench, 2026-11-01): a node may be reached from
+    /// several nodes; any one path whose points are met opens it.</summary>
+    public IReadOnlyList<(string Id, int Ranks)> AlsoFrom { get; init; } = Array.Empty<(string, int)>();
+
+    /// <summary>Every way into the node (empty = a starting node).</summary>
+    public IEnumerable<(string Id, int Ranks)> Parents =>
+        Requires is { } r ? AlsoFrom.Prepend((r, RequiresRanks)) : AlsoFrom;
+
     /// <summary>Nodes sharing a group exclude each other: a choice, not a stack.</summary>
     public string? Exclusive { get; init; }
 
@@ -599,9 +607,10 @@ public static class SkillTreeRules
             return gem.Level >= Characters.GemData.MaxLevel ? "No points left" : "No points left: raise the skill's level for more";
         }
 
-        if (node.Requires is { } parent && RankOf(gem, parent) < node.RequiresRanks)
+        if (!Reachable(gem, node, _ => 0))
         {
-            return $"Needs {node.RequiresRanks} point{(node.RequiresRanks == 1 ? "" : "s")} in {tree.Node(parent)?.Name ?? parent} first";
+            string ways = string.Join(" or ", node.Parents.Select(p => $"{p.Ranks} point{(p.Ranks == 1 ? "" : "s")} in {tree.Node(p.Id)?.Name ?? p.Id}"));
+            return $"Needs {ways} first";
         }
 
         if (node.Exclusive is { } group && tree.Nodes.FirstOrDefault(n => n.Exclusive == group && n.Id != node.Id && RankOf(gem, n.Id) > 0) is { } taken)
@@ -621,12 +630,31 @@ public static class SkillTreeRules
             return "No points in it";
         }
 
-        if (tree.Nodes.FirstOrDefault(n => n.Requires == node.Id && RankOf(gem, n.Id) > 0 && rank - 1 < n.RequiresRanks) is { } child)
+        // A child that would lose every way in blocks the refund; one still reached another way doesn't.
+        if (tree.Nodes.FirstOrDefault(n => RankOf(gem, n.Id) > 0 && n.Parents.Any(p => p.Id == node.Id)
+                && !Reachable(gem, n, id => id == node.Id ? 1 : 0)) is { } child)
         {
             return $"{child.Name} needs it: take that back first";
         }
 
         return null;
+    }
+
+    /// <summary>Whether any way into <paramref name="node"/> is met (a starting node always is);
+    /// <paramref name="minus"/> takes ranks away first, to ask "after a refund?".</summary>
+    public static bool Reachable(Characters.GemData gem, SkillTreeNode node, Func<string, int> minus)
+    {
+        bool any = false;
+        foreach ((string id, int ranks) in node.Parents)
+        {
+            any = true;
+            if (RankOf(gem, id) - minus(id) >= ranks)
+            {
+                return true;
+            }
+        }
+
+        return !any;
     }
 
     public static bool Raise(Characters.GemData gem, SkillTree tree, SkillTreeNode node)
@@ -671,7 +699,7 @@ public static class SkillTreeRules
         }
 
         bool valid = gem.Tree.All(kv => tree.Node(kv.Key) is { } n && kv.Value >= 1 && kv.Value <= n.MaxRank
-                && (n.Requires is null || RankOf(gem, n.Requires) >= n.RequiresRanks)
+                && Reachable(gem, n, _ => 0)
                 && (n.Exclusive is null || !tree.Nodes.Any(o => o.Exclusive == n.Exclusive && o.Id != n.Id && RankOf(gem, o.Id) > 0)))
             && gem.TreePointsSpent <= gem.Level - 1;
         if (!valid)

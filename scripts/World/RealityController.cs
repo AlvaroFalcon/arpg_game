@@ -71,6 +71,9 @@ public partial class RealityController : Node2D, IPickupHandler
     /// <summary>The introduction reality (docs/design/tutorial.md): fixed packs,
     /// softer monsters, unlimited portals and a <see cref="TutorialGuide"/>.</summary>
     public bool IsTutorial { get; private set; }
+
+    /// <summary>The hidden playground (docs/design/playground.md): no packs, no boss, no loot, nothing saved.</summary>
+    public bool IsPlayground { get; private set; }
     public Node2D? ExitPortal => _exitPortal;
     public HashSet<Vector2I> Explored { get; } = new();
     public RealityHud Hud { get; private set; } = null!;
@@ -122,6 +125,7 @@ public partial class RealityController : Node2D, IPickupHandler
         _rng.Randomize();
 
         IsTutorial = RealityLaunch.Tutorial;
+        IsPlayground = RealityLaunch.Playground && !IsTutorial;
         Tier = IsTutorial ? 1 : Mathf.Clamp(RealityLaunch.Tier, 1, RealityTiers.MaxTier);
         // A new cavern on every entry (docs/design/endgame.md -> "Caverns"); tests and
         // tools can pin a seed to rebuild the same one.
@@ -138,12 +142,13 @@ public partial class RealityController : Node2D, IPickupHandler
 
         Layout = IsTutorial
             ? LayoutCatalog.Tutorial
+            : IsPlayground ? LayoutCatalog.Playground
             : (RealityLaunch.LayoutId is { } id ? LayoutCatalog.Find(id) : null)
                 ?? (Seed is { } s ? RealityLaunch.LayoutFor(s) : LayoutCatalog.Layouts[_rng.RandiRange(0, LayoutCatalog.Layouts.Count - 1)]);
-        Modifiers = IsTutorial ? new List<string>() : new List<string>(RealityLaunch.Modifiers);
+        Modifiers = IsTutorial || IsPlayground ? new List<string>() : new List<string>(RealityLaunch.Modifiers);
         RealityLaunch.Reset();
         Session = NetSession.Get(this);
-        if (IsTutorial || Session is not { Active: true, InRun: true } || Session.CurrentRun?.Spec.Kind != RiftKind.Reality)
+        if (IsTutorial || IsPlayground || Session is not { Active: true, InRun: true } || Session.CurrentRun?.Spec.Kind != RiftKind.Reality)
         {
             Session = null;
         }
@@ -166,7 +171,7 @@ public partial class RealityController : Node2D, IPickupHandler
             _rarityBonus += PartyRules.ItemRarity(PartySize);
         }
 
-        PortalsLeft = IsTutorial ? TutorialPortals : Coop ? PartyRules.RealityPortals(Tier, PartySize) : RealityTiers.Portals(Tier);
+        PortalsLeft = IsPlayground ? 999 : IsTutorial ? TutorialPortals : Coop ? PartyRules.RealityPortals(Tier, PartySize) : RealityTiers.Portals(Tier);
 
         RenderingServer.SetDefaultClearColor(Theme.Void);
         AddChild(new CanvasModulate { Color = Theme.Ambient });
@@ -203,7 +208,7 @@ public partial class RealityController : Node2D, IPickupHandler
             AddChild(NetHost);
         }
 
-        if (!IsClientSide)
+        if (!IsClientSide && !IsPlayground)
         {
             SpawnPacks();
             SpawnBoss();
@@ -213,7 +218,7 @@ public partial class RealityController : Node2D, IPickupHandler
         AddChild(Hud);
         Pause = new PauseMenu
         {
-            LeaveText = IsTutorial ? "Skip the introduction" : !Coop ? "Abandon reality" : IsHostSide ? "Close the reality for everyone" : "Leave the reality",
+            LeaveText = IsPlayground ? "Leave the playground" : IsTutorial ? "Skip the introduction" : !Coop ? "Abandon reality" : IsHostSide ? "Close the reality for everyone" : "Leave the reality",
             OnLeave = Abandon,
             Summary = Summary,
             NoPause = Coop,
@@ -224,6 +229,11 @@ public partial class RealityController : Node2D, IPickupHandler
         if (IsTutorial)
         {
             AddChild(new TutorialGuide { Reality = this, Name = "TutorialGuide" });
+        }
+
+        if (IsPlayground)
+        {
+            AddChild(new Playground { Reality = this, Name = "Playground" });
         }
 
         Enemy.SplitSpawned += OnSplitSpawned;
@@ -247,7 +257,7 @@ public partial class RealityController : Node2D, IPickupHandler
     }
 
     private void AnnounceStart(string mods) =>
-        EmitSignal(SignalName.Announced, Layout.Name, IsTutorial ? "A short introduction — follow the objectives on the left" : StartSubtitle(mods), IsTutorial ? new Color(1f, 0.85f, 0.4f) : RealityTiers.ShardColor(Tier));
+        EmitSignal(SignalName.Announced, Layout.Name, IsPlayground ? "Nothing here is saved · F2 opens the spawner" : IsTutorial ? "A short introduction — follow the objectives on the left" : StartSubtitle(mods), IsTutorial ? new Color(1f, 0.85f, 0.4f) : RealityTiers.ShardColor(Tier));
 
     private string StartSubtitle(string mods) => $"Tier {Tier}  ·  monster level {MonsterLevel}  ·  {PortalsLeft} portal{(PortalsLeft == 1 ? "" : "s")}{(Coop ? $" (shared, party of {PartySize})" : "")}{mods}";
 
@@ -843,6 +853,12 @@ public partial class RealityController : Node2D, IPickupHandler
     {
         Kills++;
         Sfx.Play(this, "death", -6f);
+        if (IsPlayground)
+        {
+            // No experience, no loot: the playground is for testing, not farming.
+            return;
+        }
+
         if (!Coop)
         {
             if (enemy.Health.LastHitSource == Player)
@@ -1484,6 +1500,14 @@ public partial class RealityController : Node2D, IPickupHandler
         _left = true;
         _leaving = true;
         Player.Stats.RemoveModifiersFromSource(ModifierSource);
+        if (IsPlayground)
+        {
+            // The sandbox character and its gold are thrown away: the profile comes back from disk.
+            Playground.RestoreProfile(this);
+            Scenes.Go(this, Scenes.Hideout);
+            return;
+        }
+
         if (IsTutorial && Profile.Get(this) is { } profile)
         {
             // Finished, skipped or collapsed: either way it is never forced again.

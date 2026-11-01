@@ -9,7 +9,7 @@ using ArpgGame.Skills;
 
 namespace ArpgGame.Characters;
 
-/// <summary>One gem on sale at Odran's Skill gems tab.</summary>
+/// <summary>One gem on sale at Escaldón's Buy skills tab.</summary>
 public sealed record GemOffer(string Id, bool Support, int Level)
 {
     /// <summary>Skills cost 50 gold per unlock level, supports 20 + 40 per unlock level.</summary>
@@ -17,7 +17,7 @@ public sealed record GemOffer(string Id, bool Support, int Level)
 }
 
 /// <summary>
-/// Odran's Skill gems tab, the rules — docs/design/hideout.md -> "Odran's Skill gems
+/// Escaldón's Buy skills tab (Odran's until 2026-11-01), the rules — docs/design/hideout.md -> "Odran's Skill gems
 /// tab". Every skill and support of <see cref="UpgradeCatalog"/> is on sale from a
 /// character level, always at gem level 1 (a bought gem joins the character's
 /// collection like a dropped one; Escaldón raises its level for gold). A skill is bought once
@@ -111,7 +111,7 @@ public static class GemShop
         int owned = Owned(c, o);
         if (!o.Support && owned > 0)
         {
-            return "You have this skill. Escaldón raises its level for gold.";
+            return "You have this skill: raise its level in the Your skills tab.";
         }
 
         if (o.Support && owned >= MaxCopies(o))

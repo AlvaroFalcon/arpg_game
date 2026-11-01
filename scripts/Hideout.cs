@@ -173,6 +173,13 @@ public partial class Hideout : Node2D
             _session.LayoutSource = () => Data;
         }
 
+        // `-- --playground`: straight into the hidden playground (docs/design/playground.md).
+        if (System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--playground") >= 0 && !_playgroundFlagUsed)
+        {
+            _playgroundFlagUsed = true;
+            CallDeferred(nameof(EnterPlayground));
+        }
+
         if (!OwnTown.GuideSeen && profile is not null)
         {
             // First visit on this account: the guide explains the town. The quests open behind it
@@ -1161,7 +1168,7 @@ public partial class Hideout : Node2D
         switch (tab)
         {
             case "gems":
-                _merchant.ShowTab(MerchantTab.SkillGems);
+                _escaldon.ShowTab(EscaldonTab.BuySkills);
                 break;
             case "disenchant":
                 _artificer.Show(ArtificerPanel.Tab.Disenchant);
@@ -1188,9 +1195,36 @@ public partial class Hideout : Node2D
         ShowTurnIn(quest, profile, ctx);
     }
 
+    private static bool _playgroundFlagUsed;
+
+    /// <summary>The hidden playground (docs/design/playground.md): Ctrl+Shift+P, solo only.</summary>
+    public void EnterPlayground()
+    {
+        if (_leaving || Editing)
+        {
+            return;
+        }
+
+        if (World.Playground.Enter(this, _player) is { } why)
+        {
+            Toast(why, UiTheme.Ember);
+            return;
+        }
+
+        _leaving = true;
+        Scenes.Go(this, Scenes.Reality);
+    }
+
     /// <summary>? (whatever the keyboard layout) or F1 opens the town guide.</summary>
     public override void _UnhandledInput(InputEvent e)
     {
+        if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.P, CtrlPressed: true, ShiftPressed: true } && !GetTree().Paused && !PanelStack.HasOpen)
+        {
+            GetViewport().SetInputAsHandled();
+            EnterPlayground();
+            return;
+        }
+
         if (e is InputEventKey { Pressed: true, Echo: false } key && (key.Unicode == '?' || key.Keycode == Key.F1)
             && !GetTree().Paused && !Editing && !PanelStack.HasOpen)
         {

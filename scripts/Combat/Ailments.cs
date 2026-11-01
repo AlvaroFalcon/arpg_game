@@ -511,7 +511,7 @@ public partial class Ailments : Node
                 _bleedTick = 0.5f;
                 float dps = TickStacks(_bleeds, 0.5f);
                 Node2D? source = _bleedSource is not null && IsInstanceValid(_bleedSource) ? _bleedSource : null;
-                _health.ApplyResolvedDamage(dps * 0.5f, source);
+                _health.ApplyResolvedDamage(dps * 0.5f, source, "Bleed");
             }
         }
 
@@ -523,7 +523,7 @@ public partial class Ailments : Node
                 _igniteTickTimer += IgniteTick;
                 float dps = TickStacks(_ignites, IgniteTick);
                 Node2D? source = _igniteSource is not null && IsInstanceValid(_igniteSource) ? _igniteSource : null;
-                _health.ApplyResolvedDamage(dps * IgniteTick, source);
+                _health.ApplyResolvedDamage(dps * IgniteTick, source, "Ignite");
             }
         }
     }

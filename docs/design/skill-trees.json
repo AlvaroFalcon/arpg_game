@@ -20,6 +20,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -35,6 +36,12 @@
           "id": "blast",
           "kind": "Lesser",
           "name": "Impact Burst",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Bursts on impact: 40 px, half the hit",
             "Bursts on impact: 55 px, half the hit",
@@ -50,6 +57,12 @@
           "id": "firestorm",
           "kind": "Notable",
           "name": "Firestorm",
+          "parents": [
+            {
+              "id": "blast",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The burst deals the full hit instead of half"
           ],
@@ -63,6 +76,7 @@
           "id": "kindle",
           "kind": "Lesser",
           "name": "Kindle",
+          "parents": [],
           "ranks": [
             "+10% chance to ignite",
             "+20% chance to ignite",
@@ -78,6 +92,12 @@
           "id": "searing",
           "kind": "Lesser",
           "name": "Searing",
+          "parents": [
+            {
+              "id": "kindle",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Ignites deal 20% more damage",
             "Ignites deal 40% more damage",
@@ -93,6 +113,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "searing",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -106,6 +132,7 @@
           "id": "velocity",
           "kind": "Lesser",
           "name": "Velocity",
+          "parents": [],
           "ranks": [
             "10% faster projectiles",
             "20% faster projectiles",
@@ -121,6 +148,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "velocity",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -136,6 +169,12 @@
           "id": "volley",
           "kind": "Notable",
           "name": "Volley",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+1 projectile, 10% less damage"
           ],
@@ -149,6 +188,12 @@
           "id": "frostfire",
           "kind": "Notable",
           "name": "Frostfire",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to cold"
           ],
@@ -181,6 +226,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -196,6 +242,12 @@
           "id": "static",
           "kind": "Lesser",
           "name": "Static",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+10% chance to shock",
             "+20% chance to shock",
@@ -211,6 +263,12 @@
           "id": "ricochet",
           "kind": "Notable",
           "name": "Ricochet",
+          "parents": [
+            {
+              "id": "static",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Projectiles chain to 2 more enemies"
           ],
@@ -224,6 +282,12 @@
           "id": "arc_blast",
           "kind": "Notable",
           "name": "Arc Blast",
+          "parents": [
+            {
+              "id": "static",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Sparks burst on hit (40 px, 40% of the hit)"
           ],
@@ -237,6 +301,7 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -252,6 +317,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -267,6 +338,12 @@
           "id": "volley",
           "kind": "Notable",
           "name": "Volley",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+1 projectile, 10% less damage"
           ],
@@ -280,6 +357,12 @@
           "id": "piercing",
           "kind": "Notable",
           "name": "Piercing",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Projectiles pass through 2 more enemies"
           ],
@@ -293,6 +376,7 @@
           "id": "bounce",
           "kind": "Lesser",
           "name": "Rebound",
+          "parents": [],
           "ranks": [
             "+1 wall bounce",
             "+2 wall bounces",
@@ -308,6 +392,12 @@
           "id": "range",
           "kind": "Lesser",
           "name": "Long Arc",
+          "parents": [
+            {
+              "id": "bounce",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Sparks fly 15% farther",
             "Sparks fly 30% farther",
@@ -323,6 +413,12 @@
           "id": "grounded",
           "kind": "Notable",
           "name": "Grounded",
+          "parents": [
+            {
+              "id": "range",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to physical: 15% more damage and +25% chance to cause bleeding"
           ],
@@ -336,6 +432,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "range",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -368,6 +470,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -383,6 +486,12 @@
           "id": "rime",
           "kind": "Lesser",
           "name": "Rime",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+5% chance to freeze",
             "+10% chance to freeze",
@@ -398,6 +507,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "rime",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -411,6 +526,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -426,6 +542,12 @@
           "id": "knock",
           "kind": "Lesser",
           "name": "Gale",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Pushes enemies back (120 force), 10% more damage",
             "Pushes enemies back (180 force), 15% more damage",
@@ -441,6 +563,12 @@
           "id": "wide",
           "kind": "Notable",
           "name": "Shockwave",
+          "parents": [
+            {
+              "id": "knock",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "40% more area, 10% less damage"
           ],
@@ -454,6 +582,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -469,6 +598,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -484,6 +619,12 @@
           "id": "echo",
           "kind": "Notable",
           "name": "Echo",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The skill repeats once, 20% less damage"
           ],
@@ -497,6 +638,12 @@
           "id": "static_nova",
           "kind": "Notable",
           "name": "Static Nova",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to lightning"
           ],
@@ -529,6 +676,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -544,6 +692,12 @@
           "id": "laceration",
           "kind": "Lesser",
           "name": "Laceration",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% chance to cause bleeding",
             "20% chance to cause bleeding",
@@ -559,6 +713,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "laceration",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -572,6 +732,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -587,6 +748,12 @@
           "id": "more_blades",
           "kind": "Lesser",
           "name": "Blade Count",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+1 blade",
             "+2 blades"
@@ -601,6 +768,12 @@
           "id": "ember_blades",
           "kind": "Notable",
           "name": "Ember Blades",
+          "parents": [
+            {
+              "id": "more_blades",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to fire"
           ],
@@ -614,6 +787,12 @@
           "id": "frost_blades",
           "kind": "Notable",
           "name": "Frost Blades",
+          "parents": [
+            {
+              "id": "more_blades",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to cold"
           ],
@@ -627,6 +806,7 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -642,6 +822,12 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -657,6 +843,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -689,6 +881,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -704,6 +897,12 @@
           "id": "kindle",
           "kind": "Lesser",
           "name": "Kindle",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+10% chance to ignite",
             "+20% chance to ignite",
@@ -719,6 +918,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "kindle",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -732,6 +937,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -747,6 +953,12 @@
           "id": "searing",
           "kind": "Lesser",
           "name": "Searing",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Ignites deal 20% more damage",
             "Ignites deal 40% more damage",
@@ -762,6 +974,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "searing",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -775,6 +993,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -790,6 +1009,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -805,6 +1030,12 @@
           "id": "echo",
           "kind": "Notable",
           "name": "Echo",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The skill repeats once, 20% less damage"
           ],
@@ -818,6 +1049,12 @@
           "id": "comet",
           "kind": "Notable",
           "name": "Comet",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to cold"
           ],
@@ -850,6 +1087,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -865,6 +1103,12 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -880,6 +1124,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -893,6 +1143,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -908,6 +1159,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -923,6 +1180,12 @@
           "id": "wide",
           "kind": "Notable",
           "name": "Shockwave",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "40% more area, 10% less damage"
           ],
@@ -936,6 +1199,12 @@
           "id": "flurry",
           "kind": "Notable",
           "name": "Flurry",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Strikes one more time, 15% less damage"
           ],
@@ -949,6 +1218,7 @@
           "id": "laceration",
           "kind": "Lesser",
           "name": "Laceration",
+          "parents": [],
           "ranks": [
             "10% chance to cause bleeding",
             "20% chance to cause bleeding",
@@ -964,6 +1234,12 @@
           "id": "rend",
           "kind": "Lesser",
           "name": "Rend",
+          "parents": [
+            {
+              "id": "laceration",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage",
             "20% more damage",
@@ -979,6 +1255,12 @@
           "id": "flame_cleave",
           "kind": "Notable",
           "name": "Flame Edge",
+          "parents": [
+            {
+              "id": "rend",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to fire"
           ],
@@ -992,6 +1274,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "rend",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -1024,6 +1312,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -1039,6 +1328,12 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -1054,6 +1349,12 @@
           "id": "aftershock",
           "kind": "Notable",
           "name": "Aftershock",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The landing slams again 0.35 s later for 60% of the hit"
           ],
@@ -1067,6 +1368,7 @@
           "id": "laceration",
           "kind": "Lesser",
           "name": "Laceration",
+          "parents": [],
           "ranks": [
             "10% chance to cause bleeding",
             "20% chance to cause bleeding",
@@ -1082,6 +1384,12 @@
           "id": "fault",
           "kind": "Lesser",
           "name": "Fault Line",
+          "parents": [
+            {
+              "id": "laceration",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage",
             "20% more damage",
@@ -1097,6 +1405,12 @@
           "id": "magma",
           "kind": "Notable",
           "name": "Magma",
+          "parents": [
+            {
+              "id": "fault",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to fire"
           ],
@@ -1110,6 +1424,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "fault",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -1123,6 +1443,7 @@
           "id": "long_jump",
           "kind": "Lesser",
           "name": "Long Jump",
+          "parents": [],
           "ranks": [
             "Leaps 15% farther",
             "Leaps 30% farther",
@@ -1138,6 +1459,12 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [
+            {
+              "id": "long_jump",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -1153,6 +1480,12 @@
           "id": "earthshaker",
           "kind": "Notable",
           "name": "Earthshaker",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Lands harder: +150 knockback and 25% more area"
           ],
@@ -1185,6 +1518,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -1200,6 +1534,12 @@
           "id": "laceration",
           "kind": "Lesser",
           "name": "Laceration",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% chance to cause bleeding",
             "20% chance to cause bleeding",
@@ -1215,6 +1555,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "laceration",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -1228,6 +1574,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -1243,6 +1590,12 @@
           "id": "split",
           "kind": "Lesser",
           "name": "Split Earth",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage",
             "20% more damage",
@@ -1258,6 +1611,12 @@
           "id": "volcanic",
           "kind": "Notable",
           "name": "Volcanic Rift",
+          "parents": [
+            {
+              "id": "split",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to fire"
           ],
@@ -1271,6 +1630,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "split",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -1284,6 +1649,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -1299,6 +1665,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -1314,6 +1686,12 @@
           "id": "echo",
           "kind": "Notable",
           "name": "Echo",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The skill repeats once, 20% less damage"
           ],
@@ -1346,6 +1724,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -1361,6 +1740,12 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -1376,6 +1761,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -1389,6 +1780,7 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -1404,6 +1796,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -1419,6 +1817,12 @@
           "id": "flurry",
           "kind": "Notable",
           "name": "Flurry",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Strikes one more time, 15% less damage"
           ],
@@ -1432,6 +1836,7 @@
           "id": "laceration",
           "kind": "Lesser",
           "name": "Laceration",
+          "parents": [],
           "ranks": [
             "10% chance to cause bleeding",
             "20% chance to cause bleeding",
@@ -1447,6 +1852,12 @@
           "id": "deep",
           "kind": "Lesser",
           "name": "Deep Cuts",
+          "parents": [
+            {
+              "id": "laceration",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage",
             "20% more damage",
@@ -1462,6 +1873,12 @@
           "id": "venom_strike",
           "kind": "Notable",
           "name": "Storm Edge",
+          "parents": [
+            {
+              "id": "deep",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to lightning"
           ],
@@ -1475,6 +1892,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "deep",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -1507,6 +1930,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -1522,6 +1946,12 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -1537,6 +1967,12 @@
           "id": "piercing",
           "kind": "Notable",
           "name": "Piercing",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Projectiles pass through 2 more enemies"
           ],
@@ -1550,6 +1986,12 @@
           "id": "ricochet",
           "kind": "Notable",
           "name": "Ricochet",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Projectiles chain to 2 more enemies"
           ],
@@ -1563,6 +2005,7 @@
           "id": "velocity",
           "kind": "Lesser",
           "name": "Velocity",
+          "parents": [],
           "ranks": [
             "10% faster projectiles",
             "20% faster projectiles",
@@ -1578,6 +2021,12 @@
           "id": "spread",
           "kind": "Lesser",
           "name": "Wide Fan",
+          "parents": [
+            {
+              "id": "velocity",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage",
             "20% more damage",
@@ -1593,6 +2042,12 @@
           "id": "volley",
           "kind": "Notable",
           "name": "Volley",
+          "parents": [
+            {
+              "id": "spread",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+1 projectile, 10% less damage"
           ],
@@ -1606,6 +2061,7 @@
           "id": "laceration",
           "kind": "Lesser",
           "name": "Laceration",
+          "parents": [],
           "ranks": [
             "10% chance to cause bleeding",
             "20% chance to cause bleeding",
@@ -1621,6 +2077,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "laceration",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -1636,6 +2098,12 @@
           "id": "poisoned_tips",
           "kind": "Notable",
           "name": "Elemental Tips",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to lightning"
           ],
@@ -1649,6 +2117,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -1681,6 +2155,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -1696,6 +2171,12 @@
           "id": "rime",
           "kind": "Lesser",
           "name": "Rime",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+5% chance to freeze",
             "+10% chance to freeze",
@@ -1711,6 +2192,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "rime",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -1724,6 +2211,7 @@
           "id": "velocity",
           "kind": "Lesser",
           "name": "Velocity",
+          "parents": [],
           "ranks": [
             "10% faster projectiles",
             "20% faster projectiles",
@@ -1739,6 +2227,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "velocity",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -1754,6 +2248,12 @@
           "id": "volley",
           "kind": "Notable",
           "name": "Volley",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+1 projectile, 10% less damage"
           ],
@@ -1767,6 +2267,12 @@
           "id": "piercing",
           "kind": "Notable",
           "name": "Piercing",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Projectiles pass through 2 more enemies"
           ],
@@ -1780,6 +2286,7 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -1795,6 +2302,12 @@
           "id": "brittle",
           "kind": "Lesser",
           "name": "Brittle",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage, shards fly 5% slower",
             "20% more damage, shards fly 10% slower",
@@ -1810,6 +2323,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "brittle",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -1842,6 +2361,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -1857,6 +2377,12 @@
           "id": "static",
           "kind": "Lesser",
           "name": "Static",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+10% chance to shock",
             "+20% chance to shock",
@@ -1872,6 +2398,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "static",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -1885,6 +2417,7 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -1900,6 +2433,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -1915,6 +2454,12 @@
           "id": "flurry",
           "kind": "Notable",
           "name": "Flurry",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Strikes one more time, 15% less damage"
           ],
@@ -1928,6 +2473,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -1943,6 +2489,12 @@
           "id": "charged",
           "kind": "Lesser",
           "name": "Charged",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage",
             "20% more damage",
@@ -1958,6 +2510,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "charged",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -1971,6 +2529,12 @@
           "id": "thunder_steel",
           "kind": "Notable",
           "name": "Bare Steel",
+          "parents": [
+            {
+              "id": "charged",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Converts the damage to physical: 15% more damage and +25% chance to cause bleeding"
           ],
@@ -2003,6 +2567,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -2018,6 +2583,12 @@
           "id": "rime",
           "kind": "Lesser",
           "name": "Rime",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+5% chance to freeze",
             "+10% chance to freeze",
@@ -2033,6 +2604,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "rime",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -2046,6 +2623,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -2061,6 +2639,12 @@
           "id": "heavy",
           "kind": "Lesser",
           "name": "Heavy Head",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more damage",
             "20% more damage",
@@ -2076,6 +2660,12 @@
           "id": "kill_blast",
           "kind": "Notable",
           "name": "Detonation",
+          "parents": [
+            {
+              "id": "heavy",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Kills burst for 30% of the hit around the body"
           ],
@@ -2089,6 +2679,12 @@
           "id": "wide",
           "kind": "Notable",
           "name": "Shockwave",
+          "parents": [
+            {
+              "id": "heavy",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "40% more area, 10% less damage"
           ],
@@ -2102,6 +2698,7 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -2117,6 +2714,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -2132,6 +2735,12 @@
           "id": "flurry",
           "kind": "Notable",
           "name": "Flurry",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Strikes one more time, 15% less damage"
           ],
@@ -2164,6 +2773,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -2179,6 +2789,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -2194,6 +2810,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -2207,6 +2829,7 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -2222,6 +2845,12 @@
           "id": "virulence",
           "kind": "Lesser",
           "name": "Virulence",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Spreads to 1 enemy when its bearer dies",
             "Spreads to 2 enemies when its bearer dies"
@@ -2236,6 +2865,12 @@
           "id": "pandemic",
           "kind": "Notable",
           "name": "Pandemic",
+          "parents": [
+            {
+              "id": "virulence",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Spreads to 3 enemies, and on from them"
           ],
@@ -2249,6 +2884,7 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -2264,6 +2900,12 @@
           "id": "multi",
           "kind": "Lesser",
           "name": "Many Hosts",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Marks 1 more enemy near the first",
             "Marks 2 more enemies near the first"
@@ -2278,6 +2920,12 @@
           "id": "blight_field",
           "kind": "Notable",
           "name": "Blight Field",
+          "parents": [
+            {
+              "id": "multi",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Marks every enemy in a wide circle, 20% less damage over time"
           ],
@@ -2310,6 +2958,7 @@
           "id": "weakness",
           "kind": "Lesser",
           "name": "Weakness",
+          "parents": [],
           "ranks": [
             "Resistances drop 5 more",
             "Resistances drop 10 more",
@@ -2325,6 +2974,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "weakness",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -2340,6 +2995,12 @@
           "id": "exposure",
           "kind": "Notable",
           "name": "Exposure",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Cursed enemies also take 15% more damage of every kind"
           ],
@@ -2353,6 +3014,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -2368,6 +3030,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -2383,6 +3051,12 @@
           "id": "hex_contagion",
           "kind": "Notable",
           "name": "Contagion",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Spreads to 2 enemies when its bearer dies"
           ],
@@ -2396,6 +3070,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -2411,6 +3086,12 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -2426,6 +3107,12 @@
           "id": "hex_burst",
           "kind": "Notable",
           "name": "Ruin",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Cursed enemies burst when they die, for 10% of their maximum life"
           ],
@@ -2458,6 +3145,7 @@
           "id": "drag",
           "kind": "Lesser",
           "name": "Drag",
+          "parents": [],
           "ranks": [
             "5% stronger slow",
             "10% stronger slow",
@@ -2473,6 +3161,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "drag",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -2488,6 +3182,12 @@
           "id": "stasis",
           "kind": "Notable",
           "name": "Stasis",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Slow +20% more, and the curse is 20% shorter"
           ],
@@ -2501,6 +3201,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -2516,6 +3217,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -2531,6 +3238,12 @@
           "id": "time_contagion",
           "kind": "Notable",
           "name": "Ripple",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Spreads to 2 enemies when its bearer dies"
           ],
@@ -2544,6 +3257,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -2559,6 +3273,12 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -2574,6 +3294,12 @@
           "id": "time_frailty",
           "kind": "Notable",
           "name": "Frailty",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Slowed enemies also take 10% more damage"
           ],
@@ -2606,6 +3332,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -2621,6 +3348,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -2636,6 +3369,12 @@
           "id": "flicker",
           "kind": "Notable",
           "name": "Flicker",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "40% shorter cooldown, 30% shorter range"
           ],
@@ -2649,6 +3388,7 @@
           "id": "far_step",
           "kind": "Lesser",
           "name": "Far Step",
+          "parents": [],
           "ranks": [
             "Blinks 15% farther",
             "Blinks 30% farther",
@@ -2664,6 +3404,12 @@
           "id": "phasing",
           "kind": "Lesser",
           "name": "Phasing",
+          "parents": [
+            {
+              "id": "far_step",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Untouchable 0.1 s longer after arriving",
             "Untouchable 0.2 s longer after arriving",
@@ -2679,6 +3425,12 @@
           "id": "elusive",
           "kind": "Notable",
           "name": "Elusive",
+          "parents": [
+            {
+              "id": "phasing",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "30% more movement speed for 3 s after arriving"
           ],
@@ -2692,6 +3444,7 @@
           "id": "static_wake",
           "kind": "Lesser",
           "name": "Static Wake",
+          "parents": [],
           "ranks": [
             "The point you leave bursts for 30% of the skill's damage",
             "The point you leave bursts for 60% of the skill's damage",
@@ -2707,6 +3460,12 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [
+            {
+              "id": "static_wake",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -2722,6 +3481,12 @@
           "id": "frozen_arrival",
           "kind": "Notable",
           "name": "Frozen Arrival",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Where you arrive bursts too, as cold (chills)"
           ],
@@ -2754,6 +3519,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -2769,6 +3535,12 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -2784,6 +3556,12 @@
           "id": "kindling_heart",
           "kind": "Notable",
           "name": "Kindling Heart",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Its burns have +40% chance to ignite"
           ],
@@ -2797,6 +3575,7 @@
           "id": "tempered",
           "kind": "Lesser",
           "name": "Tempered Flesh",
+          "parents": [],
           "ranks": [
             "Drains 15% less life",
             "Drains 30% less life",
@@ -2812,6 +3591,12 @@
           "id": "pyre_ward",
           "kind": "Lesser",
           "name": "Pyre Ward",
+          "parents": [
+            {
+              "id": "tempered",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "While on: +10 fire resistance",
             "While on: +20 fire resistance",
@@ -2827,6 +3612,12 @@
           "id": "blood_pyre",
           "kind": "Notable",
           "name": "Blood Pyre",
+          "parents": [
+            {
+              "id": "pyre_ward",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "40% more damage, drains twice the life"
           ],
@@ -2840,6 +3631,12 @@
           "id": "cinder_skin",
           "kind": "Notable",
           "name": "Cinder Skin",
+          "parents": [
+            {
+              "id": "pyre_ward",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "While on: 15% less damage taken"
           ],
@@ -2853,6 +3650,7 @@
           "id": "kindle",
           "kind": "Lesser",
           "name": "Kindle",
+          "parents": [],
           "ranks": [
             "+10% chance to ignite",
             "+20% chance to ignite",
@@ -2868,6 +3666,12 @@
           "id": "searing",
           "kind": "Lesser",
           "name": "Searing",
+          "parents": [
+            {
+              "id": "kindle",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Ignites deal 20% more damage",
             "Ignites deal 40% more damage",
@@ -2883,6 +3687,12 @@
           "id": "smoulder",
           "kind": "Notable",
           "name": "Smoulder",
+          "parents": [
+            {
+              "id": "searing",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Its ignites last 50% longer"
           ],
@@ -2915,6 +3725,7 @@
           "id": "warding",
           "kind": "Lesser",
           "name": "Warding",
+          "parents": [],
           "ranks": [
             "Passive: +5 more to all three resistances",
             "Passive: +10 more to all three resistances",
@@ -2930,6 +3741,12 @@
           "id": "resolve",
           "kind": "Lesser",
           "name": "Resolve",
+          "parents": [
+            {
+              "id": "warding",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The passive is 10% stronger",
             "The passive is 20% stronger",
@@ -2945,6 +3762,12 @@
           "id": "elemental_body",
           "kind": "Notable",
           "name": "Elemental Body",
+          "parents": [
+            {
+              "id": "resolve",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: also 8% less elemental damage taken"
           ],
@@ -2958,6 +3781,7 @@
           "id": "surge",
           "kind": "Lesser",
           "name": "Surge",
+          "parents": [],
           "ranks": [
             "The active is 10% stronger",
             "The active is 20% stronger",
@@ -2973,6 +3797,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "surge",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -2988,6 +3818,12 @@
           "id": "elemental_shell",
           "kind": "Notable",
           "name": "Elemental Shell",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also 20% less elemental damage taken"
           ],
@@ -3001,6 +3837,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -3016,6 +3853,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -3031,6 +3874,12 @@
           "id": "steady_ward",
           "kind": "Notable",
           "name": "Steady Ward",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The active lasts 60% longer, 20% weaker"
           ],
@@ -3063,6 +3912,7 @@
           "id": "embers",
           "kind": "Lesser",
           "name": "Embers",
+          "parents": [],
           "ranks": [
             "Passive: 5% increased fire damage",
             "Passive: 10% increased fire damage",
@@ -3078,6 +3928,12 @@
           "id": "wildfire",
           "kind": "Lesser",
           "name": "Wildfire",
+          "parents": [
+            {
+              "id": "embers",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: +5% chance to ignite",
             "Passive: +10% chance to ignite",
@@ -3093,6 +3949,12 @@
           "id": "fire_focus",
           "kind": "Notable",
           "name": "Inferno Focus",
+          "parents": [
+            {
+              "id": "wildfire",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The storm is all fire: twice its bonus, to fire damage only; the active also +25% chance to ignite"
           ],
@@ -3106,6 +3968,7 @@
           "id": "frostbite",
           "kind": "Lesser",
           "name": "Frostbite",
+          "parents": [],
           "ranks": [
             "Passive: 5% increased cold damage",
             "Passive: 10% increased cold damage",
@@ -3121,6 +3984,12 @@
           "id": "hoarfrost",
           "kind": "Lesser",
           "name": "Hoarfrost",
+          "parents": [
+            {
+              "id": "frostbite",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: +3% chance to freeze",
             "Passive: +6% chance to freeze",
@@ -3136,6 +4005,12 @@
           "id": "cold_focus",
           "kind": "Notable",
           "name": "Glacier Focus",
+          "parents": [
+            {
+              "id": "hoarfrost",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The storm is all cold: twice its bonus, to cold damage only; the active also +10% chance to freeze"
           ],
@@ -3149,6 +4024,7 @@
           "id": "static_charge",
           "kind": "Lesser",
           "name": "Static Charge",
+          "parents": [],
           "ranks": [
             "Passive: 5% increased lightning damage",
             "Passive: 10% increased lightning damage",
@@ -3164,6 +4040,12 @@
           "id": "conduction",
           "kind": "Lesser",
           "name": "Conduction",
+          "parents": [
+            {
+              "id": "static_charge",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: +5% chance to shock",
             "Passive: +10% chance to shock",
@@ -3179,6 +4061,12 @@
           "id": "lightning_focus",
           "kind": "Notable",
           "name": "Tempest Focus",
+          "parents": [
+            {
+              "id": "conduction",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The storm is all lightning: twice its bonus, to lightning damage only; the active also +25% chance to shock"
           ],
@@ -3211,6 +4099,7 @@
           "id": "keen",
           "kind": "Lesser",
           "name": "Keen Eye",
+          "parents": [],
           "ranks": [
             "Passive: +1% critical strike chance",
             "Passive: +2% critical strike chance",
@@ -3226,6 +4115,12 @@
           "id": "deadly",
           "kind": "Lesser",
           "name": "Deadly",
+          "parents": [
+            {
+              "id": "keen",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: +10% critical strike multiplier",
             "Passive: +20% critical strike multiplier",
@@ -3241,6 +4136,12 @@
           "id": "sharpshooter",
           "kind": "Notable",
           "name": "Sharpshooter",
+          "parents": [
+            {
+              "id": "deadly",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The passive is 50% stronger, the active 20% weaker"
           ],
@@ -3254,6 +4155,7 @@
           "id": "surge",
           "kind": "Lesser",
           "name": "Surge",
+          "parents": [],
           "ranks": [
             "The active is 10% stronger",
             "The active is 20% stronger",
@@ -3269,6 +4171,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "surge",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -3284,6 +4192,12 @@
           "id": "opening_strike",
           "kind": "Notable",
           "name": "Opening Strike",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also 20% increased attack and cast speed"
           ],
@@ -3297,6 +4211,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -3312,6 +4227,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -3327,6 +4248,12 @@
           "id": "flow",
           "kind": "Notable",
           "name": "Flow",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also 15% increased movement speed"
           ],
@@ -3359,6 +4286,7 @@
           "id": "deep_wounds",
           "kind": "Lesser",
           "name": "Deep Wounds",
+          "parents": [],
           "ranks": [
             "Passive: bleeds last 10% longer",
             "Passive: bleeds last 20% longer",
@@ -3374,6 +4302,12 @@
           "id": "hemophilia",
           "kind": "Lesser",
           "name": "Hemophilia",
+          "parents": [
+            {
+              "id": "deep_wounds",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: +5% chance to cause bleeding",
             "Passive: +10% chance to cause bleeding",
@@ -3389,6 +4323,12 @@
           "id": "haemorrhage",
           "kind": "Notable",
           "name": "Haemorrhage",
+          "parents": [
+            {
+              "id": "hemophilia",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: every bleed adds one more stack, but bleeds last 25% shorter"
           ],
@@ -3402,6 +4342,7 @@
           "id": "surge",
           "kind": "Lesser",
           "name": "Surge",
+          "parents": [],
           "ranks": [
             "The active is 10% stronger",
             "The active is 20% stronger",
@@ -3417,6 +4358,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "surge",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -3432,6 +4379,12 @@
           "id": "blood_frenzy",
           "kind": "Notable",
           "name": "Blood Frenzy",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also 20% increased attack speed"
           ],
@@ -3445,6 +4398,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -3460,6 +4414,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -3475,6 +4435,12 @@
           "id": "sanguine",
           "kind": "Notable",
           "name": "Sanguine Thirst",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also 2% of damage leeched as life"
           ],
@@ -3507,6 +4473,7 @@
           "id": "plating",
           "kind": "Lesser",
           "name": "Plating",
+          "parents": [],
           "ranks": [
             "Passive: 10% more increased armour",
             "Passive: 20% more increased armour",
@@ -3522,6 +4489,12 @@
           "id": "girth",
           "kind": "Lesser",
           "name": "Girth",
+          "parents": [
+            {
+              "id": "plating",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: 3% increased maximum life",
             "Passive: 6% increased maximum life",
@@ -3537,6 +4510,12 @@
           "id": "immovable",
           "kind": "Notable",
           "name": "Immovable",
+          "parents": [
+            {
+              "id": "girth",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The passive alone stops every knockback"
           ],
@@ -3550,6 +4529,7 @@
           "id": "surge",
           "kind": "Lesser",
           "name": "Surge",
+          "parents": [],
           "ranks": [
             "The active is 10% stronger",
             "The active is 20% stronger",
@@ -3565,6 +4545,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "surge",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -3580,6 +4566,12 @@
           "id": "stone_skin",
           "kind": "Notable",
           "name": "Stone Skin",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also 15% less physical damage taken"
           ],
@@ -3593,6 +4585,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -3608,6 +4601,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -3623,6 +4622,12 @@
           "id": "retaliation",
           "kind": "Notable",
           "name": "Retaliation",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also +30 thorns damage"
           ],
@@ -3655,6 +4660,7 @@
           "id": "vigour",
           "kind": "Lesser",
           "name": "Vigour",
+          "parents": [],
           "ranks": [
             "Passive: 3% more increased maximum life",
             "Passive: 6% more increased maximum life",
@@ -3670,6 +4676,12 @@
           "id": "regrowth",
           "kind": "Lesser",
           "name": "Regrowth",
+          "parents": [
+            {
+              "id": "vigour",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Passive: +1 life regeneration per second",
             "Passive: +2 life regeneration per second",
@@ -3685,6 +4697,12 @@
           "id": "colossal_heart",
           "kind": "Notable",
           "name": "Colossal Heart",
+          "parents": [
+            {
+              "id": "regrowth",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The passive is 50% stronger; the active heals 40% less"
           ],
@@ -3698,6 +4716,7 @@
           "id": "mending",
           "kind": "Lesser",
           "name": "Mending",
+          "parents": [],
           "ranks": [
             "The active heals 5% more of your life",
             "The active heals 10% more of your life",
@@ -3713,6 +4732,12 @@
           "id": "fortify",
           "kind": "Lesser",
           "name": "Fortify",
+          "parents": [
+            {
+              "id": "mending",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: 5% less damage taken on top",
             "Active: 10% less damage taken on top",
@@ -3728,6 +4753,12 @@
           "id": "second_wind",
           "kind": "Notable",
           "name": "Second Wind",
+          "parents": [
+            {
+              "id": "fortify",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Active: also 30% increased movement speed"
           ],
@@ -3741,6 +4772,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -3756,6 +4788,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -3771,6 +4809,12 @@
           "id": "renewal",
           "kind": "Notable",
           "name": "Renewal",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "20% shorter cooldown, and the active heals 10% more of your life"
           ],
@@ -3803,6 +4847,7 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -3818,6 +4863,12 @@
           "id": "attunement",
           "kind": "Lesser",
           "name": "Attunement",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% more elemental damage",
             "20% more elemental damage",
@@ -3833,6 +4884,12 @@
           "id": "conduit",
           "kind": "Notable",
           "name": "Conduit",
+          "parents": [
+            {
+              "id": "attunement",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+15% chance to ignite and shock, +5% to freeze"
           ],
@@ -3846,6 +4903,7 @@
           "id": "splitting",
           "kind": "Lesser",
           "name": "Splitting",
+          "parents": [],
           "ranks": [
             "Its projectiles fork 1 time on hit",
             "Its projectiles fork 2 times on hit"
@@ -3860,6 +4918,12 @@
           "id": "velocity",
           "kind": "Lesser",
           "name": "Velocity",
+          "parents": [
+            {
+              "id": "splitting",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "10% faster projectiles",
             "20% faster projectiles",
@@ -3875,6 +4939,12 @@
           "id": "volley",
           "kind": "Notable",
           "name": "Volley",
+          "parents": [
+            {
+              "id": "velocity",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+1 projectile, 10% less damage"
           ],
@@ -3888,6 +4958,12 @@
           "id": "wide",
           "kind": "Notable",
           "name": "Shockwave",
+          "parents": [
+            {
+              "id": "velocity",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "40% more area, 10% less damage"
           ],
@@ -3901,6 +4977,7 @@
           "id": "quickened",
           "kind": "Lesser",
           "name": "Quickened",
+          "parents": [],
           "ranks": [
             "The totem casts 8% faster",
             "The totem casts 16% faster",
@@ -3916,6 +4993,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "quickened",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -3931,6 +5014,12 @@
           "id": "ancestral_ring",
           "kind": "Notable",
           "name": "Ancestral Ring",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "+1 totem at once, 15% less damage"
           ],
@@ -3963,6 +5052,7 @@
           "id": "potency",
           "kind": "Lesser",
           "name": "Potency",
+          "parents": [],
           "ranks": [
             "+10% to its effect",
             "+20% to its effect",
@@ -3978,6 +5068,12 @@
           "id": "lingering",
           "kind": "Lesser",
           "name": "Lingering",
+          "parents": [
+            {
+              "id": "potency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "15% longer duration",
             "30% longer duration",
@@ -3993,6 +5089,12 @@
           "id": "tar",
           "kind": "Notable",
           "name": "Tar",
+          "parents": [
+            {
+              "id": "lingering",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "The oil also slows by 30%"
           ],
@@ -4006,6 +5108,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -4021,6 +5124,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -4036,6 +5145,12 @@
           "id": "wide",
           "kind": "Notable",
           "name": "Shockwave",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "40% more area, 10% less damage"
           ],
@@ -4049,6 +5164,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -4064,6 +5180,12 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -4079,6 +5201,12 @@
           "id": "accelerant",
           "kind": "Notable",
           "name": "Accelerant",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Ignites on oiled enemies last 50% longer"
           ],
@@ -4111,6 +5239,7 @@
           "id": "potency",
           "kind": "Lesser",
           "name": "Potency",
+          "parents": [],
           "ranks": [
             "+10% to its effect",
             "+20% to its effect",
@@ -4126,6 +5255,12 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [
+            {
+              "id": "potency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -4141,6 +5276,12 @@
           "id": "chain_reaction",
           "kind": "Notable",
           "name": "Chain Reaction",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Each detonation splashes 50% of its damage around and ignites what it hits"
           ],
@@ -4154,6 +5295,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -4169,6 +5311,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -4184,6 +5332,12 @@
           "id": "embers_remain",
           "kind": "Notable",
           "name": "Embers Remain",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Each detonated enemy keeps 3 of its ignite stacks"
           ],
@@ -4197,6 +5351,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -4212,6 +5367,12 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -4227,6 +5388,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],
@@ -4259,6 +5426,7 @@
           "id": "potency",
           "kind": "Lesser",
           "name": "Potency",
+          "parents": [],
           "ranks": [
             "+10% to its effect",
             "+20% to its effect",
@@ -4274,6 +5442,12 @@
           "id": "power",
           "kind": "Lesser",
           "name": "Power",
+          "parents": [
+            {
+              "id": "potency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% more damage",
             "16% more damage",
@@ -4289,6 +5463,12 @@
           "id": "blood_nova",
           "kind": "Notable",
           "name": "Blood Nova",
+          "parents": [
+            {
+              "id": "power",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Each detonation splashes 50% of its damage around and makes what it hits bleed"
           ],
@@ -4302,6 +5482,7 @@
           "id": "reach",
           "kind": "Lesser",
           "name": "Reach",
+          "parents": [],
           "ranks": [
             "10% more area",
             "20% more area",
@@ -4317,6 +5498,12 @@
           "id": "efficiency",
           "kind": "Lesser",
           "name": "Efficiency",
+          "parents": [
+            {
+              "id": "reach",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "8% less mana cost",
             "16% less mana cost",
@@ -4332,6 +5519,12 @@
           "id": "open_wounds",
           "kind": "Notable",
           "name": "Open Wounds",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "Each detonated enemy keeps 3 of its bleed stacks"
           ],
@@ -4345,6 +5538,7 @@
           "id": "patience",
           "kind": "Lesser",
           "name": "Patience",
+          "parents": [],
           "ranks": [
             "10% shorter cooldown",
             "20% shorter cooldown",
@@ -4360,6 +5554,12 @@
           "id": "haste",
           "kind": "Lesser",
           "name": "Haste",
+          "parents": [
+            {
+              "id": "patience",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "5% faster to use",
             "10% faster to use",
@@ -4375,6 +5575,12 @@
           "id": "brutal",
           "kind": "Notable",
           "name": "Overwhelm",
+          "parents": [
+            {
+              "id": "haste",
+              "ranks": 2
+            }
+          ],
           "ranks": [
             "35% more damage, 25% more mana cost"
           ],

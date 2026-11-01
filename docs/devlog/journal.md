@@ -801,3 +801,25 @@ The owner sent back the skill sheet (`skill-trees - Habilidades.csv`) with notes
 - New icons drawn as 16×16 grids in the house frame (`tools/art/python/skill_icons.py`), and a new suite, `SkillKitTest` (24 checks, all green).
 
 Needs the owner's playtest: the per-stack bleed/ignite ratios (0.5 of the hit) and the aura numbers are first guesses; totems have only a drawn pole, no voxel model; monsters don't target totems yet.
+
+## 2026-11-01 (later): Escaldón sells the skills, a hidden playground, and the tree editor becomes a graph
+
+The owner merged the skill kit, played it and asked for three things.
+
+- **Escaldón sells the skills.** A trader selling skill gems made no sense, so Odran's Skill gems tab became Escaldón's **Buy skills** tab, next to **Your skills** (levels and trees). The tutorial quest that taught it moved with it (same id, so saves keep their progress).
+- **A hidden playground.** Ctrl+Shift+P in the hideout (or `-- --playground`) opens *The Proving Ground*: a sandbox copy of your character with every skill at level 20, fifty million gold and a stack of every orb, Escaldón and the Artificer in the camp, and a spawner on F2: hordes of any Mirror tier and any boss at any tier, scaled exactly as in a real reality, with the boss's kill time shown. Nothing drops, and nothing is saved: the profile stops writing on the way in and is reloaded from disk on the way out (`PlaygroundTest` checks the round trip).
+- **The editor became a node graph.** Escaldón's Workbench now works like n8n or ComfyUI: drag cards around a pannable board, pull an arrow from one card's output to another's input, and click the arrow to set its condition (points needed). A node can have several arrows coming in (any path opens it), several starting nodes are fine, and there is a new "Especial" kind. The game supports several ways into a node too (`SkillTreeNode.AlsoFrom`, `TREE-TWO-PATHS`), so the owner's graphs can be built as drawn.
+
+![Escaldón: Buy skills](screenshots/escaldon-buy-skills.png)
+![The playground's camp](screenshots/playground-camp.png)
+![A tier-12 horde](screenshots/playground-horde.png)
+![A boss on demand](screenshots/playground-boss.png)
+![The tree editor as a graph](screenshots/workbench-graph.png)
+
+Needs the owner's eye: whether Ctrl+Shift+P is secret enough, and how the editor feels with a mouse (it was only driven by a script here).
+
+## 2026-11-01 (later still): a DPS meter in the playground
+
+For balancing, the playground got a DPS meter (F3, right side): the last 5 s, the whole fight (first to last damage; 5 s of silence starts a new one), total, peak second, crit rate, and a breakdown by skill — damage over time included (bleed, ignite, Corruption, detonations), labelled through a new `Health.AnyResolvedDamage` event. The spawner can now place a training dummy that never dies. One catch found while capturing it: the first version timed fights with the wall clock, so on a slow frame the DPS read low; it now counts game time.
+
+![DPS meter on a training dummy](screenshots/playground-dps.png)

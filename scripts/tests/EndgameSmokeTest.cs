@@ -695,7 +695,7 @@ public partial class EndgameSmokeTest : Node2D
     private void SkillTreeChecks()
     {
         var missing = Progression.UpgradeCatalog.Skills.Where(s => SkillTrees.For(s.Id) is null).Select(s => s.Id).ToList();
-        var broken = SkillTrees.All.Values.SelectMany(t => t.Nodes.Where(n => n.Requires is { } r && t.Node(r) is null).Select(n => $"{t.SkillId}/{n.Id}")).ToList();
+        var broken = SkillTrees.All.Values.SelectMany(t => t.Nodes.Where(n => n.Parents.Any(p => t.Node(p.Id) is null)).Select(n => $"{t.SkillId}/{n.Id}")).ToList();
         var thin = SkillTrees.All.Values.Where(t => t.TotalRanks < GemData.MaxLevel - 1 || t.Branches.Length != 3).Select(t => $"{t.SkillId} ({t.TotalRanks})").ToList();
         Check("SKILLTREE-EVERY-SKILL", missing.Count == 0 && broken.Count == 0 && thin.Count == 0,
             $"no tree: {string.Join(",", missing)}; broken links: {string.Join(",", broken)}; too few ranks: {string.Join(",", thin)}");

@@ -222,11 +222,35 @@ public static class LayoutCatalog
         },
     };
 
+    /// <summary>
+    /// The hidden playground (docs/design/playground.md): a camp with Escaldón and the
+    /// Artificer, and a wide, empty arena to spawn hordes and bosses into. No packs,
+    /// no boss of its own; never rolled by the Mirror.
+    /// </summary>
+    public static readonly LayoutDef Playground = new()
+    {
+        Id = "playground", Name = "The Proving Ground", ThemeId = "ashen", Entrance = "camp", BossRoom = "arena",
+        Rooms = new[]
+        {
+            new RoomDef { Id = "camp", X = 2, Y = 12, W = 14, H = 12 },
+            new RoomDef { Id = "arena", X = 24, Y = 2, W = 32, H = 32 },
+        },
+        Corridors = new[]
+        {
+            new CorridorDef { From = "camp", To = "arena", Width = 7 },
+        },
+    };
+
     public static LayoutDef? Find(string id)
     {
         if (id == Tutorial.Id)
         {
             return Tutorial;
+        }
+
+        if (id == Playground.Id)
+        {
+            return Playground;
         }
 
         foreach (LayoutDef l in Layouts.Concat(RoomLayouts))

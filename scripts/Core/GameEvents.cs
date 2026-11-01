@@ -14,7 +14,7 @@ namespace ArpgGame.Core;
 /// </summary>
 public static class GameEvents
 {
-    /// <summary>Odran's Skill gems tab sold a gem. key = the gem id ("spark"), value = 1 for a support, 0 for a skill.</summary>
+    /// <summary>Escaldón's Buy skills tab sold a gem (Odran's Skill gems tab before 2026-11-01). key = the gem id ("spark"), value = 1 for a support, 0 for a skill.</summary>
     public const string GemBought = "gem_bought";
 
     /// <summary>An item was turned into dust at the Artificer's bench. key = the item's rarity name.</summary>

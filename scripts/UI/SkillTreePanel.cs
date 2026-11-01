@@ -9,6 +9,13 @@ using ArpgGame.Skills;
 
 namespace ArpgGame.UI;
 
+/// <summary>Escaldón's two tabs (docs/design/skills.md -> "Escaldón sells the skills").</summary>
+public enum EscaldonTab
+{
+    Upgrade,
+    BuySkills,
+}
+
 /// <summary>
 /// Escaldón's workshop — docs/design/skills.md -> "Skill upgrade trees" (owner's brief,
 /// 2026-10-30). Left: every skill gem the character owns, with its level and unspent
@@ -41,6 +48,20 @@ public partial class SkillTreePanel : ModalPanel
     private Label _message = null!;
     private TreeCanvas _canvas = null!;
     private GemData? _gem;
+    private Control _upgradePage = null!;
+    private Button _upgradeTab = null!;
+    private Button _buyTab = null!;
+    private Panel _buyDot = null!;
+    private bool _gemsSeenThisVisit;
+
+    /// <summary>The tab showing (the quest dialogue's "Open Buy skills" sets it).</summary>
+    public EscaldonTab Tab { get; private set; }
+
+    /// <summary>The skill shop (moved here from Odran's stall on 2026-11-01).</summary>
+    public GemShopView Gems { get; private set; } = null!;
+
+    /// <summary>The ember dot on the Buy skills tab: gems unlocked since it was last opened.</summary>
+    public bool GemsTabDot => _buyDot.Visible;
 
     /// <summary>The gem being worked on (tests).</summary>
     public GemData? Selected => _gem;
@@ -57,7 +78,26 @@ public partial class SkillTreePanel : ModalPanel
         quote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         body.AddChild(quote);
 
+        HBoxContainer tabs = UiTheme.HBox(body, 6);
+        _upgradeTab = UiTheme.Button("Your skills", () => ShowTab(EscaldonTab.Upgrade), 16, 170f);
+        _buyTab = UiTheme.Button("Buy skills", () => ShowTab(EscaldonTab.BuySkills), 16, 170f);
+        foreach (Button t in new[] { _upgradeTab, _buyTab })
+        {
+            t.CustomMinimumSize = new Vector2(170f, 38f);
+            tabs.AddChild(t);
+        }
+
+        _buyDot = new Panel { MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false, Position = new Vector2(154f, 6f), Size = new Vector2(10f, 10f) };
+        var dot = new StyleBoxFlat { BgColor = UiTheme.Ember };
+        dot.SetCornerRadiusAll(5);
+        _buyDot.AddThemeStyleboxOverride("panel", dot);
+        _buyTab.AddChild(_buyDot);
+
+        Gems = new GemShopView { Player = Player, CharacterSource = () => Who, OpenSkills = OpenSkillsPanel, SizeFlagsVertical = Control.SizeFlags.ExpandFill, Name = "GemShopView", Visible = false };
+        body.AddChild(Gems);
+
         HBoxContainer columns = UiTheme.HBox(body, 18);
+        _upgradePage = columns;
         columns.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
         VBoxContainer left = UiTheme.VBox(columns, 6);
         left.CustomMinimumSize = new Vector2(240f, 0f);
@@ -90,6 +130,57 @@ public partial class SkillTreePanel : ModalPanel
         right.AddChild(_canvas);
         _message = UiTheme.Label("", 14, UiTheme.Text);
         right.AddChild(_message);
+        StyleTabs();
+    }
+
+    /// <summary>Shows a tab (the quest dialogue's "Open Buy skills" uses this too).</summary>
+    public void ShowTab(EscaldonTab tab)
+    {
+        Tab = tab;
+        _upgradePage.Visible = tab == EscaldonTab.Upgrade;
+        Gems.Visible = tab == EscaldonTab.BuySkills;
+        StyleTabs();
+        if (tab == EscaldonTab.BuySkills)
+        {
+            Gems.Player = Player;
+            Gems.OnShown(!_gemsSeenThisVisit);
+            _gemsSeenThisVisit = true;
+        }
+        else
+        {
+            Refresh();
+        }
+
+        UpdateDot();
+    }
+
+    private void StyleTabs()
+    {
+        foreach ((Button b, bool on) in new[] { (_upgradeTab, Tab == EscaldonTab.Upgrade), (_buyTab, Tab == EscaldonTab.BuySkills) })
+        {
+            b.AddThemeStyleboxOverride("normal", UiTheme.Box(on ? new Color(0.1f, 0.2f, 0.18f) : new Color(0.08f, 0.07f, 0.11f), on ? Accent : UiTheme.PanelBorder, on ? 2 : 1));
+            b.AddThemeColorOverride("font_color", on ? Accent : UiTheme.TextDim);
+        }
+    }
+
+    private void UpdateDot() => _buyDot.Visible = Tab != EscaldonTab.BuySkills && Who is { } c && GemShop.NewCount(c) > 0;
+
+    private void OpenSkillsPanel()
+    {
+        CharacterPanels? panels = GetParent()?.GetNodeOrNull<CharacterPanels>("CharacterPanels");
+        Close();
+        panels?.Skills.Open();
+    }
+
+    protected override void OnClosed()
+    {
+        _gemsSeenThisVisit = false;
+        Tab = EscaldonTab.Upgrade;
+        _upgradePage.Visible = true;
+        Gems.Visible = false;
+        StyleTabs();
+        // A gem bought or levelled here is saved when the panel closes, as at Odran's.
+        Profile.Get(this)?.CaptureFrom(Player);
     }
 
     /// <summary>Picks the gem whose tree shows (tests, the list).</summary>
@@ -105,6 +196,13 @@ public partial class SkillTreePanel : ModalPanel
         if (Who is not { } c)
         {
             return;
+        }
+
+        Gems.Player = Player;
+        UpdateDot();
+        if (Tab == EscaldonTab.BuySkills)
+        {
+            Gems.Rebuild();
         }
 
         List<GemData> skills = c.Gems.Where(g => !g.IsSupport && SkillTrees.For(g.Id) is not null).OrderByDescending(g => Slot(c, g) is not null).ThenBy(g => GemLoot.NameOf(g.Id, false)).ToList();
@@ -123,7 +221,7 @@ public partial class SkillTreePanel : ModalPanel
         if (_gem is null || SkillTrees.For(_gem.Id) is not { } tree)
         {
             _name.Text = "No skills yet";
-            _level.Text = "Odran sells skill gems at his stall.";
+            _level.Text = "Buy your first skill in the Buy skills tab.";
             _desc.Text = "";
             _raise.Visible = false;
             _canvas.Tree = null;
@@ -375,18 +473,21 @@ public partial class SkillTreePanel : ModalPanel
             // Links first, under the nodes.
             foreach (SkillTreeNode node in Tree.Nodes)
             {
-                if (node.Requires is not { } parentId || Tree.Node(parentId) is not { } parent)
+                foreach ((string parentId, int ranks) in node.Parents)
                 {
-                    continue;
-                }
+                    if (Tree.Node(parentId) is not { } parent)
+                    {
+                        continue;
+                    }
 
-                Rect2 from = RectOf(parent);
-                Rect2 to = RectOf(node);
-                bool met = SkillTreeRules.RankOf(Gem, parentId) >= node.RequiresRanks;
-                Vector2 a = new(from.End.X, from.GetCenter().Y);
-                Vector2 c = new(to.Position.X, to.GetCenter().Y);
-                DrawLine(a, c, met ? Accent : new Color(0.35f, 0.32f, 0.45f), met ? 2.5f : 1.5f, true);
-                DrawString(font, (a + c) / 2f + new Vector2(-12f, -4f), $"{node.RequiresRanks} pt", HorizontalAlignment.Left, -1, 10, met ? Accent : UiTheme.TextDim);
+                    Rect2 from = RectOf(parent);
+                    Rect2 to = RectOf(node);
+                    bool met = SkillTreeRules.RankOf(Gem, parentId) >= ranks;
+                    Vector2 a = new(from.End.X, from.GetCenter().Y);
+                    Vector2 c = new(to.Position.X, to.GetCenter().Y);
+                    DrawLine(a, c, met ? Accent : new Color(0.35f, 0.32f, 0.45f), met ? 2.5f : 1.5f, true);
+                    DrawString(font, (a + c) / 2f + new Vector2(-12f, -4f), $"{ranks} pt", HorizontalAlignment.Left, -1, 10, met ? Accent : UiTheme.TextDim);
+                }
             }
 
             foreach (SkillTreeNode node in Tree.Nodes)

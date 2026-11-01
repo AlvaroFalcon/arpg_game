@@ -25,23 +25,24 @@ public static class QuestCatalog
     {
         new()
         {
+            // Id kept from when Odran sold the gems (saves hold it); Escaldón sells them since 2026-11-01.
             Id = OdranId,
-            Title = "Odran's wares",
-            Station = "merchant",
-            Speaker = "Odran the Trader",
+            Title = "Escaldón's craft",
+            Station = "escaldon",
+            Speaker = "Escaldón",
             Scope = QuestScope.Character,
             Unlock = c => c.Character.TutorialDone,
             Event = QuestEvents.GemBought,
-            Toast = "Odran the Trader, in the plaza",
+            Toast = "Escaldón, east of the plaza",
             OpenTab = "gems",
-            OpenText = "Open the Skill gems tab",
+            OpenText = "Open Buy skills",
             Explain = _ =>
-                "\"Welcome, welcome! Gold for your gear, and gear for your gold.\"\n\n"
-                + "**Trade:** right-click an item in your bag to sell it. Anything you sold this visit can be bought back for the same price until you walk away. He also sells four cheap crafting shards: Kindling, Flux, Graft and Ash.\n\n"
-                + $"**Skill gems:** every skill {(Features.SupportGems ? "and support gem " : "")}in the game, unlocked as your character levels. A bought gem goes straight to your skills (K) at level 1. Escaldón raises a skill's level for gold and shapes it with its upgrade tree; you can own up to {GemLoot.MaxSupportCopies} of each support, one per loadout slot.",
-            Objective = "Buy a gem from Odran's Skill gems tab",
-            Hint = "Greyed-out gems unlock at a higher character level.",
-            TurnIn = "Socket it in the Skills panel (K): click a slot, then the gem.",
+                "\"Every skill can be more than it is. First, though, you need the skill.\"\n\n"
+                + $"**Buy skills:** every skill {(Features.SupportGems ? "and support gem " : "")}in the game, unlocked as your character levels. A bought gem goes straight to your skills (K) at level 1.\n\n"
+                + $"**Your skills:** raise a skill's level for gold, up to {GemData.MaxLevel}. Every level is a point for its upgrade tree: left click spends it, right click takes it back for a little gold.",
+            Objective = "Buy a skill from Escaldón",
+            Hint = "Greyed-out skills unlock at a higher character level.",
+            TurnIn = "Socket it in the Skills panel (K): click a slot, then the skill.",
             Rewards = new[] { new QuestReward(RewardKind.Gold, "", 300) },
         },
         new()

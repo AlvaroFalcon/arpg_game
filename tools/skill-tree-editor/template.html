@@ -3,26 +3,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style id="page-style">
-/* Layout: a smith's bench — skills on a rack (left), the tree on the anvil (centre), the node in hand (right). */
+/* Layout: a smith's bench — skills on a rack (left), the tree on a pannable board (centre), the piece in hand (right). */
 :root {
-  --bg: #f3efe8; --panel: #fbf8f2; --ink: #2a2230; --muted: #6f6574; --line: #d9d0c4;
+  --bg: #f3efe8; --panel: #fbf8f2; --board: #ece6dc; --dot: #cfc5b7; --ink: #2a2230; --muted: #6f6574; --line: #d9d0c4;
   --ember: #c4501f; --ember-soft: #f6dccd; --steel: #3d5d8a; --steel-soft: #dce5f2;
   --gold: #a87a1c; --new: #2f7d4f; --new-soft: #d8eedf; --cut: #a8323a; --cut-soft: #f5d9db;
-  --notable-bg: #fff4e0;
+  --notable-bg: #fff4e0; --special-bg: #efe4fb; --special: #7a4bb5; --edge: #8b7f8e;
   --display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
   --body: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #17141c; --panel: #201b27; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
+  --bg: #17141c; --panel: #201b27; --board: #1b1721; --dot: #342c3d; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
   --ember: #f07a42; --ember-soft: #43271c; --steel: #8fb0e0; --steel-soft: #1f2a3c;
   --gold: #e0b450; --new: #6fd197; --new-soft: #1c3527; --cut: #f0737b; --cut-soft: #3e1d22;
-  --notable-bg: #33281a; color-scheme: dark } }
+  --notable-bg: #33281a; --special-bg: #2c2140; --special: #c39af0; --edge: #8a7f92; color-scheme: dark } }
 :root[data-theme="dark"] {
-  --bg: #17141c; --panel: #201b27; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
+  --bg: #17141c; --panel: #201b27; --board: #1b1721; --dot: #342c3d; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
   --ember: #f07a42; --ember-soft: #43271c; --steel: #8fb0e0; --steel-soft: #1f2a3c;
   --gold: #e0b450; --new: #6fd197; --new-soft: #1c3527; --cut: #f0737b; --cut-soft: #3e1d22;
-  --notable-bg: #33281a; color-scheme: dark }
+  --notable-bg: #33281a; --special-bg: #2c2140; --special: #c39af0; --edge: #8a7f92; color-scheme: dark }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); margin: 0; }
 .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 32px; }
@@ -31,23 +31,23 @@ header.top h1 { font: 700 26px/1.1 var(--display); margin: 0; letter-spacing: .0
 header.top .sub { color: var(--muted); font-size: 13px; }
 header.top .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
 button, .btn { font: 600 13px var(--body); border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
-button:hover { border-color: var(--ember); }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .node:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+button:hover, .btn:hover { border-color: var(--ember); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .gnode:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
 button.primary { background: var(--ember); border-color: var(--ember); color: #fff; }
 button.danger { color: var(--cut); }
 button[disabled] { opacity: .5; cursor: default; }
-.status { font-size: 12px; color: var(--muted); min-height: 1.4em; }
-.grid { display: grid; grid-template-columns: 230px minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
-@media (max-width: 1100px) { .grid { grid-template-columns: 200px minmax(0, 1fr); } .inspector { grid-column: 1 / -1; } }
-@media (max-width: 700px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.status { font-size: 12px; color: var(--muted); min-height: 1.4em; width: 100%; }
+.grid { display: grid; grid-template-columns: 220px minmax(0, 1fr) 310px; gap: 14px; align-items: start; }
+@media (max-width: 1150px) { .grid { grid-template-columns: 190px minmax(0, 1fr); } .inspector { grid-column: 1 / -1; } }
+@media (max-width: 720px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
-.rack h2, .inspector h2, .bench h2 { font: 700 15px var(--display); letter-spacing: .04em; margin: 0 0 8px; color: var(--muted); }
+.rack h2, .inspector h2 { font: 700 15px var(--display); letter-spacing: .04em; margin: 0 0 8px; color: var(--muted); }
 .rack input[type=search] { width: 100%; margin-bottom: 8px; }
-.skill-list { list-style: none; margin: 0; padding: 0; max-height: 70vh; overflow: auto; }
+.skill-list { list-style: none; margin: 0; padding: 0; max-height: 68vh; overflow: auto; }
 .skill-list li button { width: 100%; text-align: left; display: flex; justify-content: space-between; gap: 6px; border: 0; border-radius: 5px; padding: 6px 8px; background: transparent; font-weight: 500; }
-.skill-list li button[aria-current="true"] { background: var(--ember-soft); color: var(--ink); }
+.skill-list li button[aria-current="true"] { background: var(--ember-soft); }
 .skill-list .type { font: 400 11px var(--mono); color: var(--muted); }
-.chip { display: inline-block; font: 600 10px/1 var(--mono); padding: 3px 5px; border-radius: 4px; letter-spacing: .04em; text-transform: uppercase; }
+.chip { display: inline-block; font: 600 10px/1 var(--mono); padding: 3px 5px; border-radius: 4px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
 .chip.new { background: var(--new-soft); color: var(--new); }
 .chip.changed { background: var(--steel-soft); color: var(--steel); }
 .chip.removed { background: var(--cut-soft); color: var(--cut); }
@@ -57,52 +57,68 @@ textarea { resize: vertical; min-height: 54px; }
 .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 8px; }
 .fields .wide { grid-column: 1 / -1; }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.bench-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin-bottom: 10px; }
-.bench-head h2 { font: 700 24px var(--display); color: var(--ink); margin: 0; }
+.bench { padding: 0; overflow: hidden; }
+.bench-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 12px 12px 6px; }
+.bench-head h2 { font: 700 24px var(--display); margin: 0; }
 .bench-head .meta { font: 12px var(--mono); color: var(--muted); }
-details.skill-fields { margin-bottom: 12px; }
+details.skill-fields { padding: 0 12px 8px; }
 details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--steel); margin-bottom: 8px; }
-.tree-scroll { overflow-x: auto; padding-bottom: 6px; }
-.tree { position: relative; display: grid; gap: 14px; min-width: 640px; padding-top: 10px; }
-.tree svg.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.branch { display: grid; grid-template-columns: 130px repeat(var(--cols), minmax(150px, 1fr)) 56px; gap: 14px; align-items: center; position: relative; }
-.branch-name input { font: 700 15px var(--display); background: transparent; border-color: transparent; padding: 4px; }
-.branch-name input:hover, .branch-name input:focus { border-color: var(--line); }
-.branch-name .hint { font: 11px var(--mono); color: var(--muted); padding-left: 5px; }
-.cell { display: grid; gap: 8px; align-content: center; min-height: 72px; position: relative; }
-.cell.either { border: 1px dashed var(--gold); border-radius: 8px; padding: 18px 6px 6px; }
-.cell.either::before { content: "elige una"; position: absolute; top: 2px; left: 8px; font: 600 10px var(--mono); color: var(--gold); text-transform: uppercase; letter-spacing: .06em; }
-.node { position: relative; z-index: 1; text-align: left; border: 1.5px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 9px; display: grid; gap: 2px; cursor: pointer; width: 100%; font-weight: 400; }
-.node.notable { background: var(--notable-bg); border-color: var(--gold); border-radius: 18px; }
-.node[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ember-soft); border-color: var(--ember); }
-.node .n-name { font-weight: 600; font-size: 14px; }
-.node .n-rank { font-size: 12px; color: var(--muted); }
-.node .n-meta { font: 10px var(--mono); color: var(--muted); }
-.node.st-new { border-color: var(--new); }
-.node.st-changed { border-color: var(--steel); }
-.node.st-removed { border-color: var(--cut); opacity: .55; text-decoration: line-through; }
-.node .chip { position: absolute; top: -8px; right: 8px; }
-.add-node { width: 40px; height: 40px; border-radius: 50%; font-size: 20px; padding: 0; color: var(--ember); }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); align-items: center; }
+.toolbar .hint { font-size: 12px; color: var(--muted); margin-left: auto; }
+.board { position: relative; height: 62vh; min-height: 420px; overflow: hidden; background-color: var(--board);
+  background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px); touch-action: none; cursor: grab; user-select: none; }
+.board.panning { cursor: grabbing; }
+.world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+svg.edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+svg.edges path.hit { stroke: transparent; stroke-width: 14; fill: none; pointer-events: stroke; cursor: pointer; }
+svg.edges path.wire { fill: none; stroke: var(--edge); stroke-width: 2; }
+svg.edges path.wire.sel { stroke: var(--ember); stroke-width: 3; }
+svg.edges path.wire.new { stroke: var(--new); }
+svg.edges path.wire.cut { stroke: var(--cut); stroke-dasharray: 5 4; }
+svg.edges path.wire.draft { stroke: var(--ember); stroke-dasharray: 6 4; }
+svg.edges .elabel rect { fill: var(--panel); stroke: var(--edge); }
+svg.edges .elabel text { font: 600 11px var(--mono); fill: var(--ink); }
+svg.edges .elabel { pointer-events: all; cursor: pointer; }
+.gnode { position: absolute; width: 200px; border: 1.5px solid var(--line); background: var(--panel); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.08); cursor: move; }
+.gnode.notable { background: var(--notable-bg); border-color: var(--gold); border-radius: 16px; }
+.gnode.special { background: var(--special-bg); border-color: var(--special); border-width: 2px; }
+.gnode.sel { box-shadow: 0 0 0 3px var(--ember-soft), 0 0 0 4.5px var(--ember); }
+.gnode.st-new { border-color: var(--new); }
+.gnode.st-changed { border-color: var(--steel); }
+.gnode.st-removed { border-color: var(--cut); opacity: .55; }
+.gnode .head { display: flex; justify-content: space-between; gap: 6px; padding: 7px 12px 2px; align-items: baseline; }
+.gnode .title { font-weight: 600; font-size: 14px; }
+.gnode.st-removed .title { text-decoration: line-through; }
+.gnode .kind { font: 10px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.gnode .body { padding: 0 12px 8px; font-size: 12px; color: var(--muted); }
+.gnode .tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px 8px; }
+.gnode .group { background: var(--notable-bg); color: var(--gold); border: 1px dashed var(--gold); }
+.gnode .root { background: var(--steel-soft); color: var(--steel); }
+.port { position: absolute; top: 50%; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%; background: var(--panel); border: 2px solid var(--edge); cursor: crosshair; }
+.port.in { left: -9px; }
+.port.out { right: -9px; background: var(--edge); }
+.port:hover, .port.hot { border-color: var(--ember); background: var(--ember); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); padding: 8px 12px 12px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 18px; height: 12px; border: 1.5px solid var(--line); border-radius: 3px; background: var(--panel); }
 .swatch.notable { border-color: var(--gold); border-radius: 8px; background: var(--notable-bg); }
+.swatch.special { border-color: var(--special); background: var(--special-bg); }
 .inspector .empty { color: var(--muted); font-size: 13px; }
 .ranks { display: grid; gap: 6px; }
 .rank-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 30px; gap: 6px; align-items: center; }
 .rank-row .r { font: 600 12px var(--mono); color: var(--muted); text-align: right; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.links-list { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 4px; font-size: 13px; }
+.links-list li { display: flex; justify-content: space-between; gap: 6px; align-items: center; }
 .changes { margin-top: 18px; }
 .changes h2 { font: 700 18px var(--display); margin: 0 0 8px; }
-.changes ol { margin: 0; padding-left: 20px; font-size: 13px; display: grid; gap: 3px; }
+.changes ol { margin: 8px 0 0; padding-left: 20px; font-size: 13px; display: grid; gap: 3px; }
 .changes .none { color: var(--muted); font-size: 13px; }
 .changes pre { white-space: pre-wrap; font: 12px/1.5 var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; max-height: 280px; overflow: auto; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-@media (prefers-reduced-motion: no-preference) { .node { transition: box-shadow .15s, border-color .15s; } }
 </style>
 
 <div id="root"></div>
-
 <script type="application/json" id="tree-data">/*DATA*/</script>
 <script id="app-src">
 (function () {
@@ -110,7 +126,7 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
   const SHELL = `<div class="wrap" id="app">
   <header class="top">
     <h1>Escaldón's Workbench</h1>
-    <span class="sub">Árboles de mejora de cada habilidad: añade, quita o edita nodos y guarda.</span>
+    <span class="sub">Árboles de mejora: arrastra nodos, conéctalos con flechas y pon la condición de cada flecha.</span>
     <div class="actions">
       <button id="btn-save" class="primary" type="button">Guardar</button>
       <button id="btn-copy" type="button">Copiar cambios</button>
@@ -120,7 +136,6 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
     </div>
     <div class="status" id="status" role="status"></div>
   </header>
-
   <div class="grid">
     <nav class="panel rack" aria-label="Habilidades">
       <h2>Habilidades</h2>
@@ -128,34 +143,51 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
       <ul class="skill-list" id="skill-list"></ul>
       <div class="row"><button id="btn-new-skill" type="button">+ Habilidad nueva</button></div>
     </nav>
-
     <main class="panel bench" id="bench"></main>
-
-    <aside class="panel inspector" id="inspector" aria-label="Nodo seleccionado"></aside>
+    <aside class="panel inspector" id="inspector" aria-label="Selección"></aside>
   </div>
-
   <section class="changes" id="changes"></section>
 </div>`;
   document.getElementById("root").innerHTML = SHELL;
-  const STORE_KEY = "escaldon-workbench-draft-v1";
+
+  const STORE_KEY = "escaldon-workbench-graph-v2";
+  const NODE_W = 200;
   const raw = JSON.parse(document.getElementById("tree-data").textContent);
-  // base = what the game has (from DumpSkillTrees); skills = the edited copy.
+
+  // --- data: every skill becomes a graph (nodes with x/y, edges with a condition) ---------
+  function toGraph(s) {
+    if (Array.isArray(s.edges)) return s;
+    const g = JSON.parse(JSON.stringify(s));
+    const perCell = {};
+    g.edges = [];
+    for (const n of g.nodes) {
+      const key = n.branch + ":" + n.depth;
+      const k = perCell[key] = (perCell[key] || 0) + 1;
+      n.x = 40 + n.depth * 260;
+      n.y = 40 + n.branch * 230 + (k - 1) * 110;
+      const parents = Array.isArray(n.parents) && n.parents.length ? n.parents : n.requires ? [{ id: n.requires, ranks: n.requiresRanks || 1 }] : [];
+      for (const p of parents) g.edges.push({ from: p.id, to: n.id, ranks: p.ranks || 1 });
+      delete n.requires; delete n.requiresRanks; delete n.parents;
+      n.note = n.note || "";
+    }
+    g.note = g.note || "";
+    return g;
+  }
   const state = {
-    base: raw.base || raw.skills.map(s => JSON.parse(JSON.stringify(s))),
-    skills: raw.edited || raw.skills,
+    base: (raw.base || raw.skills).map(toGraph),
+    skills: (raw.edited || raw.skills).map(toGraph),
     savedAt: raw.savedAt || null,
     note: raw.note || "",
   };
+  if (!raw.base) state.base = JSON.parse(JSON.stringify(state.skills));
   let current = state.skills[0] ? state.skills[0].id : null;
-  let selected = null;
+  let sel = null; // { type: "node", id } | { type: "edge", from, to }
   let dirty = false;
+  const views = {}; // per-skill pan/zoom
 
   try {
-    const draft = localStorage.getItem(STORE_KEY);
-    if (draft) {
-      const d = JSON.parse(draft);
-      if (d && d.savedAt === state.savedAt && Array.isArray(d.skills)) { state.skills = d.skills; state.note = d.note || ""; dirty = true; }
-    }
+    const draft = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (draft && draft.savedAt === state.savedAt && Array.isArray(draft.skills)) { state.skills = draft.skills.map(toGraph); state.note = draft.note || ""; dirty = true; }
   } catch (e) { /* storage unavailable: work in memory */ }
 
   const $ = id => document.getElementById(id);
@@ -163,34 +195,39 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
   const skill = id => state.skills.find(s => s.id === id);
   const baseSkill = id => state.base.find(s => s.id === id);
   const baseNode = (sid, nid) => (baseSkill(sid)?.nodes || []).find(n => n.id === nid);
+  const baseEdge = (sid, e) => (baseSkill(sid)?.edges || []).find(b => b.from === e.from && b.to === e.to);
   const slug = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "node";
+  const kindLabel = k => ({ Lesser: "Menor", Notable: "Notable", Special: "Especial" }[k] || k);
 
   function nodeStatus(sid, n) {
     if (n.removed) return "removed";
     const b = baseNode(sid, n.id);
     if (!b) return "new";
-    const keys = ["name", "kind", "branch", "depth", "requires", "requiresRanks", "exclusive", "note"];
-    if (keys.some(k => (b[k] ?? "") !== (n[k] ?? "")) || JSON.stringify(b.ranks) !== JSON.stringify(n.ranks)) return "changed";
+    if (["name", "kind", "exclusive", "note"].some(k => (b[k] ?? "") !== (n[k] ?? "")) || JSON.stringify(b.ranks) !== JSON.stringify(n.ranks)) return "changed";
     return "";
+  }
+  function edgeStatus(sid, e) {
+    if (e.removed) return "removed";
+    const b = baseEdge(sid, e);
+    if (!b) return "new";
+    return b.ranks !== e.ranks || (b.note || "") !== (e.note || "") ? "changed" : "";
   }
   function skillStatus(s) {
     const b = baseSkill(s.id);
     if (!b) return "new";
-    const keys = ["name", "unlock", "damage", "useTime", "cooldown", "mana", "description", "note"];
-    if (keys.some(k => (b[k] ?? "") !== (s[k] ?? "")) || JSON.stringify(b.branches) !== JSON.stringify(s.branches)) return "changed";
-    if (s.nodes.some(n => nodeStatus(s.id, n)) || b.nodes.length !== s.nodes.length) return "changed";
+    if (["name", "unlock", "damage", "useTime", "cooldown", "mana", "description", "note"].some(k => (b[k] ?? "") !== (s[k] ?? ""))) return "changed";
+    if (s.nodes.some(n => nodeStatus(s.id, n)) || s.edges.some(e => edgeStatus(s.id, e))) return "changed";
+    if (b.nodes.some(n => !s.nodes.find(x => x.id === n.id)) || b.edges.some(e => !s.edges.find(x => x.from === e.from && x.to === e.to))) return "changed";
     return "";
   }
 
-  function touch() {
-    dirty = true;
+  function persist() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
-    renderList(); renderChanges();
-    setStatus("Cambios sin guardar.");
   }
+  function touch() { dirty = true; persist(); renderList(); renderChanges(); setStatus("Cambios sin guardar."); }
   function setStatus(t) { $("status").textContent = t; }
 
-  // --- the rack ---------------------------------------------------------------
+  // --- the rack --------------------------------------------------------------------
   function renderList() {
     const q = $("search").value.trim().toLowerCase();
     const ul = $("skill-list");
@@ -200,22 +237,21 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
       const st = skillStatus(s);
       const li = document.createElement("li");
       li.innerHTML = `<button type="button" aria-current="${s.id === current}"><span>${esc(s.name)}<br><span class="type">${esc(s.type)} · nv ${esc(s.unlock)}</span></span>${st ? `<span class="chip ${st}">${st === "new" ? "nueva" : "cambios"}</span>` : ""}</button>`;
-      li.firstChild.addEventListener("click", () => { current = s.id; selected = null; renderAll(); });
+      li.firstChild.addEventListener("click", () => { current = s.id; sel = null; renderAll(); });
       ul.appendChild(li);
     }
   }
 
-  // --- the bench ----------------------------------------------------------------
+  // --- the bench: header, toolbar, board ---------------------------------------------
   function renderBench() {
     const s = skill(current);
     const bench = $("bench");
-    if (!s) { bench.innerHTML = `<p class="empty">Elige una habilidad.</p>`; return; }
-    const cols = Math.max(3, ...s.nodes.map(n => n.depth + 1));
-    const points = s.nodes.filter(n => !n.removed && !n.exclusive).reduce((a, n) => a + n.ranks.length, 0)
-      + new Set(s.nodes.filter(n => !n.removed && n.exclusive).map(n => n.exclusive)).size;
+    if (!s) { bench.innerHTML = `<p class="empty" style="padding:12px">Elige una habilidad.</p>`; return; }
+    const live = s.nodes.filter(n => !n.removed);
+    const points = live.filter(n => !n.exclusive).reduce((a, n) => a + n.ranks.length, 0) + new Set(live.filter(n => n.exclusive).map(n => n.exclusive)).size;
     bench.innerHTML = `
-      <div class="bench-head"><h2>${esc(s.name)}</h2><span class="meta">${esc(s.id)} · ${esc(s.type)} · ${esc(s.tags)}</span>
-        <span class="meta num">${points} rangos en el árbol · una gema de nivel 20 tiene 19 puntos</span></div>
+      <div class="bench-head"><h2>${esc(s.name)}</h2><span class="meta">${esc(s.id)} · ${esc(s.type)}</span>
+        <span class="meta num">${points} rangos · ${live.filter(n => !s.edges.some(e => e.to === n.id && !e.removed)).length} nodos de inicio · una gema de nivel 20 tiene 19 puntos</span></div>
       <details class="skill-fields" ${skillStatus(s) === "new" ? "open" : ""}><summary>Datos de la habilidad</summary>
         <div class="fields">
           <label>Nombre<input id="f-name" value="${esc(s.name)}"></label>
@@ -228,172 +264,363 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
           <label class="wide">Notas para Claude<textarea id="f-note" placeholder="Qué quieres cambiar y por qué">${esc(s.note || "")}</textarea></label>
         </div>
       </details>
-      <div class="tree-scroll"><div class="tree" id="tree"><svg class="links" id="links" aria-hidden="true"></svg></div></div>
-      <div class="legend"><span><i class="swatch"></i>Menor (varios rangos)</span><span><i class="swatch notable"></i>Notable (1 rango)</span>
-        <span>Línea: requiere puntos en el nodo anterior</span><span>Recuadro dorado: elige uno de los dos</span></div>`;
+      <div class="toolbar">
+        <button type="button" data-add="Lesser">+ Menor</button>
+        <button type="button" data-add="Notable">+ Notable</button>
+        <button type="button" data-add="Special">+ Especial</button>
+        <button type="button" id="btn-fit">Encuadrar</button>
+        <button type="button" id="btn-layout">Ordenar</button>
+        <span class="hint">Arrastra el fondo para moverte · rueda para zoom · arrastra del punto derecho de un nodo al izquierdo de otro para unirlos · doble clic en el fondo crea un nodo · Supr borra</span>
+      </div>
+      <div class="board" id="board" tabindex="0" aria-label="Árbol de ${esc(s.name)}">
+        <div class="world" id="world"><svg class="edges" id="edges"></svg></div>
+      </div>
+      <div class="legend"><span><i class="swatch"></i>Menor (varios rangos)</span><span><i class="swatch notable"></i>Notable</span><span><i class="swatch special"></i>Especial</span>
+        <span>Flecha: «necesita N puntos en el nodo de origen». Varias flechas a un nodo: vale cualquiera de los caminos.</span>
+        <span>Nodo sin flechas de entrada: nodo de inicio.</span><span>Etiqueta punteada: grupo «elige uno».</span></div>`;
     for (const k of ["name", "unlock", "damage", "useTime", "cooldown", "mana", "description", "note"]) {
       const el = $("f-" + k);
-      el.addEventListener("change", () => {
-        s[k] = el.type === "number" ? Number(el.value) : el.value;
-        touch(); if (k === "name") renderBench();
-      });
+      el.addEventListener("change", () => { s[k] = el.type === "number" ? Number(el.value) : el.value; touch(); if (k === "name") renderBench(); });
     }
-
-    const tree = $("tree");
-    const branches = s.branches.length ? s.branches : ["Rama 1", "Rama 2", "Rama 3"];
-    s.branches = branches;
-    branches.forEach((bname, bi) => {
-      const row = document.createElement("div");
-      row.className = "branch";
-      row.style.setProperty("--cols", cols);
-      const name = document.createElement("div");
-      name.className = "branch-name";
-      name.innerHTML = `<input aria-label="Nombre de la rama ${bi + 1}" value="${esc(bname)}"><div class="hint">rama ${bi + 1}</div>`;
-      name.querySelector("input").addEventListener("change", e => { s.branches[bi] = e.target.value; touch(); });
-      row.appendChild(name);
-      for (let d = 0; d < cols; d++) {
-        const cell = document.createElement("div");
-        cell.className = "cell";
-        const here = s.nodes.filter(n => n.branch === bi && n.depth === d);
-        if (here.length > 1 && here.every(n => n.exclusive && n.exclusive === here[0].exclusive)) cell.classList.add("either");
-        for (const n of here) cell.appendChild(nodeCard(s, n));
-        row.appendChild(cell);
-      }
-      const add = document.createElement("button");
-      add.type = "button"; add.className = "add-node"; add.title = "Añadir un nodo al final de esta rama"; add.setAttribute("aria-label", `Añadir nodo a ${bname}`);
-      add.textContent = "+";
-      add.addEventListener("click", () => addNode(s, bi));
-      row.appendChild(add);
-      tree.appendChild(row);
-    });
-    requestAnimationFrame(() => drawLinks(s));
+    bench.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => {
+      const v = view(s), board = $("board").getBoundingClientRect();
+      addNode(s, b.dataset.add, (board.width / 2 - v.x) / v.k - NODE_W / 2, (board.height / 2 - v.y) / v.k - 40);
+    }));
+    $("btn-fit").addEventListener("click", () => { fit(s); applyView(s); });
+    $("btn-layout").addEventListener("click", () => { autoLayout(s); touch(); drawNodes(s); fit(s); applyView(s); });
+    drawNodes(s);
+    bindBoard(s);
+    if (!views[s.id]) fit(s);
+    applyView(s);
   }
 
-  function nodeCard(s, n) {
-    const st = nodeStatus(s.id, n);
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = `node ${n.kind === "Notable" ? "notable" : ""} ${st ? "st-" + st : ""}`;
-    b.dataset.id = n.id;
-    b.setAttribute("aria-pressed", String(selected === n.id));
-    const ranks = n.ranks.length > 1 ? `${n.ranks.length} rangos · ${esc(n.ranks[0])} → ${esc(n.ranks[n.ranks.length - 1])}` : esc(n.ranks[0] || "—");
-    const req = n.requires ? `necesita ${n.requiresRanks || 1} en ${esc((s.nodes.find(x => x.id === n.requires) || {}).name || n.requires)}` : "inicio de rama";
-    b.innerHTML = `${st ? `<span class="chip ${st}">${st === "new" ? "nuevo" : st === "removed" ? "quitar" : "cambio"}</span>` : ""}
-      <span class="n-name">${esc(n.name)}</span><span class="n-rank">${ranks}</span><span class="n-meta">${req}</span>`;
-    b.addEventListener("click", () => { selected = n.id; renderBench(); renderInspector(); });
-    return b;
+  function view(s) { return views[s.id] || (views[s.id] = { x: 20, y: 20, k: 1 }); }
+  function applyView(s) {
+    const v = view(s);
+    $("world").style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.k})`;
+    $("board").style.backgroundSize = `${22 * v.k}px ${22 * v.k}px`;
+    $("board").style.backgroundPosition = `${v.x}px ${v.y}px`;
+  }
+  function fit(s) {
+    const board = $("board");
+    if (!board || !s.nodes.length) return;
+    const xs = s.nodes.map(n => n.x), ys = s.nodes.map(n => n.y);
+    const minX = Math.min(...xs) - 40, minY = Math.min(...ys) - 40, maxX = Math.max(...xs) + NODE_W + 40, maxY = Math.max(...ys) + 150;
+    const r = board.getBoundingClientRect();
+    const k = Math.max(0.35, Math.min(1.1, Math.min(r.width / (maxX - minX), r.height / (maxY - minY))));
+    views[s.id] = { k, x: (r.width - (maxX - minX) * k) / 2 - minX * k, y: (r.height - (maxY - minY) * k) / 2 - minY * k };
+  }
+  function autoLayout(s) {
+    // Columns by longest path from a start node; rows by order inside each column.
+    const depth = {};
+    const live = s.nodes.filter(n => !n.removed);
+    const incoming = id => s.edges.filter(e => e.to === id && !e.removed);
+    const d = (id, seen = new Set()) => {
+      if (depth[id] !== undefined) return depth[id];
+      if (seen.has(id)) return 0;
+      seen.add(id);
+      const ins = incoming(id);
+      return depth[id] = ins.length ? 1 + Math.max(...ins.map(e => d(e.from, seen))) : 0;
+    };
+    live.forEach(n => d(n.id));
+    const cols = {};
+    live.sort((a, b) => a.y - b.y).forEach(n => { (cols[depth[n.id]] = cols[depth[n.id]] || []).push(n); });
+    Object.entries(cols).forEach(([c, list]) => list.forEach((n, i) => { n.x = 40 + Number(c) * 260; n.y = 40 + i * 130; }));
   }
 
-  function drawLinks(s) {
-    const tree = $("tree"), svg = $("links");
-    if (!tree || !svg) return;
-    const box = tree.getBoundingClientRect();
-    const css = getComputedStyle(document.documentElement);
-    let html = "";
+  function drawNodes(s) {
+    const world = $("world");
+    world.querySelectorAll(".gnode").forEach(n => n.remove());
     for (const n of s.nodes) {
-      if (!n.requires) continue;
-      const a = tree.querySelector(`.node[data-id="${CSS.escape(n.requires)}"]`);
-      const b = tree.querySelector(`.node[data-id="${CSS.escape(n.id)}"]`);
-      if (!a || !b) continue;
-      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-      const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top;
-      const x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top;
-      const mx = (x1 + x2) / 2;
-      const colour = n.removed ? css.getPropertyValue("--cut") : css.getPropertyValue("--muted");
-      html += `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none" stroke="${colour.trim()}" stroke-width="1.6" ${n.removed ? 'stroke-dasharray="4 3"' : ""}/>`;
-      html += `<text x="${mx}" y="${(y1 + y2) / 2 - 4}" font-size="10" font-family="IBM Plex Mono, monospace" fill="${css.getPropertyValue("--muted").trim()}" text-anchor="middle">${n.requiresRanks || 1}</text>`;
+      const st = nodeStatus(s.id, n);
+      const isRoot = !n.removed && !s.edges.some(e => e.to === n.id && !e.removed);
+      const el = document.createElement("div");
+      el.className = `gnode ${n.kind === "Notable" ? "notable" : n.kind === "Special" ? "special" : ""} ${st ? "st-" + st : ""} ${sel && sel.type === "node" && sel.id === n.id ? "sel" : ""}`;
+      el.dataset.id = n.id;
+      el.tabIndex = 0;
+      el.style.left = n.x + "px"; el.style.top = n.y + "px";
+      const ranks = n.ranks.length > 1 ? `${n.ranks.length} rangos: ${esc(n.ranks[0])} → ${esc(n.ranks[n.ranks.length - 1])}` : esc(n.ranks[0] || "—");
+      el.innerHTML = `<div class="head"><span class="title">${esc(n.name)}</span><span class="kind">${kindLabel(n.kind)}</span></div>
+        <div class="body">${ranks}</div>
+        <div class="tags">${isRoot ? `<span class="chip root">inicio</span>` : ""}${n.exclusive ? `<span class="chip group">elige uno: ${esc(n.exclusive)}</span>` : ""}${st ? `<span class="chip ${st}">${st === "new" ? "nuevo" : st === "removed" ? "quitar" : "cambio"}</span>` : ""}</div>
+        <span class="port in" data-port="in" title="Entrada"></span><span class="port out" data-port="out" title="Arrastra para conectar"></span>`;
+      world.appendChild(el);
     }
+    drawEdges(s);
+  }
+
+  function anchor(s, id, side) {
+    const n = s.nodes.find(x => x.id === id);
+    const el = $("world").querySelector(`.gnode[data-id="${CSS.escape(id)}"]`);
+    if (!n || !el) return null;
+    return { x: n.x + (side === "out" ? NODE_W : 0), y: n.y + el.offsetHeight / 2 };
+  }
+  function wire(a, b) {
+    const dx = Math.max(40, Math.abs(b.x - a.x) / 2);
+    return `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`;
+  }
+  let draft = null; // a wire being dragged from an output port
+  function drawEdges(s) {
+    const svg = $("edges");
+    let html = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/></marker>
+      <marker id="arrow-sel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--ember)"/></marker></defs>`;
+    s.edges.forEach((e, i) => {
+      const a = anchor(s, e.from, "out"), b = anchor(s, e.to, "in");
+      if (!a || !b) return;
+      const st = edgeStatus(s.id, e);
+      const isSel = sel && sel.type === "edge" && sel.from === e.from && sel.to === e.to;
+      const d = wire(a, b);
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const label = `≥ ${e.ranks} pt`;
+      html += `<path class="wire ${isSel ? "sel" : st === "new" ? "new" : st === "removed" ? "cut" : ""}" d="${d}" marker-end="url(#${isSel ? "arrow-sel" : "arrow"})"/>`;
+      html += `<path class="hit" d="${d}" data-edge="${i}"/>`;
+      html += `<g class="elabel" data-edge="${i}"><rect x="${mx - 26}" y="${my - 10}" width="52" height="20" rx="10"/><text x="${mx}" y="${my + 4}" text-anchor="middle">${label}</text></g>`;
+    });
+    if (draft) html += `<path class="wire draft" d="${wire(draft.a, draft.b)}"/>`;
     svg.innerHTML = html;
   }
 
-  function addNode(s, bi) {
-    const inBranch = s.nodes.filter(n => n.branch === bi && !n.removed);
-    const depth = inBranch.length ? Math.max(...inBranch.map(n => n.depth)) + 1 : 0;
-    const parent = inBranch.filter(n => n.depth === depth - 1)[0];
-    let id = "new_node", i = 1;
-    while (s.nodes.some(n => n.id === id)) id = "new_node_" + (++i);
-    const n = { id, name: "Nodo nuevo", kind: depth >= 2 ? "Notable" : "Lesser", branch: bi, depth,
-      ranks: depth >= 2 ? ["Qué hace"] : ["Rango 1", "Rango 2", "Rango 3"], requires: parent ? parent.id : "", requiresRanks: parent ? 2 : 0, exclusive: "", note: "" };
-    s.nodes.push(n);
-    selected = n.id;
-    touch(); renderBench(); renderInspector();
+  // --- board interaction: pan, zoom, drag nodes, draw wires ---------------------------------
+  function bindBoard(s) {
+    const board = $("board");
+    const toWorld = (cx, cy) => { const r = board.getBoundingClientRect(), v = view(s); return { x: (cx - r.left - v.x) / v.k, y: (cy - r.top - v.y) / v.k }; };
+    let drag = null;
+    board.addEventListener("pointerdown", ev => {
+      if (ev.button !== 0 && ev.button !== 1) return;
+      const port = ev.target.closest(".port");
+      const nodeEl = ev.target.closest(".gnode");
+      const edgeEl = ev.target.closest("[data-edge]");
+      board.setPointerCapture(ev.pointerId);
+      if (port && port.dataset.port === "out" && nodeEl) {
+        const from = nodeEl.dataset.id;
+        draft = { from, a: anchor(s, from, "out"), b: toWorld(ev.clientX, ev.clientY) };
+        drag = { type: "wire" };
+      } else if (nodeEl && ev.button === 0) {
+        const n = s.nodes.find(x => x.id === nodeEl.dataset.id);
+        const p = toWorld(ev.clientX, ev.clientY);
+        drag = { type: "node", n, dx: p.x - n.x, dy: p.y - n.y, moved: false };
+        select({ type: "node", id: n.id }, s);
+      } else if (edgeEl) {
+        const e = s.edges[Number(edgeEl.dataset.edge)];
+        select({ type: "edge", from: e.from, to: e.to }, s);
+        drag = null;
+      } else {
+        drag = { type: "pan", sx: ev.clientX, sy: ev.clientY, vx: view(s).x, vy: view(s).y };
+        board.classList.add("panning");
+      }
+    });
+    board.addEventListener("pointermove", ev => {
+      if (!drag) return;
+      if (drag.type === "pan") {
+        const v = view(s); v.x = drag.vx + ev.clientX - drag.sx; v.y = drag.vy + ev.clientY - drag.sy; applyView(s);
+      } else if (drag.type === "node") {
+        const p = toWorld(ev.clientX, ev.clientY);
+        drag.n.x = Math.round((p.x - drag.dx) / 10) * 10; drag.n.y = Math.round((p.y - drag.dy) / 10) * 10; drag.moved = true;
+        const el = $("world").querySelector(`.gnode[data-id="${CSS.escape(drag.n.id)}"]`);
+        el.style.left = drag.n.x + "px"; el.style.top = drag.n.y + "px";
+        drawEdges(s);
+      } else if (drag.type === "wire") {
+        draft.b = toWorld(ev.clientX, ev.clientY);
+        board.querySelectorAll(".port.hot").forEach(p => p.classList.remove("hot"));
+        const under = document.elementFromPoint(ev.clientX, ev.clientY);
+        const target = under && under.closest(".gnode");
+        if (target && target.dataset.id !== draft.from) target.querySelector(".port.in").classList.add("hot");
+        drawEdges(s);
+      }
+    });
+    const end = ev => {
+      if (!drag) return;
+      board.classList.remove("panning");
+      if (drag.type === "node" && drag.moved) persist();
+      if (drag.type === "wire") {
+        const under = document.elementFromPoint(ev.clientX, ev.clientY);
+        const target = under && under.closest(".gnode");
+        const from = draft.from;
+        draft = null;
+        if (target && target.dataset.id !== from) connect(s, from, target.dataset.id);
+        else drawEdges(s);
+      }
+      drag = null;
+    };
+    board.addEventListener("pointerup", end);
+    board.addEventListener("pointercancel", end);
+    board.addEventListener("wheel", ev => {
+      ev.preventDefault();
+      const v = view(s), r = board.getBoundingClientRect();
+      const k = Math.max(0.3, Math.min(2, v.k * (ev.deltaY < 0 ? 1.1 : 1 / 1.1)));
+      const cx = ev.clientX - r.left, cy = ev.clientY - r.top;
+      v.x = cx - (cx - v.x) * (k / v.k); v.y = cy - (cy - v.y) * (k / v.k); v.k = k;
+      applyView(s);
+    }, { passive: false });
+    board.addEventListener("dblclick", ev => {
+      if (ev.target.closest(".gnode")) return;
+      const p = toWorld(ev.clientX, ev.clientY);
+      addNode(s, "Lesser", p.x - NODE_W / 2, p.y - 30);
+    });
+    board.addEventListener("keydown", ev => {
+      if ((ev.key === "Delete" || ev.key === "Backspace") && sel) { ev.preventDefault(); removeSelected(s); }
+    });
   }
 
-  // --- the inspector --------------------------------------------------------------
+  function select(next, s) {
+    sel = next;
+    drawNodes(s);
+    renderInspector();
+  }
+
+  function connect(s, from, to) {
+    if (s.edges.some(e => e.from === from && e.to === to && !e.removed)) { setStatus("Esos dos nodos ya están unidos."); drawEdges(s); return; }
+    if (reaches(s, to, from)) { setStatus("Esa flecha haría un círculo: un nodo no puede necesitarse a sí mismo."); drawEdges(s); return; }
+    const old = s.edges.find(e => e.from === from && e.to === to && e.removed);
+    const src = s.nodes.find(n => n.id === from);
+    if (old) delete old.removed; else s.edges.push({ from, to, ranks: Math.min(2, Math.max(1, src ? src.ranks.length : 1)), note: "" });
+    sel = { type: "edge", from, to };
+    touch(); drawNodes(s); renderInspector();
+  }
+  function reaches(s, start, goal) {
+    const stack = [start], seen = new Set();
+    while (stack.length) {
+      const id = stack.pop();
+      if (id === goal) return true;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      s.edges.filter(e => e.from === id && !e.removed).forEach(e => stack.push(e.to));
+    }
+    return false;
+  }
+
+  function addNode(s, kind, x, y) {
+    let id = "new_node", i = 1;
+    while (s.nodes.some(n => n.id === id)) id = "new_node_" + (++i);
+    const n = { id, name: kind === "Special" ? "Nodo especial" : kind === "Notable" ? "Notable nuevo" : "Nodo nuevo", kind,
+      ranks: kind === "Lesser" ? ["Rango 1", "Rango 2", "Rango 3"] : ["Qué hace"], exclusive: "", note: "",
+      x: Math.round(x / 10) * 10, y: Math.round(y / 10) * 10, branch: 0, depth: 0 };
+    s.nodes.push(n);
+    sel = { type: "node", id };
+    touch(); drawNodes(s); renderInspector();
+  }
+
+  function removeSelected(s) {
+    if (!sel) return;
+    if (sel.type === "edge") {
+      const e = s.edges.find(x => x.from === sel.from && x.to === sel.to);
+      if (e) { if (baseEdge(s.id, e)) e.removed = true; else s.edges.splice(s.edges.indexOf(e), 1); }
+    } else {
+      const n = s.nodes.find(x => x.id === sel.id);
+      if (!n) return;
+      if (baseNode(s.id, n.id)) { n.removed = true; s.edges.filter(e => e.from === n.id || e.to === n.id).forEach(e => { if (baseEdge(s.id, e)) e.removed = true; }); }
+      else s.nodes.splice(s.nodes.indexOf(n), 1);
+      s.edges = s.edges.filter(e => e.removed || (s.nodes.some(x => x.id === e.from) && s.nodes.some(x => x.id === e.to)));
+    }
+    sel = null;
+    touch(); drawNodes(s); renderInspector();
+  }
+
+  // --- the inspector ------------------------------------------------------------------
   function renderInspector() {
     const box = $("inspector");
     const s = skill(current);
-    const n = s && s.nodes.find(x => x.id === selected);
-    if (!n) {
-      box.innerHTML = `<h2>Nodo</h2><p class="empty">Pulsa un nodo del árbol para editarlo, o + al final de una rama para añadir uno.</p>`;
+    if (!s || !sel) {
+      box.innerHTML = `<h2>Selección</h2><p class="empty">Pulsa un nodo o una flecha para editarlos. Para unir dos nodos, arrastra desde el punto derecho de uno hasta el otro.</p>`;
       return;
     }
-    const others = s.nodes.filter(x => x.id !== n.id && !x.removed);
-    const label = { new: "nuevo", changed: "cambio", removed: "quitar" }[nodeStatus(s.id, n)] || "";
-    box.innerHTML = `<h2>Nodo ${label ? `<span class="chip ${nodeStatus(s.id, n)}">${label}</span>` : ""}</h2>
+    if (sel.type === "edge") return edgeInspector(box, s);
+    const n = s.nodes.find(x => x.id === sel.id);
+    if (!n) { sel = null; return renderInspector(); }
+    const st = nodeStatus(s.id, n);
+    const label = { new: "nuevo", changed: "cambio", removed: "quitar" }[st] || "";
+    const ins = s.edges.filter(e => e.to === n.id && !e.removed), outs = s.edges.filter(e => e.from === n.id && !e.removed);
+    const name = id => esc((s.nodes.find(x => x.id === id) || {}).name || id);
+    box.innerHTML = `<h2>Nodo ${label ? `<span class="chip ${st}">${label}</span>` : ""}</h2>
       <div class="fields">
         <label class="wide">Nombre<input id="n-name" value="${esc(n.name)}"></label>
-        <label>Tipo<select id="n-kind"><option value="Lesser">Menor</option><option value="Notable">Notable</option></select></label>
-        <label>Rama<select id="n-branch">${s.branches.map((b, i) => `<option value="${i}">${esc(b)}</option>`).join("")}</select></label>
-        <label>Columna<input id="n-depth" class="num" type="number" min="0" max="6" value="${n.depth}"></label>
-        <label>Puntos necesarios<input id="n-reqranks" class="num" type="number" min="0" max="5" value="${n.requiresRanks || 0}"></label>
-        <label class="wide">Requiere<select id="n-requires"><option value="">— nada (inicio de rama) —</option>${others.map(o => `<option value="${esc(o.id)}">${esc(o.name)} (${esc(o.id)})</option>`).join("")}</select></label>
-        <label class="wide">Grupo "elige uno" (mismo texto en los nodos que se excluyen)<input id="n-exclusive" value="${esc(n.exclusive)}" placeholder="vacío = no excluye"></label>
+        <label>Tipo<select id="n-kind"><option value="Lesser">Menor</option><option value="Notable">Notable</option><option value="Special">Especial</option></select></label>
+        <label>Grupo «elige uno»<input id="n-exclusive" value="${esc(n.exclusive)}" placeholder="vacío = no"></label>
       </div>
       <label>Qué hace cada rango</label>
-      <div class="ranks" id="n-ranks">${n.ranks.map((r, i) => `<div class="rank-row"><span class="r">${i + 1}</span><input data-rank="${i}" value="${esc(r)}" aria-label="Rango ${i + 1}"><button type="button" data-del="${i}" aria-label="Quitar rango ${i + 1}" ${n.ranks.length < 2 ? "disabled" : ""}>×</button></div>`).join("")}</div>
+      <div class="ranks">${n.ranks.map((r, i) => `<div class="rank-row"><span class="r">${i + 1}</span><input data-rank="${i}" value="${esc(r)}" aria-label="Rango ${i + 1}"><button type="button" data-del="${i}" aria-label="Quitar rango ${i + 1}" ${n.ranks.length < 2 ? "disabled" : ""}>×</button></div>`).join("")}</div>
       <div class="row"><button id="n-addrank" type="button">+ Rango</button></div>
+      <label style="margin-top:10px">Se llega desde ${ins.length ? "(vale cualquiera)" : ""}</label>
+      <ul class="links-list">${ins.length ? ins.map(e => `<li><span>${name(e.from)}</span><span class="num">≥ ${e.ranks} pt</span></li>`).join("") : `<li><span class="chip root">nodo de inicio</span></li>`}</ul>
+      <label style="margin-top:10px">Abre</label>
+      <ul class="links-list">${outs.length ? outs.map(e => `<li><span>${name(e.to)}</span><span class="num">≥ ${e.ranks} pt aquí</span></li>`).join("") : `<li class="empty">nada todavía</li>`}</ul>
       <label style="margin-top:10px">Notas para Claude<textarea id="n-note" placeholder="Idea, valores, por qué">${esc(n.note || "")}</textarea></label>
-      <p class="n-meta" style="font:11px var(--mono);color:var(--muted)">id: ${esc(n.id)}</p>
+      <p style="font:11px var(--mono);color:var(--muted)">id: ${esc(n.id)}</p>
       <div class="row">${n.removed ? `<button id="n-restore" type="button">Recuperar nodo</button>` : `<button id="n-delete" class="danger" type="button">Quitar nodo</button>`}</div>`;
     $("n-kind").value = n.kind;
-    $("n-branch").value = String(n.branch);
-    $("n-requires").value = n.requires || "";
-    const set = (k, v) => { n[k] = v; touch(); renderBench(); renderInspector(); };
-    $("n-name").addEventListener("change", e => { const was = baseNode(s.id, n.id); n.name = e.target.value; if (!was && n.id.startsWith("new_node")) { let id = slug(n.name); while (s.nodes.some(x => x !== n && x.id === id)) id += "_2"; s.nodes.forEach(x => { if (x.requires === n.id) x.requires = id; }); n.id = id; selected = id; } touch(); renderBench(); renderInspector(); });
+    const set = (k, v) => { n[k] = v; touch(); drawNodes(s); renderInspector(); };
+    $("n-name").addEventListener("change", e => {
+      n.name = e.target.value;
+      if (!baseNode(s.id, n.id) && n.id.startsWith("new_node")) {
+        let id = slug(n.name);
+        while (s.nodes.some(x => x !== n && x.id === id)) id += "_2";
+        s.edges.forEach(x => { if (x.from === n.id) x.from = id; if (x.to === n.id) x.to = id; });
+        n.id = id; sel = { type: "node", id };
+      }
+      touch(); drawNodes(s); renderInspector();
+    });
     $("n-kind").addEventListener("change", e => set("kind", e.target.value));
-    $("n-branch").addEventListener("change", e => set("branch", Number(e.target.value)));
-    $("n-depth").addEventListener("change", e => set("depth", Math.max(0, Number(e.target.value))));
-    $("n-reqranks").addEventListener("change", e => set("requiresRanks", Math.max(0, Number(e.target.value))));
-    $("n-requires").addEventListener("change", e => set("requires", e.target.value));
     $("n-exclusive").addEventListener("change", e => set("exclusive", e.target.value.trim()));
     $("n-note").addEventListener("change", e => { n.note = e.target.value; touch(); });
-    box.querySelectorAll("input[data-rank]").forEach(el => el.addEventListener("change", e => { n.ranks[Number(e.target.dataset.rank)] = e.target.value; touch(); renderBench(); }));
+    box.querySelectorAll("input[data-rank]").forEach(el => el.addEventListener("change", e => { n.ranks[Number(e.target.dataset.rank)] = e.target.value; touch(); drawNodes(s); }));
     box.querySelectorAll("button[data-del]").forEach(el => el.addEventListener("click", e => { n.ranks.splice(Number(e.currentTarget.dataset.del), 1); set("ranks", n.ranks); }));
     $("n-addrank").addEventListener("click", () => { n.ranks.push(""); set("ranks", n.ranks); });
-    const del = $("n-delete");
-    if (del) del.addEventListener("click", () => {
-      if (!baseNode(s.id, n.id)) { s.nodes = s.nodes.filter(x => x !== n); s.nodes.forEach(x => { if (x.requires === n.id) x.requires = ""; }); selected = null; touch(); renderBench(); renderInspector(); }
-      else set("removed", true);
-    });
-    const restore = $("n-restore");
-    if (restore) restore.addEventListener("click", () => { delete n.removed; touch(); renderBench(); renderInspector(); });
+    if ($("n-delete")) $("n-delete").addEventListener("click", () => removeSelected(s));
+    if ($("n-restore")) $("n-restore").addEventListener("click", () => { delete n.removed; touch(); drawNodes(s); renderInspector(); });
   }
 
-  // --- the change list ---------------------------------------------------------
+  function edgeInspector(box, s) {
+    const e = s.edges.find(x => x.from === sel.from && x.to === sel.to);
+    if (!e) { sel = null; return renderInspector(); }
+    const from = s.nodes.find(n => n.id === e.from), to = s.nodes.find(n => n.id === e.to);
+    const st = edgeStatus(s.id, e);
+    const label = { new: "nueva", changed: "cambio", removed: "quitar" }[st] || "";
+    box.innerHTML = `<h2>Flecha ${label ? `<span class="chip ${st}">${label}</span>` : ""}</h2>
+      <p><strong>${esc(from ? from.name : e.from)}</strong> → <strong>${esc(to ? to.name : e.to)}</strong></p>
+      <div class="fields">
+        <label class="wide">Condición: puntos que hay que tener en «${esc(from ? from.name : e.from)}»<input id="e-ranks" class="num" type="number" min="1" max="10" value="${e.ranks}"></label>
+        <label class="wide">Nota (otra condición, idea…)<textarea id="e-note" placeholder="p. ej. «solo si no tienes X»">${esc(e.note || "")}</textarea></label>
+      </div>
+      <p class="empty">Si a «${esc(to ? to.name : e.to)}» llegan varias flechas, basta con cumplir una.</p>
+      <div class="row">${e.removed ? `<button id="e-restore" type="button">Recuperar flecha</button>` : `<button id="e-delete" class="danger" type="button">Quitar flecha</button>`}</div>`;
+    $("e-ranks").addEventListener("change", ev => { e.ranks = Math.max(1, Number(ev.target.value) || 1); touch(); drawEdges(s); renderInspector(); });
+    $("e-note").addEventListener("change", ev => { e.note = ev.target.value; touch(); });
+    if ($("e-delete")) $("e-delete").addEventListener("click", () => removeSelected(s));
+    if ($("e-restore")) $("e-restore").addEventListener("click", () => { delete e.removed; touch(); drawNodes(s); renderInspector(); });
+  }
+
+  // --- the change list ----------------------------------------------------------------
   function changeLines() {
     const out = [];
     for (const s of state.skills) {
       const b = baseSkill(s.id);
-      if (!b) { out.push(`NUEVA HABILIDAD ${s.name} (${s.id}): ${s.type}, nv ${s.unlock}, daño ${s.damage}, uso ${s.useTime}s, cd ${s.cooldown}s, maná ${s.mana}. ${s.description}${s.note ? " — Nota: " + s.note : ""}`); }
+      const nm = id => (s.nodes.find(n => n.id === id) || (b && b.nodes.find(n => n.id === id)) || {}).name || id;
+      if (!b) out.push(`NUEVA HABILIDAD ${s.name} (${s.id}): ${s.type}, nv ${s.unlock}, daño ${s.damage}, uso ${s.useTime}s, cd ${s.cooldown}s, maná ${s.mana}. ${s.description}${s.note ? " — Nota: " + s.note : ""}`);
       else {
         for (const k of ["name", "unlock", "damage", "useTime", "cooldown", "mana", "description"]) if ((b[k] ?? "") !== (s[k] ?? "")) out.push(`${s.name}: ${k} ${JSON.stringify(b[k])} → ${JSON.stringify(s[k])}`);
-        if (JSON.stringify(b.branches) !== JSON.stringify(s.branches)) out.push(`${s.name}: ramas ${b.branches.join(" / ")} → ${s.branches.join(" / ")}`);
         if (s.note && s.note !== (b.note || "")) out.push(`${s.name}: nota — ${s.note}`);
       }
       for (const n of s.nodes) {
         const st = nodeStatus(s.id, n);
-        const where = `${s.name} / ${s.branches[n.branch] || "rama " + (n.branch + 1)} / ${n.name}`;
-        if (st === "new") out.push(`${where}: NODO NUEVO (${n.kind === "Notable" ? "notable" : "menor"}, columna ${n.depth + 1}${n.requires ? `, requiere ${n.requiresRanks} en ${n.requires}` : ""}${n.exclusive ? `, elige-uno "${n.exclusive}"` : ""}): ${n.ranks.join(" | ")}${n.note ? " — Nota: " + n.note : ""}`);
+        const where = `${s.name} / ${n.name}`;
+        if (st === "new") out.push(`${where}: NODO NUEVO (${kindLabel(n.kind)}${n.exclusive ? `, elige-uno "${n.exclusive}"` : ""}): ${n.ranks.join(" | ")}${n.note ? " — Nota: " + n.note : ""}`);
         else if (st === "removed") out.push(`${where}: QUITAR NODO (${n.id})${n.note ? " — Nota: " + n.note : ""}`);
         else if (st === "changed") {
           const o = baseNode(s.id, n.id), diffs = [];
-          for (const k of ["name", "kind", "branch", "depth", "requires", "requiresRanks", "exclusive"]) if ((o[k] ?? "") !== (n[k] ?? "")) diffs.push(`${k} ${JSON.stringify(o[k])} → ${JSON.stringify(n[k])}`);
+          for (const k of ["name", "kind", "exclusive"]) if ((o[k] ?? "") !== (n[k] ?? "")) diffs.push(`${k} ${JSON.stringify(o[k])} → ${JSON.stringify(n[k])}`);
           if (JSON.stringify(o.ranks) !== JSON.stringify(n.ranks)) diffs.push(`rangos ${o.ranks.join(" | ")} → ${n.ranks.join(" | ")}`);
           if (n.note && n.note !== (o.note || "")) diffs.push(`nota — ${n.note}`);
           out.push(`${where} (${n.id}): ${diffs.join("; ")}`);
         }
       }
+      for (const e of s.edges) {
+        const st = edgeStatus(s.id, e);
+        const what = `${s.name}: flecha ${nm(e.from)} → ${nm(e.to)}`;
+        if (st === "new") out.push(`${what}: NUEVA, necesita ${e.ranks} pt en ${nm(e.from)}${e.note ? " — Nota: " + e.note : ""}`);
+        else if (st === "removed") out.push(`${what}: QUITAR`);
+        else if (st === "changed") { const o = baseEdge(s.id, e); out.push(`${what}: ${o.ranks !== e.ranks ? `${o.ranks} → ${e.ranks} pt` : ""}${e.note ? " — Nota: " + e.note : ""}`); }
+      }
+      if (b) for (const n of b.nodes) if (!s.nodes.find(x => x.id === n.id)) out.push(`${s.name} / ${n.name}: QUITAR NODO (${n.id})`);
     }
     return out;
   }
@@ -401,14 +628,13 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
     const lines = changeLines();
     $("changes").innerHTML = `<h2>Cambios respecto al juego</h2>
       <label>Nota general<textarea id="g-note" placeholder="Cualquier cosa que quieras decirme sobre esta tanda de cambios">${esc(state.note)}</textarea></label>
-      ${lines.length ? `<ol>${lines.map(l => `<li>${esc(l)}</li>`).join("")}</ol>` : `<p class="none">Aún no hay cambios. Lo que edites aparecerá aquí, listo para copiar.</p>`}`;
+      ${lines.length ? `<ol>${lines.map(l => `<li>${esc(l)}</li>`).join("")}</ol>` : `<p class="none">Aún no hay cambios. Lo que edites aparecerá aquí, listo para copiar. (Mover nodos solo cambia la vista; no cuenta como cambio.)</p>`}`;
     $("g-note").addEventListener("change", e => { state.note = e.target.value; touch(); });
   }
 
-  // --- saving -------------------------------------------------------------------
-  function payload(savedAt) {
-    return { savedAt, note: state.note, base: state.base, edited: state.skills, skills: state.skills };
-  }
+  // --- saving -----------------------------------------------------------------------
+  const RESET = ":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}";
+  function payload(savedAt) { return { format: 2, savedAt, note: state.note, base: state.base, edited: state.skills, skills: state.skills }; }
   function documentFor(data) {
     const json = JSON.stringify(data).replace(/</g, "\\u003c");
     const style = document.getElementById("page-style").outerHTML;
@@ -419,12 +645,8 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
       + head + "\n" + style + "\n<div id=\"root\"></div>\n<script type=\"application/json\" id=\"tree-data\">" + json + close
       + "\n<script id=\"app-src\">" + app + close + "\n</body></html>";
   }
-  const RESET = ":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}";
-
   let artifact = null;
-  if (window.claude && typeof window.claude.use === "function") {
-    window.claude.use("artifact").then(a => { artifact = a; }).catch(() => { artifact = null; });
-  }
+  if (window.claude && typeof window.claude.use === "function") window.claude.use("artifact").then(a => { artifact = a; }).catch(() => { artifact = null; });
 
   async function save() {
     const when = new Date().toISOString();
@@ -441,27 +663,23 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
       } finally { $("btn-save").disabled = false; }
       return;
     }
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
+    persist();
     setStatus("Guardado en este navegador. Para pasárselo a Claude: Exportar JSON y adjúntalo en el chat (o Copiar cambios).");
   }
-
   async function copyChanges() {
     const text = (state.note ? "Nota: " + state.note + "\n" : "") + changeLines().map((l, i) => `${i + 1}. ${l}`).join("\n");
     try { await navigator.clipboard.writeText(text || "Sin cambios"); setStatus("Cambios copiados: pégalos en el chat."); }
     catch (e) {
       $("changes").insertAdjacentHTML("beforeend", `<pre id="copy-fallback">${esc(text)}</pre>`);
-      const r = document.createRange(); r.selectNodeContents($("copy-fallback")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      const r = document.createRange(); r.selectNodeContents($("copy-fallback")); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
       setStatus("No pude copiar solo: el texto está seleccionado abajo, cópialo con Ctrl+C.");
     }
   }
-
   async function exportJson() {
     const text = JSON.stringify(payload(new Date().toISOString()), null, 2);
     if (window.claude && typeof window.claude.use === "function") {
       const downloads = await window.claude.use("downloads").catch(() => null);
-      if (downloads) {
-        try { await downloads.save({ filename: "skill-trees-edited.json", data: text }); setStatus("JSON exportado."); return; } catch (e) { /* fall through */ }
-      }
+      if (downloads) { try { await downloads.save({ filename: "skill-trees-edited.json", data: text }); setStatus("JSON exportado."); return; } catch (e) { /* fall through */ } }
     }
     try {
       const a = document.createElement("a");
@@ -478,9 +696,8 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
       const d = JSON.parse(await f.text());
       const list = d.edited || d.skills;
       if (!Array.isArray(list)) throw new Error("no trae 'skills'");
-      state.skills = list; state.note = d.note || state.note;
-      if (Array.isArray(d.base) && !raw.base) state.base = d.base;
-      current = state.skills[0] && state.skills[0].id; selected = null;
+      state.skills = list.map(toGraph); state.note = d.note || state.note;
+      current = state.skills[0] && state.skills[0].id; sel = null;
       touch(); renderAll(); setStatus("Importado " + f.name + ".");
     } catch (err) { setStatus("Ese archivo no es un JSON del banco de trabajo: " + err.message); }
   });
@@ -490,7 +707,7 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
   let resetArmed = false;
   $("btn-reset").addEventListener("click", e => {
     if (!resetArmed) { resetArmed = true; e.currentTarget.textContent = "¿Seguro? Pulsa otra vez"; setTimeout(() => { resetArmed = false; $("btn-reset").textContent = "Deshacer todo"; }, 4000); return; }
-    state.skills = JSON.parse(JSON.stringify(state.base)); state.note = ""; selected = null; resetArmed = false;
+    state.skills = JSON.parse(JSON.stringify(state.base)); state.note = ""; sel = null; resetArmed = false;
     $("btn-reset").textContent = "Deshacer todo";
     try { localStorage.removeItem(STORE_KEY); } catch (err) { /* ignore */ }
     renderAll(); setStatus("Vuelto a lo que tiene el juego.");
@@ -498,11 +715,10 @@ details.skill-fields summary { cursor: pointer; font-weight: 600; color: var(--s
   $("btn-new-skill").addEventListener("click", () => {
     let id = "new_skill", i = 1;
     while (skill(id)) id = "new_skill_" + (++i);
-    state.skills.push({ id, name: "Habilidad nueva", type: "?", tags: "", unlock: 1, damage: 0, useTime: 0.5, cooldown: 0, mana: 5, description: "", note: "", branches: ["Rama 1", "Rama 2", "Rama 3"], nodes: [] });
-    current = id; selected = null; touch(); renderAll();
+    state.skills.push({ id, name: "Habilidad nueva", type: "?", tags: "", unlock: 1, damage: 0, useTime: 0.5, cooldown: 0, mana: 5, description: "", note: "", branches: [], nodes: [], edges: [] });
+    current = id; sel = null; touch(); renderAll();
   });
   $("search").addEventListener("input", renderList);
-  window.addEventListener("resize", () => { const s = skill(current); if (s) drawLinks(s); });
 
   function renderAll() { renderList(); renderBench(); renderInspector(); renderChanges(); }
   renderAll();

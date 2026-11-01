@@ -11,7 +11,7 @@ using ArpgGame.Skills;
 namespace ArpgGame.UI;
 
 /// <summary>
-/// The Skill gems tab of Odran's panel — docs/design/hideout.md -> "Odran's Skill gems
+/// The Buy skills tab of Escaldón's panel (Odran's until 2026-11-01) — docs/design/hideout.md -> "Odran's Skill gems
 /// tab". Left: a Skills / Supports toggle, filter chips, "Only what I can buy" and a
 /// list of rows; right: the selected gem's details and its Buy button. The rules live
 /// in <see cref="GemShop"/>; this only draws them and forwards clicks.

@@ -184,7 +184,7 @@ public partial class Curses : Node2D
             if (_active.TryGetValue(CurseKind.Corruption, out CurseEffect? corruption) && corruption.Left > 0f && !_health.IsDead)
             {
                 Node2D? source = corruption.Source is not null && IsInstanceValid(corruption.Source) ? corruption.Source : null;
-                _health.ApplyResolvedDamage(corruption.DamagePerSecond * Tick * Mathf.Max(0f, _stats.Get(StatId.DamageTaken).Value), source);
+                _health.ApplyResolvedDamage(corruption.DamagePerSecond * Tick * Mathf.Max(0f, _stats.Get(StatId.DamageTaken).Value), source, "Corruption");
             }
         }
 

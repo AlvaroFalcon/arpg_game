@@ -45,6 +45,7 @@ public partial class DumpSkillTrees : Node
                     {
                         ["id"] = n.Id, ["name"] = n.Name, ["kind"] = n.Kind.ToString(), ["branch"] = n.Branch, ["depth"] = n.Depth,
                         ["ranks"] = ranks, ["requires"] = n.Requires ?? "", ["requiresRanks"] = n.Requires is null ? 0 : n.RequiresRanks, ["exclusive"] = n.Exclusive ?? "",
+                        ["parents"] = new Godot.Collections.Array(n.Parents.Select(p => Variant.From(new Godot.Collections.Dictionary { ["id"] = p.Id, ["ranks"] = p.Ranks }))),
                     });
                 }
             }
