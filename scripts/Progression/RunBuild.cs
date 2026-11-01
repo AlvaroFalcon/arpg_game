@@ -411,7 +411,7 @@ public partial class RunBuild : Node, IBuildContext
             foreach (SkillEntry entry in UpgradeCatalog.Skills)
             {
                 bool onClass = pool.Count == 0 || pool.Contains(entry.Id);
-                if (FindSkill(entry.Id) is not null || (classOnly && !onClass))
+                if (FindSkill(entry.Id) is not null || (classOnly && !onClass) || !SkillRules.InRift(entry.Definition))
                 {
                     continue;
                 }

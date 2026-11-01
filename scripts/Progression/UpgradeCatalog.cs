@@ -86,6 +86,19 @@ public static class UpgradeCatalog
         new SkillEntry { Id = "corruption", ResourcePath = "res://resources/skills/run/corruption.tres" },
         new SkillEntry { Id = "curse_elements", ResourcePath = "res://resources/skills/run/curse_elements.tres" },
         new SkillEntry { Id = "curse_time", ResourcePath = "res://resources/skills/run/curse_time.tres" },
+        // docs/design/skills.md -> "Auras, totems and stacks" (owner's brief, 2026-11-01).
+        new SkillEntry { Id = "blink", ResourcePath = "res://resources/skills/run/blink.tres" },
+        new SkillEntry { Id = "immolation", ResourcePath = "res://resources/skills/run/immolation.tres" },
+        new SkillEntry { Id = "elemental_ward", ResourcePath = "res://resources/skills/run/elemental_ward.tres" },
+        new SkillEntry { Id = "elemental_storm", ResourcePath = "res://resources/skills/run/elemental_storm.tres" },
+        new SkillEntry { Id = "precision", ResourcePath = "res://resources/skills/run/precision.tres" },
+        new SkillEntry { Id = "bloodthirst", ResourcePath = "res://resources/skills/run/bloodthirst.tres" },
+        new SkillEntry { Id = "titan", ResourcePath = "res://resources/skills/run/titan.tres" },
+        new SkillEntry { Id = "vitality", ResourcePath = "res://resources/skills/run/vitality.tres" },
+        new SkillEntry { Id = "totem", ResourcePath = "res://resources/skills/run/totem.tres" },
+        new SkillEntry { Id = "douse", ResourcePath = "res://resources/skills/run/douse.tres" },
+        new SkillEntry { Id = "combust", ResourcePath = "res://resources/skills/run/combust.tres" },
+        new SkillEntry { Id = "exsanguinate", ResourcePath = "res://resources/skills/run/exsanguinate.tres" },
     };
 
     public static SkillEntry? FindSkill(string id)

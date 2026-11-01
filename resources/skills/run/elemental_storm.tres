@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AuraSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AuraSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_elemental_storm.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 15.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Elemental Storm"
+Description = "Aura. While it is in a slot: 15% increased fire, cold and lightning damage. Use: 30% more elemental damage for 6 s. Its tree can focus it on one element."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.3
+Cooldown = 18.0
+Tags = 65570
+Kind = 2
+ActiveDuration = 6.0
+Tint = Color(0.7, 0.6, 1, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

@@ -25,6 +25,10 @@ public sealed class GemData
     /// "Skill upgrade trees"). Every level past 1 is one point.</summary>
     public Dictionary<string, int> Tree { get; set; } = new();
 
+    /// <summary>A totem gem: the uid of the skill gem socketed into it (docs/design/skills.md ->
+    /// "Totems"); null when empty. Ignored on every other gem.</summary>
+    public string? Socket { get; set; }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public int TreePointsSpent => Tree.Values.Sum();
 
@@ -74,14 +78,18 @@ public sealed class LoadoutSlot
 public sealed class CharacterData
 {
     public const int MaxLevel = 70;
-    /// <summary>LMB, RMB, Q, E — see <see cref="SlotLabels"/> (docs/design/menus.md -> "Controls";
-    /// four since 2026-10-29, older saves had six and keep their first four).</summary>
-    public const int LoadoutSlots = 4;
+    /// <summary>LMB, RMB, Q, E, R, T and Space — see <see cref="SlotLabels"/> (docs/design/skills.md ->
+    /// "Six skill buttons"; four from 2026-10-29, seven since 2026-11-01: a save with fewer
+    /// simply has the new slots empty, and one from the old six-slot bar gets its 3 and 4 back on R and T).</summary>
+    public const int LoadoutSlots = 7;
 
-    /// <summary>How many slots a save from before the four-slot bar may hold (LMB, RMB, 1-4).</summary>
-    public const int LegacyLoadoutSlots = 6;
+    /// <summary>Index of the Space slot (movement skills only; empty = the dodge roll).</summary>
+    public const int SpaceSlot = 6;
 
-    public static readonly string[] SlotLabels = { "LMB", "RMB", "Q", "E" };
+    /// <summary>Most slots a save may hold.</summary>
+    public const int LegacyLoadoutSlots = 7;
+
+    public static readonly string[] SlotLabels = { "LMB", "RMB", "Q", "E", "R", "T", "Space" };
 
     public string Name { get; set; } = "Hero";
     public string ClassId { get; set; } = "arcanist";

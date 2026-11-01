@@ -30,6 +30,10 @@ public partial class PlayerSkillInput : Node
         (SkillSlotId.Slot2, "skill_slot_2"),
         (SkillSlotId.Lmb, "skill_slot_lmb"),
         (SkillSlotId.Rmb, "skill_slot_rmb"),
+        // R and T since 2026-11-01 (docs/design/skills.md -> "Six skill buttons"). Appended,
+        // so the co-op HeldSlots bits of the first four keep their meaning.
+        (SkillSlotId.Slot3, "skill_slot_3"),
+        (SkillSlotId.Slot4, "skill_slot_4"),
     };
 
     /// <summary>
@@ -60,8 +64,8 @@ public partial class PlayerSkillInput : Node
         /// <summary>The old sandbox: hold a slot key (or mouse button) to repeat.</summary>
         Hold,
 
-        /// <summary>Realities and the hideout: LMB, RMB, 1, 2, 3, 4 each fire their
-        /// own slot, aimed at the cursor.</summary>
+        /// <summary>Realities and the hideout: LMB, RMB, Q, E, R, T each fire their
+        /// own slot, aimed at the cursor (Space: <see cref="Dodge"/>).</summary>
         Bound,
 
         /// <summary>The Survival Rift: every equipped skill fires on its own,

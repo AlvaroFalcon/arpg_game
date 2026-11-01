@@ -46,6 +46,8 @@ public partial class Dodge : Node
     private float _dashRemaining;
     private Vector2 _dashVelocity;
     private float _ghostTimer;
+    private System.Action? _onArrive;
+    private Color _ghostTint = new(0.5f, 0.9f, 1f, 0.55f);
 
     /// <summary>Charges currently banked (0..<see cref="MaxCharges"/>).</summary>
     public int Charges { get; private set; }
@@ -107,6 +109,13 @@ public partial class Dodge : Node
                 _ghostTimer = 0.035f;
                 SpawnGhost();
             }
+
+            if (_dashRemaining <= 0f && _onArrive is { } arrive)
+            {
+                _onArrive = null;
+                _dashVelocity = Vector2.Zero;
+                arrive();
+            }
         }
 
         if (_body is Player { Command: { } command })
@@ -114,17 +123,70 @@ public partial class Dodge : Node
             // A remote co-op player (or a test): the press arrives as a counter.
             if (command.ConsumeDodge() && InputEnabled)
             {
-                TryDodge(command.DodgeDir);
+                SpacePressed(command.DodgeDir, command.Aim);
             }
         }
         else if (InputEnabled && _body is not Player { IsLocal: false } && !UI.LevelUpScreen.BlocksInput && Input.IsActionJustPressed("dodge"))
         {
             Vector2 input = Input.GetVector("move_left", "move_right", "move_up", "move_down");
+            Vector2 mouse = _body.GetGlobalMousePosition();
             Vector2 direction = input != Vector2.Zero
                 ? input.Normalized()
-                : _body.GlobalPosition.DirectionTo(_body.GetGlobalMousePosition());
-            TryDodge(direction);
+                : _body.GlobalPosition.DirectionTo(mouse);
+            if (SpaceSkill is not null && Net.NetMode.ClientSide)
+            {
+                // A co-op guest: the host casts the movement skill on its copy and the
+                // position comes back with the snapshots (Net.CoopClient sends the press).
+                _dashVelocity = Vector2.Zero;
+                EmitSignal(SignalName.Dodged);
+            }
+            else
+            {
+                SpacePressed(direction, mouse);
+            }
         }
+    }
+
+    /// <summary>The skill in the Space slot (docs/design/skills.md -> "The Space slot"), or
+    /// null: an empty Space slot is the dodge roll.</summary>
+    public Skills.SkillInstance? SpaceSkill => _body.GetNodeOrNull<Skills.SkillUser>("SkillUser")?.GetSkill(Skills.SkillSlotId.Space);
+
+    /// <summary>Space: the movement skill in the Space slot toward <paramref name="aimPoint"/>,
+    /// or a roll in <paramref name="direction"/> when the slot is empty.</summary>
+    public void SpacePressed(Vector2 direction, Vector2 aimPoint)
+    {
+        if (SpaceSkill is not null && _body.GetNodeOrNull<Skills.SkillUser>("SkillUser") is { } user)
+        {
+            if (!IsDashing && !(_health?.IsDead ?? false))
+            {
+                user.TryCast(Skills.SkillSlotId.Space, _body.GlobalPosition.DirectionTo(aimPoint), aimPoint);
+            }
+
+            return;
+        }
+
+        TryDodge(direction);
+    }
+
+    /// <summary>
+    /// Moves the body by <paramref name="offset"/> over <paramref name="time"/> seconds
+    /// (walls stop it), invulnerable for <paramref name="invulnerable"/> seconds, then calls
+    /// <paramref name="onArrive"/> — Blink and Leap Slam (<see cref="Skills.MovementSkillDefinition"/>).
+    /// Spends no dodge charge.
+    /// </summary>
+    public void Travel(Vector2 offset, float time, float invulnerable, Color tint, System.Action? onArrive)
+    {
+        // Whole physics frames, so the body covers exactly the offset (the body moves before
+        // this node counts down, so a fractional last frame would overshoot by a frame).
+        float step = 1f / Mathf.Max(1, Engine.PhysicsTicksPerSecond);
+        int frames = Mathf.Max(1, Mathf.RoundToInt(time / step));
+        time = frames * step;
+        _dashRemaining = time - step * 0.5f;
+        _dashVelocity = offset / time;
+        _onArrive = onArrive;
+        _ghostTint = tint with { A = 0.55f };
+        _ghostTimer = 0f;
+        _health?.GrantInvulnerability(invulnerable);
     }
 
     /// <summary>Spends a charge and starts a dash. Public so tests and AI can drive it.</summary>
@@ -141,6 +203,8 @@ public partial class Dodge : Node
         }
 
         Charges--;
+        _ghostTint = new Color(0.5f, 0.9f, 1f, 0.55f);
+        _onArrive = null;
         LastDodgeTime = Time.GetTicksMsec() / 1000.0;
         _dashRemaining = DashTime;
         _dashVelocity = direction.Normalized() * (DashDistance / DashTime);
@@ -187,7 +251,7 @@ public partial class Dodge : Node
             Texture = frames.GetFrameTexture(_sprite.Animation, _sprite.Frame),
             FlipH = _sprite.FlipH,
             Scale = _sprite.Scale,
-            Modulate = new Color(0.5f, 0.9f, 1f, 0.55f),
+            Modulate = _ghostTint,
             TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
             ZIndex = -1,
         };

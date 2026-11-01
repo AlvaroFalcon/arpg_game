@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AuraSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AuraSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_bloodthirst.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 12.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Bloodthirst"
+Description = "Aura. While it is in a slot: physical attacks have +15% chance to cause bleeding, and bleeds last 25% longer. Use: for 6 s every bleed adds 3 stacks instead of 1, and +20% bleed chance."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.3
+Cooldown = 16.0
+Tags = 65570
+Kind = 4
+ActiveDuration = 6.0
+Tint = Color(0.9, 0.15, 0.15, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

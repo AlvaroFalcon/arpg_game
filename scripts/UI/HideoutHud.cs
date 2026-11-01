@@ -310,6 +310,7 @@ public partial class HideoutHud : CanvasLayer
     {
         _skillRow.Show(CharacterBuild.Slots.Select(slot => (SkillSlotView.LabelOf(slot), Player.SkillUser.GetSkill(slot))).ToList());
         _skillRow.Cooldowns(Player.SkillUser.CooldownFraction);
+        _skillRow.Actives(Player.SkillUser.Auras.ActiveFraction);
     }
 
     // --- F prompt (over the nearest station) ---------------------------------------

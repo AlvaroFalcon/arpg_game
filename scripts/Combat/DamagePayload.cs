@@ -94,6 +94,15 @@ public sealed class DamagePayload
     /// (skill upgrade trees, docs/design/skills.md -> "Skill upgrade trees").</summary>
     public float BleedChance;
 
+    /// <summary>Multiplier on how long the bleed stacks this hit adds last (base 1).</summary>
+    public float BleedDurationMultiplier = 1f;
+
+    /// <summary>Stacks a successful bleed roll adds (1 + extra stacks; Bloodthirst).</summary>
+    public int BleedStacks = 1;
+
+    /// <summary>Multiplier on how long the ignite stack this hit adds lasts (base 1).</summary>
+    public float IgniteDurationMultiplier = 1f;
+
     /// <summary>If the hit kills, the target bursts for this fraction of the hit around
     /// it (<see cref="KillBlastRadius"/> px). 0 = no blast. The blast itself never blasts.</summary>
     public float KillBlastFraction;

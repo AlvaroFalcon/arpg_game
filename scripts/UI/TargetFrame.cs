@@ -346,14 +346,17 @@ public partial class TargetFrame : Control
         {
             icons.Add((new Color(1f, 0.45f, 0.15f), "F", 0.7f, 0));
             icons.Add((new Color(0.45f, 0.85f, 1f), "C", 0.4f, 0));
-            icons.Add((new Color(0.45f, 0.95f, 0.35f), "P", 0.9f, 4));
+            icons.Add((new Color(0.9f, 0.15f, 0.15f), "P", 0.9f, 14));
         }
         else if (ail is not null && IsInstanceValid(ail))
         {
-            if (ail.IsIgnited) icons.Add((new Color(1f, 0.45f, 0.15f), "F", ail.IgniteRemaining / Ailments.IgniteDuration, 0));
+            // Stacking ailments: the count, and the fill is what is left of the stack that
+            // runs out next (docs/design/skills.md -> "Stacking bleed and ignite").
+            if (ail.IsIgnited) icons.Add((new Color(1f, 0.45f, 0.15f), "F", Ailments.NextToExpire(ail.Ignites), ail.IgniteStacks));
+            if (ail.IsOiled) icons.Add((new Color(0.75f, 0.6f, 0.25f), "O", ail.OilRemaining / Ailments.OilDuration, 0));
             if (ail.IsChilled) icons.Add((new Color(0.45f, 0.85f, 1f), "C", ail.ChillRemaining / Ailments.ChillDuration, 0));
             if (ail.IsShocked) icons.Add((new Color(1f, 0.95f, 0.35f), "S", ail.ShockRemaining / Ailments.ShockDuration, 0));
-            if (ail.PoisonStacks > 0) icons.Add((new Color(0.45f, 0.95f, 0.35f), "P", 1f, ail.PoisonStacks));
+            if (ail.BleedStacks > 0) icons.Add((new Color(0.9f, 0.15f, 0.15f), "P", Ailments.NextToExpire(ail.Bleeds), ail.BleedStacks));
             if (ail.IsCursed) icons.Add((new Color(0.75f, 0.45f, 1f), "X", 1f, 0));
         }
 
@@ -392,6 +395,11 @@ public partial class TargetFrame : Control
                 break;
             case "S": // bolt
                 DrawPolyline(new[] { c + new Vector2(2f, -7f), c + new Vector2(-3f, 0f), c + new Vector2(2f, 0f), c + new Vector2(-2f, 7f) }, color, 2f);
+                break;
+            case "O": // oil: a drop over a puddle
+                DrawCircle(c + new Vector2(0f, 1f), 3.5f, color);
+                DrawColoredPolygon(new[] { c + new Vector2(0f, -6f), c + new Vector2(3f, 0f), c + new Vector2(-3f, 0f) }, color);
+                DrawLine(c + new Vector2(-6f, 6f), c + new Vector2(6f, 6f), color, 1.5f);
                 break;
             case "P": // droplet
                 DrawCircle(c + new Vector2(0f, 2f), 4f, color);

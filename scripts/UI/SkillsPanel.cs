@@ -31,6 +31,9 @@ public partial class SkillsPanel : ModalPanel
     private int _targetSlot;
     private int _targetSocket = -1;
 
+    /// <summary><see cref="_targetSocket"/> value for "the skill a totem casts".</summary>
+    private const int TotemSocket = -2;
+
     private CharacterData? Character => CharacterBuild.Of(Player)?.Data ?? Profile.Get(this)?.Active;
 
     protected override void Build(VBoxContainer body)
@@ -74,10 +77,20 @@ public partial class SkillsPanel : ModalPanel
             Label key = UiTheme.Label(CharacterData.SlotLabels[i], 20, UiTheme.Gold);
             key.CustomMinimumSize = new Vector2(52f, 0f);
             row.AddChild(key);
-            Button skillButton = GemButton(skill is null ? "— empty skill —" : $"{GemName(skill)}  Lv{skill.Level}", skill, _targetSlot == i && _targetSocket < 0, 260f);
+            Button skillButton = GemButton(skill is null ? "— empty skill —" : $"{GemName(skill)}  Lv{skill.Level}", skill, _targetSlot == i && _targetSocket == -1, 260f);
             skillButton.Pressed += () => Target(slotIndex, -1);
             skillButton.GuiInput += e => RightClickClear(e, slotIndex, -1);
             row.AddChild(skillButton);
+
+            // A totem holds one skill of its own (docs/design/skills.md -> "Totems").
+            if (SkillOf(skill) is TotemSkillDefinition)
+            {
+                GemData? held = c.FindGem(skill!.Socket);
+                Button socketButton = GemButton(held is null ? "+ skill for the totem" : $"Totem casts: {GemName(held)}", held, _targetSlot == i && _targetSocket == TotemSocket, 220f);
+                socketButton.Pressed += () => Target(slotIndex, TotemSocket);
+                socketButton.GuiInput += e => RightClickClear(e, slotIndex, TotemSocket);
+                row.AddChild(socketButton);
+            }
 
             for (int s = 0; s < (Features.SupportGems ? c.SupportSockets : 0); s++)
             {
@@ -93,9 +106,18 @@ public partial class SkillsPanel : ModalPanel
 
         LoadoutSlot target = c.Loadout[_targetSlot];
         SkillDefinition? targetSkill = SkillOf(c.FindGem(target.SkillUid));
+        if (_targetSocket == TotemSocket && targetSkill is not TotemSkillDefinition)
+        {
+            _targetSocket = -1;
+        }
+
         bool supports = _targetSocket >= 0 && targetSkill is not null;
+        bool totem = _targetSocket == TotemSocket;
+        bool space = _targetSlot == CharacterData.SpaceSlot && !totem;
         _hint.Text = supports
             ? $"Socketing a support into {CharacterData.SlotLabels[_targetSlot]} ({targetSkill!.DisplayName}) — only supports that fit it are listed. Right-click a socket to empty it."
+            : totem ? $"Choosing what the totem on {CharacterData.SlotLabels[_targetSlot]} casts: any skill that hits, with its own level and tree. Right-click to empty."
+            : space ? "Choosing the skill for Space: movement skills only (Blink, Leap Slam). Empty, Space is the dodge roll. Right-click to empty."
             : $"Choosing the skill for {CharacterData.SlotLabels[_targetSlot]}. Escaldón raises skill levels for gold" + (Features.SupportGems ? "; supports never level" : "") + ". Right-click to empty.";
 
         ClearChildren(_gems);
@@ -103,6 +125,16 @@ public partial class SkillsPanel : ModalPanel
         foreach (GemData g in list)
         {
             if (supports && SupportOf(g) is { } def && !def.Accepts(targetSkill!))
+            {
+                continue;
+            }
+
+            if (totem && (SkillOf(g) is not { } held || !SkillRules.FitsTotem(held)))
+            {
+                continue;
+            }
+
+            if (space && (SkillOf(g) is not { } move || !SkillRules.FitsSpace(move)))
             {
                 continue;
             }
@@ -116,7 +148,8 @@ public partial class SkillsPanel : ModalPanel
 
         if (_gems.GetChildCount() == 0)
         {
-            _gems.AddChild(UiTheme.Label(supports ? "No support gems that fit this skill yet — rare monsters and bosses drop them." : "No skill gems.", 16, UiTheme.TextDim));
+            _gems.AddChild(UiTheme.Label(supports ? "No support gems that fit this skill yet — rare monsters and bosses drop them."
+                : space ? "No movement skills yet — Odran sells Blink and Leap Slam." : "No skill gems.", 16, UiTheme.TextDim));
         }
     }
 
@@ -185,7 +218,14 @@ public partial class SkillsPanel : ModalPanel
         }
 
         LoadoutSlot s = c.Loadout[slot];
-        if (socket < 0)
+        if (socket == TotemSocket)
+        {
+            if (c.FindGem(s.SkillUid) is { } totemGem)
+            {
+                totemGem.Socket = null;
+            }
+        }
+        else if (socket < 0)
         {
             s.SkillUid = null;
             s.SupportUids.Clear();
@@ -201,6 +241,23 @@ public partial class SkillsPanel : ModalPanel
     private void Socket(GemData gem)
     {
         if (Character is not { } c)
+        {
+            return;
+        }
+
+        if (_targetSocket == TotemSocket)
+        {
+            // The totem casts this gem; the gem may also sit on the bar.
+            if (c.FindGem(c.Loadout[_targetSlot].SkillUid) is { } totemGem && totemGem.Uid != gem.Uid)
+            {
+                totemGem.Socket = gem.Uid;
+            }
+
+            Changed();
+            return;
+        }
+
+        if (_targetSlot == CharacterData.SpaceSlot && (SkillOf(gem) is not { } move || !SkillRules.FitsSpace(move)))
         {
             return;
         }

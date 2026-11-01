@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="AfflictionSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AfflictionSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_douse.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 10.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Douse"
+Description = "Splashes oil over every enemy in a circle for 6 s: they take 25% more fire damage, and every fire hit ignites them."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.45
+Cooldown = 4.0
+Tags = 50
+Kind = 0
+Radius = 95.0
+MaxRange = 420.0
+Potency = 25.0
+Duration = 6.0
+Tint = Color(0.8, 0.6, 0.25, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

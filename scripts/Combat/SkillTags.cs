@@ -62,4 +62,11 @@ public enum SkillTags
 
     /// <summary>Holy (light) damage (the Paladin). No resistance mitigates it.</summary>
     Holy = 1 << 15,
+
+    /// <summary>An aura (docs/design/skills.md -> "Auras"): a passive effect while it sits
+    /// in a slot, and an active burst of it on use.</summary>
+    Aura = 1 << 16,
+
+    /// <summary>A totem: a placed pole that casts the skill socketed into it.</summary>
+    Totem = 1 << 17,
 }

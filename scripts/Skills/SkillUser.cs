@@ -24,7 +24,8 @@ namespace ArpgGame.Skills;
 [GlobalClass]
 public partial class SkillUser : Node
 {
-    public const int SlotCount = 6;
+    /// <summary>LMB, RMB, Q, E, R, T and Space (<see cref="SkillSlotId"/>).</summary>
+    public const int SlotCount = 7;
 
     [Signal]
     public delegate void CastStartedEventHandler(int slotIndex);
@@ -81,6 +82,7 @@ public partial class SkillUser : Node
 
         _caster = GetParent<Node2D>();
         _stats = _caster.GetNode<ActorStats>("Stats");
+        Auras = new AuraController(this, _caster, _stats);
 
         if (DefaultRmbSkill is not null)
         {
@@ -105,7 +107,15 @@ public partial class SkillUser : Node
 
             TickCharge(instance, dt);
         }
+
+        Auras.Tick(dt);
     }
+
+    /// <summary>The auras' passive and active effects (docs/design/skills.md -> "Auras").</summary>
+    public AuraController Auras { get; private set; } = null!;
+
+    /// <summary>Totems this caster has up (docs/design/skills.md -> "Totems"), oldest first.</summary>
+    public List<Totem> Totems { get; } = new();
 
     /// <summary>Whether the given slot currently holds the built-in Move
     /// sentinel — asked by <see cref="Player"/> so it doesn't need to know
@@ -117,6 +127,7 @@ public partial class SkillUser : Node
     public void EquipSkill(SkillSlotId slot, SkillInstance instance)
     {
         _loadout[(int)slot] = new LoadoutSlot { Skill = instance };
+        Auras?.Refresh();
         SkillEquipped?.Invoke(instance);
     }
 
@@ -124,6 +135,7 @@ public partial class SkillUser : Node
     public void ClearSlot(SkillSlotId slot)
     {
         _loadout[(int)slot] = new LoadoutSlot();
+        Auras?.Refresh();
         SkillEquipped?.Invoke(null);
     }
 
@@ -131,6 +143,7 @@ public partial class SkillUser : Node
     public void RestoreMove(SkillSlotId slot)
     {
         _loadout[(int)slot] = new LoadoutSlot { BuiltIn = BuiltInAction.Move };
+        Auras?.Refresh();
         SkillEquipped?.Invoke(null);
     }
 
@@ -188,16 +201,13 @@ public partial class SkillUser : Node
         }
 
         SkillDefinition definition = instance.Definition;
-        CastContext context = BuildCastContext(definition, aimDirection);
-        context.CostMultiplier = instance.LevelCostMultiplier;
-        if (targetPoint is { } point)
+        if (definition is TotemSkillDefinition && instance.Socketed is null)
         {
-            context.TargetPoint = point;
+            // An empty totem has nothing to cast: don't spend mana on a bare pole.
+            return CastFailure.SlotEmpty();
         }
 
-        // Seam 6: collect -> apply, in priority order, over an empty list today.
-        List<CastModifier> modifiers = CollectCastModifiers(instance, context);
-        ApplyCastModifiers(context, modifiers);
+        CastContext context = ResolveContext(instance, aimDirection, targetPoint);
 
         if (!_stats.IgnoresResourceCosts && !TryPayCosts(context.Costs, context.LifeCostFloorFraction, context.CostMultiplier, out ResourceType insufficientResource))
         {
@@ -221,11 +231,56 @@ public partial class SkillUser : Node
 
         EmitSignal(SignalName.CastStarted, (int)slotId);
 
-        Execute(instance, context);
-        ScheduleRepeats(instance, context);
+        Execute(instance, context, _caster);
+        if (definition is not (AuraSkillDefinition or MovementSkillDefinition or TotemSkillDefinition))
+        {
+            ScheduleRepeats(instance, context);
+        }
 
         EmitSignal(SignalName.CastFired, (int)slotId);
         return null;
+    }
+
+    /// <summary>The cast context of one use of <paramref name="instance"/>: the definition's
+    /// numbers with the gem's supports, tree and the caster's keystones applied. Also what
+    /// the auras read their passive numbers from.</summary>
+    public CastContext ResolveContext(SkillInstance instance, Vector2 aimDirection, Vector2? targetPoint = null, Node2D? anchor = null, IEnumerable<CastModifier>? extra = null)
+    {
+        CastContext context = BuildCastContext(instance.Definition, aimDirection, anchor ?? _caster);
+        context.CostMultiplier = instance.LevelCostMultiplier;
+        if (targetPoint is { } point)
+        {
+            context.TargetPoint = point;
+        }
+
+        // Seam 6: collect -> apply, in priority order.
+        List<CastModifier> modifiers = CollectCastModifiers(instance, context);
+        if (extra is not null)
+        {
+            modifiers.AddRange(extra);
+        }
+
+        ApplyCastModifiers(context, modifiers);
+        return context;
+    }
+
+    /// <summary>
+    /// A cast that comes from something other than the caster's own hands — a totem
+    /// (docs/design/skills.md -> "Totems"): the skill fires from <paramref name="anchor"/>,
+    /// with the anchor's own <paramref name="extra"/> modifiers (the totem's tree) on top of
+    /// the gem's, costs nothing and leaves the gem's own timers alone.
+    /// </summary>
+    public void CastFrom(SkillInstance instance, Node2D anchor, Vector2 aimDirection, Vector2 targetPoint, IEnumerable<CastModifier> extra, float damageMultiplier)
+    {
+        if (instance.Definition is AuraSkillDefinition or MovementSkillDefinition or TotemSkillDefinition)
+        {
+            return;
+        }
+
+        CastContext context = ResolveContext(instance, aimDirection, targetPoint, anchor, extra);
+        context.Tags |= SkillTags.Totem;
+        context.DamageMultiplier *= damageMultiplier;
+        Execute(instance, context, anchor);
     }
 
     /// <summary>
@@ -258,9 +313,9 @@ public partial class SkillUser : Node
         EmitSignal(SignalName.Hit, target, amount);
     }
 
-    private CastContext BuildCastContext(SkillDefinition definition, Vector2 aimDirection)
+    private CastContext BuildCastContext(SkillDefinition definition, Vector2 aimDirection, Node2D anchor)
     {
-        var context = new CastContext(_caster, _stats, _stats.Faction, _caster.GlobalPosition, aimDirection)
+        var context = new CastContext(_caster, _stats, _stats.Faction, anchor.GlobalPosition, aimDirection)
         {
             Tags = definition.Tags,
             // Per-cast mutable copy of the cost list (seam 1) — a cost-converting
@@ -272,6 +327,12 @@ public partial class SkillUser : Node
         if (definition is ProjectileSkillDefinition projectileDefinition)
         {
             context.Projectile = ProjectileParams.FromDefinition(projectileDefinition);
+        }
+
+        if (definition is AuraSkillDefinition aura)
+        {
+            context.Aura = new AuraParams();
+            AuraCatalog.Seed(aura.Kind, context.Aura);
         }
 
         return context;
@@ -414,7 +475,9 @@ public partial class SkillUser : Node
         }
     }
 
-    private void Execute(SkillInstance instance, CastContext context)
+    private void Execute(SkillInstance instance, CastContext context) => Execute(instance, context, _caster);
+
+    private void Execute(SkillInstance instance, CastContext context, Node2D anchor)
     {
         switch (instance.Definition)
         {
@@ -422,16 +485,28 @@ public partial class SkillUser : Node
                 ExecuteProjectile(instance, context);
                 break;
             case AreaSkillDefinition area:
-                ExecuteArea(instance, area, context);
+                ExecuteArea(instance, area, context, anchor);
                 break;
             case OrbitSkillDefinition orbit:
-                ExecuteOrbit(instance, orbit, context);
+                ExecuteOrbit(instance, orbit, context, anchor);
                 break;
             case MeleeSkillDefinition melee:
-                ExecuteMelee(instance, melee, context);
+                ExecuteMelee(instance, melee, context, anchor);
                 break;
             case CurseSkillDefinition curse:
-                ExecuteCurse(instance, curse, context);
+                ExecuteCurse(instance, curse, context, anchor);
+                break;
+            case AuraSkillDefinition aura:
+                Auras.Activate(instance, aura, context);
+                break;
+            case MovementSkillDefinition movement:
+                ExecuteMovement(instance, movement, context);
+                break;
+            case TotemSkillDefinition totem:
+                ExecuteTotem(instance, totem, context);
+                break;
+            case AfflictionSkillDefinition affliction:
+                ExecuteAffliction(instance, affliction, context, anchor);
                 break;
             default:
                 GD.PushWarning($"SkillUser: no executor implemented for {instance.Definition.GetType().Name}");
@@ -445,24 +520,31 @@ public partial class SkillUser : Node
     /// the stat system"), then the instance's level and any per-cast
     /// More/Less from supports multiply on top.
     /// </summary>
-    private HitProfile BuildHitProfile(SkillInstance instance, CastContext context, float knockback = 0f)
+    internal HitProfile BuildHitProfile(SkillInstance instance, CastContext context, float knockback = 0f)
     {
         IReadOnlyList<StatModifier> damageMods = _stats.GetModifiers(new ModifierQuery(StatId.Damage, context.Tags));
         float damage = Stat.ComputeFormula(instance.Definition.BaseDamage, damageMods, instance.Definition.AddedDamageEffectiveness)
             * instance.LevelDamageMultiplier
             * context.DamageMultiplier;
 
+        DamageType type = DamageTypeResolution.Resolve(context.Tags);
+        // Bloodthirst and the like: physical attacks get the caster's own bleed chance.
+        float bleed = context.BleedChance
+            + (type == DamageType.Physical && context.Tags.HasFlag(SkillTags.Attack) ? _stats.Get(StatId.BleedChance).Value : 0f);
         return new HitProfile
         {
             Damage = damage,
-            Type = DamageTypeResolution.Resolve(context.Tags),
+            Type = type,
             Source = _caster,
             Faction = context.CasterFaction,
             Tags = context.Tags,
             IgniteChance = _stats.Get(StatId.IgniteChance).Value + context.IgniteChanceBonus,
             ShockChance = _stats.Get(StatId.ShockChance).Value + context.ShockChanceBonus,
             FreezeChance = _stats.Get(StatId.FreezeChance).Value + context.FreezeChanceBonus,
-            BleedChance = context.BleedChance,
+            BleedChance = bleed,
+            BleedDurationMultiplier = context.BleedDurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.BleedDuration).Value),
+            BleedStacks = 1 + context.ExtraBleedStacks + Mathf.RoundToInt(_stats.Get(StatId.BleedStacksPerHit).Value),
+            IgniteDurationMultiplier = context.IgniteDurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.IgniteDuration).Value),
             KillBlastFraction = context.KillBlastFraction,
             KillBlastRadius = context.KillBlastRadius,
             CanInflictAilments = context.CanInflictAilments,
@@ -472,17 +554,18 @@ public partial class SkillUser : Node
         };
     }
 
-    private void ExecuteArea(SkillInstance instance, AreaSkillDefinition definition, CastContext context)
+    private void ExecuteArea(SkillInstance instance, AreaSkillDefinition definition, CastContext context, Node2D anchor)
     {
         float radius = definition.Radius * context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
-        Vector2 centre = _caster.GlobalPosition;
+        Vector2 centre = anchor.GlobalPosition;
         if (definition.AtTarget)
         {
-            Vector2 offset = context.TargetPoint - _caster.GlobalPosition;
-            centre = _caster.GlobalPosition + offset.LimitLength(definition.MaxRange);
+            Vector2 offset = context.TargetPoint - anchor.GlobalPosition;
+            centre = anchor.GlobalPosition + offset.LimitLength(definition.MaxRange);
         }
 
-        HitProfile hit = BuildHitProfile(instance, context, definition.Knockback);
+        // Knockback is an upgrade, not a default, for skills whose tree grants it (Frost Nova's Gale).
+        HitProfile hit = BuildHitProfile(instance, context, definition.Knockback + context.ExtraKnockback);
         AreaBurst.Spawn(GetTree().CurrentScene, centre, radius, definition.Delay, definition.Tint, hit);
     }
 
@@ -491,11 +574,11 @@ public partial class SkillUser : Node
     /// at the target point — or the one nearest it, for a single-target curse — gets the
     /// curse for its duration. A harmless ring shows where it landed.
     /// </summary>
-    private void ExecuteCurse(SkillInstance instance, CurseSkillDefinition definition, CastContext context)
+    private void ExecuteCurse(SkillInstance instance, CurseSkillDefinition definition, CastContext context, Node2D anchor)
     {
         float radius = definition.Radius * context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
-        Vector2 offset = context.TargetPoint - _caster.GlobalPosition;
-        Vector2 centre = _caster.GlobalPosition + offset.LimitLength(definition.MaxRange);
+        Vector2 offset = context.TargetPoint - anchor.GlobalPosition;
+        Vector2 centre = anchor.GlobalPosition + offset.LimitLength(definition.MaxRange);
         HitProfile hit = BuildHitProfile(instance, context);
         float duration = definition.Duration * context.DurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.SkillDuration).Value);
 
@@ -529,7 +612,7 @@ public partial class SkillUser : Node
         AreaBurst.Spawn(GetTree().CurrentScene, centre, definition.MaxTargets > 0 ? 34f : radius, 0f, definition.Tint, hit, harmless: true);
     }
 
-    private void ExecuteMelee(SkillInstance instance, MeleeSkillDefinition definition, CastContext context)
+    private void ExecuteMelee(SkillInstance instance, MeleeSkillDefinition definition, CastContext context, Node2D anchor)
     {
         float area = context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
         HitProfile hit = BuildHitProfile(instance, context, definition.Knockback);
@@ -538,7 +621,7 @@ public partial class SkillUser : Node
         if (definition.Line)
         {
             float length = definition.Range * area;
-            LineStrike lane = LineStrike.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, aim, length, definition.LineWidth * Mathf.Sqrt(area), definition.LineDelay, hit);
+            LineStrike lane = LineStrike.Spawn(GetTree().CurrentScene, anchor.GlobalPosition, aim, length, definition.LineWidth * Mathf.Sqrt(area), definition.LineDelay, hit);
             lane.Impacted += () =>
             {
                 if (IsInstanceValid(this) && IsInstanceValid(_caster))
@@ -553,27 +636,27 @@ public partial class SkillUser : Node
         {
             if (i == 0)
             {
-                Strike(definition, hit, aim, area);
+                Strike(definition, hit, aim, area, anchor);
                 continue;
             }
 
             SceneTreeTimer timer = GetTree().CreateTimer(0.09 * i, processAlways: false, processInPhysics: true);
             timer.Timeout += () =>
             {
-                if (IsInstanceValid(this) && IsInstanceValid(_caster))
+                if (IsInstanceValid(this) && IsInstanceValid(_caster) && IsInstanceValid(anchor))
                 {
-                    Strike(definition, hit, aim, area);
+                    Strike(definition, hit, aim, area, anchor);
                 }
             };
         }
     }
 
     /// <summary>One melee swing: every hostile inside the arc takes the hit.</summary>
-    private void Strike(MeleeSkillDefinition definition, HitProfile hit, Vector2 aim, float area)
+    private void Strike(MeleeSkillDefinition definition, HitProfile hit, Vector2 aim, float area, Node2D anchor)
     {
         float range = definition.Range * area;
         float halfArc = Mathf.DegToRad(definition.ArcDegrees) / 2f;
-        Vector2 origin = _caster.GlobalPosition;
+        Vector2 origin = anchor.GlobalPosition;
         SlashEffect.Spawn(GetTree().CurrentScene, origin, aim, range, definition.ArcDegrees, definition.Tint);
         Core.Sfx.Play(this, "hit", -4f);
         foreach (Health health in CombatQuery.HostilesInRadius(GetTree(), origin, range, hit.Faction, 16f))
@@ -589,12 +672,12 @@ public partial class SkillUser : Node
         }
     }
 
-    private void ExecuteOrbit(SkillInstance instance, OrbitSkillDefinition definition, CastContext context)
+    private void ExecuteOrbit(SkillInstance instance, OrbitSkillDefinition definition, CastContext context, Node2D anchor)
     {
         float area = context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
         var blades = new OrbitBlades
         {
-            Anchor = _caster,
+            Anchor = anchor,
             Count = definition.Count + context.ExtraCount + Mathf.RoundToInt(_stats.Get(StatId.ExtraProjectiles).Value),
             Radius = definition.Radius * area,
             Duration = definition.Duration * context.DurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.SkillDuration).Value),
@@ -605,7 +688,228 @@ public partial class SkillUser : Node
             Frames = definition.Frames,
         };
         GetTree().CurrentScene.AddChild(blades);
-        blades.GlobalPosition = _caster.GlobalPosition;
+        blades.GlobalPosition = anchor.GlobalPosition;
+    }
+
+    /// <summary>
+    /// Movement skills (docs/design/skills.md -> "The Space slot"): Blink hops to the cursor,
+    /// Leap Slam jumps there and slams on landing. The <see cref="Dodge"/> component moves
+    /// the body (walls stop it) and grants the invulnerability; an actor without one stays put.
+    /// </summary>
+    private void ExecuteMovement(SkillInstance instance, MovementSkillDefinition definition, CastContext context)
+    {
+        if (_caster.GetNodeOrNull<Dodge>("Dodge") is not { } dodge)
+        {
+            return;
+        }
+
+        Vector2 offset = context.TargetPoint - _caster.GlobalPosition;
+        float range = definition.Range * context.RangeMultiplier;
+        if (offset.Length() < 24f)
+        {
+            offset = (context.AimDirection == Vector2.Zero ? Vector2.Right : context.AimDirection) * range;
+        }
+
+        offset = offset.LimitLength(range);
+        float time = Mathf.Max(0.04f, definition.TravelTime);
+        float invulnerable = time + (definition.Kind == MovementKind.Leap ? 0.12f : 0.15f) + context.ExtraInvulnerability;
+        if (definition.Kind == MovementKind.Blink)
+        {
+            Core.Sfx.Play(this, "dodge");
+            HitProfile wake = BuildHitProfile(instance, context);
+            wake.Damage *= Mathf.Max(context.DepartBurst, context.ArriveBurst ? 0.6f : 0f);
+            if (context.DepartBurst > 0f)
+            {
+                AreaBurst.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, 60f * context.AreaMultiplier, 0f, definition.Tint, wake);
+            }
+
+            float speed = context.AfterMoveSpeed;
+            bool arrive = context.ArriveBurst;
+            dodge.Travel(offset, time, invulnerable, definition.Tint, () =>
+            {
+                if (!IsInstanceValid(this) || !IsInstanceValid(_caster))
+                {
+                    return;
+                }
+
+                if (arrive)
+                {
+                    AreaBurst.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, 60f * context.AreaMultiplier, 0f, new Color(0.55f, 0.85f, 1f), wake);
+                }
+
+                if (speed > 0f)
+                {
+                    var source = new object();
+                    _stats.MovementSpeed.AddModifier(new StatModifier(ModifierType.More, speed, source));
+                    GetTree().CreateTimer(3.0, processAlways: false, processInPhysics: true).Timeout += () =>
+                    {
+                        if (IsInstanceValid(this))
+                        {
+                            _stats.MovementSpeed.RemoveModifiersFromSource(source);
+                        }
+                    };
+                }
+            });
+            return;
+        }
+
+        HitProfile hit = BuildHitProfile(instance, context, definition.Knockback + context.ExtraKnockback);
+        float radius = definition.LandRadius * context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
+        int aftershocks = context.Aftershocks;
+        Color tint = definition.Tint;
+        dodge.Travel(offset, time, invulnerable, tint, () =>
+        {
+            if (!IsInstanceValid(this) || !IsInstanceValid(_caster) || radius <= 0f)
+            {
+                return;
+            }
+
+            Core.Sfx.Play(this, "hit");
+            AreaBurst.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, radius, 0f, tint, hit);
+            ReportHit(_caster, hit.Damage);
+            for (int i = 1; i <= aftershocks; i++)
+            {
+                HitProfile echo = hit.Clone();
+                echo.Damage *= 0.6f;
+                AreaBurst.Spawn(GetTree().CurrentScene, _caster.GlobalPosition, radius * 1.15f, 0.35f * i, tint, echo);
+            }
+        });
+    }
+
+    /// <summary>Totems (docs/design/skills.md -> "Totems"): a pole at the cursor that casts
+    /// the socketed skill. Placing one past the limit removes the oldest.</summary>
+    private void ExecuteTotem(SkillInstance instance, TotemSkillDefinition definition, CastContext context)
+    {
+        if (instance.Socketed is not { } inner)
+        {
+            return;
+        }
+
+        Totems.RemoveAll(t => !IsInstanceValid(t) || t.IsQueuedForDeletion());
+        int max = Mathf.Max(1, definition.MaxTotems + context.ExtraTotems);
+        while (Totems.Count >= max)
+        {
+            Totems[0].Expire();
+            Totems.RemoveAt(0);
+        }
+
+        Vector2 offset = (context.TargetPoint - _caster.GlobalPosition).LimitLength(definition.MaxRange);
+        var totem = new Totem
+        {
+            Owner = this,
+            Skill = inner,
+            Modifiers = instance.TreeModifiers,
+            Lifetime = definition.Duration * context.DurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.SkillDuration).Value),
+            Interval = Mathf.Max(0.15f, definition.CastInterval * context.UseTimeMultiplier),
+            Reach = definition.Reach * context.RangeMultiplier,
+            DamageEffectiveness = definition.DamageEffectiveness * instance.LevelDamageMultiplier,
+            Tint = definition.Tint,
+            Faction = _stats.Faction,
+        };
+        GetTree().CurrentScene.AddChild(totem);
+        totem.GlobalPosition = _caster.GlobalPosition + offset;
+        Totems.Add(totem);
+        Core.Sfx.Play(this, "hit", -6f);
+    }
+
+    /// <summary>
+    /// Afflictions (docs/design/skills.md -> "Oil and detonations"): every hostile in the
+    /// circle at the target point is doused in oil, or has its ignite / bleed stacks
+    /// detonated — all the damage they had left lands at once.
+    /// </summary>
+    private void ExecuteAffliction(SkillInstance instance, AfflictionSkillDefinition definition, CastContext context, Node2D anchor)
+    {
+        float radius = definition.Radius * context.AreaMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.AreaOfEffect).Value);
+        Vector2 offset = context.TargetPoint - anchor.GlobalPosition;
+        Vector2 centre = anchor.GlobalPosition + offset.LimitLength(definition.MaxRange);
+        HitProfile hit = BuildHitProfile(instance, context);
+        float level = instance.LevelDamageMultiplier;
+        float potency = definition.Kind == AfflictionKind.Oil
+            ? (definition.Potency + context.AfflictionPotency) * (1f + AuraCatalog.EffectPerLevel * (instance.Level - 1))
+            : definition.Potency + context.AfflictionPotency;
+        AreaBurst.Spawn(GetTree().CurrentScene, centre, radius, 0f, definition.Tint, hit, harmless: true);
+
+        foreach (Health target in CombatQuery.HostilesInRadius(GetTree(), centre, radius, _stats.Faction))
+        {
+            if (target.GetParent().GetNodeOrNull<Ailments>("Ailments") is not { } ailments)
+            {
+                continue;
+            }
+
+            Node2D body = target.GetParent<Node2D>();
+            switch (definition.Kind)
+            {
+                case AfflictionKind.Oil:
+                    ailments.ApplyOil(potency, definition.Duration * context.DurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.SkillDuration).Value), context.OilIgniteDuration);
+                    if (context.OilSlow > 0f)
+                    {
+                        Curses.On(body)?.Apply(new CurseEffect { Kind = CurseKind.Time, Duration = definition.Duration * context.DurationMultiplier, Potency = context.OilSlow, Source = _caster, Tint = definition.Tint });
+                    }
+
+                    if (hit.Damage > 0f)
+                    {
+                        target.TakeDamage(hit.BuildPayload(Vector2.Zero));
+                    }
+
+                    break;
+                case AfflictionKind.Combust:
+                case AfflictionKind.Exsanguinate:
+                    Detonate(definition.Kind, ailments, target, body, potency, context, hit, level);
+                    break;
+            }
+        }
+    }
+
+    private void Detonate(AfflictionKind kind, Ailments ailments, Health target, Node2D body, float potency, CastContext context, HitProfile hit, float level)
+    {
+        bool fire = kind == AfflictionKind.Combust;
+        int stacks = fire ? ailments.IgniteStacks : ailments.BleedStacks;
+        if (stacks <= 0)
+        {
+            return;
+        }
+
+        float stored = fire ? ailments.ConsumeIgnites() : ailments.ConsumeBleeds();
+        float burst = stored * (1f + potency / 100f) * context.DamageMultiplier * level;
+        // The skill's own (small) hit lands too, so an enemy with stacks is also struck.
+        target.ApplyResolvedDamage(burst, _caster);
+        ReportHit(body, burst);
+        Color colour = fire ? new Color(1f, 0.5f, 0.15f) : new Color(0.85f, 0.1f, 0.1f);
+        AreaBurst.Spawn(GetTree().CurrentScene, body.GlobalPosition, 26f + Mathf.Min(40f, stacks * 2f), 0f, colour, hit, harmless: true);
+
+        // Stacks kept back (tree): a fraction of the stacks is re-applied, so the next
+        // detonation does not start from zero.
+        for (int i = 0; i < Mathf.Min(context.StacksKept, stacks); i++)
+        {
+            float each = stored / stacks;
+            if (fire)
+            {
+                ailments.ApplyIgnite(each, _caster);
+            }
+            else
+            {
+                ailments.AddBleed(each, Ailments.BleedDuration, _caster);
+            }
+        }
+
+        if (context.DetonationSplash <= 0f)
+        {
+            return;
+        }
+
+        var splash = new HitProfile
+        {
+            Damage = burst * context.DetonationSplash,
+            Type = fire ? DamageType.Fire : DamageType.Physical,
+            Source = _caster,
+            Faction = _stats.Faction,
+            Tags = context.Tags | SkillTags.Area,
+            CanInflictAilments = true,
+            IgniteChance = fire ? 1f : 0f,
+            BleedChance = fire ? 0f : 1f,
+            Skill = hit.Skill,
+        };
+        AreaBurst.SpawnOnKill(GetTree().CurrentScene, body.GlobalPosition, 80f * context.AreaMultiplier, colour, splash);
     }
 
     private void ExecuteProjectile(SkillInstance instance, CastContext context)

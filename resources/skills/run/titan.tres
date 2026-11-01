@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AuraSkillDefinition" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/Skills/AuraSkillDefinition.cs" id="s"]
+[ext_resource type="Script" path="res://scripts/Skills/CostEntry.cs" id="c"]
+[ext_resource type="Texture2D" path="res://assets/sprites/icons/icon_titan.png" id="i"]
+
+[sub_resource type="Resource" id="Cost"]
+script = ExtResource("c")
+Resource = 0
+Amount = 12.0
+Mode = 0
+
+[resource]
+script = ExtResource("s")
+DisplayName = "Titan Aura"
+Description = "Aura. While it is in a slot: +40 armour and 30% increased armour. Use: 80% more armour for 6 s, and nothing can knock you back."
+BaseDamage = 0.0
+AddedDamageEffectiveness = 0.0
+BaseUseTime = 0.3
+Cooldown = 20.0
+Tags = 65570
+Kind = 5
+ActiveDuration = 6.0
+Tint = Color(0.75, 0.75, 0.85, 1)
+Costs = [SubResource("Cost")]
+Icon = ExtResource("i")

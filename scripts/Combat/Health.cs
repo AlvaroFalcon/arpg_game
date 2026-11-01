@@ -101,6 +101,10 @@ public partial class Health : Node
     /// the visual flicker real invulnerability shows.</summary>
     public bool IgnoreDamage { get; set; }
 
+    /// <summary>Extra multiplier on fire damage taken (oil: docs/design/skills.md -> "Oil").
+    /// Set by <see cref="Ailments"/>; 1 = none.</summary>
+    public float FireDamageTakenMultiplier { get; set; } = 1f;
+
     public void GrantInvulnerability(float seconds) => InvulnerableTime = Mathf.Max(InvulnerableTime, seconds);
 
     /// <summary>
@@ -334,7 +338,8 @@ public partial class Health : Node
             float resistance = _stats.Get(resistId).Value;
             float penetration = sourceStats?.Get(penetrationId).Value ?? 0f;
             totalTaken += DamageMitigation.MitigateElemental(afterCrit, resistance, penetration)
-                * Mathf.Max(0f, _stats.Get(StatId.ElementalDamageTaken).Value);
+                * Mathf.Max(0f, _stats.Get(StatId.ElementalDamageTaken).Value)
+                * (type == DamageType.Fire ? FireDamageTakenMultiplier : 1f);
         }
 
         // docs/design/progression.md -> "Run stats": a single base-1.0

@@ -68,7 +68,8 @@ public partial class Profile
 
         if (s.Gems is null || s.Gems.Count > NetLimits.MaxGems
             || s.Gems.Any(g => g is null || BadId(g.Id) || BadId(g.Uid) || g.Level is < 1 or > GemData.MaxLevel || !Finite(g.Experience) || g.Experience < 0f
-                || g.Tree is null || g.Tree.Count > 40 || g.Tree.Any(kv => BadId(kv.Key) || kv.Value is < 0 or > 10)))
+                || g.Tree is null || g.Tree.Count > 40 || g.Tree.Any(kv => BadId(kv.Key) || kv.Value is < 0 or > 10)
+                || (g.Socket is { } socket && BadId(socket))))
         {
             return "bad gems";
         }
