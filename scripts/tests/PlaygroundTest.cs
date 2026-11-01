@@ -114,6 +114,44 @@ public partial class PlaygroundTest : Node
             && ground.GetNodeOrNull<UI.SkillTreePanel>("SkillTreePanel") is not null && ground.GetNodeOrNull<UI.ArtificerPanel>("ArtificerPanel") is not null;
         Check("NPCS", npcs && pg.ConsoleOpen, $"Escaldón and the Artificer stand in the camp with their panels={npcs}; spawner open={pg.ConsoleOpen}");
 
+        // The DPS meter: the player's hits and damage over time count, by source; anyone else's don't.
+        var tracker = new Combat.DpsTracker();
+        tracker.Add(10f, 100f, "A", hit: true, crit: true);
+        tracker.Add(12f, 300f, "B", hit: true);
+        float fight = tracker.FightDps;
+        float recent = tracker.Recent(12.5f);
+        tracker.Add(20f, 50f, "A");
+        Check("DPS-TRACKER", Mathf.IsEqualApprox(fight, 200f) && recent > 150f && tracker.Total == 50f && tracker.Hits == 0,
+            $"400 over 2 s = {fight:0} DPS; last 5 s {recent:0}; 8 s of silence starts a new fight (total {tracker.Total:0}, hits {tracker.Hits})");
+
+        Combat.TargetDummy dummy = pg.SpawnDummy();
+        await Seconds(0.2f);
+        pg.Meter.Tracker.Reset();
+        Combat.Health dummyLife = dummy.GetNode<Combat.Health>("Health");
+        Skills.SkillDefinition fireball = UpgradeCatalog.FindSkill("fireball")!.Definition;
+        dummyLife.TakeDamage(new Combat.DamagePayload(100f, Combat.DamageType.Fire, ground.Player, Combat.Faction.Player, Combat.SkillTags.Spell | Combat.SkillTags.Fire, Combat.DamageDeliveryKind.Hit) { Skill = fireball });
+        dummyLife.ApplyResolvedDamage(40f, ground.Player, "Bleed");
+        dummyLife.ApplyResolvedDamage(500f, null, "Other");
+        var rows = pg.Meter.Tracker.Breakdown.ToDictionary(r => r.Label, r => r.Total);
+        bool counted = rows.ContainsKey("Fireball") && rows.TryGetValue("Bleed", out float bleed) && Mathf.IsEqualApprox(bleed, 40f) && !rows.ContainsKey("Other") && pg.Meter.Tracker.Hits == 1;
+        // A real cast at the dummy shows up under the skill's name (a melee strike: it can't miss).
+        Skills.SkillInstance spark = new(UpgradeCatalog.FindSkill("double_strike")!.Definition);
+        ground.Player.SkillUser.EquipSkill(Skills.SkillSlotId.Slot1, spark);
+        if (ground.Player.Stats.Mana is { } mana)
+        {
+            mana.Current = mana.Max;
+        }
+
+        ground.Player.GlobalPosition = dummy.GlobalPosition + new Vector2(-40f, 0f);
+        await Seconds(0.1f);
+        ground.Player.SkillUser.TryCast(Skills.SkillSlotId.Slot1, Vector2.Right, dummy.GlobalPosition);
+        await Seconds(0.6f);
+        bool cast = pg.Meter.Tracker.Breakdown.Any(r => r.Label == "Double Strike");
+        Check("DPS-METER", counted && cast && pg.Meter.Visible && dummy.IsInsideTree(),
+            $"a Fireball hit, 40 of bleed and someone else's 500 → [{string.Join(", ", pg.Meter.Tracker.Breakdown.Select(r => $"{r.Label} {r.Total:0}"))}]; a real Double Strike counted={cast}; the dummy is still standing={dummy.IsInsideTree()}");
+        pg.ClearMonsters();
+        await Seconds(0.2f);
+
         ground.SetPlaygroundTier(10);
         int horde = ground.SpawnPlaygroundHorde(12, null, null, ground.Player.GlobalPosition + new Vector2(260f, 0f)).Count;
         await Seconds(0.3f);

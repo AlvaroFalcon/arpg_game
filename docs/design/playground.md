@@ -29,6 +29,30 @@ A hidden test area for builds and balance. Not on any menu.
 - **No rewards:** kills give no experience and drop nothing; a boss kill opens no portal
   and changes no record.
 
+## DPS meter (2026-11-01)
+
+Owner's follow-up: *"a DPS meter in the playground, to know how much damage characters
+do and balance them"*. A panel on the right (F3 hides it), `UI.DpsMeter` over the
+node-free `Combat.DpsTracker`:
+
+- **What counts:** everything the player deals to anything that is not a player — hits
+  (`Health.AnyHitResolved`, the damage actually taken, so after resistances and armour)
+  and damage that was already resolved (`Health.AnyResolvedDamage`, new: bleed, ignite,
+  Corruption ticks and Combust/Exsanguinate bursts, each with its label). Totem casts and
+  kill bursts count as the player's. Overkill counts (a kill's last hit counts in full).
+- **What it shows:** DPS over the **last 5 s** (big number), the **fight's** DPS (from its
+  first damage to its last, so walking between packs doesn't dilute it; 5 s without damage
+  starts a new fight), total, the **peak** second, hits and crit rate, and a breakdown by
+  source (skill name, or Bleed/Ignite/...) with each share and its DPS. *Reset* clears it.
+- **Time is game time** (summed physics steps), not the wall clock: on a slow machine the
+  game slows down too, and the meter stays right.
+- **Training dummy** (spawner): an immortal target with no armour and no resistances that
+  heals every hit, for measuring a rotation as long as wanted; it can bleed and burn.
+  Monsters of a tier are the other yardstick (their resistances and armour apply).
+
+`DPS-TRACKER` and `DPS-METER` (PlaygroundTest) check the arithmetic, the sources, that
+someone else's damage is ignored, and a real cast against the dummy.
+
 ## Nothing is saved
 
 On the way in, the hideout captures and saves the real character, then turns

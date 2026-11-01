@@ -207,7 +207,7 @@ public partial class Health : Node
     /// Still respects invulnerability and death, and still counts as a hit for
     /// <see cref="Damaged"/>/<see cref="Died"/>.
     /// </summary>
-    public void ApplyResolvedDamage(float amount, Node2D? source)
+    public void ApplyResolvedDamage(float amount, Node2D? source, string label = "Other")
     {
         // A co-op client never resolves damage: the host does (Net.NetMode).
         if (Net.NetMode.ClientSide || IsDead || IsInvulnerable || amount <= 0f || _stats.Life is not { } life)
@@ -222,12 +222,17 @@ public partial class Health : Node
 
         life.Current = Mathf.Max(0f, life.Current - amount);
         EmitSignal(SignalName.Damaged, amount);
+        AnyResolvedDamage?.Invoke(this, amount, source, label);
         if (life.Current <= 0f)
         {
             IsDead = true;
             EmitSignal(SignalName.Died);
         }
     }
+
+    /// <summary>Every <see cref="ApplyResolvedDamage"/> (damage over time, detonations), with who
+    /// dealt it and what it was ("Bleed", "Ignite"...): the playground's DPS meter listens.</summary>
+    public static event System.Action<Health, float, Node2D?, string>? AnyResolvedDamage;
 
     /// <summary>Brings a dead actor back at full life (a reality's portal respawn).</summary>
     public void Revive()

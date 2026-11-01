@@ -817,3 +817,9 @@ The owner merged the skill kit, played it and asked for three things.
 ![The tree editor as a graph](screenshots/workbench-graph.png)
 
 Needs the owner's eye: whether Ctrl+Shift+P is secret enough, and how the editor feels with a mouse (it was only driven by a script here).
+
+## 2026-11-01 (later still): a DPS meter in the playground
+
+For balancing, the playground got a DPS meter (F3, right side): the last 5 s, the whole fight (first to last damage; 5 s of silence starts a new one), total, peak second, crit rate, and a breakdown by skill — damage over time included (bleed, ignite, Corruption, detonations), labelled through a new `Health.AnyResolvedDamage` event. The spawner can now place a training dummy that never dies. One catch found while capturing it: the first version timed fights with the wall clock, so on a slow frame the DPS read low; it now counts game time.
+
+![DPS meter on a training dummy](screenshots/playground-dps.png)

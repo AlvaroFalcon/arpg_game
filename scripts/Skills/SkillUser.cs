@@ -872,7 +872,7 @@ public partial class SkillUser : Node
         float stored = fire ? ailments.ConsumeIgnites() : ailments.ConsumeBleeds();
         float burst = stored * (1f + potency / 100f) * context.DamageMultiplier * level;
         // The skill's own (small) hit lands too, so an enemy with stacks is also struck.
-        target.ApplyResolvedDamage(burst, _caster);
+        target.ApplyResolvedDamage(burst, _caster, fire ? "Combust" : "Exsanguinate");
         ReportHit(body, burst);
         Color colour = fire ? new Color(1f, 0.5f, 0.15f) : new Color(0.85f, 0.1f, 0.1f);
         AreaBurst.Spawn(GetTree().CurrentScene, body.GlobalPosition, 26f + Mathf.Min(40f, stacks * 2f), 0f, colour, hit, harmless: true);

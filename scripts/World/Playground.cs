@@ -50,6 +50,9 @@ public partial class Playground : Node
     private BossEnemy? _bossAlive;
     private float _bossSince;
 
+    /// <summary>The DPS meter (F3).</summary>
+    public DpsMeter Meter { get; private set; } = null!;
+
     /// <summary>The console is showing (tests).</summary>
     public bool ConsoleOpen => _console.Visible;
 
@@ -150,6 +153,9 @@ public partial class Playground : Node
         _prompt.AnchorBottom = 1f;
         _layer.AddChild(_prompt);
         BuildConsole();
+        // Right edge, under the quest tracker.
+        Meter = new DpsMeter { Owner = player, Name = "DpsMeter", AnchorLeft = 1f, AnchorRight = 1f, OffsetLeft = -276f, OffsetRight = -16f, OffsetTop = 350f };
+        _layer.AddChild(Meter);
         _console.Visible = true;
     }
 
@@ -209,6 +215,11 @@ public partial class Playground : Node
             _console.Visible = !_console.Visible;
             GetViewport().SetInputAsHandled();
         }
+        else if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F3 })
+        {
+            Meter.Visible = !Meter.Visible;
+            GetViewport().SetInputAsHandled();
+        }
     }
 
     // --- the spawner (F2) ----------------------------------------------------------------
@@ -235,6 +246,7 @@ public partial class Playground : Node
         box.AddChild(UiTheme.PrimaryButton("Spawn horde", () => SpawnHorde(), 15, 260f));
         _boss = Options(box, "Boss", RealityController.AllBosses.Select(Pretty));
         box.AddChild(UiTheme.PrimaryButton("Spawn boss", () => SpawnBoss(), 15, 260f));
+        box.AddChild(UiTheme.Button("Training dummy (never dies)", () => SpawnDummy(), 14, 260f));
         box.AddChild(UiTheme.Button("Clear monsters", ClearMonsters, 14, 260f));
 
         _level = Spin(box, "Character level", 1, CharacterData.MaxLevel, CharacterBuild.Of(Reality.Player)?.Data.Level ?? 1);
@@ -326,6 +338,19 @@ public partial class Playground : Node
         return boss;
     }
 
+    /// <summary>An immortal training dummy (no armour, no resistances) for the DPS meter: it
+    /// stands still and heals every hit, so a rotation can be measured for as long as wanted.</summary>
+    public Combat.TargetDummy SpawnDummy()
+    {
+        var dummy = GD.Load<PackedScene>("res://scenes/combat/TargetDummy.tscn").Instantiate<Combat.TargetDummy>();
+        dummy.Immortal = true;
+        Reality.AddChild(dummy);
+        dummy.GlobalPosition = SpawnPoint();
+        dummy.AddChild(new Combat.Ailments { Name = "Ailments" });
+        _log.Text = "A training dummy: no armour, no resistances, never dies";
+        return dummy;
+    }
+
     /// <summary>Every playground monster gone (no loot, no experience).</summary>
     public void ClearMonsters()
     {
@@ -334,6 +359,10 @@ public partial class Playground : Node
             if (n is Enemy e && e.GetParent() == Reality)
             {
                 e.QueueFree();
+            }
+            else if (n is Combat.TargetDummy d && d.GetParent() == Reality)
+            {
+                d.QueueFree();
             }
         }
 

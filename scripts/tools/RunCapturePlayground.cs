@@ -60,6 +60,26 @@ public partial class RunCapture
         await Wait(1.5f);
         await Snap("playground-boss.png");
         pg.ClearMonsters();
+        await Wait(0.2f);
+        // The DPS meter against a training dummy: a fire build with ignite stacks.
+        Combat.TargetDummy dummy = pg.SpawnDummy();
+        ground.Player.GlobalPosition = dummy.GlobalPosition + new Vector2(-140f, 0f);
+        var fireball = new Skills.SkillInstance(Progression.UpgradeCatalog.FindSkill("fireball")!.Definition) { Level = 20 };
+        fireball.TreeModifiers.AddRange(Skills.SkillTrees.ModifiersFor("fireball", new System.Collections.Generic.Dictionary<string, int> { ["power"] = 3, ["blast"] = 3, ["firestorm"] = 1, ["kindle"] = 3, ["searing"] = 3 }));
+        ground.Player.SkillUser.EquipSkill(Skills.SkillSlotId.Slot1, fireball);
+        for (int i = 0; i < 14; i++)
+        {
+            if (ground.Player.Stats.Mana is { } mana)
+            {
+                mana.Current = mana.Max;
+            }
+
+            ground.Player.SkillUser.TryCast(Skills.SkillSlotId.Slot1, Vector2.Right, dummy.GlobalPosition);
+            await Wait(0.45f);
+        }
+
+        await Snap("playground-dps.png");
+        pg.ClearMonsters();
         ground.GetNode<SkillTreePanel>("SkillTreePanel").Open();
         await Wait(0.4f);
         await Snap("playground-escaldon.png");
