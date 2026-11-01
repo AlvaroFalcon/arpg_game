@@ -45,6 +45,9 @@ public partial class DpsMeter : PanelContainer
         _big = UiTheme.Label("0", 30, UiTheme.Text);
         box.AddChild(_big);
         _stats = UiTheme.Label("", 12, UiTheme.TextDim);
+        // Wrap inside the panel's width instead of pushing it off the right edge.
+        _stats.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _stats.CustomMinimumSize = new Vector2(236f, 0f);
         box.AddChild(_stats);
         _rows = UiTheme.VBox(box, 2);
         Health.AnyHitResolved += OnHit;

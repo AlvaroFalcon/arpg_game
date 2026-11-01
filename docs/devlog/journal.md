@@ -823,3 +823,7 @@ Needs the owner's eye: whether Ctrl+Shift+P is secret enough, and how the editor
 For balancing, the playground got a DPS meter (F3, right side): the last 5 s, the whole fight (first to last damage; 5 s of silence starts a new one), total, peak second, crit rate, and a breakdown by skill — damage over time included (bleed, ignite, Corruption, detonations), labelled through a new `Health.AnyResolvedDamage` event. The spawner can now place a training dummy that never dies. One catch found while capturing it: the first version timed fights with the wall clock, so on a slow frame the DPS read low; it now counts game time.
 
 ![DPS meter on a training dummy](screenshots/playground-dps.png)
+
+## 2026-11-01 (night): the playground loaded paused
+
+The owner merged and tried the playground: black screen, no skill bar, a banner stuck on screen. Ctrl+Shift+P is also P, and the passive tree's key ignored the extra modifiers, so it opened (and paused the game) in the same frame the playground was launched; the new scene inherited the pause and a dead panel. The panel keys now match exactly, the hideout waits a moment before launching, and every reality starts unpaused with no panel open. The tests had called the entry directly, never through the keyboard, which is why they missed it; `NOT-PAUSED` now launches with a pausing panel open and fails on the old code. The DPS meter's hint also wrapped off the right edge; it wraps now.

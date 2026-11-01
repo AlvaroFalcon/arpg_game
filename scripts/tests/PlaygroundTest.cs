@@ -87,9 +87,25 @@ public partial class PlaygroundTest : Node
         long gold = hideout.Player.Wallet.GetBalance(Profile.GoldId);
         int characters = profile.Characters.Count;
 
+        // The owner's dead playground (2026-11-01): Ctrl+Shift+P is also P, so the passive tree
+        // opened — and paused the game — in the same frame the playground was launched, and the
+        // playground loaded paused with a freed panel on the stack. Two defences, both checked:
+        // the panel keys match exactly (no P with Ctrl+Shift), and a reality always starts running.
+        var combo = new InputEventKey { Keycode = Key.P, PhysicalKeycode = Key.P, CtrlPressed = true, ShiftPressed = true, Pressed = true };
+        var plain = new InputEventKey { Keycode = Key.P, PhysicalKeycode = Key.P, Pressed = true };
+        bool exact = !InputMap.EventIsAction(combo, "toggle_passives", true) && InputMap.EventIsAction(plain, "toggle_passives", true);
+        for (int i = 0; i < 5 && UI.PanelStack.Topmost is { } open; i++)
+        {
+            open.Close();
+            await Seconds(0.1f);
+        }
+
         hideout.EnterPlayground();
+        hideout.GetNode<UI.CharacterPanels>("CharacterPanels").Tree.Open(); // the old same-frame toggle
         RealityController? ground = await WaitScene<RealityController>(20f);
         await Seconds(1f);
+        Check("NOT-PAUSED", exact && ground is not null && !GetTree().Paused && !UI.PanelStack.HasOpen,
+            $"Ctrl+Shift+P is not the passive tree's P={exact}; launched with a pausing panel open on the way out: playground loaded={ground is not null}, paused={GetTree().Paused}, a panel left open={UI.PanelStack.HasOpen}");
         if (ground is null)
         {
             Check("ENTERS", false, "the playground did not load");

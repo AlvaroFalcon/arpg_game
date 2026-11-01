@@ -1218,10 +1218,20 @@ public partial class Hideout : Node2D
     /// <summary>? (whatever the keyboard layout) or F1 opens the town guide.</summary>
     public override void _UnhandledInput(InputEvent e)
     {
-        if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.P, CtrlPressed: true, ShiftPressed: true } && !GetTree().Paused && !PanelStack.HasOpen)
+        if (e is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.P, CtrlPressed: true, ShiftPressed: true } && !GetTree().Paused && !PanelStack.HasOpen)
         {
             GetViewport().SetInputAsHandled();
-            EnterPlayground();
+            // Not now: the same press is also P (the passive tree), which opens and pauses this
+            // frame. Next frame that panel is closed again and the way is clear.
+            // (A timer that runs while paused, since that panel pauses the town.)
+            GetTree().CreateTimer(0.1, processAlways: true).Timeout += () =>
+            {
+                if (IsInstanceValid(this) && IsInsideTree())
+                {
+                    PanelStack.Topmost?.Close();
+                    EnterPlayground();
+                }
+            };
             return;
         }
 
