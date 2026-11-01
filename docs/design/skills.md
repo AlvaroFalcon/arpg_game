@@ -2229,3 +2229,42 @@ compares everything with the game's data and can be copied as text.
   so Claude can read the saved version in a later session (the Artifact tool's `read`)
   and apply it. After a change to the trees, rebuild `index.html` and republish it to the
   same URL — but read the saved version first, so the owner's unapplied edits aren't lost.
+
+## Escaldón sells the skills (2026-11-01) **[IMPLEMENTED]**
+
+Owner's note after playing the kit: *"the NPC that sells you skills makes no sense
+selling them"*. The skill shop (`GemShopView`, rules in `GemShop`) moved from Odran's
+panel to **Escaldón's**, which now has two tabs: **Your skills** (levels for gold and the
+upgrade trees, as before) and **Buy skills** (every skill by character level, the ember
+dot when new ones unlock). Odran keeps Trade. The tutorial quest that taught the shop
+moved with it — same id (`odran_wares`, so saves keep their progress), now *Escaldón's
+craft* at the escaldon station, opening the Buy skills tab. Escaldón's panel now saves the
+profile when it closes, as Odran's did. `GEMSHOP-*` (EndgameSmokeTest) drives Escaldón.
+
+## Several ways into a node (2026-11-01) **[IMPLEMENTED]**
+
+Escaldón's Workbench became a node-graph editor (below), where a node can have several
+incoming arrows. The game follows: `SkillTreeNode.AlsoFrom` lists more ways in besides
+`Requires`, and `Parents` yields all of them. A node opens when **any** of its ways is met
+(`SkillTreeRules.Reachable`); a refund is refused only when it would leave a node that
+has points with **no** way in. Escaldón's panel draws every link. No shipped tree uses it
+yet; it is there so the owner's graphs can be built as drawn (`TREE-TWO-PATHS`).
+
+### The editor as a graph
+
+`tools/skill-tree-editor/template.html` (format 2): the tree of the chosen skill is a
+pannable, zoomable board (drag the background, mouse wheel) of node cards that are dragged
+freely. Each card has an input port (left) and an output port (right): dragging from an
+output to another card draws an **arrow**, whose label is its **condition** ("≥ 2 pt": the
+points needed in the source); click an arrow to change it, add a note or remove it.
+Several arrows into a node mean "any of these paths"; a node with none is a **starting
+node** (several are allowed). Kinds: Lesser, Notable and **Special** (a marker for a node
+the owner wants to stand out; how it plays is decided when it's implemented). Double-click
+the board for a new node, Delete removes the selection, "Ordenar" lays the graph out by
+depth, "Encuadrar" fits it on screen. Arrows that would make a loop are refused.
+
+Positions are layout only: moving cards is never listed as a change. The change list
+covers nodes (new, removed, renamed, ranks, kind, group), arrows (new, removed,
+condition) and notes. Old saves of the editor (format 1, `requires`) open as graphs.
+The game's own panel still lays trees out in rows and columns (branch, depth); a graph
+from the editor is mapped onto that when it is implemented.

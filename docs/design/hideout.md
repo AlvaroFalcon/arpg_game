@@ -188,7 +188,11 @@ Purchases go into the hideout's storage; you place them in edit mode. The floors
 the three reality tilesets are on sale too, so a corner of town can look like a
 crypt or the drowned mirror.
 
-## Odran's Skill gems tab **[IMPLEMENTED 2026-10-18]**
+## Odran's Skill gems tab **[IMPLEMENTED 2026-10-18 — moved to Escaldón on 2026-11-01]**
+
+> **2026-11-01:** the owner found it odd that the trader sold skills; the same view
+> (`GemShopView`) is now Escaldón's **Buy skills** tab (`docs/design/skills.md` ->
+> "Escaldón sells the skills"). Odran keeps Trade only. The rules below still hold.
 
 Owner request (translated): *"Odran gets a new tab to buy skills: all of the game's
 skills for now, unlocked by character level. Support gems too. First approach, you

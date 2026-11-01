@@ -111,7 +111,7 @@ public static class GemShop
         int owned = Owned(c, o);
         if (!o.Support && owned > 0)
         {
-            return "You have this skill. Escaldón raises its level for gold.";
+            return "You have this skill: raise its level in the Your skills tab.";
         }
 
         if (o.Support && owned >= MaxCopies(o))

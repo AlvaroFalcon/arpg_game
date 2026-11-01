@@ -53,6 +53,9 @@ public static class RealityLaunch
     /// <summary>The next reality is the introduction (docs/design/tutorial.md).</summary>
     public static bool Tutorial;
 
+    /// <summary>The next reality is the hidden playground (docs/design/playground.md).</summary>
+    public static bool Playground;
+
     /// <summary>Gold to empower a shard of a tier.</summary>
     public static long EmpowerCost(int tier) => 15 + tier * 12;
 
@@ -85,5 +88,6 @@ public static class RealityLaunch
         LayoutId = null;
         Modifiers = new List<string>();
         Tutorial = false;
+        Playground = false;
     }
 }
