@@ -29,6 +29,15 @@ A hidden test area for builds and balance. Not on any menu.
 - **No rewards:** kills give no experience and drop nothing; a boss kill opens no portal
   and changes no record.
 
+## Keyboard focus (2026-11-02)
+
+Owner's report: after clicking an option in the spawner, Space (the dodge) pressed it again,
+even after casting. Godot gives a clicked button keyboard focus, and Space is its "press".
+Now no button, list or checkbox of the spawner or the DPS meter takes focus; a number field
+(tier, count, level) still does while typing, and lets go once its value is set, when the
+mouse leaves the panel, or on any click in the world (`Playground.KeepKeyboardForTheGame`).
+`PANEL-FOCUS` (PlaygroundTest).
+
 ## Monsters that hold (2026-11-02)
 
 Owner's request: monsters that stay put, to test more things. Two switches in the

@@ -158,6 +158,7 @@ public partial class Playground : Node
         // Right edge, under the quest tracker.
         Meter = new DpsMeter { Owner = player, Name = "DpsMeter", AnchorLeft = 1f, AnchorRight = 1f, OffsetLeft = -276f, OffsetRight = -16f, OffsetTop = 350f };
         _layer.AddChild(Meter);
+        KeepKeyboardForTheGame(Meter);
         _console.Visible = true;
     }
 
@@ -268,6 +269,49 @@ public partial class Playground : Node
         box.AddChild(_god);
         _log = Dim("");
         box.AddChild(_log);
+        KeepKeyboardForTheGame(_console);
+    }
+
+    /// <summary>
+    /// The panels are for the mouse: a clicked button kept keyboard focus, so Space (the dodge)
+    /// pressed it again, and a number field kept the keys. Buttons, lists and checkboxes never
+    /// take focus; a number field gives it back once its value is set, or when the mouse leaves
+    /// the panel or clicks the world.
+    /// </summary>
+    private void KeepKeyboardForTheGame(Control root)
+    {
+        foreach (Node n in root.FindChildren("*", "", true, false))
+        {
+            switch (n)
+            {
+                case BaseButton b:
+                    b.FocusMode = Control.FocusModeEnum.None;
+                    break;
+                case SpinBox spin:
+                    LineEdit field = spin.GetLineEdit();
+                    spin.ValueChanged += _ => field.ReleaseFocus();
+                    field.TextSubmitted += _ => field.ReleaseFocus();
+                    break;
+            }
+        }
+
+        root.MouseExited += () =>
+        {
+            if (!root.GetGlobalRect().HasPoint(root.GetGlobalMousePosition()))
+            {
+                GetViewport().GuiReleaseFocus();
+            }
+        };
+    }
+
+    public override void _Input(InputEvent e)
+    {
+        // A click in the world (outside both panels) takes the focus off any field.
+        if (e is InputEventMouseButton { Pressed: true } click && GetViewport().GuiGetFocusOwner() is not null
+            && !_console.GetGlobalRect().HasPoint(click.Position) && !Meter.GetGlobalRect().HasPoint(click.Position))
+        {
+            GetViewport().GuiReleaseFocus();
+        }
     }
 
     /// <summary>"EmberColossus" → "Ember Colossus".</summary>

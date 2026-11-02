@@ -128,6 +128,21 @@ public partial class PlaygroundTest : Node
 
         bool npcs = ground.GetNodeOrNull("Escaldón") is not null && ground.GetNodeOrNull("theArtificer") is not null
             && ground.GetNodeOrNull<UI.SkillTreePanel>("SkillTreePanel") is not null && ground.GetNodeOrNull<UI.ArtificerPanel>("ArtificerPanel") is not null;
+        // Keyboard focus stays with the game (owner's report, 2026-11-02: Space pressed the last
+        // clicked button again): no button takes focus, and a clicked field lets go on a world click.
+        var ui = pg.GetNode("PlaygroundUi").FindChildren("*", "", true, false);
+        int focusable = ui.OfType<BaseButton>().Count(b => b.FocusMode != Control.FocusModeEnum.None);
+        LineEdit? field = ui.OfType<SpinBox>().FirstOrDefault()?.GetLineEdit();
+        field?.GrabFocus();
+        await Seconds(0.05f);
+        bool grabbed = field?.HasFocus() == true;
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = GetViewport().GetVisibleRect().Size / 2f });
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = GetViewport().GetVisibleRect().Size / 2f });
+        await Seconds(0.05f);
+        bool released = GetViewport().GuiGetFocusOwner() is null;
+        Check("PANEL-FOCUS", focusable == 0 && ui.OfType<BaseButton>().Any() && grabbed && released,
+            $"{ui.OfType<BaseButton>().Count()} buttons, {focusable} can take keyboard focus; a number field held focus={grabbed} and let go on a click in the world={released}");
+
         Check("NPCS", npcs && pg.ConsoleOpen, $"Escaldón and the Artificer stand in the camp with their panels={npcs}; spawner open={pg.ConsoleOpen}");
 
         // The DPS meter: the player's hits and damage over time count, by source; anyone else's don't.
