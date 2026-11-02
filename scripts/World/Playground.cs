@@ -42,9 +42,15 @@ public partial class Playground : Node
     private SpinBox _tier = null!;
     private SpinBox _count = null!;
     private SpinBox _level = null!;
-    private OptionButton _monster = null!;
     private OptionButton _rarity = null!;
-    private OptionButton _boss = null!;
+    private Button _spawn = null!;
+    private MonsterPortrait _portrait = null!;
+    private Label _cardTitle = null!;
+    private Label _card = null!;
+    private readonly Dictionary<string, Button> _picks = new();
+
+    /// <summary>The picked monster or boss (null = a mixed horde).</summary>
+    public string? Picked { get; private set; }
     private CheckBox _god = null!;
     private CheckBox _still = null!;
     private CheckBox _pacified = null!;
@@ -233,25 +239,30 @@ public partial class Playground : Node
         _console.AddThemeStyleboxOverride("panel", UiTheme.Box(new Color(0.06f, 0.05f, 0.09f, 0.94f), SkillTreePanel.Accent, 2, 6, 12));
         // Left edge: the right one holds the minimap, the clock and the quest tracker.
         _console.OffsetLeft = 16f;
-        _console.OffsetRight = 300f;
         _console.OffsetTop = 70f;
         _layer.AddChild(_console);
-        VBoxContainer box = UiTheme.VBox(_console, 6);
+        HBoxContainer columns = UiTheme.HBox(_console, 14);
+        VBoxContainer box = UiTheme.VBox(columns, 6);
+        box.CustomMinimumSize = new Vector2(260f, 0f);
         box.AddChild(UiTheme.Label("Playground · F2", 18, SkillTreePanel.Accent));
         box.AddChild(Dim("Nothing here is saved. Escaldón and the Artificer are in the camp (F)."));
 
         _tier = Spin(box, "Mirror tier", 1, RealityTiers.MaxTier, 1);
-        _tier.ValueChanged += v => Reality.SetPlaygroundTier((int)v);
+        _tier.ValueChanged += v =>
+        {
+            Reality.SetPlaygroundTier((int)v);
+            ShowCard();
+        };
         _count = Spin(box, "Monsters", 1, 80, 20);
-
-        _monster = Options(box, "Monster", new[] { "Any (mixed)" }.Concat(RealityController.AllMonsters));
+        _count.ValueChanged += _ => ShowCard();
         _rarity = Options(box, "Rarity", new[] { "Reality mix", "Normal", "Magic", "Rare", "Unique" });
-        box.AddChild(UiTheme.PrimaryButton("Spawn horde", () => SpawnHorde(), 15, 260f));
-        _boss = Options(box, "Boss", RealityController.AllBosses.Select(Pretty));
-        box.AddChild(UiTheme.PrimaryButton("Spawn boss", () => SpawnBoss(), 15, 260f));
+        _rarity.ItemSelected += _ => ShowCard();
+        _spawn = UiTheme.PrimaryButton("Spawn", () => SpawnPicked(), 15, 260f);
+        box.AddChild(_spawn);
         box.AddChild(UiTheme.Button("Training dummy (never dies)", () => SpawnDummy(), 14, 260f));
         box.AddChild(UiTheme.Button("Clear monsters", ClearMonsters, 14, 260f));
 
+        BuildPicker(columns);
         _level = Spin(box, "Character level", 1, CharacterData.MaxLevel, CharacterBuild.Of(Reality.Player)?.Data.Level ?? 1);
         _level.ValueChanged += v => SetLevel((int)v);
         box.AddChild(UiTheme.Button("Full life, mana and cooldowns", Refill, 14, 260f));
@@ -270,6 +281,131 @@ public partial class Playground : Node
         _log = Dim("");
         box.AddChild(_log);
         KeepKeyboardForTheGame(_console);
+        Pick(null);
+    }
+
+    // --- the monster picker: a card per monster and boss, a portrait and its numbers ------------
+
+    private void BuildPicker(HBoxContainer columns)
+    {
+        VBoxContainer side = UiTheme.VBox(columns, 6);
+        side.CustomMinimumSize = new Vector2(250f, 0f);
+        side.AddChild(UiTheme.Label("Enemies", 15, SkillTreePanel.Accent));
+        var grid = new GridContainer { Columns = 4 };
+        grid.AddThemeConstantOverride("h_separation", 4);
+        grid.AddThemeConstantOverride("v_separation", 4);
+        side.AddChild(grid);
+        AddPick(grid, null, "Any");
+        foreach (string type in RealityController.AllMonsters.Concat(RealityController.AllBosses))
+        {
+            AddPick(grid, type, Pretty(type));
+        }
+
+        HBoxContainer card = UiTheme.HBox(side, 8);
+        _portrait = new MonsterPortrait { CustomMinimumSize = new Vector2(84f, 84f) };
+        card.AddChild(_portrait);
+        _cardTitle = UiTheme.Label("", 15, UiTheme.Gold);
+        _cardTitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _cardTitle.CustomMinimumSize = new Vector2(150f, 0f);
+        _cardTitle.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        card.AddChild(_cardTitle);
+        _card = UiTheme.Label("", 12, UiTheme.Text);
+        _card.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _card.CustomMinimumSize = new Vector2(246f, 0f);
+        side.AddChild(_card);
+    }
+
+    private void AddPick(GridContainer grid, string? type, string name)
+    {
+        var b = new Button { CustomMinimumSize = new Vector2(58f, 58f), FocusMode = Control.FocusModeEnum.None, ClipContents = true };
+        if (type is null)
+        {
+            b.Text = "Any";
+        }
+        else
+        {
+            b.AddChild(new MonsterPortrait { Type = type, MouseFilter = Control.MouseFilterEnum.Ignore, Position = new Vector2(3f, 3f), Size = new Vector2(52f, 52f) });
+        }
+
+        UiTheme.InstantTooltip(b, type is null ? "Any: a mixed horde from every reality" : name);
+        b.Pressed += () => Pick(type);
+        grid.AddChild(b);
+        _picks[type ?? ""] = b;
+    }
+
+    /// <summary>Picks what Spawn makes: a monster, a boss, or null for a mixed horde (tests too).</summary>
+    public void Pick(string? type)
+    {
+        Picked = type;
+        foreach ((string key, Button b) in _picks)
+        {
+            bool on = key == (type ?? "");
+            b.AddThemeStyleboxOverride("normal", UiTheme.Box(on ? new Color(0.1f, 0.2f, 0.18f) : new Color(0.08f, 0.07f, 0.11f), on ? SkillTreePanel.Accent : UiTheme.PanelBorder, on ? 2 : 1, 4, 2));
+        }
+
+        ShowCard();
+    }
+
+    private MonsterRarity RarityPicked => _rarity.Selected switch { 2 => MonsterRarity.Magic, 3 => MonsterRarity.Rare, 4 => MonsterRarity.Unique, _ => MonsterRarity.Normal };
+
+    private bool PickedIsBoss => Picked is { } p && RealityController.AllBosses.Contains(p);
+
+    /// <summary>The picked enemy's numbers at the console's tier and rarity (tests read it).</summary>
+    public string CardText => _card.Text;
+
+    private void ShowCard()
+    {
+        if (_card is null || _spawn is null)
+        {
+            return;
+        }
+
+        int count = (int)_count.Value;
+        _spawn.Text = Picked is null ? $"Spawn {count} mixed" : PickedIsBoss ? $"Spawn {Pretty(Picked)}" : $"Spawn {count} × {Pretty(Picked)}";
+        _portrait.Type = Picked;
+        if (Picked is null)
+        {
+            _cardTitle.Text = "A mixed horde";
+            _card.Text = $"Every reality's monsters, at tier {(int)_tier.Value} (monster level {Reality.MonsterLevel}). Pick one for its numbers.";
+            return;
+        }
+
+        Reality.SetPlaygroundTier((int)_tier.Value);
+        RealityController.MonsterCard m = Reality.Preview(Picked, RarityPicked);
+        string rarity = m.Boss ? "Boss" : m.Rarity == MonsterRarity.Normal ? (_rarity.Selected == 0 ? "Normal (reality mix)" : "Normal") : m.Rarity.ToString();
+        _cardTitle.Text = $"{m.Name}\n{rarity} · level {m.Level}";
+        var lines = new List<string>
+        {
+            m.Behaviour,
+            $"Life {m.Life:N0}",
+            $"Armour {m.Armour:N0}: a 100 physical hit deals {m.PhysicalTaken:0}",
+            $"Resistances: fire {m.Fire:0}% · cold {m.Cold:0}% · lightning {m.Lightning:0}%",
+            $"Speed {m.Speed:0} px/s",
+        };
+        if (m.ContactDamage > 0f)
+        {
+            lines.Add($"Contact hit {m.ContactDamage:N0} every {m.ContactCooldown:0.#} s");
+        }
+
+        if (m.Attack is { } attack)
+        {
+            lines.Add(attack);
+        }
+
+        _card.Text = string.Join("\n", lines);
+    }
+
+    /// <summary>Spawn: the picked boss, or a horde of the picked monster (or mixed).</summary>
+    private void SpawnPicked()
+    {
+        if (PickedIsBoss)
+        {
+            SpawnBoss();
+        }
+        else
+        {
+            SpawnHorde();
+        }
     }
 
     /// <summary>
@@ -384,7 +520,7 @@ public partial class Playground : Node
     public int SpawnHorde()
     {
         Reality.SetPlaygroundTier((int)_tier.Value);
-        string? type = _monster.Selected <= 0 ? null : _monster.GetItemText(_monster.Selected);
+        string? type = PickedIsBoss ? null : Picked;
         MonsterRarity? rarity = _rarity.Selected switch { 1 => MonsterRarity.Normal, 2 => MonsterRarity.Magic, 3 => MonsterRarity.Rare, 4 => MonsterRarity.Unique, _ => null };
         List<Enemy> list = Reality.SpawnPlaygroundHorde((int)_count.Value, type, rarity, SpawnPoint());
         _log.Text = $"{list.Count} {(type ?? "monsters")} at tier {(int)_tier.Value} (monster level {Reality.MonsterLevel})";
@@ -395,7 +531,7 @@ public partial class Playground : Node
     public BossEnemy SpawnBoss()
     {
         Reality.SetPlaygroundTier((int)_tier.Value);
-        string type = RealityController.AllBosses[Mathf.Clamp(_boss.Selected, 0, RealityController.AllBosses.Count - 1)];
+        string type = PickedIsBoss ? Picked! : RealityController.AllBosses[0];
         BossEnemy boss = Reality.SpawnPlaygroundBoss(type, SpawnPoint());
         _bossAlive = boss;
         _bossSince = 0f;
@@ -474,5 +610,75 @@ public partial class Playground : Node
             s.ChargesAvailable = s.Definition.MaxCharges;
             s.RechargeTimer = 0f;
         }
+    }
+}
+
+/// <summary>A monster's sprite, animated, scaled to fit (the playground's picker and stat card).</summary>
+public partial class MonsterPortrait : Control
+{
+    private static readonly Dictionary<string, (SpriteFrames Frames, StringName Anim)?> Cache = new();
+    private string? _type;
+    private float _t;
+
+    public string? Type
+    {
+        get => _type;
+        set
+        {
+            _type = value;
+            QueueRedraw();
+        }
+    }
+
+    public override void _Ready()
+    {
+        TextureFilter = TextureFilterEnum.Nearest;
+        MouseFilter = MouseFilterEnum.Ignore;
+    }
+
+    private static (SpriteFrames Frames, StringName Anim)? FramesOf(string type)
+    {
+        if (Cache.TryGetValue(type, out var hit))
+        {
+            return hit;
+        }
+
+        Node scene = GD.Load<PackedScene>($"res://scenes/enemies/{type}.tscn").Instantiate();
+        (SpriteFrames, StringName)? found = null;
+        if (scene.GetNodeOrNull<AnimatedSprite2D>("Sprite") is { SpriteFrames: { } frames } sprite)
+        {
+            StringName anim = frames.HasAnimation("idle") ? "idle" : frames.HasAnimation("walk") ? "walk" : sprite.Animation;
+            found = (frames, anim);
+        }
+
+        scene.Free();
+        Cache[type] = found;
+        return found;
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_type is not null && IsVisibleInTree())
+        {
+            _t += (float)delta;
+            QueueRedraw();
+        }
+    }
+
+    public override void _Draw()
+    {
+        if (_type is null || FramesOf(_type) is not { } f || f.Frames.GetFrameCount(f.Anim) == 0)
+        {
+            return;
+        }
+
+        float fps = Mathf.Max(1f, (float)f.Frames.GetAnimationSpeed(f.Anim));
+        int frame = (int)(_t * fps) % f.Frames.GetFrameCount(f.Anim);
+        Texture2D tex = f.Frames.GetFrameTexture(f.Anim, frame);
+        Vector2 size = tex.GetSize();
+        float k = Mathf.Min(Size.X / size.X, Size.Y / size.Y);
+        k = k >= 1f ? Mathf.Floor(k) : k; // whole steps keep the pixels square
+        Vector2 drawn = size * k;
+        DrawTextureRect(tex, new Rect2((Size - drawn) / 2f, drawn), false);
     }
 }

@@ -59,6 +59,13 @@ public partial class RunCapture
         }
 
         await Snap("playground-camp.png");
+        pg.Pick("Brute");
+        await Wait(0.4f);
+        await Snap("playground-picker.png");
+        pg.Pick("Nereth");
+        await Wait(0.4f);
+        await Snap("playground-picker-boss.png");
+        pg.Pick(null);
         ground.Player.GlobalPosition = RasterLayout.World(ground.Raster.BossCell) + new Vector2(-260f, 0f);
         await Wait(0.6f);
         ground.SetPlaygroundTier(12);

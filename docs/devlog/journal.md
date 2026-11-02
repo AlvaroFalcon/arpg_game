@@ -835,3 +835,8 @@ Long node texts were cut to the node's width. Each node now has a tooltip with e
 ![A node's tooltip](screenshots/escaldon-node-tooltip.png)
 
 Same day: the playground's spawner got two switches, *Monsters stand still* (they attack from where they stand) and *Monsters don't attack* (living targets with real defences). They reset when the playground closes.
+
+Same day: the spawner got an enemy picker, a card per monster and boss with its sprite animated, and a stat card (life, armour, resistances, speed, attacks) read from a real hidden instance scaled to the chosen tier and rarity, so it always matches what spawns. Monsters now keep their home reality's defences in the playground.
+
+![The enemy picker](screenshots/playground-picker.png)
+![A boss's card](screenshots/playground-picker-boss.png)

@@ -153,6 +153,9 @@ public partial class Enemy : CharacterBody2D
     private float _flashTimer;
     private Color _eliteTint = Colors.White;
     private float _damageMultiplier = 1f;
+
+    /// <summary>What the tier and rarity multiply this monster's hits by (the playground's stat card).</summary>
+    public float DamageMultiplier => _damageMultiplier;
     private float _modTimer;
     private float _signatureTimer = 3f;
     private readonly RandomNumberGenerator _rng = new();

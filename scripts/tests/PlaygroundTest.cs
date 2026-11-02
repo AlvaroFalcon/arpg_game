@@ -190,6 +190,21 @@ public partial class PlaygroundTest : Node
         bool levelled = spawned.Count == 12 && spawned.All(e => e.MonsterLevel == RealityTiers.MonsterLevel(10) && !e.Dormant);
         Check("HORDE-AT-TIER", horde == 12 && levelled, $"{spawned.Count} monsters awake at monster level {spawned.FirstOrDefault()?.MonsterLevel} (tier 10 is {RealityTiers.MonsterLevel(10)})");
 
+        // The picker's stat card says what a spawned one really has (owner's request, 2026-11-02).
+        pg.ClearMonsters();
+        await Seconds(0.2f);
+        pg.Pick("Caster");
+        string card = pg.CardText;
+        ground.SetPlaygroundTier(1);
+        Enemy caster = ground.SpawnPlaygroundHorde(1, "Caster", MonsterRarity.Normal, ground.Player.GlobalPosition + new Vector2(300f, 0f))[0];
+        await Seconds(0.1f);
+        bool same = card.Contains($"Life {caster.Stats.Life!.Max:N0}") && card.Contains($"fire {caster.Stats.FireResistance.Value:0}%") && card.Contains("damage every");
+        pg.Pick(RealityController.AllBosses[1]);
+        string bossCard = pg.CardText;
+        int alive = GetTree().GetNodesInGroup(Combat.CombatQuery.EnemyGroup).Count;
+        Check("PICKER-CARD", same && bossCard.Contains("Boss") && alive == 1,
+            $"Caster card: [{card.Replace("\n", " | ")}] matches a spawned one (life {caster.Stats.Life.Max:N0}, fire {caster.Stats.FireResistance.Value:0}%)={same}; previews leave no monster behind={alive == 1}; boss card: {bossCard.Split('\n')[0]}");
+
         // Monsters that stand still / don't attack (owner's request, 2026-11-02).
         pg.ClearMonsters();
         await Seconds(0.2f);
