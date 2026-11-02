@@ -2146,7 +2146,7 @@ fire skill now builds several stacks; measure with the bot before tuning.
   Tree: Slick (Potency, Lingering, *Tar*: slows 30%), Spill (Reach, Efficiency,
   Shockwave), Rhythm (Patience, Haste, *Accelerant*: ignites on oiled enemies last 50%
   longer).
-- **Combust** (level 10, 12 mana, 3 s): every ignited enemy in 110 px takes **all the fire
+- **Combust** (level 10, 20 mana, 20 s cooldown — owner's numbers of 2026-11-02, was 12 mana and 3 s): every ignited enemy in 110 px takes **all the fire
   damage its stacks had left, at once, +30%**; the stacks are gone. Tree: *Chain Reaction*
   (the burst splashes 50% around and ignites), *Embers Remain* (keep 3 stacks), Overwhelm.
 - **Exsanguinate** (level 10, 10 mana, 3 s): the same for bleed stacks (physical).
