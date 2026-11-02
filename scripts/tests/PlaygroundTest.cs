@@ -128,6 +128,21 @@ public partial class PlaygroundTest : Node
 
         bool npcs = ground.GetNodeOrNull("Escaldón") is not null && ground.GetNodeOrNull("theArtificer") is not null
             && ground.GetNodeOrNull<UI.SkillTreePanel>("SkillTreePanel") is not null && ground.GetNodeOrNull<UI.ArtificerPanel>("ArtificerPanel") is not null;
+        // Keyboard focus stays with the game (owner's report, 2026-11-02: Space pressed the last
+        // clicked button again): no button takes focus, and a clicked field lets go on a world click.
+        var ui = pg.GetNode("PlaygroundUi").FindChildren("*", "", true, false);
+        int focusable = ui.OfType<BaseButton>().Count(b => b.FocusMode != Control.FocusModeEnum.None);
+        LineEdit? field = ui.OfType<SpinBox>().FirstOrDefault()?.GetLineEdit();
+        field?.GrabFocus();
+        await Seconds(0.05f);
+        bool grabbed = field?.HasFocus() == true;
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = GetViewport().GetVisibleRect().Size / 2f });
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = GetViewport().GetVisibleRect().Size / 2f });
+        await Seconds(0.05f);
+        bool released = GetViewport().GuiGetFocusOwner() is null;
+        Check("PANEL-FOCUS", focusable == 0 && ui.OfType<BaseButton>().Any() && grabbed && released,
+            $"{ui.OfType<BaseButton>().Count()} buttons, {focusable} can take keyboard focus; a number field held focus={grabbed} and let go on a click in the world={released}");
+
         Check("NPCS", npcs && pg.ConsoleOpen, $"Escaldón and the Artificer stand in the camp with their panels={npcs}; spawner open={pg.ConsoleOpen}");
 
         // The DPS meter: the player's hits and damage over time count, by source; anyone else's don't.
@@ -175,6 +190,50 @@ public partial class PlaygroundTest : Node
         bool levelled = spawned.Count == 12 && spawned.All(e => e.MonsterLevel == RealityTiers.MonsterLevel(10) && !e.Dormant);
         Check("HORDE-AT-TIER", horde == 12 && levelled, $"{spawned.Count} monsters awake at monster level {spawned.FirstOrDefault()?.MonsterLevel} (tier 10 is {RealityTiers.MonsterLevel(10)})");
 
+        // The picker's stat card says what a spawned one really has (owner's request, 2026-11-02).
+        pg.ClearMonsters();
+        await Seconds(0.2f);
+        pg.Pick("Caster");
+        string card = pg.CardText;
+        ground.SetPlaygroundTier(1);
+        Enemy caster = ground.SpawnPlaygroundHorde(1, "Caster", MonsterRarity.Normal, ground.Player.GlobalPosition + new Vector2(300f, 0f))[0];
+        await Seconds(0.1f);
+        bool same = card.Contains($"Life {caster.Stats.Life!.Max:N0}") && card.Contains($"fire {caster.Stats.FireResistance.Value:0}%") && card.Contains("damage every");
+        pg.Pick(RealityController.AllBosses[1]);
+        string bossCard = pg.CardText;
+        int alive = GetTree().GetNodesInGroup(Combat.CombatQuery.EnemyGroup).Count;
+        Check("PICKER-CARD", same && bossCard.Contains("Boss") && alive == 1,
+            $"Caster card: [{card.Replace("\n", " | ")}] matches a spawned one (life {caster.Stats.Life.Max:N0}, fire {caster.Stats.FireResistance.Value:0}%)={same}; previews leave no monster behind={alive == 1}; boss card: {bossCard.Split('\n')[0]}");
+
+        // Monsters that stand still / don't attack (owner's request, 2026-11-02).
+        pg.ClearMonsters();
+        await Seconds(0.2f);
+        ground.SetPlaygroundTier(1);
+        pg.SetMonsters(standStill: true, pacified: false);
+        List<Enemy> still = ground.SpawnPlaygroundHorde(6, "Slime", MonsterRarity.Normal, ground.Player.GlobalPosition + new Vector2(200f, 0f));
+        await Seconds(0.4f);
+        Vector2[] before = still.Select(e => e.GlobalPosition).ToArray();
+        await Seconds(1.5f);
+        float walked = still.Select((e, i) => e.GlobalPosition.DistanceTo(before[i])).Max();
+
+        pg.SetMonsters(standStill: false, pacified: true);
+        Stats.ResourcePool life = ground.Player.Stats.Life!;
+        life.Current = life.Max;
+        foreach (Enemy e in still)
+        {
+            e.GlobalPosition = ground.Player.GlobalPosition + new Vector2(10f, 0f);
+        }
+
+        await Seconds(2f);
+        float harmed = life.Max - life.Current;
+        Vector2 parked = still[0].GlobalPosition;
+        pg.SetMonsters(standStill: false, pacified: false);
+        ground.Player.GlobalPosition += new Vector2(-220f, 0f);
+        await Seconds(1.5f);
+        bool chases = still[0].GlobalPosition.DistanceTo(parked) > 20f;
+        Check("MONSTERS-HOLD", walked < 4f && harmed == 0f && chases && Enemy.HoldStill == false && Enemy.Pacified == false,
+            $"standing still they moved {walked:0.0} px in 1.5 s; not attacking, touching the player for 2 s, they took {harmed:0} life; switched off, they chase again={chases}");
+
         pg.ClearMonsters();
         await Seconds(0.2f);
         ground.SetPlaygroundTier(3);
@@ -192,13 +251,15 @@ public partial class PlaygroundTest : Node
             $"{high.DisplayName}: {lowLife:N0} life at tier 3, {highLife:N0} at tier 18; killed with no loot ({pickups} pickups) and no exit portal");
 
         // Leaving throws the sandbox away.
+        pg.SetMonsters(standStill: true, pacified: true); // must not outlive the playground
         ground.Pause.OnLeave?.Invoke();
         Hideout? back = await WaitScene<Hideout>(20f);
         await Seconds(0.5f);
         CharacterData after = profile.Active;
-        Check("LEAVES-CLEAN", back is not null && after.Name == name && after.Gems.Count == gems && profile.Characters.Count == characters
+        bool reset = !Enemy.HoldStill && !Enemy.Pacified;
+        Check("LEAVES-CLEAN", reset && back is not null && after.Name == name && after.Gems.Count == gems && profile.Characters.Count == characters
                 && (back?.Player.Wallet.GetBalance(Profile.GoldId) ?? -1) == gold,
-            $"back home as \"{after.Name}\" with {after.Gems.Count} gems (was {gems}), {profile.Characters.Count} characters (was {characters}), gold {back?.Player.Wallet.GetBalance(Profile.GoldId):N0} (was {gold:N0})");
+            $"monster switches reset={reset}; back home as \"{after.Name}\" with {after.Gems.Count} gems (was {gems}), {profile.Characters.Count} characters (was {characters}), gold {back?.Player.Wallet.GetBalance(Profile.GoldId):N0} (was {gold:N0})");
         Finish();
     }
 

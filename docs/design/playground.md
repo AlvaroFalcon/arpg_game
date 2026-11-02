@@ -29,6 +29,52 @@ A hidden test area for builds and balance. Not on any menu.
 - **No rewards:** kills give no experience and drop nothing; a boss kill opens no portal
   and changes no record.
 
+## The enemy picker (2026-11-02)
+
+Owner's request: choose which enemies to spawn, with a preview of the model and its stats.
+The spawner is two columns now; the right one is a grid of cards, one per monster and boss
+(plus *Any*, a mixed horde), each with the monster's sprite animated (`MonsterPortrait`, the
+idle animation of the scene's `Sprite`: the same art the voxel model is built from). Picking
+one shows a big portrait and its **stat card at the console's tier and rarity**: life,
+armour (and what a 100 physical hit deals through it), fire/cold/lightning resistance,
+speed, contact hit, and its attack (a caster's bolt damage and interval, an exploder's blast,
+a charger's range); bosses show their boss life and hits. The one button spawns the pick:
+"Spawn 20 × Brute", "Spawn 20 mixed" or "Spawn Nereth".
+
+The card is read from the real thing (`RealityController.Preview`): the monster is built
+hidden, not processing and out of every group, scaled exactly as a spawn would be, read and
+freed, so the card can't drift from the game's numbers. Playground spawns now take their
+**home reality's** defences (the affinity of the reality whose roster or boss they belong
+to), not the playground's ashen theme. `PICKER-CARD` (PlaygroundTest) compares a Caster's
+card with a spawned Caster.
+
+![The picker](../devlog/screenshots/playground-picker.png)
+
+## Keyboard focus (2026-11-02)
+
+Owner's report: after clicking an option in the spawner, Space (the dodge) pressed it again,
+even after casting. Godot gives a clicked button keyboard focus, and Space is its "press".
+Now no button, list or checkbox of the spawner or the DPS meter takes focus; a number field
+(tier, count, level) still does while typing, and lets go once its value is set, when the
+mouse leaves the panel, or on any click in the world (`Playground.KeepKeyboardForTheGame`).
+`PANEL-FOCUS` (PlaygroundTest).
+
+## Monsters that hold (2026-11-02)
+
+Owner's request: monsters that stay put, to test more things. Two switches in the
+spawner, independent so they combine:
+
+- **Monsters stand still** (`Enemy.HoldStill`): they keep thinking and attacking — a caster
+  still casts, a boss still runs its mechanics — but never walk. Knockback still moves them,
+  so pushes can be tested; a boss that teleports or leaps as part of an attack still does.
+- **Monsters don't attack** (`Enemy.Pacified`): no decisions and no contact damage, so they
+  neither attack nor walk: living targets with real life, armour and resistances.
+
+Both are static switches on `Enemy`, reset when the playground closes (`Playground._ExitTree`),
+so they never reach a real reality. `MONSTERS-HOLD` (PlaygroundTest) checks that held
+monsters don't move, pacified ones don't hurt while touching the player, and both chase again
+when switched off; `LEAVES-CLEAN` that leaving resets them.
+
 ## DPS meter (2026-11-01)
 
 Owner's follow-up: *"a DPS meter in the playground, to know how much damage characters

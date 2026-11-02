@@ -59,6 +59,13 @@ public partial class RunCapture
         }
 
         await Snap("playground-camp.png");
+        pg.Pick("Brute");
+        await Wait(0.4f);
+        await Snap("playground-picker.png");
+        pg.Pick("Nereth");
+        await Wait(0.4f);
+        await Snap("playground-picker-boss.png");
+        pg.Pick(null);
         ground.Player.GlobalPosition = RasterLayout.World(ground.Raster.BossCell) + new Vector2(-260f, 0f);
         await Wait(0.6f);
         ground.SetPlaygroundTier(12);
@@ -91,9 +98,21 @@ public partial class RunCapture
 
         await Snap("playground-dps.png");
         pg.ClearMonsters();
-        ground.GetNode<SkillTreePanel>("SkillTreePanel").Open();
+        SkillTreePanel esc = ground.GetNode<SkillTreePanel>("SkillTreePanel");
+        esc.Open();
         await Wait(0.4f);
         await Snap("playground-escaldon.png");
+        // A node's tooltip (owner's report, 2026-11-02: long node text is cut): Elemental Storm's fire focus.
+        if (CharacterBuild.Of(ground.Player)?.Data.Gems.FirstOrDefault(g => g.Id == "elemental_storm") is { } storm)
+        {
+            esc.Select(storm);
+            await Wait(0.2f);
+            Vector2 at = esc.TreeView.GlobalPosition + new Vector2(28f + 2 * 240f + 100f, 26f + 30f);
+            GetViewport().WarpMouse(at);
+            esc.HoverNode("fire_focus");
+            await Wait(0.3f);
+            await Snap("escaldon-node-tooltip.png");
+        }
         GetTree().Quit();
     }
 }

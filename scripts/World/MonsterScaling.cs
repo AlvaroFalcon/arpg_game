@@ -156,6 +156,9 @@ public static class MonsterScaling
 
     private static readonly object DefenceSource = new();
 
+    /// <summary>The source of <see cref="ApplyDefences"/>'s modifiers (the playground swaps them).</summary>
+    public static object DefenceSourceObject => DefenceSource;
+
     private static void AddFlat(Stat stat, float value)
     {
         if (value > 0f)

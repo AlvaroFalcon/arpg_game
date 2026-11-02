@@ -63,6 +63,12 @@ public partial class SkillTreePanel : ModalPanel
     /// <summary>The ember dot on the Buy skills tab: gems unlocked since it was last opened.</summary>
     public bool GemsTabDot => _buyDot.Visible;
 
+    /// <summary>The tree's drawing (tests point the mouse at a node through it).</summary>
+    public Control TreeView => _canvas;
+
+    /// <summary>Points at a node as the mouse would (tests, captures); null clears it.</summary>
+    public void HoverNode(string? id) => _canvas.Hover = id;
+
     /// <summary>The gem being worked on (tests).</summary>
     public GemData? Selected => _gem;
 
@@ -379,7 +385,24 @@ public partial class SkillTreePanel : ModalPanel
         public override void _Ready()
         {
             MouseFilter = MouseFilterEnum.Stop;
-            UiTheme.InstantTooltip(this, Tip);
+            // One tooltip per node, with every rank's full text (the node's own lines are cut to
+            // its width): refilled whenever the mouse moves onto another node.
+            UiTheme.InstantTooltip(this, FillTip);
+        }
+
+        /// <summary>Shows the tooltip of the node under the mouse now (or hides it).</summary>
+        public void RefreshTip() => UiTheme.RefreshInstantTooltip(this, FillTip);
+
+        /// <summary>The node whose tooltip shows (tests point at one).</summary>
+        public string? Hover
+        {
+            get => _hover;
+            set
+            {
+                _hover = value;
+                QueueRedraw();
+                RefreshTip();
+            }
         }
 
         /// <summary>Where a node is drawn; two notables at the same spot (a choice) share it, one above the other.</summary>
@@ -410,8 +433,7 @@ public partial class SkillTreePanel : ModalPanel
                 string? id = At(m.Position)?.Id;
                 if (id != _hover)
                 {
-                    _hover = id;
-                    QueueRedraw();
+                    Hover = id;
                 }
             }
             else if (e is InputEventMouseButton { Pressed: true } b && At(b.Position) is { } node)
@@ -426,35 +448,59 @@ public partial class SkillTreePanel : ModalPanel
                     Panel.LowerNode(node.Id);
                     AcceptEvent();
                 }
+
+                // The rank changed: the tooltip's "now" and "next" too.
+                RefreshTip();
             }
         }
 
-        private string Tip()
+        /// <summary>The hovered node, in full: every rank (the current one marked), what it
+        /// needs, what it excludes, and what a click does.</summary>
+        private void FillTip(HoverTooltip tip)
         {
             if (Tree is null || Gem is null || _hover is null || Tree.Node(_hover) is not { } node)
             {
-                return "";
+                return;
             }
 
             int rank = SkillTreeRules.RankOf(Gem, node.Id);
-            var lines = new List<string> { $"{node.Name}  ({rank}/{node.MaxRank}){(node.Kind == SkillTreeNodeKind.Notable ? "  · notable" : "")}" };
-            if (rank > 0)
+            bool notable = node.Kind == SkillTreeNodeKind.Notable;
+            tip.Begin($"{node.Name}  ({rank}/{node.MaxRank})", notable ? UiTheme.Gold : Accent);
+            tip.AddLine(notable ? "Notable · one rank, changes how the skill plays" : $"Lesser · {node.MaxRank} rank{(node.MaxRank == 1 ? "" : "s")}", UiTheme.TextDim, 12);
+            for (int i = 1; i <= node.MaxRank; i++)
             {
-                lines.Add($"Now: {node.Describe(rank)}");
+                bool now = i == rank;
+                string label = node.MaxRank == 1 ? "" : $"Rank {i}: ";
+                tip.AddLine($"{(now ? "▶ " : "")}{label}{node.Describe(i)}", now ? Colors.White : i < rank ? UiTheme.TextDim : UiTheme.Text, 14);
+            }
+
+            List<(string Id, int Ranks)> ways = node.Parents.ToList();
+            if (ways.Count > 0)
+            {
+                string needs = string.Join(" or ", ways.Select(p => $"{p.Ranks} point{(p.Ranks == 1 ? "" : "s")} in {Tree.Node(p.Id)?.Name ?? p.Id}"));
+                tip.AddLine($"Needs {needs}", UiTheme.TextDim, 12);
+            }
+
+            if (node.Exclusive is { } group && Tree.Nodes.Where(n => n.Exclusive == group && n.Id != node.Id).Select(n => n.Name).ToList() is { Count: > 0 } others)
+            {
+                tip.AddLine($"Choose one: excludes {string.Join(", ", others)}", UiTheme.Ember, 12);
             }
 
             if (rank < node.MaxRank)
             {
-                lines.Add($"Next: {node.Describe(rank + 1)}");
-                lines.Add(SkillTreeRules.CannotRaise(Gem, Tree, node) ?? "Left click: spend a point");
+                string? why = SkillTreeRules.CannotRaise(Gem, Tree, node);
+                // "Needs ... first" is already the line above.
+                if (why is null || !why.StartsWith("Needs"))
+                {
+                    tip.AddLine(why ?? "Left click: spend a point", why is null ? Accent : UiTheme.TextDim, 13);
+                }
             }
 
             if (rank > 0)
             {
-                lines.Add(SkillTreeRules.CannotLower(Gem, Tree, node) is { } why ? why : $"Right click: take one back ({SkillTrees.RefundCost(Gem.Level):N0} gold)");
+                string? why = SkillTreeRules.CannotLower(Gem, Tree, node);
+                tip.AddLine(why ?? $"Right click: take one back ({SkillTrees.RefundCost(Gem.Level):N0} gold)", UiTheme.TextDim, 13);
             }
-
-            return string.Join("\n", lines);
         }
 
         public override void _Draw()
