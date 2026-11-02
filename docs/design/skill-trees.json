@@ -5225,11 +5225,11 @@
         "Reach",
         "Rhythm"
       ],
-      "cooldown": 3,
+      "cooldown": 20,
       "damage": 0,
       "description": "Detonates the ignites on every enemy in a circle: all the fire damage their stacks had left lands at once, 30% stronger.",
       "id": "combust",
-      "mana": 12,
+      "mana": 20,
       "name": "Combust",
       "nodes": [
         {
