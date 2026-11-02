@@ -46,6 +46,8 @@ public partial class Playground : Node
     private OptionButton _rarity = null!;
     private OptionButton _boss = null!;
     private CheckBox _god = null!;
+    private CheckBox _still = null!;
+    private CheckBox _pacified = null!;
     private Label _log = null!;
     private BossEnemy? _bossAlive;
     private float _bossSince;
@@ -252,6 +254,8 @@ public partial class Playground : Node
         _level = Spin(box, "Character level", 1, CharacterData.MaxLevel, CharacterBuild.Of(Reality.Player)?.Data.Level ?? 1);
         _level.ValueChanged += v => SetLevel((int)v);
         box.AddChild(UiTheme.Button("Full life, mana and cooldowns", Refill, 14, 260f));
+        _still = Toggle(box, "Monsters stand still", on => Enemy.HoldStill = on);
+        _pacified = Toggle(box, "Monsters don't attack", on => Enemy.Pacified = on);
         _god = new CheckBox { Text = "Can't die", FocusMode = Control.FocusModeEnum.None };
         _god.AddThemeColorOverride("font_color", UiTheme.Text);
         _god.Toggled += on =>
@@ -268,6 +272,29 @@ public partial class Playground : Node
 
     /// <summary>"EmberColossus" → "Ember Colossus".</summary>
     private static string Pretty(string id) => System.Text.RegularExpressions.Regex.Replace(id, "(?<=[a-z])(?=[A-Z])", " ");
+
+    private static CheckBox Toggle(VBoxContainer box, string text, System.Action<bool> set)
+    {
+        var check = new CheckBox { Text = text, FocusMode = Control.FocusModeEnum.None };
+        check.AddThemeColorOverride("font_color", UiTheme.Text);
+        check.Toggled += on => set(on);
+        box.AddChild(check);
+        return check;
+    }
+
+    /// <summary>Sets the monster switches as the checkboxes would (tests).</summary>
+    public void SetMonsters(bool standStill, bool pacified)
+    {
+        _still.ButtonPressed = standStill;
+        _pacified.ButtonPressed = pacified;
+    }
+
+    public override void _ExitTree()
+    {
+        // Static switches: never let them leak into a real reality.
+        Enemy.HoldStill = false;
+        Enemy.Pacified = false;
+    }
 
     private static Label Dim(string text)
     {

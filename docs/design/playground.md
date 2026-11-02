@@ -29,6 +29,22 @@ A hidden test area for builds and balance. Not on any menu.
 - **No rewards:** kills give no experience and drop nothing; a boss kill opens no portal
   and changes no record.
 
+## Monsters that hold (2026-11-02)
+
+Owner's request: monsters that stay put, to test more things. Two switches in the
+spawner, independent so they combine:
+
+- **Monsters stand still** (`Enemy.HoldStill`): they keep thinking and attacking — a caster
+  still casts, a boss still runs its mechanics — but never walk. Knockback still moves them,
+  so pushes can be tested; a boss that teleports or leaps as part of an attack still does.
+- **Monsters don't attack** (`Enemy.Pacified`): no decisions and no contact damage, so they
+  neither attack nor walk: living targets with real life, armour and resistances.
+
+Both are static switches on `Enemy`, reset when the playground closes (`Playground._ExitTree`),
+so they never reach a real reality. `MONSTERS-HOLD` (PlaygroundTest) checks that held
+monsters don't move, pacified ones don't hurt while touching the player, and both chase again
+when switched off; `LEAVES-CLEAN` that leaving resets them.
+
 ## DPS meter (2026-11-01)
 
 Owner's follow-up: *"a DPS meter in the playground, to know how much damage characters

@@ -93,6 +93,14 @@ public partial class Enemy : CharacterBody2D
     /// </summary>
     public bool Dormant { get; set; }
 
+    /// <summary>The playground's "Monsters stand still" (docs/design/playground.md): they think and
+    /// attack where they stand, but never walk; knockback still moves them.</summary>
+    public static bool HoldStill;
+
+    /// <summary>The playground's "Monsters don't attack": no decisions, no contact damage (and so
+    /// no walking either). Both flags are reset when the playground closes.</summary>
+    public static bool Pacified;
+
     [Export]
     public float AggroRadius = 430f;
 
@@ -360,9 +368,14 @@ public partial class Enemy : CharacterBody2D
         TickMods(dt);
 
         DesiredVelocity = Vector2.Zero;
-        if (Target is not null)
+        if (Target is not null && !Pacified)
         {
             Think(dt);
+        }
+
+        if (HoldStill || Pacified)
+        {
+            DesiredVelocity = Vector2.Zero;
         }
 
         _knockback = _knockback.MoveToward(Vector2.Zero, 900f * dt);
@@ -374,7 +387,7 @@ public partial class Enemy : CharacterBody2D
             _contactTimer -= dt;
         }
 
-        if (Target is not null && _contactTimer <= 0f && ContactDamage > 0f && IsTouching(Target))
+        if (Target is not null && !Pacified && _contactTimer <= 0f && ContactDamage > 0f && IsTouching(Target))
         {
             DealContactDamage(Target, ContactDamage * ContactDamageScale());
             _contactTimer = ContactCooldown;

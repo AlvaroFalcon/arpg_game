@@ -175,6 +175,35 @@ public partial class PlaygroundTest : Node
         bool levelled = spawned.Count == 12 && spawned.All(e => e.MonsterLevel == RealityTiers.MonsterLevel(10) && !e.Dormant);
         Check("HORDE-AT-TIER", horde == 12 && levelled, $"{spawned.Count} monsters awake at monster level {spawned.FirstOrDefault()?.MonsterLevel} (tier 10 is {RealityTiers.MonsterLevel(10)})");
 
+        // Monsters that stand still / don't attack (owner's request, 2026-11-02).
+        pg.ClearMonsters();
+        await Seconds(0.2f);
+        ground.SetPlaygroundTier(1);
+        pg.SetMonsters(standStill: true, pacified: false);
+        List<Enemy> still = ground.SpawnPlaygroundHorde(6, "Slime", MonsterRarity.Normal, ground.Player.GlobalPosition + new Vector2(200f, 0f));
+        await Seconds(0.4f);
+        Vector2[] before = still.Select(e => e.GlobalPosition).ToArray();
+        await Seconds(1.5f);
+        float walked = still.Select((e, i) => e.GlobalPosition.DistanceTo(before[i])).Max();
+
+        pg.SetMonsters(standStill: false, pacified: true);
+        Stats.ResourcePool life = ground.Player.Stats.Life!;
+        life.Current = life.Max;
+        foreach (Enemy e in still)
+        {
+            e.GlobalPosition = ground.Player.GlobalPosition + new Vector2(10f, 0f);
+        }
+
+        await Seconds(2f);
+        float harmed = life.Max - life.Current;
+        Vector2 parked = still[0].GlobalPosition;
+        pg.SetMonsters(standStill: false, pacified: false);
+        ground.Player.GlobalPosition += new Vector2(-220f, 0f);
+        await Seconds(1.5f);
+        bool chases = still[0].GlobalPosition.DistanceTo(parked) > 20f;
+        Check("MONSTERS-HOLD", walked < 4f && harmed == 0f && chases && Enemy.HoldStill == false && Enemy.Pacified == false,
+            $"standing still they moved {walked:0.0} px in 1.5 s; not attacking, touching the player for 2 s, they took {harmed:0} life; switched off, they chase again={chases}");
+
         pg.ClearMonsters();
         await Seconds(0.2f);
         ground.SetPlaygroundTier(3);
@@ -192,13 +221,15 @@ public partial class PlaygroundTest : Node
             $"{high.DisplayName}: {lowLife:N0} life at tier 3, {highLife:N0} at tier 18; killed with no loot ({pickups} pickups) and no exit portal");
 
         // Leaving throws the sandbox away.
+        pg.SetMonsters(standStill: true, pacified: true); // must not outlive the playground
         ground.Pause.OnLeave?.Invoke();
         Hideout? back = await WaitScene<Hideout>(20f);
         await Seconds(0.5f);
         CharacterData after = profile.Active;
-        Check("LEAVES-CLEAN", back is not null && after.Name == name && after.Gems.Count == gems && profile.Characters.Count == characters
+        bool reset = !Enemy.HoldStill && !Enemy.Pacified;
+        Check("LEAVES-CLEAN", reset && back is not null && after.Name == name && after.Gems.Count == gems && profile.Characters.Count == characters
                 && (back?.Player.Wallet.GetBalance(Profile.GoldId) ?? -1) == gold,
-            $"back home as \"{after.Name}\" with {after.Gems.Count} gems (was {gems}), {profile.Characters.Count} characters (was {characters}), gold {back?.Player.Wallet.GetBalance(Profile.GoldId):N0} (was {gold:N0})");
+            $"monster switches reset={reset}; back home as \"{after.Name}\" with {after.Gems.Count} gems (was {gems}), {profile.Characters.Count} characters (was {characters}), gold {back?.Player.Wallet.GetBalance(Profile.GoldId):N0} (was {gold:N0})");
         Finish();
     }
 

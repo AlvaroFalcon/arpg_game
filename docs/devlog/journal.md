@@ -833,3 +833,5 @@ The owner merged and tried the playground: black screen, no skill bar, a banner 
 Long node texts were cut to the node's width. Each node now has a tooltip with every rank in full, its requirements and what it excludes. The canvas had a tooltip all along, but it was filled once on entering the canvas, when no node was under the mouse yet, so it never appeared.
 
 ![A node's tooltip](screenshots/escaldon-node-tooltip.png)
+
+Same day: the playground's spawner got two switches, *Monsters stand still* (they attack from where they stand) and *Monsters don't attack* (living targets with real defences). They reset when the playground closes.
