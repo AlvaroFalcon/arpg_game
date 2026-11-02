@@ -367,6 +367,32 @@ public static class UiTheme
         target.TreeExiting += Hide;
     }
 
+    /// <summary>
+    /// Refills a control's instant tooltip while the mouse is still inside it: for a control
+    /// that draws several things the mouse can point at (Escaldón's tree canvas), where the
+    /// tooltip must follow the item under the mouse rather than be filled once on entry.
+    /// <paramref name="fill"/> adding nothing hides it.
+    /// </summary>
+    public static void RefreshInstantTooltip(Control target, Action<HoverTooltip> fill)
+    {
+        if (EnsureTooltip(target) is not { } tip)
+        {
+            return;
+        }
+
+        tip.Source = target;
+        tip.Clear();
+        fill(tip);
+        if (tip.HasContent)
+        {
+            tip.ShowTooltip();
+        }
+        else
+        {
+            tip.HideTooltip();
+        }
+    }
+
     /// <summary>A plain tooltip: the first line is the title, the rest dim text.</summary>
     public static void InstantTooltip(Control target, Func<string> text) => InstantTooltip(target, tip =>
     {

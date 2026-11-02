@@ -827,3 +827,9 @@ For balancing, the playground got a DPS meter (F3, right side): the last 5 s, th
 ## 2026-11-01 (night): the playground loaded paused
 
 The owner merged and tried the playground: black screen, no skill bar, a banner stuck on screen. Ctrl+Shift+P is also P, and the passive tree's key ignored the extra modifiers, so it opened (and paused the game) in the same frame the playground was launched; the new scene inherited the pause and a dead panel. The panel keys now match exactly, the hideout waits a moment before launching, and every reality starts unpaused with no panel open. The tests had called the entry directly, never through the keyboard, which is why they missed it; `NOT-PAUSED` now launches with a pausing panel open and fails on the old code. The DPS meter's hint also wrapped off the right edge; it wraps now.
+
+## 2026-11-02: tooltips on Escaldón's nodes
+
+Long node texts were cut to the node's width. Each node now has a tooltip with every rank in full, its requirements and what it excludes. The canvas had a tooltip all along, but it was filled once on entering the canvas, when no node was under the mouse yet, so it never appeared.
+
+![A node's tooltip](screenshots/escaldon-node-tooltip.png)

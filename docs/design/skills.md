@@ -2268,3 +2268,13 @@ covers nodes (new, removed, renamed, ranks, kind, group), arrows (new, removed,
 condition) and notes. Old saves of the editor (format 1, `requires`) open as graphs.
 The game's own panel still lays trees out in rows and columns (branch, depth); a graph
 from the editor is mapped onto that when it is implemented.
+
+## Node tooltips at Escaldón (2026-11-02) **[IMPLEMENTED]**
+
+Owner's report: a node's text is sometimes cut to the node's width. Every node of
+Escaldón's tree now has its own tooltip, refilled whenever the mouse moves onto another
+node (`TreeCanvas.FillTip`, `UiTheme.RefreshInstantTooltip`): the name and rank, the kind,
+**every rank's full text** (the current one marked), what it needs (every way in), what it
+excludes, and what a left or right click does. Before, the canvas had one tooltip filled on
+entering it — with no node under the mouse yet, so it never showed. `ESCALDON-NODE-TOOLTIP`
+(EndgameSmokeTest) points at the node with the longest text and checks every rank is there.

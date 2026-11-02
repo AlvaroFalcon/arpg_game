@@ -774,6 +774,21 @@ public partial class EndgameSmokeTest : Node2D
         bool spent = panel.RaiseNode(firstNode);
         int modifiers = player.SkillUser.GetSkill(slot)?.TreeModifiers.Count ?? 0;
         bool refunded = panel.LowerNode(firstNode) && player.SkillUser.GetSkill(slot)?.TreeModifiers.Count == modifiers - 1;
+
+        // Every node has a tooltip with its full text (owner's report, 2026-11-02: the node's own
+        // lines are cut to its width). Pointing at one shows it, with every rank; nothing hides it.
+        SkillTreeNode longest = SkillTrees.For(gem.Id)!.Nodes.OrderByDescending(n => n.Describe(n.MaxRank).Length).First();
+        panel.HoverNode(longest.Id);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        static IEnumerable<UI.HoverTooltip> Tooltips(Node n) => n.GetChildren().SelectMany(c => c is UI.HoverTooltip t ? new[] { t } : Tooltips(c));
+        UI.HoverTooltip? tip = Tooltips(GetTree().Root).FirstOrDefault(t => t.Visible && t.Source == panel.TreeView);
+        string tipText = tip?.AllText ?? "";
+        bool everyRank = Enumerable.Range(1, longest.MaxRank).All(r => tipText.Contains(longest.Describe(r)));
+        panel.HoverNode(null);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        bool hidden = tip is null || !tip.Visible;
+        Check("ESCALDON-NODE-TOOLTIP", tip is not null && everyRank && tipText.Contains(longest.Name) && hidden,
+            $"pointing at {longest.Name} shows a tooltip={tip is not null} with all {longest.MaxRank} rank(s) in full={everyRank}; pointing at nothing hides it={hidden}");
         panel.Close();
         Check("ESCALDON", hideout.Data.Find("escaldon") is not null && raised && spent && modifiers > 0 && refunded,
             $"station placed={hideout.Data.Find("escaldon") is not null}; level {level} → {gem.Level} for {cost} gold={raised}; a point in {firstNode}={spent} reaches the equipped skill ({modifiers} tree modifier(s)); taken back={refunded} ('{panel.Message}')");
