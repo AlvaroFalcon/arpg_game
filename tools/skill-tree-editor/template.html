@@ -185,9 +185,14 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
   let dirty = false;
   const views = {}; // per-skill pan/zoom
 
+  // The game's data has a version (build.py hashes it): a draft made on older data would
+  // otherwise bring back old numbers (a cooldown already changed in the game) without a word.
+  const DATA_VERSION = raw.version || "";
+  let staleDraft = false;
   try {
     const draft = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
-    if (draft && draft.savedAt === state.savedAt && Array.isArray(draft.skills)) { state.skills = draft.skills.map(toGraph); state.note = draft.note || ""; dirty = true; }
+    if (draft && draft.savedAt === state.savedAt && (draft.version || "") === DATA_VERSION && Array.isArray(draft.skills)) { state.skills = draft.skills.map(toGraph); state.note = draft.note || ""; dirty = true; }
+    else if (draft) { staleDraft = true; localStorage.removeItem(STORE_KEY); }
   } catch (e) { /* storage unavailable: work in memory */ }
 
   const $ = id => document.getElementById(id);
@@ -222,7 +227,7 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
   }
 
   function persist() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, version: DATA_VERSION, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
   }
   function touch() { dirty = true; persist(); renderList(); renderChanges(); setStatus("Cambios sin guardar."); }
   function setStatus(t) { $("status").textContent = t; }
@@ -634,7 +639,7 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
 
   // --- saving -----------------------------------------------------------------------
   const RESET = ":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}";
-  function payload(savedAt) { return { format: 2, savedAt, note: state.note, base: state.base, edited: state.skills, skills: state.skills }; }
+  function payload(savedAt) { return { format: 2, version: DATA_VERSION, savedAt, note: state.note, base: state.base, edited: state.skills, skills: state.skills }; }
   function documentFor(data) {
     const json = JSON.stringify(data).replace(/</g, "\\u003c");
     const style = document.getElementById("page-style").outerHTML;
@@ -722,6 +727,6 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
 
   function renderAll() { renderList(); renderBench(); renderInspector(); renderChanges(); }
   renderAll();
-  setStatus(dirty ? "Tienes un borrador sin guardar de la última vez." : state.savedAt ? "Última versión guardada: " + new Date(state.savedAt).toLocaleString() : "Datos sacados del juego. Edita y guarda.");
+  setStatus(staleDraft ? "Los datos del juego han cambiado desde tu último borrador en este navegador: se ha descartado y ves los valores actuales." : dirty ? "Tienes un borrador sin guardar de la última vez." : state.savedAt ? "Última versión guardada: " + new Date(state.savedAt).toLocaleString() : "Datos sacados del juego. Edita y guarda.");
 })();
 </script>
