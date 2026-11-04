@@ -16,9 +16,19 @@ public partial class TotemSkillDefinition : SkillDefinition
     [Export]
     public float Duration = 8f;
 
-    /// <summary>Seconds between two casts of the socketed skill.</summary>
+    /// <summary>The shortest wait between two casts of the socketed skill. The real wait is the
+    /// longest of this, the socketed skill's use time and its cooldown (owner, 2026-11-04).</summary>
     [Export]
     public float CastInterval = 0.9f;
+
+    /// <summary>The totem's life, as a share of its owner's maximum life (owner, 2026-11-04:
+    /// totems have life and monsters can target them).</summary>
+    [Export]
+    public float LifeFraction = 0.3f;
+
+    /// <summary>The least life a totem gets, whatever its owner's.</summary>
+    [Export]
+    public float MinLife = 60f;
 
     /// <summary>Totems up at once; placing one more removes the oldest.</summary>
     [Export]

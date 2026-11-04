@@ -153,6 +153,18 @@ public sealed class CastContext
     /// <summary>Leap Slam: the landing repeats this many more times (aftershocks).</summary>
     public int Aftershocks;
 
+    /// <summary>This fraction of each hit's damage lands as cold instead (Spark's "Cold
+    /// Current", 2026-11-04): one hit with two damage types, so cold resistance applies to that
+    /// share and the hit can chill.</summary>
+    public float ColdConversion;
+
+    /// <summary>Charges the skill banks beyond its definition's (Blink's "Second Wind").</summary>
+    public int ExtraCharges;
+
+    /// <summary>Blink's "Rewind": seconds after arriving during which pressing again takes
+    /// the caster back to where it left (0 = no rewind).</summary>
+    public float RewindWindow;
+
     /// <summary>Kills by this cast burst for this fraction of the hit (0 = none), in <see cref="KillBlastRadius"/> px.</summary>
     public float KillBlastFraction;
     public float KillBlastRadius = 70f;

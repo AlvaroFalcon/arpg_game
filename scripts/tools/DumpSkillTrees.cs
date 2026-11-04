@@ -43,6 +43,7 @@ public partial class DumpSkillTrees : Node
         ["burst"] = c.Projectile is { ExplodeRadius: > 0f } ? 1f : 0f, ["burstShare"] = c.Projectile?.ExplodeDamageFraction ?? 0f, ["killBlast"] = c.KillBlastFraction,
         ["aftershocks"] = c.Aftershocks, ["knockback"] = c.ExtraKnockback, ["invulnerable"] = c.ExtraInvulnerability, ["oilSlow"] = c.OilSlow,
         ["splash"] = c.DetonationSplash, ["stacksKept"] = c.StacksKept, ["heal"] = c.Aura?.HealFraction ?? 0f, ["drain"] = c.Aura?.LifeDrainMultiplier ?? 1f,
+        ["coldShare"] = c.ColdConversion, ["charges"] = c.ExtraCharges, ["rewind"] = c.RewindWindow,
         ["passive"] = c.Aura?.PassiveMultiplier ?? 1f, ["active"] = c.Aura?.ActiveMultiplier ?? 1f, ["potency"] = c.AfflictionPotency + c.CursePotencyBonus,
     };
 

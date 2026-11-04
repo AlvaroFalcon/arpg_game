@@ -778,8 +778,8 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
     times("Área", "area"); times("Duración", "duration"); times("Alcance", "range"); times("Velocidad del proyectil", "projectileSpeed"); times("Distancia del proyectil", "projectileRange");
     times("Daño de la quemadura", "igniteDamage"); times("Drenaje de vida", "drain");
     pct("Prob. de quemar", "ignite"); pct("Prob. de electrocutar", "shock"); pct("Prob. de congelar", "freeze"); pct("Prob. de sangrado", "bleed");
-    pct("Explosión al matar (del golpe)", "killBlast"); pct("Curación del activo (vida)", "heal"); pct("Ralentización del aceite", "oilSlow"); pct("Salpicadura de la detonación", "splash"); pct("Cargas que se quedan", "stacksKept"); pct("Potencia", "potency");
-    plus("Atraviesa", "pierce"); plus("Encadena", "chains"); plus("Se divide", "forks"); plus("Rebota", "bounces"); plus("Réplicas", "aftershocks"); plus("Tótems extra", "totems"); plus("Empuje", "knockback"); plus("Invulnerabilidad (s)", "invulnerable");
+    pct("Convertido a frío", "coldShare"); pct("Explosión al matar (del golpe)", "killBlast"); pct("Curación del activo (vida)", "heal"); pct("Ralentización del aceite", "oilSlow"); pct("Salpicadura de la detonación", "splash"); pct("Cargas que se quedan", "stacksKept"); pct("Potencia", "potency");
+    plus("Atraviesa", "pierce"); plus("Encadena", "chains"); plus("Se divide", "forks"); plus("Rebota", "bounces"); plus("Réplicas", "aftershocks"); plus("Tótems extra", "totems"); plus("Empuje", "knockback"); plus("Invulnerabilidad (s)", "invulnerable"); plus("Cargas extra", "charges"); plus("Ventana para volver (s)", "rewind");
     if (m.E.converts) rows.push(`<tr class="diff"><th>Convierte el daño a</th><td>${esc(m.E.converts)}</td><td>—</td></tr>`);
     const spent = Object.entries(m.ranks).map(([id, k]) => { const n = liveNode(s, id); return n ? `<li><b>${esc(n.name)}</b> ${k}/${n.ranks.length}<br><span class="meta">${esc(n.ranks[k - 1])}</span></li>` : ""; }).join("");
     box.innerHTML = `<h2>Al nivel ${L}</h2>

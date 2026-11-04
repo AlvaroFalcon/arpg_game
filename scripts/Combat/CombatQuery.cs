@@ -32,7 +32,8 @@ public static class CombatQuery
             _localPhysicsFrame = physics;
             _localProcessFrame = process;
             _localTree = tree;
-            _local = tree.GetFirstNodeInGroup(LocalPlayerGroupName) as Player ?? tree.GetFirstNodeInGroup(PlayerGroupName) as Player;
+            // Not GetFirstNodeInGroup(players): totems join that group too (Totem._Ready).
+            _local = tree.GetFirstNodeInGroup(LocalPlayerGroupName) as Player ?? (PlayersThisFrame(tree) is { Count: > 0 } all ? all[0] : null);
         }
 
         return _local;

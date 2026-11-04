@@ -27,10 +27,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -40,8 +40,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -137,13 +137,13 @@
           "depth": 1,
           "effects": [
             {
-              "igniteDamage": 1.20000004768372
+              "igniteDamage": 1.10000002384186
             },
             {
-              "igniteDamage": 1.39999997615814
+              "igniteDamage": 1.14999997615814
             },
             {
-              "igniteDamage": 1.70000004768372
+              "igniteDamage": 1.25
             }
           ],
           "exclusive": "",
@@ -157,9 +157,9 @@
             }
           ],
           "ranks": [
-            "Ignites deal 20% more damage",
-            "Ignites deal 40% more damage",
-            "Ignites deal 70% more damage"
+            "Ignites deal 10% more damage",
+            "Ignites deal 15% more damage",
+            "Ignites deal 25% more damage"
           ],
           "requires": "kindle",
           "requiresRanks": 2
@@ -329,10 +329,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -342,8 +342,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -464,10 +464,10 @@
               "cost": 0.920000016689301
             },
             {
-              "cost": 0.840000033378601
+              "cost": 0.879999995231628
             },
             {
-              "cost": 0.75
+              "cost": 0.800000011920929
             }
           ],
           "exclusive": "",
@@ -482,8 +482,8 @@
           ],
           "ranks": [
             "8% less mana cost",
-            "16% less mana cost",
-            "25% less mana cost"
+            "12% less mana cost",
+            "20% less mana cost"
           ],
           "requires": "haste",
           "requiresRanks": 2
@@ -542,24 +542,24 @@
           "depth": 0,
           "effects": [
             {
-              "bounces": 1
+              "coldShare": 0.0799999982118607
             },
             {
-              "bounces": 2
+              "coldShare": 0.119999997317791
             },
             {
-              "bounces": 3
+              "coldShare": 0.200000002980232
             }
           ],
           "exclusive": "",
-          "id": "bounce",
+          "id": "cold_current",
           "kind": "Lesser",
-          "name": "Rebound",
+          "name": "Cold Current",
           "parents": [],
           "ranks": [
-            "+1 wall bounce",
-            "+2 wall bounces",
-            "+3 wall bounces"
+            "Converts 8% of the damage to cold (can chill)",
+            "Converts 12% of the damage to cold (can chill)",
+            "Converts 20% of the damage to cold (can chill)"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -584,7 +584,7 @@
           "name": "Long Arc",
           "parents": [
             {
-              "id": "bounce",
+              "id": "cold_current",
               "ranks": 2
             }
           ],
@@ -593,7 +593,7 @@
             "Sparks fly 30% farther",
             "Sparks fly 50% farther"
           ],
-          "requires": "bounce",
+          "requires": "cold_current",
           "requiresRanks": 2
         },
         {
@@ -679,10 +679,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -692,8 +692,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -983,10 +983,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -996,8 +996,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -1278,10 +1278,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -1291,8 +1291,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -1578,10 +1578,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -1591,8 +1591,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -1903,10 +1903,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -1916,8 +1916,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -2202,10 +2202,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -2215,8 +2215,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -2502,10 +2502,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -2515,8 +2515,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -2802,10 +2802,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -2815,8 +2815,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -3125,10 +3125,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -3138,8 +3138,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -3181,8 +3181,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -3196,7 +3196,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "rime",
           "requiresRanks": 2
@@ -3428,10 +3428,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -3441,8 +3441,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -3730,10 +3730,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -3743,8 +3743,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -4031,10 +4031,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -4044,8 +4044,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -4087,8 +4087,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -4102,7 +4102,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "lingering",
           "requiresRanks": 2
@@ -4925,6 +4925,30 @@
           "requiresRanks": 2
         },
         {
+          "branch": 0,
+          "depth": 2,
+          "effects": [
+            {
+              "rewind": 3
+            }
+          ],
+          "exclusive": "",
+          "id": "rewind",
+          "kind": "Notable",
+          "name": "Rewind",
+          "parents": [
+            {
+              "id": "efficiency",
+              "ranks": 2
+            }
+          ],
+          "ranks": [
+            "Press again within 3 s to go back to where you blinked from, as if time ran backwards"
+          ],
+          "requires": "efficiency",
+          "requiresRanks": 2
+        },
+        {
           "branch": 1,
           "depth": 0,
           "effects": [
@@ -5008,6 +5032,30 @@
           "requiresRanks": 2
         },
         {
+          "branch": 1,
+          "depth": 2,
+          "effects": [
+            {
+              "charges": 1
+            }
+          ],
+          "exclusive": "",
+          "id": "second_wind",
+          "kind": "Notable",
+          "name": "Second Wind",
+          "parents": [
+            {
+              "id": "phasing",
+              "ranks": 2
+            }
+          ],
+          "ranks": [
+            "+1 charge: blink twice before the cooldown"
+          ],
+          "requires": "phasing",
+          "requiresRanks": 2
+        },
+        {
           "branch": 2,
           "depth": 0,
           "effects": [
@@ -5042,10 +5090,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -5060,8 +5108,8 @@
           ],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "static_wake",
           "requiresRanks": 2
@@ -5123,10 +5171,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -5136,8 +5184,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -7052,11 +7100,11 @@
       ],
       "burst": 0,
       "burstShare": 0,
-      "cooldown": 4,
+      "cooldown": 8,
       "costPerLevel": 0.0199999995529652,
       "damage": 0,
       "damagePerLevel": 0.119999997317791,
-      "description": "Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy every 0.9 s, at 70% of that skill's damage. Its tree boosts what it casts.",
+      "description": "Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy as often as that skill allows (its use time and cooldown), at 70% of its damage. Monsters can attack it: it has 30% of your maximum life. Its tree boosts what it casts.",
       "hits": 1,
       "id": "totem",
       "mana": 14,
@@ -7070,10 +7118,10 @@
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
+              "damage": 1.12000000476837
             },
             {
-              "damage": 1.25
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -7083,8 +7131,8 @@
           "parents": [],
           "ranks": [
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage",
+            "20% more damage"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -7195,9 +7243,9 @@
             }
           ],
           "ranks": [
-            "10% faster projectiles",
-            "20% faster projectiles",
-            "35% faster projectiles"
+            "8% faster projectiles",
+            "12% faster projectiles",
+            "20% faster projectiles"
           ],
           "requires": "splitting",
           "requiresRanks": 2
@@ -7358,7 +7406,7 @@
       "description": "Splashes oil over every enemy in a circle for 6 s: they take 25% more fire damage, and every fire hit ignites them.",
       "hits": 1,
       "id": "douse",
-      "mana": 10,
+      "mana": 15,
       "name": "Douse",
       "nodes": [
         {
@@ -7366,13 +7414,13 @@
           "depth": 0,
           "effects": [
             {
-              "potency": 10
+              "potency": 5
             },
             {
-              "potency": 20
+              "potency": 8
             },
             {
-              "potency": 35
+              "potency": 12
             }
           ],
           "exclusive": "",
@@ -7381,9 +7429,9 @@
           "name": "Potency",
           "parents": [],
           "ranks": [
-            "+10% to its effect",
-            "+20% to its effect",
-            "+35% to its effect"
+            "+5% to its effect",
+            "+8% to its effect",
+            "+12% to its effect"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -7641,13 +7689,13 @@
           "depth": 0,
           "effects": [
             {
+              "potency": 5
+            },
+            {
               "potency": 10
             },
             {
               "potency": 20
-            },
-            {
-              "potency": 35
             }
           ],
           "exclusive": "",
@@ -7656,9 +7704,9 @@
           "name": "Potency",
           "parents": [],
           "ranks": [
+            "+5% to its effect",
             "+10% to its effect",
-            "+20% to its effect",
-            "+35% to its effect"
+            "+20% to its effect"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -7668,13 +7716,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.04999995231628
+            },
+            {
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
-            },
-            {
-              "damage": 1.25
+              "damage": 1.12000000476837
             }
           ],
           "exclusive": "",
@@ -7688,9 +7736,9 @@
             }
           ],
           "ranks": [
+            "5% more damage",
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage"
           ],
           "requires": "potency",
           "requiresRanks": 2
@@ -7700,7 +7748,7 @@
           "depth": 2,
           "effects": [
             {
-              "splash": 0.5
+              "splash": 0.349999994039536
             }
           ],
           "exclusive": "",
@@ -7714,7 +7762,7 @@
             }
           ],
           "ranks": [
-            "Each detonation splashes 50% of its damage around and ignites what it hits"
+            "Each detonation splashes 35% of its damage around and ignites what it hits"
           ],
           "requires": "power",
           "requiresRanks": 2
@@ -7810,10 +7858,10 @@
               "cooldown": 0.899999976158142
             },
             {
-              "cooldown": 0.800000011920929
+              "cooldown": 0.860000014305115
             },
             {
-              "cooldown": 0.699999988079071
+              "cooldown": 0.800000011920929
             }
           ],
           "exclusive": "",
@@ -7823,8 +7871,8 @@
           "parents": [],
           "ranks": [
             "10% shorter cooldown",
-            "20% shorter cooldown",
-            "30% shorter cooldown"
+            "14% shorter cooldown",
+            "20% shorter cooldown"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -7867,7 +7915,7 @@
           "effects": [
             {
               "cost": 1.25,
-              "damage": 1.35000002384186
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -7881,7 +7929,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "20% more damage, 25% more mana cost"
           ],
           "requires": "haste",
           "requiresRanks": 2
@@ -7901,7 +7949,7 @@
       ],
       "burst": 0,
       "burstShare": 0,
-      "cooldown": 3,
+      "cooldown": 20,
       "costPerLevel": 0.0199999995529652,
       "damage": 0,
       "damagePerLevel": 0.119999997317791,
@@ -7916,13 +7964,13 @@
           "depth": 0,
           "effects": [
             {
+              "potency": 5
+            },
+            {
               "potency": 10
             },
             {
               "potency": 20
-            },
-            {
-              "potency": 35
             }
           ],
           "exclusive": "",
@@ -7931,9 +7979,9 @@
           "name": "Potency",
           "parents": [],
           "ranks": [
+            "+5% to its effect",
             "+10% to its effect",
-            "+20% to its effect",
-            "+35% to its effect"
+            "+20% to its effect"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -7943,13 +7991,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.04999995231628
+            },
+            {
               "damage": 1.08000004291534
             },
             {
-              "damage": 1.1599999666214
-            },
-            {
-              "damage": 1.25
+              "damage": 1.12000000476837
             }
           ],
           "exclusive": "",
@@ -7963,9 +8011,9 @@
             }
           ],
           "ranks": [
+            "5% more damage",
             "8% more damage",
-            "16% more damage",
-            "25% more damage"
+            "12% more damage"
           ],
           "requires": "potency",
           "requiresRanks": 2
@@ -7975,7 +8023,7 @@
           "depth": 2,
           "effects": [
             {
-              "splash": 0.5
+              "splash": 0.349999994039536
             }
           ],
           "exclusive": "",
@@ -7989,7 +8037,7 @@
             }
           ],
           "ranks": [
-            "Each detonation splashes 50% of its damage around and makes what it hits bleed"
+            "Each detonation splashes 35% of its damage around and makes what it hits bleed"
           ],
           "requires": "power",
           "requiresRanks": 2
@@ -8085,10 +8133,10 @@
               "cooldown": 0.899999976158142
             },
             {
-              "cooldown": 0.800000011920929
+              "cooldown": 0.860000014305115
             },
             {
-              "cooldown": 0.699999988079071
+              "cooldown": 0.800000011920929
             }
           ],
           "exclusive": "",
@@ -8098,8 +8146,8 @@
           "parents": [],
           "ranks": [
             "10% shorter cooldown",
-            "20% shorter cooldown",
-            "30% shorter cooldown"
+            "14% shorter cooldown",
+            "20% shorter cooldown"
           ],
           "requires": "",
           "requiresRanks": 0
@@ -8142,7 +8190,7 @@
           "effects": [
             {
               "cost": 1.25,
-              "damage": 1.35000002384186
+              "damage": 1.20000004768372
             }
           ],
           "exclusive": "",
@@ -8156,7 +8204,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "20% more damage, 25% more mana cost"
           ],
           "requires": "haste",
           "requiresRanks": 2

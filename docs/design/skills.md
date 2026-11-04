@@ -2203,9 +2203,10 @@ Tree: Elements (Power, *Attunement*: more elemental damage, *Conduit*: ignite/sh
 chances), Form (*Splitting*: projectiles fork, Velocity, Volley or Shockwave), Ritual
 (*Quickened*: casts faster, Lingering, *Ancestral Ring*: +1 totem). Any skill that hits
 fits (`SkillRules.FitsTotem`); auras, movement skills and other totems do not. A totem
-with nothing socketed refuses to be cast (no mana spent). Totems cannot be hit for now.
+with nothing socketed refuses to be cast (no mana spent). Since 2026-11-04 totems have
+life and monsters attack them (below, "Balance pass of 2026-11-04").
 
-Open questions: totems as targets for monsters; a totem model in the voxel view (it is a
+Open questions: a totem model in the voxel view (it is a
 drawn pole on the 2D canvas); whether a socketed skill should also need to be owned at a
 level (it is any owned gem).
 
@@ -2314,3 +2315,53 @@ node (`TreeCanvas.FillTip`, `UiTheme.RefreshInstantTooltip`): the name and rank,
 excludes, and what a left or right click does. Before, the canvas had one tooltip filled on
 entering it — with no node under the mouse yet, so it never showed. `ESCALDON-NODE-TOOLTIP`
 (EndgameSmokeTest) points at the node with the longest text and checks every rank is there.
+
+## Balance pass of 2026-11-04 **[IMPLEMENTED]**
+
+Owner's list from the editor. The aim: damage must not come only from the skill trees —
+gear has to matter too — and Combust/Exsanguinate were too strong.
+
+**Numbers**
+- **Power** (every tree): 8 / 12 / 20% more damage (was 8 / 16 / 25). Combust and
+  Exsanguinate: 5 / 8 / 12.
+- Fireball **Searing**: ignites deal 10 / 15 / 25% more (was 20 / 40 / 70; Meteor's Searing
+  is unchanged). Spark **Efficiency**: 8 / 12 / 20% less mana (was 8 / 16 / 25).
+- **Overwhelm**: Frost Shards and Corruption 25% more damage, 20% more mana (was 35 / 25);
+  Combust and Exsanguinate 20% more damage (mana +25% unchanged). Others keep 35 / 25.
+- Combust and Exsanguinate: **Potency** +5 / 10 / 20% (was 10 / 20 / 35), **Patience**
+  10 / 14 / 20% shorter cooldown, **Chain Reaction / Blood Nova** splash 35% (was 50%).
+  Exsanguinate's cooldown 3 → 20 s (Combust was already 20).
+- Douse: 15 mana (was 10), its Potency +5 / 8 / 12%.
+- Spell Totem: cooldown 4 → 8 s; its Velocity 8 / 12 / 20% (was 10 / 20 / 35).
+
+**Spark: Rebound → Cold Current.** "+N wall bounces" made no sense: sparks already bounce.
+The node is now **Cold Current** — 8 / 12 / 20% of the damage is *converted* to cold. One hit
+with two damage types (`HitProfile.ColdConversion` builds a two-component `DamagePayload`), so
+that share is resisted by cold resistance and the hit chills (`Ailments` handles each
+component). Long Arc now needs it. Other ideas offered to the owner for that slot: a short
+chill on every bounce, or +1 pierce after a bounce. A character whose saved Spark tree had
+points in Rebound has that tree reset (points refunded) by `SkillTreeRules.Sanitize`.
+
+**Blink: two notables.** **Rewind** (after Efficiency 2): pressing again within 3 s takes you
+back to where you blinked from, as if time ran backwards; it spends no charge or mana
+(`SkillInstance.RewindPoint/RewindUntil`). Because a held button retries the cast every
+frame, the rewind only arms once the button has been let go (`RewindArmed`), so holding it
+never rewinds by itself. **Second Wind** (after Phasing 2): +1 charge
+(`CastContext.ExtraCharges` → `SkillInstance.ExtraCharges`, read from the tree when the skill is
+equipped; `SkillInstance.MaxCharges` now counts it). The owner's change list named both new
+nodes "Notable nuevo" with one arrow each from Efficiency and from Phasing; Rewind went to
+Efficiency (the Rift branch) and Second Wind to Phasing (the Distance branch).
+
+**Totems respect their skill and can be killed.**
+- A totem waits the socketed skill's **use time and cooldown** (with the caster's speed, the
+  gem's tree and the totem's tree), never less than 0.9 s: `SkillUser.CastFrom` now returns
+  that wait. A Meteor totem casts once every 5 s instead of every 0.9 s.
+- A totem has **life** (30% of its owner's maximum life, at least 60): it is an `Area2D` on
+  the players' collision layer with its own `Stats` + `Health`, joins the players' group, so
+  bursts, projectiles and contact hits reach it, and monsters go for it when it is nearer than
+  any player (`Enemy.FindTarget`). It breaks at 0 life; a small life bar shows once it is hit.
+  Code that wants players filters on `is Player` (`CombatQuery.LocalPlayer` no longer takes the
+  first node of the group blindly).
+
+Tests: SkillKitTest `TOTEM-HAS-LIFE`, `TOTEM-BREAKS`, `TOTEM-RESPECTS-COOLDOWN`,
+`BLINK-SECOND-WIND`, `BLINK-REWIND`, `BLINK-TWO-CHARGES`, `SPARK-COLD-CURRENT`.

@@ -29,6 +29,26 @@ public sealed class SkillInstance
     /// behaves exactly like a plain "is it off cooldown" flag.</summary>
     public int ChargesAvailable { get; set; }
 
+    /// <summary>Charges its tree adds (Blink's "Second Wind", 2026-11-04), read from the
+    /// tree when the skill is equipped (<see cref="SkillUser.EquipSkill"/>).</summary>
+    public int ExtraCharges { get; set; }
+
+    /// <summary>Uses it can bank: the definition's plus its tree's.</summary>
+    public int MaxCharges => Definition.MaxCharges + ExtraCharges;
+
+    /// <summary>Blink's "Rewind" (2026-11-04): where the last use started and until when
+    /// a second press takes the caster back there (game time, seconds).</summary>
+    public Godot.Vector2 RewindPoint { get; set; }
+
+    public float RewindUntil { get; set; } = -1f;
+
+    /// <summary>The rewind waits for the button to be let go once (casts are retried every
+    /// frame a button is held), so holding it never rewinds by itself.</summary>
+    public bool RewindArmed { get; set; }
+
+    /// <summary>Physics frame of the last <see cref="SkillUser.TryCast(SkillSlotId, Godot.Vector2)"/> on this skill.</summary>
+    public ulong LastTryFrame { get; set; }
+
     /// <summary>Time remaining until the next charge becomes available. Only
     /// meaningful while <see cref="ChargesAvailable"/> is below
     /// <see cref="SkillDefinition.MaxCharges"/>.</summary>
