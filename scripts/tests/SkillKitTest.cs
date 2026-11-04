@@ -98,6 +98,7 @@ public partial class SkillKitTest : Node2D
         await TitanChecks();
         await TotemChecks();
         await MovementChecks();
+        await VolleyChecks();
 
         string verdict = _failed ? "[SKILLKIT] === RESULT: FAIL ===" : "[SKILLKIT] === RESULT: PASS ===";
         _lines.Add(verdict);
@@ -157,6 +158,39 @@ public partial class SkillKitTest : Node2D
         bool bFree = SkillTreeRules.CannotLower(gem, tree, b) is null;
         Check("TREE-TWO-PATHS", closed && viaB && bLocked && bFree,
             $"closed with no points (\"Needs … or …\")={closed}; opened by 1 point in B={viaB}; B can't be refunded while it is C's only way in={bLocked}; once A has 2 points it can={bFree}");
+    }
+
+    /// <summary>Volley ("+1 projectile") really adds one: it used to only cost 10% damage
+    /// (found 2026-11-04 while exporting the trees' numbers for the editor's analysis).</summary>
+    private async Task VolleyChecks()
+    {
+        Vector2 at = new(14000f, 0f);
+        _player.GlobalPosition = at;
+        await Seconds(0.1f);
+        int Count(bool volley)
+        {
+            SkillInstance fb = Equip("fireball");
+            if (volley)
+            {
+                fb.TreeModifiers.AddRange(SkillTrees.ModifiersFor("fireball", new Dictionary<string, int> { ["velocity"] = 2, ["efficiency"] = 2, ["volley"] = 1 }));
+            }
+
+            Ready(fb);
+            int before = GetChildren().OfType<Projectile>().Count();
+            _skills.TryCast(SkillSlotId.Slot1, Vector2.Right);
+            return GetChildren().OfType<Projectile>().Count() - before;
+        }
+
+        int plain = Count(false);
+        int volley = Count(true);
+        Check("VOLLEY-ADDS-A-PROJECTILE", plain == 1 && volley == 2, $"Fireball fires {plain}; with Volley {volley}");
+        await Seconds(0.1f);
+        foreach (Projectile p in GetChildren().OfType<Projectile>())
+        {
+            p.QueueFree();
+        }
+
+        _skills.ClearSlot(SkillSlotId.Slot1);
     }
 
     private void SlotChecks()

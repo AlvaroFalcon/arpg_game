@@ -840,3 +840,9 @@ Same day: the spawner got an enemy picker, a card per monster and boss with its 
 
 ![The enemy picker](screenshots/playground-picker.png)
 ![A boss's card](screenshots/playground-picker-boss.png)
+
+## 2026-11-04: charts of a skill's path
+
+The skill-tree editor got an *Análisis* tab: pick the points of a path in the order you would spend them, slide the gem level from 1 to 20 and see small charts of damage, estimated DPS, mana, cooldown and use time, against the same gem without its tree. The numbers aren't parsed from node texts: the game itself measures each node rank on a neutral cast and exports the difference, and the page only combines them. Doing that turned up a real bug — Fireball's Volley promised "+1 projectile" and fired one; it does now.
+
+![The editor's analysis tab](screenshots/workbench-analysis.png)

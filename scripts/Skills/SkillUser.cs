@@ -261,6 +261,16 @@ public partial class SkillUser : Node
         }
 
         ApplyCastModifiers(context, modifiers);
+
+        // "+1 projectile" nodes (Volley) count in ExtraCount; projectiles read their own Count.
+        // Folded in once here, so a repeat or a totem cast never adds them twice.
+        if (context.Projectile is { } p && context.ExtraCount > 0)
+        {
+            p.Count += context.ExtraCount;
+            context.ExtraCount = 0;
+            EnsureSpreadForCount(p);
+        }
+
         return context;
     }
 

@@ -2274,6 +2274,37 @@ condition) and notes. Old saves of the editor (format 1, `requires`) open as gra
 The game's own panel still lays trees out in rows and columns (branch, depth); a graph
 from the editor is mapped onto that when it is implemented.
 
+### Analysis mode (2026-11-04) **[IMPLEMENTED]**
+
+Owner's ask: pick a path in a skill's tree, raise the gem's level and see on charts how
+mana, cooldown, damage and the rest change. The editor's **Análisis** tab (next to
+**Árbol**) has a level slider (1–20) and the tree as a list where `+` spends a point in
+the order you would spend it (requirements, any-of arrows, "pick one" groups and max ranks
+are enforced; removing a point drops the later ones it made illegal). Gem level L has L−1
+points, so the charts show *when* each node arrives: one small chart per number (damage per
+hit, estimated single-target DPS, mana, mana per second, cooldown, use time, hits per use,
+an aura's passive/active strength), each with the path against the same gem with no tree
+(dashed), a tick where a point lands, a hover readout and a click that sets the level. The
+right panel lists every number at the chosen level, path vs none (area, duration, chances,
+pierce/chain, conversion…).
+
+**Where the numbers come from:** `DumpSkillTrees` evaluates every node rank on a neutral
+`CastContext` of its skill (the same `ApplyCastModifiers` the game runs) and exports the
+difference as `effects` — a factor for multipliers (damage, cost, cooldown, area…), the
+value for "max" knobs (burst, burst share, kill blast…), a difference for counts and
+chances. The page multiplies factors, takes the largest "max" value and adds the rest, so
+it never re-implements a node's text. Nodes with no number (an aura's extra stat line,
+a curse's spread) are flagged "ver texto" and left out. Per level: damage × (1 + 12 % ×
+(L−1)), mana × (1 + 2 % × (L−1)), auras × (1 + 3 % × (L−1)). DPS = per-target damage
+(hit + burst share) × hits per use × (1 + repeats) / max(use time, cooldown) — the skill
+alone: no character stats, crits or damage over time. The skill's own numbers come from the
+editable fields, so an edited cooldown shows on the charts.
+
+Building it found a bug: **Volley's "+1 projectile" did nothing** — it raised
+`CastContext.ExtraCount`, which projectiles never read. `SkillUser.ResolveContext` now folds
+it into the projectile's `Count` once (so repeats and totems don't add it twice);
+`VOLLEY-ADDS-A-PROJECTILE` (SkillKitTest) covers it.
+
 ## Node tooltips at Escaldón (2026-11-02) **[IMPLEMENTED]**
 
 Owner's report: a node's text is sometimes cut to the node's width. Every node of

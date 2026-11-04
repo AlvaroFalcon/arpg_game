@@ -1,14 +1,20 @@
 {
   "skills": [
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Inferno",
         "Wildfire",
         "Form"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 30,
+      "damagePerLevel": 0.119999997317791,
       "description": "Hurls a slow ball of fire. Fire hits can ignite. (Its tree can make it burst on impact.)",
+      "hits": 1,
       "id": "fireball",
       "mana": 6,
       "name": "Fireball",
@@ -16,6 +22,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -32,6 +49,20 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "burst": 1,
+              "burstShare": 0.5
+            },
+            {
+              "burst": 1,
+              "burstShare": 0.5
+            },
+            {
+              "burst": 1,
+              "burstShare": 0.5
+            }
+          ],
           "exclusive": "",
           "id": "blast",
           "kind": "Lesser",
@@ -53,6 +84,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "burstShare": 1
+            }
+          ],
           "exclusive": "",
           "id": "firestorm",
           "kind": "Notable",
@@ -72,6 +108,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "ignite": 0.100000001490116
+            },
+            {
+              "ignite": 0.200000002980232
+            },
+            {
+              "ignite": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "kindle",
           "kind": "Lesser",
@@ -88,6 +135,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "igniteDamage": 1.20000004768372
+            },
+            {
+              "igniteDamage": 1.39999997615814
+            },
+            {
+              "igniteDamage": 1.70000004768372
+            }
+          ],
           "exclusive": "",
           "id": "searing",
           "kind": "Lesser",
@@ -109,6 +167,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "kill_blast",
           "kind": "Notable",
@@ -128,6 +191,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "projectileSpeed": 1.10000002384186
+            },
+            {
+              "projectileSpeed": 1.20000004768372
+            },
+            {
+              "projectileSpeed": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "velocity",
           "kind": "Lesser",
@@ -144,6 +218,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -165,6 +250,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.899999976158142,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "fireball_form",
           "id": "volley",
           "kind": "Notable",
@@ -184,6 +275,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Cold"
+            }
+          ],
           "exclusive": "fireball_form",
           "id": "frostfire",
           "kind": "Notable",
@@ -207,14 +303,20 @@
       "useTime": 0.600000023841858
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Charge",
         "Storm",
         "Path"
       ],
+      "burst": 0,
+      "burstShare": 0.5,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 14,
+      "damagePerLevel": 0.119999997317791,
       "description": "Releases slow, crackling sparks that zigzag like lightning, pass through one enemy and bounce off walls. Lightning hits can shock.",
+      "hits": 2,
       "id": "spark",
       "mana": 7,
       "name": "Spark",
@@ -222,6 +324,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -238,6 +351,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "shock": 0.100000001490116
+            },
+            {
+              "shock": 0.200000002980232
+            },
+            {
+              "shock": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "static",
           "kind": "Lesser",
@@ -259,6 +383,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "chains": 2
+            }
+          ],
           "exclusive": "spark_charge",
           "id": "ricochet",
           "kind": "Notable",
@@ -278,6 +407,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "burst": 1,
+              "burstShare": 0.400000005960464
+            }
+          ],
           "exclusive": "spark_charge",
           "id": "arc_blast",
           "kind": "Notable",
@@ -297,6 +432,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -313,6 +459,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -334,6 +491,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.899999976158142,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "spark_storm",
           "id": "volley",
           "kind": "Notable",
@@ -353,6 +516,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "pierce": 2
+            }
+          ],
           "exclusive": "spark_storm",
           "id": "piercing",
           "kind": "Notable",
@@ -372,6 +540,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "bounces": 1
+            },
+            {
+              "bounces": 2
+            },
+            {
+              "bounces": 3
+            }
+          ],
           "exclusive": "",
           "id": "bounce",
           "kind": "Lesser",
@@ -388,6 +567,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "projectileRange": 1.14999997615814
+            },
+            {
+              "projectileRange": 1.29999995231628
+            },
+            {
+              "projectileRange": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "range",
           "kind": "Lesser",
@@ -409,6 +599,13 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "bleed": 0.25,
+              "converts": "Physical",
+              "damage": 1.14999997615814
+            }
+          ],
           "exclusive": "spark_path",
           "id": "grounded",
           "kind": "Notable",
@@ -428,6 +625,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "spark_path",
           "id": "kill_blast",
           "kind": "Notable",
@@ -451,14 +653,20 @@
       "useTime": 0.449999988079071
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Winter",
         "Reach",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 3,
+      "costPerLevel": 0.0199999995529652,
       "damage": 20,
+      "damagePerLevel": 0.119999997317791,
       "description": "A ring of ice bursts around you, chilling enemies. (Its tree can make it push them back.)",
+      "hits": 1,
       "id": "frost_nova",
       "mana": 10,
       "name": "Frost Nova",
@@ -466,6 +674,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -482,6 +701,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "freeze": 0.0500000007450581
+            },
+            {
+              "freeze": 0.100000001490116
+            },
+            {
+              "freeze": 0.150000005960464
+            }
+          ],
           "exclusive": "",
           "id": "rime",
           "kind": "Lesser",
@@ -503,6 +733,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -522,6 +758,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -538,6 +785,20 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186,
+              "knockback": 120
+            },
+            {
+              "damage": 1.14999997615814,
+              "knockback": 180
+            },
+            {
+              "damage": 1.21666669845581,
+              "knockback": 260
+            }
+          ],
           "exclusive": "",
           "id": "knock",
           "kind": "Lesser",
@@ -559,6 +820,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "area": 1.39999997615814,
+              "damage": 0.899999976158142
+            }
+          ],
           "exclusive": "",
           "id": "wide",
           "kind": "Notable",
@@ -578,6 +845,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -594,6 +872,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -615,6 +904,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.800000011920929,
+              "repeats": 1
+            }
+          ],
           "exclusive": "nova_rhythm",
           "id": "echo",
           "kind": "Notable",
@@ -634,6 +929,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Lightning"
+            }
+          ],
           "exclusive": "nova_rhythm",
           "id": "static_nova",
           "kind": "Notable",
@@ -657,14 +957,20 @@
       "useTime": 0.349999994039536
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Steel",
         "Storm",
         "Time"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 6,
+      "costPerLevel": 0.0199999995529652,
       "damage": 14,
+      "damagePerLevel": 0.119999997317791,
       "description": "Summons blades that orbit you, cutting anything they touch.",
+      "hits": 3,
       "id": "blades",
       "mana": 12,
       "name": "Ethereal Blades",
@@ -672,6 +978,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -688,6 +1005,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "bleed": 0.100000001490116
+            },
+            {
+              "bleed": 0.200000002980232
+            },
+            {
+              "bleed": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "laceration",
           "kind": "Lesser",
@@ -709,6 +1037,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -728,6 +1062,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -744,6 +1089,14 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "extraHits": 1
+            },
+            {
+              "extraHits": 2
+            }
+          ],
           "exclusive": "",
           "id": "more_blades",
           "kind": "Lesser",
@@ -764,6 +1117,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Fire"
+            }
+          ],
           "exclusive": "blades_storm",
           "id": "ember_blades",
           "kind": "Notable",
@@ -783,6 +1141,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Cold"
+            }
+          ],
           "exclusive": "blades_storm",
           "id": "frost_blades",
           "kind": "Notable",
@@ -802,6 +1165,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -818,6 +1192,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -839,6 +1224,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "kill_blast",
           "kind": "Notable",
@@ -862,14 +1252,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Impact",
         "Crater",
         "Sky"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 5,
+      "costPerLevel": 0.0199999995529652,
       "damage": 50,
+      "damagePerLevel": 0.119999997317791,
       "description": "Calls down a meteor at the target after a short delay. Huge damage, small area.",
+      "hits": 1,
       "id": "meteor",
       "mana": 18,
       "name": "Meteor",
@@ -877,6 +1273,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -893,6 +1300,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "ignite": 0.100000001490116
+            },
+            {
+              "ignite": 0.200000002980232
+            },
+            {
+              "ignite": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "kindle",
           "kind": "Lesser",
@@ -914,6 +1332,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -933,6 +1357,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -949,6 +1384,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "igniteDamage": 1.20000004768372
+            },
+            {
+              "igniteDamage": 1.39999997615814
+            },
+            {
+              "igniteDamage": 1.70000004768372
+            }
+          ],
           "exclusive": "",
           "id": "searing",
           "kind": "Lesser",
@@ -970,6 +1416,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "kill_blast",
           "kind": "Notable",
@@ -989,6 +1440,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -1005,6 +1467,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -1026,6 +1499,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.800000011920929,
+              "repeats": 1
+            }
+          ],
           "exclusive": "meteor_sky",
           "id": "echo",
           "kind": "Notable",
@@ -1045,6 +1524,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Cold"
+            }
+          ],
           "exclusive": "meteor_sky",
           "id": "comet",
           "kind": "Notable",
@@ -1068,14 +1552,20 @@
       "useTime": 0.5
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Might",
         "Arc",
         "Blood"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 24,
+      "damagePerLevel": 0.119999997317791,
       "description": "A wide swing that hits every enemy in front of you. Scales with weapon damage.",
+      "hits": 1,
       "id": "cleave",
       "mana": 3,
       "name": "Cleave",
@@ -1083,6 +1573,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -1099,6 +1600,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -1120,6 +1632,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -1139,6 +1657,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -1155,6 +1684,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -1176,6 +1716,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "area": 1.39999997615814,
+              "damage": 0.899999976158142
+            }
+          ],
           "exclusive": "cleave_arc",
           "id": "wide",
           "kind": "Notable",
@@ -1195,6 +1741,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.850000023841858,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "cleave_arc",
           "id": "flurry",
           "kind": "Notable",
@@ -1214,6 +1766,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "bleed": 0.100000001490116
+            },
+            {
+              "bleed": 0.200000002980232
+            },
+            {
+              "bleed": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "laceration",
           "kind": "Lesser",
@@ -1230,6 +1793,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186
+            },
+            {
+              "damage": 1.20000004768372
+            },
+            {
+              "damage": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "rend",
           "kind": "Lesser",
@@ -1251,6 +1825,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Fire"
+            }
+          ],
           "exclusive": "cleave_blood",
           "id": "flame_cleave",
           "kind": "Notable",
@@ -1270,6 +1849,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "cleave_blood",
           "id": "kill_blast",
           "kind": "Notable",
@@ -1293,14 +1877,20 @@
       "useTime": 0.550000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Quake",
         "Fault",
         "Bound"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 2,
+      "costPerLevel": 0.0199999995529652,
       "damage": 34,
+      "damagePerLevel": 0.119999997317791,
       "description": "Leaps up to 260 px towards the cursor, untouchable in the air, and slams the ground where you land, knocking enemies back.",
+      "hits": 1,
       "id": "ground_slam",
       "mana": 7,
       "name": "Leap Slam",
@@ -1308,6 +1898,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -1324,6 +1925,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -1345,6 +1957,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "aftershocks": 1
+            }
+          ],
           "exclusive": "",
           "id": "aftershock",
           "kind": "Notable",
@@ -1364,6 +1981,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "bleed": 0.100000001490116
+            },
+            {
+              "bleed": 0.200000002980232
+            },
+            {
+              "bleed": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "laceration",
           "kind": "Lesser",
@@ -1380,6 +2008,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186
+            },
+            {
+              "damage": 1.20000004768372
+            },
+            {
+              "damage": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "fault",
           "kind": "Lesser",
@@ -1401,6 +2040,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Fire"
+            }
+          ],
           "exclusive": "slam_fault",
           "id": "magma",
           "kind": "Notable",
@@ -1420,6 +2064,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "slam_fault",
           "id": "kill_blast",
           "kind": "Notable",
@@ -1439,6 +2088,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "range": 1.14999997615814
+            },
+            {
+              "range": 1.29999995231628
+            },
+            {
+              "range": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "long_jump",
           "kind": "Lesser",
@@ -1455,6 +2115,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -1476,6 +2147,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "area": 1.25,
+              "knockback": 150
+            }
+          ],
           "exclusive": "",
           "id": "earthshaker",
           "kind": "Notable",
@@ -1499,14 +2176,20 @@
       "useTime": 0.5
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Rift",
         "Length",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 1.5,
+      "costPerLevel": 0.0199999995529652,
       "damage": 36,
+      "damagePerLevel": 0.119999997317791,
       "description": "Splits the ground in a line ahead of you after a brief wind-up.",
+      "hits": 1,
       "id": "sunder",
       "mana": 8,
       "name": "Sunder",
@@ -1514,6 +2197,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -1530,6 +2224,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "bleed": 0.100000001490116
+            },
+            {
+              "bleed": 0.200000002980232
+            },
+            {
+              "bleed": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "laceration",
           "kind": "Lesser",
@@ -1551,6 +2256,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -1570,6 +2281,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -1586,6 +2308,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186
+            },
+            {
+              "damage": 1.20000004768372
+            },
+            {
+              "damage": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "split",
           "kind": "Lesser",
@@ -1607,6 +2340,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Fire"
+            }
+          ],
           "exclusive": "sunder_length",
           "id": "volcanic",
           "kind": "Notable",
@@ -1626,6 +2364,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "sunder_length",
           "id": "kill_blast",
           "kind": "Notable",
@@ -1645,6 +2388,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -1661,6 +2415,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -1682,6 +2447,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.800000011920929,
+              "repeats": 1
+            }
+          ],
           "exclusive": "",
           "id": "echo",
           "kind": "Notable",
@@ -1705,14 +2476,20 @@
       "useTime": 0.75
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Precision",
         "Tempo",
         "Wounds"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 15,
+      "damagePerLevel": 0.119999997317791,
       "description": "Two quick stabs in a narrow arc. Fast, precise, crit-friendly.",
+      "hits": 2,
       "id": "double_strike",
       "mana": 2,
       "name": "Double Strike",
@@ -1720,6 +2497,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -1736,6 +2524,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -1757,6 +2556,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -1776,6 +2581,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -1792,6 +2608,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -1813,6 +2640,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.850000023841858,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "",
           "id": "flurry",
           "kind": "Notable",
@@ -1832,6 +2665,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "bleed": 0.100000001490116
+            },
+            {
+              "bleed": 0.200000002980232
+            },
+            {
+              "bleed": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "laceration",
           "kind": "Lesser",
@@ -1848,6 +2692,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186
+            },
+            {
+              "damage": 1.20000004768372
+            },
+            {
+              "damage": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "deep",
           "kind": "Lesser",
@@ -1869,6 +2724,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Lightning"
+            }
+          ],
           "exclusive": "ds_wounds",
           "id": "venom_strike",
           "kind": "Notable",
@@ -1888,6 +2748,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "ds_wounds",
           "id": "kill_blast",
           "kind": "Notable",
@@ -1911,14 +2776,20 @@
       "useTime": 0.419999986886978
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Edge",
         "Fan",
         "Venom"
       ],
+      "burst": 0,
+      "burstShare": 0.5,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 8,
+      "damagePerLevel": 0.119999997317791,
       "description": "Throws a fan of knives that pierce one enemy each.",
+      "hits": 3,
       "id": "throwing_knives",
       "mana": 4,
       "name": "Throwing Knives",
@@ -1926,6 +2797,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -1942,6 +2824,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -1963,6 +2856,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "pierce": 2
+            }
+          ],
           "exclusive": "knives_edge",
           "id": "piercing",
           "kind": "Notable",
@@ -1982,6 +2880,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "chains": 2
+            }
+          ],
           "exclusive": "knives_edge",
           "id": "ricochet",
           "kind": "Notable",
@@ -2001,6 +2904,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "projectileSpeed": 1.10000002384186
+            },
+            {
+              "projectileSpeed": 1.20000004768372
+            },
+            {
+              "projectileSpeed": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "velocity",
           "kind": "Lesser",
@@ -2017,6 +2931,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186
+            },
+            {
+              "damage": 1.20000004768372
+            },
+            {
+              "damage": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "spread",
           "kind": "Lesser",
@@ -2038,6 +2963,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.899999976158142,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "",
           "id": "volley",
           "kind": "Notable",
@@ -2057,6 +2988,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "bleed": 0.100000001490116
+            },
+            {
+              "bleed": 0.200000002980232
+            },
+            {
+              "bleed": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "laceration",
           "kind": "Lesser",
@@ -2073,6 +3015,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -2094,6 +3047,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Lightning"
+            }
+          ],
           "exclusive": "knives_venom",
           "id": "poisoned_tips",
           "kind": "Notable",
@@ -2113,6 +3071,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "knives_venom",
           "id": "kill_blast",
           "kind": "Notable",
@@ -2136,14 +3099,20 @@
       "useTime": 0.5
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Ice",
         "Volley",
         "Shatter"
       ],
+      "burst": 0,
+      "burstShare": 0.5,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 9,
+      "damagePerLevel": 0.119999997317791,
       "description": "Hurls a fan of ice shards. Cold hits chill enemies.",
+      "hits": 3,
       "id": "frost_shards",
       "mana": 6,
       "name": "Frost Shards",
@@ -2151,6 +3120,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -2167,6 +3147,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "freeze": 0.0500000007450581
+            },
+            {
+              "freeze": 0.100000001490116
+            },
+            {
+              "freeze": 0.150000005960464
+            }
+          ],
           "exclusive": "",
           "id": "rime",
           "kind": "Lesser",
@@ -2188,6 +3179,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -2207,6 +3204,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "projectileSpeed": 1.10000002384186
+            },
+            {
+              "projectileSpeed": 1.20000004768372
+            },
+            {
+              "projectileSpeed": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "velocity",
           "kind": "Lesser",
@@ -2223,6 +3231,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -2244,6 +3263,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.899999976158142,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "shards_volley",
           "id": "volley",
           "kind": "Notable",
@@ -2263,6 +3288,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "pierce": 2
+            }
+          ],
           "exclusive": "shards_volley",
           "id": "piercing",
           "kind": "Notable",
@@ -2282,6 +3312,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -2298,6 +3339,20 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186,
+              "projectileSpeed": 0.949999988079071
+            },
+            {
+              "damage": 1.20000004768372,
+              "projectileSpeed": 0.899999976158142
+            },
+            {
+              "damage": 1.29999995231628,
+              "projectileSpeed": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "brittle",
           "kind": "Lesser",
@@ -2319,6 +3374,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "kill_blast",
           "kind": "Notable",
@@ -2342,14 +3402,20 @@
       "useTime": 0.449999988079071
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Thunder",
         "Tempo",
         "Conduit"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 20,
+      "damagePerLevel": 0.119999997317791,
       "description": "A lightning-charged thrust in a narrow arc. Lightning hits can shock.",
+      "hits": 1,
       "id": "storm_strike",
       "mana": 4,
       "name": "Storm Strike",
@@ -2357,6 +3423,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -2373,6 +3450,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "shock": 0.100000001490116
+            },
+            {
+              "shock": 0.200000002980232
+            },
+            {
+              "shock": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "static",
           "kind": "Lesser",
@@ -2394,6 +3482,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -2413,6 +3507,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -2429,6 +3534,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -2450,6 +3566,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.850000023841858,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "",
           "id": "flurry",
           "kind": "Notable",
@@ -2469,6 +3591,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -2485,6 +3618,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186
+            },
+            {
+              "damage": 1.20000004768372
+            },
+            {
+              "damage": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "charged",
           "kind": "Lesser",
@@ -2506,6 +3650,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "storm_conduit",
           "id": "kill_blast",
           "kind": "Notable",
@@ -2525,6 +3674,13 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "bleed": 0.25,
+              "converts": "Physical",
+              "damage": 1.14999997615814
+            }
+          ],
           "exclusive": "storm_conduit",
           "id": "thunder_steel",
           "kind": "Notable",
@@ -2548,14 +3704,20 @@
       "useTime": 0.400000005960464
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Glacier",
         "Weight",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 30,
+      "damagePerLevel": 0.119999997317791,
       "description": "A heavy overhead blow that shatters frost over a wide arc. Cold hits chill enemies.",
+      "hits": 1,
       "id": "glacial_hammer",
       "mana": 5,
       "name": "Glacial Hammer",
@@ -2563,6 +3725,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -2579,6 +3752,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "freeze": 0.0500000007450581
+            },
+            {
+              "freeze": 0.100000001490116
+            },
+            {
+              "freeze": 0.150000005960464
+            }
+          ],
           "exclusive": "",
           "id": "rime",
           "kind": "Lesser",
@@ -2600,6 +3784,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -2619,6 +3809,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -2635,6 +3836,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.10000002384186
+            },
+            {
+              "damage": 1.20000004768372
+            },
+            {
+              "damage": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "heavy",
           "kind": "Lesser",
@@ -2656,6 +3868,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.300000011920929
+            }
+          ],
           "exclusive": "hammer_weight",
           "id": "kill_blast",
           "kind": "Notable",
@@ -2675,6 +3892,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "area": 1.39999997615814,
+              "damage": 0.899999976158142
+            }
+          ],
           "exclusive": "hammer_weight",
           "id": "wide",
           "kind": "Notable",
@@ -2694,6 +3917,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -2710,6 +3944,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -2731,6 +3976,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.850000023841858,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "",
           "id": "flurry",
           "kind": "Notable",
@@ -2754,14 +4005,20 @@
       "useTime": 0.699999988079071
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Rot",
         "Plague",
         "Reach"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 0,
+      "costPerLevel": 0.0199999995529652,
       "damage": 12,
+      "damagePerLevel": 0.119999997317791,
       "description": "Curses the enemy nearest the cursor with a corruption that eats it away: shadow damage every second for 6 s. No resistance stops it.",
+      "hits": 1,
       "id": "corruption",
       "mana": 10,
       "name": "Corruption",
@@ -2769,6 +4026,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -2785,6 +4053,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -2806,6 +4085,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -2825,6 +4110,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -2841,6 +4137,14 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "virulence",
           "kind": "Lesser",
@@ -2861,6 +4165,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "pandemic",
           "kind": "Notable",
@@ -2880,6 +4189,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -2896,6 +4216,14 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "multi",
           "kind": "Lesser",
@@ -2916,6 +4244,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "area": 2.20000004768372,
+              "damage": 0.800000011920929
+            }
+          ],
           "exclusive": "",
           "id": "blight_field",
           "kind": "Notable",
@@ -2939,14 +4273,20 @@
       "useTime": 0.5
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Weakness",
         "Reach",
         "Ruin"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 4,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Curses every enemy in an area: their fire, cold and lightning resistances drop by 25 for 6 s.",
+      "hits": 1,
       "id": "curse_elements",
       "mana": 14,
       "name": "Curse of Elements",
@@ -2954,6 +4294,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "potency": 5
+            },
+            {
+              "potency": 10
+            },
+            {
+              "potency": 15
+            }
+          ],
           "exclusive": "",
           "id": "weakness",
           "kind": "Lesser",
@@ -2970,6 +4321,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -2991,6 +4353,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "exposure",
           "kind": "Notable",
@@ -3010,6 +4377,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -3026,6 +4404,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -3047,6 +4436,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "hex_contagion",
           "kind": "Notable",
@@ -3066,6 +4460,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -3082,6 +4487,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -3103,6 +4519,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "killBlast": 0.100000001490116
+            }
+          ],
           "exclusive": "",
           "id": "hex_burst",
           "kind": "Notable",
@@ -3126,14 +4547,20 @@
       "useTime": 0.449999988079071
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Stillness",
         "Reach",
         "Echo"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 6,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Curses every enemy in an area: they move 35% slower for 5 s.",
+      "hits": 1,
       "id": "curse_time",
       "mana": 16,
       "name": "Curse of the World",
@@ -3141,6 +4568,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "potency": 5
+            },
+            {
+              "potency": 10
+            },
+            {
+              "potency": 15
+            }
+          ],
           "exclusive": "",
           "id": "drag",
           "kind": "Lesser",
@@ -3157,6 +4595,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -3178,6 +4627,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "duration": 0.800000011920929,
+              "potency": 20
+            }
+          ],
           "exclusive": "",
           "id": "stasis",
           "kind": "Notable",
@@ -3197,6 +4652,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -3213,6 +4679,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -3234,6 +4711,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "time_contagion",
           "kind": "Notable",
@@ -3253,6 +4735,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -3269,6 +4762,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -3290,6 +4794,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "time_frailty",
           "kind": "Notable",
@@ -3313,14 +4822,20 @@
       "useTime": 0.449999988079071
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Rift",
         "Distance",
         "Arcane"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 2.5,
+      "costPerLevel": 0.0199999995529652,
       "damage": 12,
+      "damagePerLevel": 0.119999997317791,
       "description": "Vanishes and reappears up to 230 px towards the cursor, untouchable for an instant. Walls stop it.",
+      "hits": 1,
       "id": "blink",
       "mana": 6,
       "name": "Blink",
@@ -3328,6 +4843,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -3344,6 +4870,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -3365,6 +4902,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "cooldown": 0.600000023841858,
+              "range": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "flicker",
           "kind": "Notable",
@@ -3384,6 +4927,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "range": 1.14999997615814
+            },
+            {
+              "range": 1.29999995231628
+            },
+            {
+              "range": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "far_step",
           "kind": "Lesser",
@@ -3400,6 +4954,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "invulnerable": 0.100000001490116
+            },
+            {
+              "invulnerable": 0.200000002980232
+            },
+            {
+              "invulnerable": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "phasing",
           "kind": "Lesser",
@@ -3421,6 +4986,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "elusive",
           "kind": "Notable",
@@ -3440,6 +5010,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "static_wake",
           "kind": "Lesser",
@@ -3456,6 +5037,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -3477,6 +5069,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "converts": "Cold"
+            }
+          ],
           "exclusive": "",
           "id": "frozen_arrival",
           "kind": "Notable",
@@ -3500,14 +5097,20 @@
       "useTime": 0.25
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Inferno",
         "Sacrifice",
         "Wildfire"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 0.5,
+      "costPerLevel": 0.0199999995529652,
       "damage": 14,
+      "damagePerLevel": 0.119999997317791,
       "description": "Switch on / off. While on, burns every enemy within 110 px for 14 fire damage per second (it can ignite) — and costs you 2% of your maximum life every second.",
+      "hits": 1,
       "id": "immolation",
       "mana": 8,
       "name": "Immolation Aura",
@@ -3515,6 +5118,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -3531,6 +5145,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -3552,6 +5177,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "ignite": 0.400000005960464
+            }
+          ],
           "exclusive": "",
           "id": "kindling_heart",
           "kind": "Notable",
@@ -3571,6 +5201,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "drain": 0.850000023841858
+            },
+            {
+              "drain": 0.699999988079071
+            },
+            {
+              "drain": 0.550000011920929
+            }
+          ],
           "exclusive": "",
           "id": "tempered",
           "kind": "Lesser",
@@ -3587,6 +5228,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "pyre_ward",
           "kind": "Lesser",
@@ -3608,6 +5260,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 1.39999997615814,
+              "drain": 2
+            }
+          ],
           "exclusive": "immo_sacrifice",
           "id": "blood_pyre",
           "kind": "Notable",
@@ -3627,6 +5285,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "immo_sacrifice",
           "id": "cinder_skin",
           "kind": "Notable",
@@ -3646,6 +5309,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "ignite": 0.100000001490116
+            },
+            {
+              "ignite": 0.200000002980232
+            },
+            {
+              "ignite": 0.300000011920929
+            }
+          ],
           "exclusive": "",
           "id": "kindle",
           "kind": "Lesser",
@@ -3662,6 +5336,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "igniteDamage": 1.20000004768372
+            },
+            {
+              "igniteDamage": 1.39999997615814
+            },
+            {
+              "igniteDamage": 1.70000004768372
+            }
+          ],
           "exclusive": "",
           "id": "searing",
           "kind": "Lesser",
@@ -3683,6 +5368,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "smoulder",
           "kind": "Notable",
@@ -3706,14 +5396,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Bulwark",
         "Surge",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 20,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Aura. While it is in a slot: +10 to fire, cold and lightning resistance. Use: +40 more to all three for 6 s.",
+      "hits": 1,
       "id": "elemental_ward",
       "mana": 15,
       "name": "Elemental Ward",
@@ -3721,6 +5417,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "warding",
           "kind": "Lesser",
@@ -3737,6 +5444,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "passive": 1.10000002384186
+            },
+            {
+              "passive": 1.20000004768372
+            },
+            {
+              "passive": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "resolve",
           "kind": "Lesser",
@@ -3758,6 +5476,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "elemental_body",
           "kind": "Notable",
@@ -3777,6 +5500,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "active": 1.10000002384186
+            },
+            {
+              "active": 1.20000004768372
+            },
+            {
+              "active": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "surge",
           "kind": "Lesser",
@@ -3793,6 +5527,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -3814,6 +5559,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "elemental_shell",
           "kind": "Notable",
@@ -3833,6 +5583,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -3849,6 +5610,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -3870,6 +5642,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "active": 0.800000011920929,
+              "duration": 1.60000002384186
+            }
+          ],
           "exclusive": "",
           "id": "steady_ward",
           "kind": "Notable",
@@ -3893,14 +5671,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Fire",
         "Frost",
         "Thunder"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 18,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Aura. While it is in a slot: 15% increased fire, cold and lightning damage. Use: 30% more elemental damage for 6 s. Its tree can focus it on one element.",
+      "hits": 1,
       "id": "elemental_storm",
       "mana": 15,
       "name": "Elemental Storm",
@@ -3908,6 +5692,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "embers",
           "kind": "Lesser",
@@ -3924,6 +5719,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "wildfire",
           "kind": "Lesser",
@@ -3945,6 +5751,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "storm_focus",
           "id": "fire_focus",
           "kind": "Notable",
@@ -3964,6 +5775,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "frostbite",
           "kind": "Lesser",
@@ -3980,6 +5802,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "hoarfrost",
           "kind": "Lesser",
@@ -4001,6 +5834,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "storm_focus",
           "id": "cold_focus",
           "kind": "Notable",
@@ -4020,6 +5858,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "static_charge",
           "kind": "Lesser",
@@ -4036,6 +5885,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "conduction",
           "kind": "Lesser",
@@ -4057,6 +5917,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "storm_focus",
           "id": "lightning_focus",
           "kind": "Notable",
@@ -4080,14 +5945,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Focus",
         "Lethality",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 18,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Aura. While it is in a slot: +3% critical strike chance and +20% critical strike multiplier. Use: +10% chance and +60% multiplier for 5 s.",
+      "hits": 1,
       "id": "precision",
       "mana": 12,
       "name": "Precision",
@@ -4095,6 +5966,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "keen",
           "kind": "Lesser",
@@ -4111,6 +5993,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "deadly",
           "kind": "Lesser",
@@ -4132,6 +6025,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "active": 0.800000011920929,
+              "passive": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "sharpshooter",
           "kind": "Notable",
@@ -4151,6 +6050,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "active": 1.10000002384186
+            },
+            {
+              "active": 1.20000004768372
+            },
+            {
+              "active": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "surge",
           "kind": "Lesser",
@@ -4167,6 +6077,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -4188,6 +6109,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "opening_strike",
           "kind": "Notable",
@@ -4207,6 +6133,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -4223,6 +6160,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -4244,6 +6192,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "flow",
           "kind": "Notable",
@@ -4267,14 +6220,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Wounds",
         "Frenzy",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 16,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Aura. While it is in a slot: physical attacks have +15% chance to cause bleeding, and bleeds last 25% longer. Use: for 6 s every bleed adds 3 stacks instead of 1, and +20% bleed chance.",
+      "hits": 1,
       "id": "bloodthirst",
       "mana": 12,
       "name": "Bloodthirst",
@@ -4282,6 +6241,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "deep_wounds",
           "kind": "Lesser",
@@ -4298,6 +6268,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "hemophilia",
           "kind": "Lesser",
@@ -4319,6 +6300,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "haemorrhage",
           "kind": "Notable",
@@ -4338,6 +6324,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "active": 1.10000002384186
+            },
+            {
+              "active": 1.20000004768372
+            },
+            {
+              "active": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "surge",
           "kind": "Lesser",
@@ -4354,6 +6351,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -4375,6 +6383,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "blood_frenzy",
           "kind": "Notable",
@@ -4394,6 +6407,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -4410,6 +6434,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -4431,6 +6466,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "sanguine",
           "kind": "Notable",
@@ -4454,14 +6494,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Bastion",
         "Colossus",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 20,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Aura. While it is in a slot: +40 armour and 30% increased armour. Use: 80% more armour for 6 s, and nothing can knock you back.",
+      "hits": 1,
       "id": "titan",
       "mana": 12,
       "name": "Titan Aura",
@@ -4469,6 +6515,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "plating",
           "kind": "Lesser",
@@ -4485,6 +6542,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "girth",
           "kind": "Lesser",
@@ -4506,6 +6574,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "immovable",
           "kind": "Notable",
@@ -4525,6 +6598,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "active": 1.10000002384186
+            },
+            {
+              "active": 1.20000004768372
+            },
+            {
+              "active": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "surge",
           "kind": "Lesser",
@@ -4541,6 +6625,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -4562,6 +6657,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "stone_skin",
           "kind": "Notable",
@@ -4581,6 +6681,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -4597,6 +6708,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -4618,6 +6740,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "retaliation",
           "kind": "Notable",
@@ -4641,14 +6768,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Vigour",
         "Mending",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 25,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Aura. While it is in a slot: 12% increased maximum life. Use: heals 25% of your maximum life, and you take 30% less damage for 4 s.",
+      "hits": 1,
       "id": "vitality",
       "mana": 15,
       "name": "Vitality",
@@ -4656,6 +6789,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "vigour",
           "kind": "Lesser",
@@ -4672,6 +6816,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "regrowth",
           "kind": "Lesser",
@@ -4693,6 +6848,12 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "heal": -0.09999999403954,
+              "passive": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "colossal_heart",
           "kind": "Notable",
@@ -4712,6 +6873,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "heal": 0.050000011920929
+            },
+            {
+              "heal": 0.0999999940395355
+            },
+            {
+              "heal": 0.150000005960464
+            }
+          ],
           "exclusive": "",
           "id": "mending",
           "kind": "Lesser",
@@ -4728,6 +6900,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "fortify",
           "kind": "Lesser",
@@ -4749,6 +6932,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "second_wind",
           "kind": "Notable",
@@ -4768,6 +6956,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -4784,6 +6983,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -4805,6 +7015,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "cooldown": 0.800000011920929,
+              "heal": 0.0999999940395355
+            }
+          ],
           "exclusive": "",
           "id": "renewal",
           "kind": "Notable",
@@ -4828,14 +7044,20 @@
       "useTime": 0.300000011920929
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Elements",
         "Form",
         "Ritual"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 4,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy every 0.9 s, at 70% of that skill's damage. Its tree boosts what it casts.",
+      "hits": 1,
       "id": "totem",
       "mana": 14,
       "name": "Spell Totem",
@@ -4843,6 +7065,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -4859,6 +7092,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "attunement",
           "kind": "Lesser",
@@ -4880,6 +7124,13 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "freeze": 0.0500000007450581,
+              "ignite": 0.150000005960464,
+              "shock": 0.150000005960464
+            }
+          ],
           "exclusive": "",
           "id": "conduit",
           "kind": "Notable",
@@ -4899,6 +7150,14 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "splitting",
           "kind": "Lesser",
@@ -4914,6 +7173,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+
+            },
+            {
+
+            },
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "velocity",
           "kind": "Lesser",
@@ -4935,6 +7205,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.899999976158142,
+              "extraHits": 1
+            }
+          ],
           "exclusive": "totem_form",
           "id": "volley",
           "kind": "Notable",
@@ -4954,6 +7230,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "area": 1.39999997615814,
+              "damage": 0.899999976158142
+            }
+          ],
           "exclusive": "totem_form",
           "id": "wide",
           "kind": "Notable",
@@ -4973,6 +7255,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "useTime": 0.920000016689301
+            },
+            {
+              "useTime": 0.840000033378601
+            },
+            {
+              "useTime": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "quickened",
           "kind": "Lesser",
@@ -4989,6 +7282,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -5010,6 +7314,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "damage": 0.850000023841858,
+              "totems": 1
+            }
+          ],
           "exclusive": "",
           "id": "ancestral_ring",
           "kind": "Notable",
@@ -5033,14 +7343,20 @@
       "useTime": 0.5
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Slick",
         "Spill",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 4,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Splashes oil over every enemy in a circle for 6 s: they take 25% more fire damage, and every fire hit ignites them.",
+      "hits": 1,
       "id": "douse",
       "mana": 10,
       "name": "Douse",
@@ -5048,6 +7364,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "potency": 10
+            },
+            {
+              "potency": 20
+            },
+            {
+              "potency": 35
+            }
+          ],
           "exclusive": "",
           "id": "potency",
           "kind": "Lesser",
@@ -5064,6 +7391,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "duration": 1.14999997615814
+            },
+            {
+              "duration": 1.29999995231628
+            },
+            {
+              "duration": 1.5
+            }
+          ],
           "exclusive": "",
           "id": "lingering",
           "kind": "Lesser",
@@ -5085,6 +7423,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "oilSlow": 30
+            }
+          ],
           "exclusive": "",
           "id": "tar",
           "kind": "Notable",
@@ -5104,6 +7447,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -5120,6 +7474,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -5141,6 +7506,12 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "area": 1.39999997615814,
+              "damage": 0.899999976158142
+            }
+          ],
           "exclusive": "",
           "id": "wide",
           "kind": "Notable",
@@ -5160,6 +7531,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -5176,6 +7558,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -5197,6 +7590,11 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+
+            }
+          ],
           "exclusive": "",
           "id": "accelerant",
           "kind": "Notable",
@@ -5220,14 +7618,20 @@
       "useTime": 0.449999988079071
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Blaze",
         "Reach",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 20,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Detonates the ignites on every enemy in a circle: all the fire damage their stacks had left lands at once, 30% stronger.",
+      "hits": 1,
       "id": "combust",
       "mana": 20,
       "name": "Combust",
@@ -5235,6 +7639,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "potency": 10
+            },
+            {
+              "potency": 20
+            },
+            {
+              "potency": 35
+            }
+          ],
           "exclusive": "",
           "id": "potency",
           "kind": "Lesser",
@@ -5251,6 +7666,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -5272,6 +7698,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "splash": 0.5
+            }
+          ],
           "exclusive": "",
           "id": "chain_reaction",
           "kind": "Notable",
@@ -5291,6 +7722,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -5307,6 +7749,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -5328,6 +7781,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "stacksKept": 3
+            }
+          ],
           "exclusive": "",
           "id": "embers_remain",
           "kind": "Notable",
@@ -5347,6 +7805,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -5363,6 +7832,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -5384,6 +7864,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
@@ -5407,14 +7893,20 @@
       "useTime": 0.449999988079071
     },
     {
+      "auraPerLevel": 0.0299999993294477,
       "branches": [
         "Hemorrhage",
         "Reach",
         "Rhythm"
       ],
+      "burst": 0,
+      "burstShare": 0,
       "cooldown": 3,
+      "costPerLevel": 0.0199999995529652,
       "damage": 0,
+      "damagePerLevel": 0.119999997317791,
       "description": "Tears open the wounds of every enemy in a circle: all the physical damage their bleed stacks had left lands at once, 30% stronger.",
+      "hits": 1,
       "id": "exsanguinate",
       "mana": 10,
       "name": "Exsanguinate",
@@ -5422,6 +7914,17 @@
         {
           "branch": 0,
           "depth": 0,
+          "effects": [
+            {
+              "potency": 10
+            },
+            {
+              "potency": 20
+            },
+            {
+              "potency": 35
+            }
+          ],
           "exclusive": "",
           "id": "potency",
           "kind": "Lesser",
@@ -5438,6 +7941,17 @@
         {
           "branch": 0,
           "depth": 1,
+          "effects": [
+            {
+              "damage": 1.08000004291534
+            },
+            {
+              "damage": 1.1599999666214
+            },
+            {
+              "damage": 1.25
+            }
+          ],
           "exclusive": "",
           "id": "power",
           "kind": "Lesser",
@@ -5459,6 +7973,11 @@
         {
           "branch": 0,
           "depth": 2,
+          "effects": [
+            {
+              "splash": 0.5
+            }
+          ],
           "exclusive": "",
           "id": "blood_nova",
           "kind": "Notable",
@@ -5478,6 +7997,17 @@
         {
           "branch": 1,
           "depth": 0,
+          "effects": [
+            {
+              "area": 1.10000002384186
+            },
+            {
+              "area": 1.20000004768372
+            },
+            {
+              "area": 1.29999995231628
+            }
+          ],
           "exclusive": "",
           "id": "reach",
           "kind": "Lesser",
@@ -5494,6 +8024,17 @@
         {
           "branch": 1,
           "depth": 1,
+          "effects": [
+            {
+              "cost": 0.920000016689301
+            },
+            {
+              "cost": 0.840000033378601
+            },
+            {
+              "cost": 0.75
+            }
+          ],
           "exclusive": "",
           "id": "efficiency",
           "kind": "Lesser",
@@ -5515,6 +8056,11 @@
         {
           "branch": 1,
           "depth": 2,
+          "effects": [
+            {
+              "stacksKept": 3
+            }
+          ],
           "exclusive": "",
           "id": "open_wounds",
           "kind": "Notable",
@@ -5534,6 +8080,17 @@
         {
           "branch": 2,
           "depth": 0,
+          "effects": [
+            {
+              "cooldown": 0.899999976158142
+            },
+            {
+              "cooldown": 0.800000011920929
+            },
+            {
+              "cooldown": 0.699999988079071
+            }
+          ],
           "exclusive": "",
           "id": "patience",
           "kind": "Lesser",
@@ -5550,6 +8107,17 @@
         {
           "branch": 2,
           "depth": 1,
+          "effects": [
+            {
+              "useTime": 0.949999988079071
+            },
+            {
+              "useTime": 0.899999976158142
+            },
+            {
+              "useTime": 0.850000023841858
+            }
+          ],
           "exclusive": "",
           "id": "haste",
           "kind": "Lesser",
@@ -5571,6 +8139,12 @@
         {
           "branch": 2,
           "depth": 2,
+          "effects": [
+            {
+              "cost": 1.25,
+              "damage": 1.35000002384186
+            }
+          ],
           "exclusive": "",
           "id": "brutal",
           "kind": "Notable",
