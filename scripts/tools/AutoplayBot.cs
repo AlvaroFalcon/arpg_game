@@ -68,7 +68,7 @@ public partial class AutoplayBot : Node
         Node root = GetTree().Root;
         GetParent().RemoveChild(this);
         root.AddChild(this);
-        _ = _mode == "reality" ? RealityLoop() : Loop();
+        _ = _mode switch { "reality" => RealityLoop(), "matrix" => MatrixLoop(), _ => Loop() };
     }
 
     /// <summary>Godot block-buffers stdout when it is not a terminal (see
@@ -191,6 +191,11 @@ public partial class AutoplayBot : Node
 
     public override void _PhysicsProcess(double delta)
     {
+        if (_mode == "matrix")
+        {
+            return; // MatrixLoop drives the player itself
+        }
+
         if (GetTree().CurrentScene is World.RealityController reality)
         {
             RealityTick(reality, (float)delta);

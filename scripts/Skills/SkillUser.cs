@@ -1103,7 +1103,10 @@ public partial class SkillUser : Node
         bool isFullCircle = Mathf.Abs(p.SpreadDegrees) >= 360f;
         float spread = Mathf.DegToRad(p.SpreadDegrees);
         float step = isFullCircle ? spread / count : spread / (count - 1);
-        float start = isFullCircle ? baseAngle : baseAngle - spread * 0.5f;
+        // An even fan used to leave the aim itself empty: two projectiles at ±6° both missed a
+        // monster at 240 px (Volley on Fireball, measured 2026-11-05). One always flies at the aim;
+        // the fan keeps its width, one more step on one side.
+        float start = isFullCircle ? baseAngle : baseAngle - step * ((count - 1) / 2);
 
         for (int i = 0; i < count; i++)
         {
