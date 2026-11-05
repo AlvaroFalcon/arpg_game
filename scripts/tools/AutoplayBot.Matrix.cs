@@ -112,6 +112,19 @@ public partial class AutoplayBot
         foreach (string gear in gears)
         {
             ApplyMatrixGear(_character, gear, tier);
+            // CharacterBuild.Rebuild leaves equipment alone: put this profile's items on the player.
+            foreach (Items.EquipmentSlot slot in System.Enum.GetValues<Items.EquipmentSlot>())
+            {
+                _matrixPlayer.Equipment.Unequip(slot);
+            }
+
+            foreach ((Items.EquipmentSlot slot, Items.EquipmentItem item) in _character.Equipped)
+            {
+                _matrixPlayer.Equipment.TryEquip(slot, item, out _);
+            }
+
+            int worn = System.Enum.GetValues<Items.EquipmentSlot>().Count(sl => _matrixPlayer.Equipment.GetEquipped(sl) is not null);
+            Log($"[MATRIX] gear={gear}: {worn} items worn");
             foreach (SkillEntry skill in skills)
             {
                 GemData gem = _character.Gems.First(g => g.Id == skill.Id && !g.IsSupport);
