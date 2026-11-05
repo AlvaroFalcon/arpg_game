@@ -86,7 +86,7 @@
           "depth": 2,
           "effects": [
             {
-              "burstShare": 1
+              "burstShare": 0.75
             }
           ],
           "exclusive": "",
@@ -100,7 +100,7 @@
             }
           ],
           "ranks": [
-            "The burst deals the full hit instead of half"
+            "The burst deals 75% of the hit instead of half"
           ],
           "requires": "blast",
           "requiresRanks": 2
@@ -735,8 +735,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -750,7 +750,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "rime",
           "requiresRanks": 2
@@ -787,15 +787,15 @@
           "depth": 1,
           "effects": [
             {
-              "damage": 1.10000002384186,
+              "damage": 1.04999995231628,
               "knockback": 120
             },
             {
-              "damage": 1.14999997615814,
+              "damage": 1.07500004768372,
               "knockback": 180
             },
             {
-              "damage": 1.21666669845581,
+              "damage": 1.10833334922791,
               "knockback": 260
             }
           ],
@@ -810,9 +810,9 @@
             }
           ],
           "ranks": [
-            "Pushes enemies back (120 force), 10% more damage",
-            "Pushes enemies back (180 force), 15% more damage",
-            "Pushes enemies back (260 force), 22% more damage"
+            "Pushes enemies back (120 force), 5% more damage",
+            "Pushes enemies back (180 force), 8% more damage",
+            "Pushes enemies back (260 force), 11% more damage"
           ],
           "requires": "reach",
           "requiresRanks": 2
@@ -906,7 +906,7 @@
           "depth": 2,
           "effects": [
             {
-              "damage": 0.800000011920929,
+              "damage": 0.649999976158142,
               "repeats": 1
             }
           ],
@@ -921,7 +921,7 @@
             }
           ],
           "ranks": [
-            "The skill repeats once, 20% less damage"
+            "The skill repeats once, 35% less damage"
           ],
           "requires": "efficiency",
           "requiresRanks": 2
@@ -1039,8 +1039,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -1054,7 +1054,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "laceration",
           "requiresRanks": 2
@@ -1334,8 +1334,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -1349,7 +1349,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "kindle",
           "requiresRanks": 2
@@ -1501,7 +1501,7 @@
           "depth": 2,
           "effects": [
             {
-              "damage": 0.800000011920929,
+              "damage": 0.649999976158142,
               "repeats": 1
             }
           ],
@@ -1516,7 +1516,7 @@
             }
           ],
           "ranks": [
-            "The skill repeats once, 20% less damage"
+            "The skill repeats once, 35% less damage"
           ],
           "requires": "efficiency",
           "requiresRanks": 2
@@ -1634,8 +1634,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -1649,7 +1649,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "haste",
           "requiresRanks": 2
@@ -1743,7 +1743,7 @@
           "depth": 2,
           "effects": [
             {
-              "damage": 0.850000023841858,
+              "damage": 0.649999976158142,
               "extraHits": 1
             }
           ],
@@ -1758,7 +1758,7 @@
             }
           ],
           "ranks": [
-            "Strikes one more time, 15% less damage"
+            "Strikes one more time, 35% less damage"
           ],
           "requires": "efficiency",
           "requiresRanks": 2
@@ -1795,13 +1795,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954
+            },
+            {
               "damage": 1.10000002384186
             },
             {
-              "damage": 1.20000004768372
-            },
-            {
-              "damage": 1.29999995231628
+              "damage": 1.14999997615814
             }
           ],
           "exclusive": "",
@@ -1815,9 +1815,9 @@
             }
           ],
           "ranks": [
+            "6% more damage",
             "10% more damage",
-            "20% more damage",
-            "30% more damage"
+            "15% more damage"
           ],
           "requires": "laceration",
           "requiresRanks": 2
@@ -2010,13 +2010,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954
+            },
+            {
               "damage": 1.10000002384186
             },
             {
-              "damage": 1.20000004768372
-            },
-            {
-              "damage": 1.29999995231628
+              "damage": 1.14999997615814
             }
           ],
           "exclusive": "",
@@ -2030,9 +2030,9 @@
             }
           ],
           "ranks": [
+            "6% more damage",
             "10% more damage",
-            "20% more damage",
-            "30% more damage"
+            "15% more damage"
           ],
           "requires": "laceration",
           "requiresRanks": 2
@@ -2258,8 +2258,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -2273,7 +2273,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "laceration",
           "requiresRanks": 2
@@ -2310,13 +2310,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954
+            },
+            {
               "damage": 1.10000002384186
             },
             {
-              "damage": 1.20000004768372
-            },
-            {
-              "damage": 1.29999995231628
+              "damage": 1.14999997615814
             }
           ],
           "exclusive": "",
@@ -2330,9 +2330,9 @@
             }
           ],
           "ranks": [
+            "6% more damage",
             "10% more damage",
-            "20% more damage",
-            "30% more damage"
+            "15% more damage"
           ],
           "requires": "reach",
           "requiresRanks": 2
@@ -2449,7 +2449,7 @@
           "depth": 2,
           "effects": [
             {
-              "damage": 0.800000011920929,
+              "damage": 0.649999976158142,
               "repeats": 1
             }
           ],
@@ -2464,7 +2464,7 @@
             }
           ],
           "ranks": [
-            "The skill repeats once, 20% less damage"
+            "The skill repeats once, 35% less damage"
           ],
           "requires": "efficiency",
           "requiresRanks": 2
@@ -2558,8 +2558,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -2573,7 +2573,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "reach",
           "requiresRanks": 2
@@ -2642,7 +2642,7 @@
           "depth": 2,
           "effects": [
             {
-              "damage": 0.850000023841858,
+              "damage": 0.649999976158142,
               "extraHits": 1
             }
           ],
@@ -2657,7 +2657,7 @@
             }
           ],
           "ranks": [
-            "Strikes one more time, 15% less damage"
+            "Strikes one more time, 35% less damage"
           ],
           "requires": "efficiency",
           "requiresRanks": 2
@@ -2694,13 +2694,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954
+            },
+            {
               "damage": 1.10000002384186
             },
             {
-              "damage": 1.20000004768372
-            },
-            {
-              "damage": 1.29999995231628
+              "damage": 1.14999997615814
             }
           ],
           "exclusive": "",
@@ -2714,9 +2714,9 @@
             }
           ],
           "ranks": [
+            "6% more damage",
             "10% more damage",
-            "20% more damage",
-            "30% more damage"
+            "15% more damage"
           ],
           "requires": "laceration",
           "requiresRanks": 2
@@ -2933,13 +2933,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954
+            },
+            {
               "damage": 1.10000002384186
             },
             {
-              "damage": 1.20000004768372
-            },
-            {
-              "damage": 1.29999995231628
+              "damage": 1.14999997615814
             }
           ],
           "exclusive": "",
@@ -2953,9 +2953,9 @@
             }
           ],
           "ranks": [
+            "6% more damage",
             "10% more damage",
-            "20% more damage",
-            "30% more damage"
+            "15% more damage"
           ],
           "requires": "velocity",
           "requiresRanks": 2
@@ -3341,16 +3341,16 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954,
+              "projectileSpeed": 0.970000028610229
+            },
+            {
               "damage": 1.10000002384186,
               "projectileSpeed": 0.949999988079071
             },
             {
-              "damage": 1.20000004768372,
-              "projectileSpeed": 0.899999976158142
-            },
-            {
-              "damage": 1.29999995231628,
-              "projectileSpeed": 0.850000023841858
+              "damage": 1.14999997615814,
+              "projectileSpeed": 0.925000011920929
             }
           ],
           "exclusive": "",
@@ -3364,9 +3364,9 @@
             }
           ],
           "ranks": [
+            "6% more damage, shards fly 3% slower",
             "10% more damage, shards fly 5% slower",
-            "20% more damage, shards fly 10% slower",
-            "30% more damage, shards fly 15% slower"
+            "15% more damage, shards fly 8% slower"
           ],
           "requires": "haste",
           "requiresRanks": 2
@@ -3484,8 +3484,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -3499,7 +3499,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "static",
           "requiresRanks": 2
@@ -3568,7 +3568,7 @@
           "depth": 2,
           "effects": [
             {
-              "damage": 0.850000023841858,
+              "damage": 0.649999976158142,
               "extraHits": 1
             }
           ],
@@ -3583,7 +3583,7 @@
             }
           ],
           "ranks": [
-            "Strikes one more time, 15% less damage"
+            "Strikes one more time, 35% less damage"
           ],
           "requires": "efficiency",
           "requiresRanks": 2
@@ -3620,13 +3620,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954
+            },
+            {
               "damage": 1.10000002384186
             },
             {
-              "damage": 1.20000004768372
-            },
-            {
-              "damage": 1.29999995231628
+              "damage": 1.14999997615814
             }
           ],
           "exclusive": "",
@@ -3640,9 +3640,9 @@
             }
           ],
           "ranks": [
+            "6% more damage",
             "10% more damage",
-            "20% more damage",
-            "30% more damage"
+            "15% more damage"
           ],
           "requires": "reach",
           "requiresRanks": 2
@@ -3786,8 +3786,8 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
-              "damage": 1.35000002384186
+              "cost": 1.20000004768372,
+              "damage": 1.25
             }
           ],
           "exclusive": "",
@@ -3801,7 +3801,7 @@
             }
           ],
           "ranks": [
-            "35% more damage, 25% more mana cost"
+            "25% more damage, 20% more mana cost"
           ],
           "requires": "rime",
           "requiresRanks": 2
@@ -3838,13 +3838,13 @@
           "depth": 1,
           "effects": [
             {
+              "damage": 1.05999994277954
+            },
+            {
               "damage": 1.10000002384186
             },
             {
-              "damage": 1.20000004768372
-            },
-            {
-              "damage": 1.29999995231628
+              "damage": 1.14999997615814
             }
           ],
           "exclusive": "",
@@ -3858,9 +3858,9 @@
             }
           ],
           "ranks": [
+            "6% more damage",
             "10% more damage",
-            "20% more damage",
-            "30% more damage"
+            "15% more damage"
           ],
           "requires": "reach",
           "requiresRanks": 2
@@ -3978,7 +3978,7 @@
           "depth": 2,
           "effects": [
             {
-              "damage": 0.850000023841858,
+              "damage": 0.649999976158142,
               "extraHits": 1
             }
           ],
@@ -3993,7 +3993,7 @@
             }
           ],
           "ranks": [
-            "Strikes one more time, 15% less damage"
+            "Strikes one more time, 35% less damage"
           ],
           "requires": "efficiency",
           "requiresRanks": 2
@@ -7162,9 +7162,9 @@
             }
           ],
           "ranks": [
+            "6% more elemental damage",
             "10% more elemental damage",
-            "20% more elemental damage",
-            "30% more elemental damage"
+            "15% more elemental damage"
           ],
           "requires": "power",
           "requiresRanks": 2
@@ -7914,7 +7914,7 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
+              "cost": 1.20000004768372,
               "damage": 1.20000004768372
             }
           ],
@@ -7929,7 +7929,7 @@
             }
           ],
           "ranks": [
-            "20% more damage, 25% more mana cost"
+            "20% more damage, 20% more mana cost"
           ],
           "requires": "haste",
           "requiresRanks": 2
@@ -8189,7 +8189,7 @@
           "depth": 2,
           "effects": [
             {
-              "cost": 1.25,
+              "cost": 1.20000004768372,
               "damage": 1.20000004768372
             }
           ],
@@ -8204,7 +8204,7 @@
             }
           ],
           "ranks": [
-            "20% more damage, 25% more mana cost"
+            "20% more damage, 20% more mana cost"
           ],
           "requires": "haste",
           "requiresRanks": 2

@@ -1,11 +1,12 @@
-# Skill balance testing — plan (2026-11-04) **[PLANNED]**
+# Skill balance testing (2026-11-04) **[LAYER A IMPLEMENTED]**
 
 Owner's brief: test how the skills balance, how they interact where they can, and whether
 their damage is excessive. A skill's level and tree should raise its damage, but **gear must
 raise it more**: **no character may clear a tier-20 reality without gear and without trouble.**
 
-This doc is the plan. Nothing in it is built yet. The numbers marked *proposed* are mine and
-wait for the owner's yes.
+The plan is below. Layer A (the damage matrix) is built and was run on 2026-11-05; its first
+results and the cuts they led to are under "First run" at the end. Owner's decision
+(2026-11-04): **lower the damage, leave monster life alone for now.**
 
 ## What already exists (and what's missing)
 
@@ -173,3 +174,81 @@ Thresholds live in one place (`BalanceTargets.cs`), mirrored in the table above.
   get stronger damage affixes instead?
 - Supports are parked (`Features.SupportGems`): keep them out of the reference until they
   return?
+
+## First run (2026-11-05)
+
+**Tool:** `./scripts/autoplay.sh --mode=matrix --class=arcanist|warrior|rogue --tier=20
+[--gear=none,ascendancy,typical] [--trees=none,best] [--skills=…] [--seconds=8] [--gem=20]`
+(`scripts/tools/AutoplayBot.Matrix.cs`). It builds an in-memory character at the tier's
+reference level (level 70 at tier 20, passives spent, every gem at 20) and enters the
+playground at that tier. For each skill, tree and gear profile it casts at tier monsters
+that stand still and never attack: one at a time, respawned on death (single-target DPS and
+the time a normal monster takes), then a pack of 8 (pack DPS, clear time). It does this
+against a Skeleton (armour affinity) and a Slime (fire affinity). Damage is what the monsters
+took, damage over time included. `best` is a beam search over the tree, scored on the real
+resolved cast. Gear profiles:
+- `none`: passives, no ascendancy, no gear.
+- `ascendancy`: the same plus the ascendancy.
+- `typical`: the bot's reference rares.
+
+Rows go to `user://balance/matrix_<class>_t<tier>.csv`; the 2026-11-05 run is committed in
+`docs/design/balance/`. About 15 min per class.
+
+Two bugs found while building it:
+- `CharacterBuild.Rebuild` leaves equipment alone, so the gear has to be put on the player
+  (the first run measured "typical" gear naked).
+- **An even projectile fan left the aim empty.** With Volley, Fireball's two projectiles flew
+  at ±6° and both missed a monster at 240 px (0 single-target DPS). Now one projectile always
+  flies at the aim (`GenerateProjectileSpawnRequests`).
+
+**What it showed at tier 20.** Ratios are single-target DPS ÷ `ExpectedDps(85)` = 5,500
+(1.0 = a normal monster in 0.4 s).
+
+- **Without gear no character comes close.** The best gearless build is Fireball with a full
+  tree at 0.09–0.17× (a normal monster in 2–4 s, a rare in 30+ s). The owner's worry
+  ("a gearless character clearing tier 20") does not happen.
+- **Trees multiplied too much on melee and cooldown skills.** Typical gear, best path ÷ no
+  tree: Sunder 6.5×, Cleave 6.5×, Double Strike 5×, Glacial Hammer 4×, Meteor 3.9×, against
+  a target of ≤ 1.8×. The stack was Power + a second "more damage" node (10/20/30) +
+  Overwhelm (35%) + Flurry or Echo, on top of attack speed or cooldown.
+- **Gear matters a lot for attacks** (weapon damage, crit: ×5–50) **and little for spells**
+  (Fireball ×1.8–3.9). The outlier was the Samurai rogue with typical gear: Glacial Hammer at
+  1.4× expected, packs gone in one swing.
+- **With typical gear almost every build is far under the curve** (0.1–0.7×). Monster life
+  was calibrated with damage supports in every socket, and supports are parked
+  (`Features.SupportGems`). So tier 20 is slow for nearly everyone, not too easy. The owner
+  chose to keep monster life for now; recalibrating `ExpectedDpsTable` is the open item.
+
+**Cuts made (`SkillTrees.cs`):**
+- **Second damage nodes** (Rend, Fault Line, Split Earth, Heavy Head, Deep Cuts, Charged, Wide
+  Fan, Brittle, Attunement): 6 / 10 / 15% (was 10 / 20 / 30).
+- **Overwhelm:** 25% more damage, 20% more mana everywhere (was 35 / 25; the owner had already
+  set this for Frost Shards and Corruption). Combust and Exsanguinate keep 20%.
+- **Flurry and Echo:** 35% less damage per strike or repeat (was 15% and 20%).
+- **Firestorm:** the burst deals 75% of the hit (was 100%).
+- **Gale:** half its damage bonus.
+
+**After the cuts** (same run; gear is re-rolled on every run, so compare the tree factor, not
+the absolute numbers):
+
+| Skill (typical gear) | Tree × before | Tree × after |
+|---|---|---|
+| Sunder | 4.5–6.5 | 3.4–3.8 |
+| Cleave | 4.1–16 | 2.5–3.6 |
+| Double Strike | 4.0–5.0 | 2.5–3.2 |
+| Glacial Hammer | 4.0–4.1 | 2.4–2.6 |
+| Meteor | 3.5–4.8 | 2.8–3.1 |
+| Fireball | 2.0–2.8 | 1.9–2.1 |
+| Frost Shards | 1.9–2.2 | 1.9–2.0 |
+
+Gearless best builds now top out at 0.09× expected. Still above the 1.8× tree target: the
+cooldown skills (Sunder, Meteor), where Patience counts as damage. That is a decision for the
+owner: accept up to ~3× there, or trim Patience/Echo further.
+
+**Known gaps in layer A:**
+- Ethereal Blades reads 0 on one target: the orbit misses a monster standing inside it. Its
+  pack numbers are fine.
+- Spark's best path measures below no tree (its spread, conversion to physical against
+  armour). The search is heuristic.
+- Gear is re-rolled on every run (unseeded), so absolute numbers vary ±50%.
+- Auras, curses, totems and detonations are not measured yet (layer B).

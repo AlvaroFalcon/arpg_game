@@ -2365,3 +2365,9 @@ Efficiency (the Rift branch) and Second Wind to Phasing (the Distance branch).
 
 Tests: SkillKitTest `TOTEM-HAS-LIFE`, `TOTEM-BREAKS`, `TOTEM-RESPECTS-COOLDOWN`,
 `BLINK-SECOND-WIND`, `BLINK-REWIND`, `BLINK-TWO-CHARGES`, `SPARK-COLD-CURRENT`.
+
+**Second pass (2026-11-05), from the balance matrix** (docs/design/balance-testing.md ->
+"First run"): the second "more damage" node of a branch 6/10/15% (was 10/20/30), Overwhelm
+25% damage / 20% mana by default, Flurry and Echo 35% less damage, Firestorm 75% of the hit,
+Gale half its damage bonus. A projectile fan with an even count now keeps one projectile on
+the aim.

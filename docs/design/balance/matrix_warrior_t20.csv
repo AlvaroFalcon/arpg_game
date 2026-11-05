@@ -1,0 +1,145 @@
+class,level,tier,skill,gear,tree,path,gem,target,dps_single,ttk_normal,kills,dps_pack,pack_clear_s,mana_per_s,expected,ratio_single
+warrior,70,20,fireball,none,none,,20,Skeleton,118,Infinity,0,148,Infinity,14.1,5500,0.021
+warrior,70,20,fireball,none,none,,20,Slime,111,Infinity,0,97,Infinity,14.1,5500,0.020
+warrior,70,20,fireball,none,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Skeleton,340,8.00,1,1157,Infinity,11.8,5500,0.062
+warrior,70,20,fireball,none,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Slime,193,8.00,1,886,Infinity,11.8,5500,0.035
+warrior,70,20,spark,none,none,,20,Skeleton,121,Infinity,0,191,Infinity,21.2,5500,0.022
+warrior,70,20,spark,none,none,,20,Slime,97,Infinity,0,188,Infinity,21.2,5500,0.018
+warrior,70,20,spark,none,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Skeleton,46,Infinity,0,254,Infinity,19.7,5500,0.008
+warrior,70,20,spark,none,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Slime,41,Infinity,0,294,Infinity,19.7,5500,0.007
+warrior,70,20,frost_nova,none,none,,20,Skeleton,22,Infinity,0,190,Infinity,5.1,5500,0.004
+warrior,70,20,frost_nova,none,none,,20,Slime,22,Infinity,0,179,Infinity,5.1,5500,0.004
+warrior,70,20,frost_nova,none,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Skeleton,36,Infinity,0,178,Infinity,8.5,5500,0.007
+warrior,70,20,frost_nova,none,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Slime,23,Infinity,0,149,Infinity,6.8,5500,0.004
+warrior,70,20,blades,none,none,,20,Skeleton,9,Infinity,0,16,Infinity,4.1,5500,0.002
+warrior,70,20,blades,none,none,,20,Slime,10,Infinity,0,25,Infinity,4.1,5500,0.002
+warrior,70,20,blades,none,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Skeleton,1,Infinity,0,316,Infinity,7.4,5500,0.000
+warrior,70,20,blades,none,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Slime,0,Infinity,0,227,Infinity,4.9,5500,0.000
+warrior,70,20,meteor,none,none,,20,Skeleton,37,Infinity,0,241,Infinity,6.2,5500,0.007
+warrior,70,20,meteor,none,none,,20,Slime,11,Infinity,0,151,Infinity,6.2,5500,0.002
+warrior,70,20,meteor,none,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Skeleton,139,Infinity,0,638,Infinity,9.3,5500,0.025
+warrior,70,20,meteor,none,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Slime,74,Infinity,0,402,Infinity,9.3,5500,0.013
+warrior,70,20,cleave,none,none,,20,Skeleton,18,Infinity,0,80,Infinity,8.3,5500,0.003
+warrior,70,20,cleave,none,none,,20,Slime,23,Infinity,0,120,Infinity,7.8,5500,0.004
+warrior,70,20,cleave,none,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Skeleton,28,Infinity,0,209,Infinity,9.8,5500,0.005
+warrior,70,20,cleave,none,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Slime,34,Infinity,0,287,Infinity,9.3,5500,0.006
+warrior,70,20,sunder,none,none,,20,Skeleton,39,Infinity,0,172,Infinity,8.5,5500,0.007
+warrior,70,20,sunder,none,none,,20,Slime,29,Infinity,0,246,Infinity,6.8,5500,0.005
+warrior,70,20,sunder,none,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Skeleton,105,Infinity,0,660,Infinity,10.9,5500,0.019
+warrior,70,20,sunder,none,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Slime,140,Infinity,0,803,Infinity,10.9,5500,0.025
+warrior,70,20,double_strike,none,none,,20,Skeleton,28,Infinity,0,104,Infinity,6.6,5500,0.005
+warrior,70,20,double_strike,none,none,,20,Slime,35,Infinity,0,134,Infinity,6.6,5500,0.006
+warrior,70,20,double_strike,none,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Skeleton,153,Infinity,0,513,Infinity,7.3,5500,0.028
+warrior,70,20,double_strike,none,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Slime,187,8.00,1,654,Infinity,7.0,5500,0.034
+warrior,70,20,throwing_knives,none,none,,20,Skeleton,5,Infinity,0,26,Infinity,11.9,5500,0.001
+warrior,70,20,throwing_knives,none,none,,20,Slime,6,Infinity,0,40,Infinity,11.9,5500,0.001
+warrior,70,20,throwing_knives,none,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Skeleton,11,Infinity,0,37,Infinity,11.5,5500,0.002
+warrior,70,20,throwing_knives,none,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Slime,15,Infinity,0,50,Infinity,11.5,5500,0.003
+warrior,70,20,frost_shards,none,none,,20,Skeleton,64,Infinity,0,181,Infinity,18.1,5500,0.012
+warrior,70,20,frost_shards,none,none,,20,Slime,62,Infinity,0,191,Infinity,18.1,5500,0.011
+warrior,70,20,frost_shards,none,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Skeleton,118,Infinity,0,334,Infinity,21.3,5500,0.021
+warrior,70,20,frost_shards,none,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Slime,109,Infinity,0,328,Infinity,21.3,5500,0.020
+warrior,70,20,storm_strike,none,none,,20,Skeleton,144,Infinity,0,497,Infinity,14.5,5500,0.026
+warrior,70,20,storm_strike,none,none,,20,Slime,140,Infinity,0,468,Infinity,14.5,5500,0.025
+warrior,70,20,storm_strike,none,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Skeleton,68,Infinity,0,330,Infinity,18.0,5500,0.012
+warrior,70,20,storm_strike,none,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Slime,90,Infinity,0,404,Infinity,18.0,5500,0.016
+warrior,70,20,glacial_hammer,none,none,,20,Skeleton,123,Infinity,0,449,Infinity,10.8,5500,0.022
+warrior,70,20,glacial_hammer,none,none,,20,Slime,117,Infinity,0,468,Infinity,10.8,5500,0.021
+warrior,70,20,glacial_hammer,none,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Skeleton,159,Infinity,0,778,Infinity,12.6,5500,0.029
+warrior,70,20,glacial_hammer,none,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Slime,151,Infinity,0,736,Infinity,12.6,5500,0.027
+warrior,70,20,fireball,ascendancy,none,,20,Skeleton,149,Infinity,0,151,Infinity,14.1,5500,0.027
+warrior,70,20,fireball,ascendancy,none,,20,Slime,104,Infinity,0,101,Infinity,14.1,5500,0.019
+warrior,70,20,fireball,ascendancy,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Skeleton,314,8.00,1,1133,Infinity,11.8,5500,0.057
+warrior,70,20,fireball,ascendancy,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Slime,225,8.00,1,856,Infinity,11.8,5500,0.041
+warrior,70,20,spark,ascendancy,none,,20,Skeleton,118,Infinity,0,185,Infinity,21.2,5500,0.021
+warrior,70,20,spark,ascendancy,none,,20,Slime,94,Infinity,0,191,Infinity,21.2,5500,0.017
+warrior,70,20,spark,ascendancy,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Skeleton,45,Infinity,0,267,Infinity,19.7,5500,0.008
+warrior,70,20,spark,ascendancy,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Slime,40,Infinity,0,310,Infinity,19.7,5500,0.007
+warrior,70,20,frost_nova,ascendancy,none,,20,Skeleton,26,Infinity,0,187,Infinity,5.1,5500,0.005
+warrior,70,20,frost_nova,ascendancy,none,,20,Slime,26,Infinity,0,183,Infinity,5.1,5500,0.005
+warrior,70,20,frost_nova,ascendancy,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Skeleton,24,Infinity,0,182,Infinity,8.5,5500,0.004
+warrior,70,20,frost_nova,ascendancy,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Slime,23,Infinity,0,156,Infinity,6.8,5500,0.004
+warrior,70,20,blades,ascendancy,none,,20,Skeleton,8,Infinity,0,17,Infinity,4.1,5500,0.001
+warrior,70,20,blades,ascendancy,none,,20,Slime,10,Infinity,0,23,Infinity,4.1,5500,0.002
+warrior,70,20,blades,ascendancy,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Skeleton,1,Infinity,0,351,Infinity,7.4,5500,0.000
+warrior,70,20,blades,ascendancy,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Slime,0,Infinity,0,223,Infinity,4.9,5500,0.000
+warrior,70,20,meteor,ascendancy,none,,20,Skeleton,37,Infinity,0,233,Infinity,6.2,5500,0.007
+warrior,70,20,meteor,ascendancy,none,,20,Slime,11,Infinity,0,141,Infinity,6.2,5500,0.002
+warrior,70,20,meteor,ascendancy,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Skeleton,100,Infinity,0,624,Infinity,9.3,5500,0.018
+warrior,70,20,meteor,ascendancy,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Slime,65,Infinity,0,429,Infinity,9.3,5500,0.012
+warrior,70,20,cleave,ascendancy,none,,20,Skeleton,20,Infinity,0,88,Infinity,8.3,5500,0.004
+warrior,70,20,cleave,ascendancy,none,,20,Slime,20,Infinity,0,114,Infinity,7.8,5500,0.004
+warrior,70,20,cleave,ascendancy,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Skeleton,27,Infinity,0,218,Infinity,9.8,5500,0.005
+warrior,70,20,cleave,ascendancy,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Slime,44,Infinity,0,282,Infinity,9.3,5500,0.008
+warrior,70,20,sunder,ascendancy,none,,20,Skeleton,30,Infinity,0,172,Infinity,8.5,5500,0.005
+warrior,70,20,sunder,ascendancy,none,,20,Slime,35,Infinity,0,229,Infinity,6.8,5500,0.006
+warrior,70,20,sunder,ascendancy,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Skeleton,99,Infinity,0,618,Infinity,10.9,5500,0.018
+warrior,70,20,sunder,ascendancy,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Slime,150,Infinity,0,846,Infinity,10.9,5500,0.027
+warrior,70,20,double_strike,ascendancy,none,,20,Skeleton,29,Infinity,0,98,Infinity,6.6,5500,0.005
+warrior,70,20,double_strike,ascendancy,none,,20,Slime,37,Infinity,0,130,Infinity,6.6,5500,0.007
+warrior,70,20,double_strike,ascendancy,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Skeleton,133,Infinity,0,510,Infinity,7.3,5500,0.024
+warrior,70,20,double_strike,ascendancy,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Slime,203,8.00,1,649,Infinity,7.0,5500,0.037
+warrior,70,20,throwing_knives,ascendancy,none,,20,Skeleton,5,Infinity,0,28,Infinity,11.9,5500,0.001
+warrior,70,20,throwing_knives,ascendancy,none,,20,Slime,6,Infinity,0,40,Infinity,11.9,5500,0.001
+warrior,70,20,throwing_knives,ascendancy,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Skeleton,9,Infinity,0,37,Infinity,11.5,5500,0.002
+warrior,70,20,throwing_knives,ascendancy,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Slime,13,Infinity,0,53,Infinity,11.5,5500,0.002
+warrior,70,20,frost_shards,ascendancy,none,,20,Skeleton,69,Infinity,0,180,Infinity,18.1,5500,0.013
+warrior,70,20,frost_shards,ascendancy,none,,20,Slime,62,Infinity,0,195,Infinity,18.1,5500,0.011
+warrior,70,20,frost_shards,ascendancy,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Skeleton,121,Infinity,0,326,Infinity,21.3,5500,0.022
+warrior,70,20,frost_shards,ascendancy,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Slime,112,Infinity,0,323,Infinity,21.3,5500,0.020
+warrior,70,20,storm_strike,ascendancy,none,,20,Skeleton,144,Infinity,0,488,Infinity,14.5,5500,0.026
+warrior,70,20,storm_strike,ascendancy,none,,20,Slime,144,Infinity,0,460,Infinity,14.5,5500,0.026
+warrior,70,20,storm_strike,ascendancy,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Skeleton,68,Infinity,0,333,Infinity,18.0,5500,0.012
+warrior,70,20,storm_strike,ascendancy,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Slime,92,Infinity,0,392,Infinity,18.0,5500,0.017
+warrior,70,20,glacial_hammer,ascendancy,none,,20,Skeleton,111,Infinity,0,456,Infinity,10.8,5500,0.020
+warrior,70,20,glacial_hammer,ascendancy,none,,20,Slime,117,Infinity,0,455,Infinity,10.8,5500,0.021
+warrior,70,20,glacial_hammer,ascendancy,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Skeleton,145,Infinity,0,783,Infinity,12.6,5500,0.026
+warrior,70,20,glacial_hammer,ascendancy,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Slime,137,Infinity,0,721,Infinity,12.6,5500,0.025
+warrior,70,20,fireball,typical,none,,20,Skeleton,503,4.00,2,524,Infinity,42.6,5500,0.091
+warrior,70,20,fireball,typical,none,,20,Slime,290,8.00,1,311,Infinity,11.4,5500,0.053
+warrior,70,20,fireball,typical,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Skeleton,1001,2.00,4,2785,5.6,10.2,5500,0.182
+warrior,70,20,fireball,typical,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Slime,661,2.67,3,1528,7.3,10.2,5500,0.120
+warrior,70,20,spark,typical,none,,20,Skeleton,278,8.00,1,641,Infinity,19.1,5500,0.051
+warrior,70,20,spark,typical,none,,20,Slime,288,8.00,1,740,Infinity,18.2,5500,0.052
+warrior,70,20,spark,typical,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Skeleton,102,Infinity,0,727,Infinity,17.5,5500,0.018
+warrior,70,20,spark,typical,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Slime,119,Infinity,0,839,Infinity,16.7,5500,0.022
+warrior,70,20,frost_nova,typical,none,,20,Skeleton,88,Infinity,0,557,Infinity,5.5,5500,0.016
+warrior,70,20,frost_nova,typical,none,,20,Slime,66,Infinity,0,557,Infinity,4.1,5500,0.012
+warrior,70,20,frost_nova,typical,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Skeleton,96,Infinity,0,530,Infinity,7.0,5500,0.017
+warrior,70,20,frost_nova,typical,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Slime,94,Infinity,0,537,Infinity,7.0,5500,0.017
+warrior,70,20,blades,typical,none,,20,Skeleton,34,Infinity,0,64,Infinity,3.3,5500,0.006
+warrior,70,20,blades,typical,none,,20,Slime,37,Infinity,0,96,Infinity,1.7,5500,0.007
+warrior,70,20,blades,typical,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Skeleton,16,Infinity,0,799,Infinity,6.0,5500,0.003
+warrior,70,20,blades,typical,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Slime,0,Infinity,0,510,Infinity,4.0,5500,0.000
+warrior,70,20,meteor,typical,none,,20,Skeleton,138,Infinity,0,917,Infinity,5.0,5500,0.025
+warrior,70,20,meteor,typical,none,,20,Slime,67,Infinity,0,520,Infinity,5.0,5500,0.012
+warrior,70,20,meteor,typical,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Skeleton,376,8.00,1,1915,7.8,7.6,5500,0.068
+warrior,70,20,meteor,typical,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Slime,224,8.00,1,1466,Infinity,5.1,5500,0.041
+warrior,70,20,cleave,typical,none,,20,Skeleton,153,Infinity,0,573,Infinity,7.0,5500,0.028
+warrior,70,20,cleave,typical,none,,20,Slime,374,4.00,2,645,Infinity,6.6,5500,0.068
+warrior,70,20,cleave,typical,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Skeleton,203,Infinity,0,1050,Infinity,7.9,5500,0.037
+warrior,70,20,cleave,typical,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Slime,1125,1.33,6,1127,Infinity,7.9,5500,0.205
+warrior,70,20,sunder,typical,none,,20,Skeleton,236,8.00,1,1146,Infinity,7.7,5500,0.043
+warrior,70,20,sunder,typical,none,,20,Slime,215,8.00,1,1110,Infinity,6.6,5500,0.039
+warrior,70,20,sunder,typical,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Skeleton,784,2.67,3,1888,7.9,10.0,5500,0.143
+warrior,70,20,sunder,typical,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Slime,841,1.60,5,2020,5.5,10.0,5500,0.153
+warrior,70,20,double_strike,typical,none,,20,Skeleton,507,4.00,2,718,Infinity,5.7,5500,0.092
+warrior,70,20,double_strike,typical,none,,20,Slime,522,2.67,3,562,Infinity,5.7,5500,0.095
+warrior,70,20,double_strike,typical,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Skeleton,1233,1.60,5,1356,Infinity,5.9,5500,0.224
+warrior,70,20,double_strike,typical,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Slime,1553,1.00,8,1047,Infinity,5.9,5500,0.282
+warrior,70,20,throwing_knives,typical,none,,20,Skeleton,70,Infinity,0,388,Infinity,10.6,5500,0.013
+warrior,70,20,throwing_knives,typical,none,,20,Slime,92,Infinity,0,508,Infinity,10.1,5500,0.017
+warrior,70,20,throwing_knives,typical,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Skeleton,131,Infinity,0,505,Infinity,10.1,5500,0.024
+warrior,70,20,throwing_knives,typical,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Slime,170,8.00,1,702,Infinity,9.7,5500,0.031
+warrior,70,20,frost_shards,typical,none,,20,Skeleton,195,Infinity,0,591,Infinity,16.3,5500,0.035
+warrior,70,20,frost_shards,typical,none,,20,Slime,205,8.00,1,551,Infinity,15.5,5500,0.037
+warrior,70,20,frost_shards,typical,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Skeleton,383,8.00,1,1059,Infinity,18.7,5500,0.070
+warrior,70,20,frost_shards,typical,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Slime,368,4.00,2,998,Infinity,18.1,5500,0.067
+warrior,70,20,storm_strike,typical,none,,20,Skeleton,1005,2.00,4,1060,Infinity,12.7,5500,0.183
+warrior,70,20,storm_strike,typical,none,,20,Slime,1002,1.60,5,896,Infinity,12.7,5500,0.182
+warrior,70,20,storm_strike,typical,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Skeleton,1266,1.60,5,1226,Infinity,15.5,5500,0.230
+warrior,70,20,storm_strike,typical,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Slime,1470,1.00,8,953,Infinity,15.0,5500,0.267
+warrior,70,20,glacial_hammer,typical,none,,20,Skeleton,747,4.00,2,1085,Infinity,9.4,5500,0.136
+warrior,70,20,glacial_hammer,typical,none,,20,Slime,815,2.00,4,924,Infinity,9.4,5500,0.148
+warrior,70,20,glacial_hammer,typical,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Skeleton,1997,1.00,8,1880,Infinity,11.4,5500,0.363
+warrior,70,20,glacial_hammer,typical,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Slime,2061,0.73,11,1458,Infinity,10.8,5500,0.375

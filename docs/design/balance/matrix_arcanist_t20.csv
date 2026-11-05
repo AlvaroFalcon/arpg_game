@@ -1,0 +1,145 @@
+class,level,tier,skill,gear,tree,path,gem,target,dps_single,ttk_normal,kills,dps_pack,pack_clear_s,mana_per_s,expected,ratio_single
+arcanist,70,20,fireball,none,none,,20,Skeleton,261,8.00,1,317,Infinity,16.2,5500,0.047
+arcanist,70,20,fireball,none,none,,20,Slime,193,8.00,1,198,Infinity,17.2,5500,0.035
+arcanist,70,20,fireball,none,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Skeleton,624,4.00,2,1969,7.5,14.3,5500,0.113
+arcanist,70,20,fireball,none,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Slime,396,4.00,2,1414,7.7,14.3,5500,0.072
+arcanist,70,20,spark,none,none,,20,Skeleton,174,Infinity,0,374,Infinity,26.9,5500,0.032
+arcanist,70,20,spark,none,none,,20,Slime,212,8.00,1,351,Infinity,26.9,5500,0.039
+arcanist,70,20,spark,none,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Skeleton,58,Infinity,0,424,Infinity,25.7,5500,0.010
+arcanist,70,20,spark,none,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Slime,80,Infinity,0,521,Infinity,24.8,5500,0.015
+arcanist,70,20,frost_nova,none,none,,20,Skeleton,39,Infinity,0,228,Infinity,4.8,5500,0.007
+arcanist,70,20,frost_nova,none,none,,20,Slime,32,Infinity,0,223,Infinity,4.8,5500,0.006
+arcanist,70,20,frost_nova,none,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Skeleton,34,Infinity,0,287,Infinity,8.1,5500,0.006
+arcanist,70,20,frost_nova,none,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Slime,40,Infinity,0,281,Infinity,6.5,5500,0.007
+arcanist,70,20,blades,none,none,,20,Skeleton,12,Infinity,0,18,Infinity,3.9,5500,0.002
+arcanist,70,20,blades,none,none,,20,Slime,14,Infinity,0,27,Infinity,3.9,5500,0.002
+arcanist,70,20,blades,none,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Skeleton,228,8.00,1,792,Infinity,7.0,5500,0.041
+arcanist,70,20,blades,none,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Slime,0,Infinity,0,577,Infinity,4.7,5500,0.000
+arcanist,70,20,meteor,none,none,,20,Skeleton,54,Infinity,0,344,Infinity,5.9,5500,0.010
+arcanist,70,20,meteor,none,none,,20,Slime,17,Infinity,0,257,Infinity,5.9,5500,0.003
+arcanist,70,20,meteor,none,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Skeleton,184,Infinity,0,933,Infinity,8.9,5500,0.033
+arcanist,70,20,meteor,none,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Slime,124,Infinity,0,632,Infinity,8.9,5500,0.023
+arcanist,70,20,cleave,none,none,,20,Skeleton,8,Infinity,0,32,Infinity,6.9,5500,0.001
+arcanist,70,20,cleave,none,none,,20,Slime,13,Infinity,0,45,Infinity,6.4,5500,0.002
+arcanist,70,20,cleave,none,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Skeleton,14,Infinity,0,112,Infinity,7.8,5500,0.003
+arcanist,70,20,cleave,none,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Slime,26,Infinity,0,165,Infinity,7.4,5500,0.005
+arcanist,70,20,sunder,none,none,,20,Skeleton,20,Infinity,0,101,Infinity,7.7,5500,0.004
+arcanist,70,20,sunder,none,none,,20,Slime,19,Infinity,0,153,Infinity,6.4,5500,0.003
+arcanist,70,20,sunder,none,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Skeleton,71,Infinity,0,423,Infinity,10.4,5500,0.013
+arcanist,70,20,sunder,none,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Slime,100,Infinity,0,537,Infinity,10.4,5500,0.018
+arcanist,70,20,double_strike,none,none,,20,Skeleton,16,Infinity,0,50,Infinity,5.5,5500,0.003
+arcanist,70,20,double_strike,none,none,,20,Slime,21,Infinity,0,68,Infinity,5.5,5500,0.004
+arcanist,70,20,double_strike,none,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Skeleton,75,Infinity,0,279,Infinity,5.7,5500,0.014
+arcanist,70,20,double_strike,none,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Slime,106,Infinity,0,378,Infinity,5.7,5500,0.019
+arcanist,70,20,throwing_knives,none,none,,20,Skeleton,3,Infinity,0,19,Infinity,10.0,5500,0.001
+arcanist,70,20,throwing_knives,none,none,,20,Slime,5,Infinity,0,26,Infinity,10.0,5500,0.001
+arcanist,70,20,throwing_knives,none,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Skeleton,7,Infinity,0,25,Infinity,9.8,5500,0.001
+arcanist,70,20,throwing_knives,none,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Slime,8,Infinity,0,35,Infinity,9.8,5500,0.001
+arcanist,70,20,frost_shards,none,none,,20,Skeleton,110,Infinity,0,379,Infinity,21.9,5500,0.020
+arcanist,70,20,frost_shards,none,none,,20,Slime,126,Infinity,0,374,Infinity,22.9,5500,0.023
+arcanist,70,20,frost_shards,none,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Skeleton,216,Infinity,0,674,Infinity,27.9,5500,0.039
+arcanist,70,20,frost_shards,none,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Slime,227,8.00,1,635,Infinity,26.9,5500,0.041
+arcanist,70,20,storm_strike,none,none,,20,Skeleton,127,Infinity,0,399,Infinity,12.4,5500,0.023
+arcanist,70,20,storm_strike,none,none,,20,Slime,127,Infinity,0,370,Infinity,12.4,5500,0.023
+arcanist,70,20,storm_strike,none,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Skeleton,38,Infinity,0,142,Infinity,14.4,5500,0.007
+arcanist,70,20,storm_strike,none,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Slime,43,Infinity,0,199,Infinity,14.4,5500,0.008
+arcanist,70,20,glacial_hammer,none,none,,20,Skeleton,108,Infinity,0,401,Infinity,9.5,5500,0.020
+arcanist,70,20,glacial_hammer,none,none,,20,Slime,102,Infinity,0,414,Infinity,9.5,5500,0.019
+arcanist,70,20,glacial_hammer,none,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Skeleton,150,Infinity,0,693,Infinity,11.1,5500,0.027
+arcanist,70,20,glacial_hammer,none,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Slime,150,Infinity,0,643,Infinity,11.1,5500,0.027
+arcanist,70,20,fireball,ascendancy,none,,20,Skeleton,313,8.00,1,387,Infinity,17.2,5500,0.057
+arcanist,70,20,fireball,ascendancy,none,,20,Slime,227,8.00,1,229,Infinity,17.2,5500,0.041
+arcanist,70,20,fireball,ascendancy,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Skeleton,713,2.67,3,2103,6.9,14.3,5500,0.130
+arcanist,70,20,fireball,ascendancy,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Slime,435,4.00,2,1529,7.1,13.5,5500,0.079
+arcanist,70,20,spark,ascendancy,none,,20,Skeleton,270,8.00,1,451,Infinity,26.9,5500,0.049
+arcanist,70,20,spark,ascendancy,none,,20,Slime,228,8.00,1,430,Infinity,26.9,5500,0.042
+arcanist,70,20,spark,ascendancy,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Skeleton,71,Infinity,0,477,Infinity,25.7,5500,0.013
+arcanist,70,20,spark,ascendancy,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Slime,85,Infinity,0,634,Infinity,24.8,5500,0.015
+arcanist,70,20,frost_nova,ascendancy,none,,20,Skeleton,47,Infinity,0,301,Infinity,4.8,5500,0.009
+arcanist,70,20,frost_nova,ascendancy,none,,20,Slime,36,Infinity,0,307,Infinity,4.8,5500,0.007
+arcanist,70,20,frost_nova,ascendancy,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Skeleton,53,Infinity,0,374,Infinity,8.1,5500,0.010
+arcanist,70,20,frost_nova,ascendancy,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Slime,53,Infinity,0,388,Infinity,6.5,5500,0.010
+arcanist,70,20,blades,ascendancy,none,,20,Skeleton,0,Infinity,0,61,Infinity,3.9,5500,0.000
+arcanist,70,20,blades,ascendancy,none,,20,Slime,0,Infinity,0,80,Infinity,3.9,5500,0.000
+arcanist,70,20,blades,ascendancy,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Skeleton,0,Infinity,0,1042,Infinity,7.0,5500,0.000
+arcanist,70,20,blades,ascendancy,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Slime,0,Infinity,0,778,Infinity,4.7,5500,0.000
+arcanist,70,20,meteor,ascendancy,none,,20,Skeleton,55,Infinity,0,461,Infinity,5.9,5500,0.010
+arcanist,70,20,meteor,ascendancy,none,,20,Slime,18,Infinity,0,271,Infinity,5.9,5500,0.003
+arcanist,70,20,meteor,ascendancy,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Skeleton,188,Infinity,0,1251,Infinity,8.9,5500,0.034
+arcanist,70,20,meteor,ascendancy,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Slime,125,Infinity,0,760,Infinity,8.9,5500,0.023
+arcanist,70,20,cleave,ascendancy,none,,20,Skeleton,14,Infinity,0,82,Infinity,6.9,5500,0.003
+arcanist,70,20,cleave,ascendancy,none,,20,Slime,21,Infinity,0,111,Infinity,6.4,5500,0.004
+arcanist,70,20,cleave,ascendancy,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Skeleton,30,Infinity,0,200,Infinity,7.8,5500,0.006
+arcanist,70,20,cleave,ascendancy,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Slime,33,Infinity,0,246,Infinity,7.4,5500,0.006
+arcanist,70,20,sunder,ascendancy,none,,20,Skeleton,23,Infinity,0,126,Infinity,7.7,5500,0.004
+arcanist,70,20,sunder,ascendancy,none,,20,Slime,22,Infinity,0,161,Infinity,6.4,5500,0.004
+arcanist,70,20,sunder,ascendancy,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Skeleton,91,Infinity,0,478,Infinity,10.4,5500,0.016
+arcanist,70,20,sunder,ascendancy,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Slime,104,Infinity,0,629,Infinity,10.4,5500,0.019
+arcanist,70,20,double_strike,ascendancy,none,,20,Skeleton,25,Infinity,0,93,Infinity,5.5,5500,0.005
+arcanist,70,20,double_strike,ascendancy,none,,20,Slime,40,Infinity,0,128,Infinity,5.5,5500,0.007
+arcanist,70,20,double_strike,ascendancy,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Skeleton,94,Infinity,0,507,Infinity,5.7,5500,0.017
+arcanist,70,20,double_strike,ascendancy,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Slime,123,Infinity,0,660,Infinity,5.7,5500,0.022
+arcanist,70,20,throwing_knives,ascendancy,none,,20,Skeleton,3,Infinity,0,22,Infinity,10.0,5500,0.001
+arcanist,70,20,throwing_knives,ascendancy,none,,20,Slime,5,Infinity,0,31,Infinity,10.0,5500,0.001
+arcanist,70,20,throwing_knives,ascendancy,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Skeleton,8,Infinity,0,31,Infinity,9.8,5500,0.001
+arcanist,70,20,throwing_knives,ascendancy,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Slime,10,Infinity,0,44,Infinity,9.8,5500,0.002
+arcanist,70,20,frost_shards,ascendancy,none,,20,Skeleton,138,Infinity,0,429,Infinity,22.9,5500,0.025
+arcanist,70,20,frost_shards,ascendancy,none,,20,Slime,145,Infinity,0,455,Infinity,22.9,5500,0.026
+arcanist,70,20,frost_shards,ascendancy,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Skeleton,256,8.00,1,713,Infinity,27.9,5500,0.046
+arcanist,70,20,frost_shards,ascendancy,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Slime,269,8.00,1,755,Infinity,26.9,5500,0.049
+arcanist,70,20,storm_strike,ascendancy,none,,20,Skeleton,202,Infinity,0,817,Infinity,12.4,5500,0.037
+arcanist,70,20,storm_strike,ascendancy,none,,20,Slime,206,8.00,1,700,Infinity,12.4,5500,0.037
+arcanist,70,20,storm_strike,ascendancy,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Skeleton,65,Infinity,0,324,Infinity,14.4,5500,0.012
+arcanist,70,20,storm_strike,ascendancy,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Slime,92,Infinity,0,435,Infinity,14.4,5500,0.017
+arcanist,70,20,glacial_hammer,ascendancy,none,,20,Skeleton,181,Infinity,0,747,Infinity,9.5,5500,0.033
+arcanist,70,20,glacial_hammer,ascendancy,none,,20,Slime,178,8.00,1,739,Infinity,9.5,5500,0.032
+arcanist,70,20,glacial_hammer,ascendancy,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Skeleton,489,4.00,2,1263,Infinity,11.1,5500,0.089
+arcanist,70,20,glacial_hammer,ascendancy,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Slime,470,4.00,2,1159,Infinity,11.1,5500,0.085
+arcanist,70,20,fireball,typical,none,,20,Skeleton,1242,2.00,4,1384,Infinity,51.9,5500,0.226
+arcanist,70,20,fireball,typical,none,,20,Slime,865,2.00,4,857,Infinity,9.7,5500,0.157
+arcanist,70,20,fireball,typical,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Skeleton,2454,0.89,9,6855,2.5,8.0,5500,0.446
+arcanist,70,20,fireball,typical,best,power3 blast3 firestorm1 kindle3 velocity2 efficiency2 volley1 searing3 kill_blast1,20,Slime,1632,1.00,8,4228,2.8,8.0,5500,0.297
+arcanist,70,20,spark,typical,none,,20,Skeleton,852,2.67,3,1863,Infinity,15.3,5500,0.155
+arcanist,70,20,spark,typical,none,,20,Slime,965,1.60,5,1616,7.3,15.3,5500,0.175
+arcanist,70,20,spark,typical,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Skeleton,500,4.00,2,2149,6.8,14.5,5500,0.091
+arcanist,70,20,spark,typical,best,power3 static3 arc_blast1 haste3 efficiency3 volley1 cold_current2 range2 grounded1,20,Slime,648,2.67,3,2272,4.8,14.0,5500,0.118
+arcanist,70,20,frost_nova,typical,none,,20,Skeleton,333,8.00,1,2134,7.1,3.7,5500,0.060
+arcanist,70,20,frost_nova,typical,none,,20,Slime,253,8.00,1,2036,7.0,3.6,5500,0.046
+arcanist,70,20,frost_nova,typical,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Skeleton,927,2.67,3,1733,Infinity,5.4,5500,0.169
+arcanist,70,20,frost_nova,typical,best,patience3 efficiency2 echo1 power3 rime3 brutal1 reach3 knock3,20,Slime,762,2.67,3,1646,Infinity,3.8,5500,0.139
+arcanist,70,20,blades,typical,none,,20,Skeleton,0,Infinity,0,794,Infinity,2.3,5500,0.000
+arcanist,70,20,blades,typical,none,,20,Slime,0,Infinity,0,685,Infinity,1.1,5500,0.000
+arcanist,70,20,blades,typical,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Skeleton,0,Infinity,0,1216,Infinity,4.1,5500,0.000
+arcanist,70,20,blades,typical,best,reach3 more_blades2 lingering3 patience3 power3 laceration3 brutal1 ember_blades1,20,Slime,0,Infinity,0,938,Infinity,2.7,5500,0.000
+arcanist,70,20,meteor,typical,none,,20,Skeleton,197,Infinity,0,1707,Infinity,3.4,5500,0.036
+arcanist,70,20,meteor,typical,none,,20,Slime,127,Infinity,0,1076,Infinity,3.4,5500,0.023
+arcanist,70,20,meteor,typical,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Skeleton,666,4.00,2,3870,4.4,5.2,5500,0.121
+arcanist,70,20,meteor,typical,best,patience3 efficiency2 echo1 power3 kindle3 brutal1 reach3 searing3,20,Slime,346,8.00,1,3420,3.7,3.5,5500,0.063
+arcanist,70,20,cleave,typical,none,,20,Skeleton,164,Infinity,0,900,Infinity,4.4,5500,0.030
+arcanist,70,20,cleave,typical,none,,20,Slime,422,4.00,2,862,Infinity,4.1,5500,0.077
+arcanist,70,20,cleave,typical,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Skeleton,964,2.00,4,1470,Infinity,4.9,5500,0.175
+arcanist,70,20,cleave,typical,best,power3 haste3 brutal1 laceration3 rend3 reach3 efficiency2 flurry1,20,Slime,1139,1.33,6,1317,Infinity,4.9,5500,0.207
+arcanist,70,20,sunder,typical,none,,20,Skeleton,197,Infinity,0,1035,Infinity,5.1,5500,0.036
+arcanist,70,20,sunder,typical,none,,20,Slime,197,8.00,1,1094,Infinity,4.4,5500,0.036
+arcanist,70,20,sunder,typical,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Skeleton,683,4.00,2,1818,Infinity,7.4,5500,0.124
+arcanist,70,20,sunder,typical,best,patience3 efficiency2 echo1 power3 laceration3 brutal1 reach3 split3,20,Slime,809,2.00,4,2263,5.4,6.7,5500,0.147
+arcanist,70,20,double_strike,typical,none,,20,Skeleton,413,8.00,1,901,Infinity,3.2,5500,0.075
+arcanist,70,20,double_strike,typical,none,,20,Slime,523,2.67,3,805,Infinity,3.2,5500,0.095
+arcanist,70,20,double_strike,typical,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Skeleton,1347,1.60,5,1866,Infinity,3.4,5500,0.245
+arcanist,70,20,double_strike,typical,best,power3 laceration3 deep3 haste3 reach3 brutal1 efficiency3,20,Slime,1604,1.00,8,10558,1.1,3.4,5500,0.292
+arcanist,70,20,throwing_knives,typical,none,,20,Skeleton,94,Infinity,0,555,Infinity,6.5,5500,0.017
+arcanist,70,20,throwing_knives,typical,none,,20,Slime,106,Infinity,0,756,Infinity,6.5,5500,0.019
+arcanist,70,20,throwing_knives,typical,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Skeleton,193,Infinity,0,821,Infinity,6.1,5500,0.035
+arcanist,70,20,throwing_knives,typical,best,power3 haste3 laceration3 velocity3 spread3 volley1 piercing1 efficiency2,20,Slime,221,8.00,1,988,Infinity,6.1,5500,0.040
+arcanist,70,20,frost_shards,typical,none,,20,Skeleton,869,2.67,3,1726,Infinity,12.4,5500,0.158
+arcanist,70,20,frost_shards,typical,none,,20,Slime,921,2.00,4,2265,5.1,12.9,5500,0.167
+arcanist,70,20,frost_shards,typical,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Skeleton,1811,1.14,7,3547,4.5,15.8,5500,0.329
+arcanist,70,20,frost_shards,typical,best,power3 rime3 brutal1 haste3 brittle3 velocity3 efficiency2 volley1,20,Slime,1821,0.89,9,3792,3.3,15.2,5500,0.331
+arcanist,70,20,storm_strike,typical,none,,20,Skeleton,1188,1.60,5,1196,Infinity,7.9,5500,0.216
+arcanist,70,20,storm_strike,typical,none,,20,Slime,1161,1.33,6,911,Infinity,7.9,5500,0.211
+arcanist,70,20,storm_strike,typical,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Skeleton,1222,1.60,5,1568,Infinity,9.3,5500,0.222
+arcanist,70,20,storm_strike,typical,best,power3 haste3 efficiency2 flurry1 reach2 charged3 thunder_steel1 static3 brutal1,20,Slime,1426,1.00,8,1297,Infinity,9.3,5500,0.259
+arcanist,70,20,glacial_hammer,typical,none,,20,Skeleton,1121,2.00,4,1701,Infinity,6.2,5500,0.204
+arcanist,70,20,glacial_hammer,typical,none,,20,Slime,1072,1.60,5,1371,Infinity,6.2,5500,0.195
+arcanist,70,20,glacial_hammer,typical,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Skeleton,2606,0.80,10,33206,0.5,7.1,5500,0.474
+arcanist,70,20,glacial_hammer,typical,best,power3 haste3 efficiency2 flurry1 rime3 brutal1 reach3 heavy3,20,Slime,2634,0.73,11,26068,0.5,7.4,5500,0.479
