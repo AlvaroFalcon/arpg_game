@@ -9,6 +9,7 @@
   --ember: #c4501f; --ember-soft: #f6dccd; --steel: #3d5d8a; --steel-soft: #dce5f2;
   --gold: #a87a1c; --new: #2f7d4f; --new-soft: #d8eedf; --cut: #a8323a; --cut-soft: #f5d9db;
   --notable-bg: #fff4e0; --special-bg: #efe4fb; --special: #7a4bb5; --edge: #8b7f8e;
+  --s1: #c4501f; --s2: #2f6db5; /* chart series, validated (dataviz validate_palette) */
   --display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
   --body: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -17,12 +18,12 @@
   --bg: #17141c; --panel: #201b27; --board: #1b1721; --dot: #342c3d; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
   --ember: #f07a42; --ember-soft: #43271c; --steel: #8fb0e0; --steel-soft: #1f2a3c;
   --gold: #e0b450; --new: #6fd197; --new-soft: #1c3527; --cut: #f0737b; --cut-soft: #3e1d22;
-  --notable-bg: #33281a; --special-bg: #2c2140; --special: #c39af0; --edge: #8a7f92; color-scheme: dark } }
+  --notable-bg: #33281a; --special-bg: #2c2140; --special: #c39af0; --edge: #8a7f92; --s1: #e0682f; --s2: #5d93e0; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #17141c; --panel: #201b27; --board: #1b1721; --dot: #342c3d; --ink: #ece4d8; --muted: #a59aa8; --line: #3a3244;
   --ember: #f07a42; --ember-soft: #43271c; --steel: #8fb0e0; --steel-soft: #1f2a3c;
   --gold: #e0b450; --new: #6fd197; --new-soft: #1c3527; --cut: #f0737b; --cut-soft: #3e1d22;
-  --notable-bg: #33281a; --special-bg: #2c2140; --special: #c39af0; --edge: #8a7f92; color-scheme: dark }
+  --notable-bg: #33281a; --special-bg: #2c2140; --special: #c39af0; --edge: #8a7f92; --s1: #e0682f; --s2: #5d93e0; color-scheme: dark }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); margin: 0; }
 .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 32px; }
@@ -115,6 +116,60 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
 .changes ol { margin: 8px 0 0; padding-left: 20px; font-size: 13px; display: grid; gap: 3px; }
 .changes .none { color: var(--muted); font-size: 13px; }
 .changes pre { white-space: pre-wrap; font: 12px/1.5 var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; max-height: 280px; overflow: auto; }
+/* Analysis: path on the left, small multiples (one metric per chart, one axis each) on the right. */
+.tabs { margin-left: auto; display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.tabs button { border: 0; border-radius: 0; background: transparent; padding: 6px 14px; }
+.tabs button[aria-selected="true"] { background: var(--ember); color: #fff; }
+.an-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.an-level { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink); }
+.an-level input { width: 220px; accent-color: var(--ember); padding: 0; border: 0; background: transparent; }
+.an-level output { font-weight: 600; font-size: 18px; min-width: 2ch; color: var(--ember); }
+.an-layout { display: grid; grid-template-columns: minmax(250px, 330px) minmax(0, 1fr); gap: 0; }
+@media (max-width: 900px) { .an-layout { grid-template-columns: minmax(0, 1fr); } }
+.an-path { border-right: 1px solid var(--line); padding: 10px 12px; max-height: 78vh; overflow: auto; }
+.an-path h3 { font: 700 15px var(--display); margin: 0 0 8px; display: grid; gap: 2px; }
+.an-path h3 .meta, .meta { font: 12px var(--body); color: var(--muted); }
+.an-gname { font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 10px 0 4px; }
+.an-node { display: grid; grid-template-columns: 26px minmax(0, 1fr) 26px 38px; gap: 6px; align-items: start; padding: 5px 4px; border-radius: 6px; }
+.an-node.on { background: var(--ember-soft); }
+.an-node .pm { padding: 0; width: 26px; height: 26px; font-size: 16px; line-height: 1; }
+.an-node .nm { font-size: 13px; display: grid; gap: 1px; }
+.an-node .rk { font-size: 12px; color: var(--muted); }
+.an-node .tx { font-size: 12px; color: var(--muted); }
+.an-node .why { font-size: 11px; color: var(--muted); font-style: italic; }
+.an-node .from { font-size: 11px; color: var(--muted); padding-top: 5px; }
+.an-charts { padding: 10px 12px 12px; min-width: 0; }
+.an-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.an-legend span, .an-tip span { display: inline-flex; align-items: center; gap: 6px; }
+.ln { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--s1); }
+.ln.none { border-top: 2px dashed var(--s2); }
+.tk { display: inline-block; width: 2px; height: 8px; background: var(--muted); }
+.an-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.an-card { margin: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 8px 2px; background: var(--bg); }
+.an-card figcaption { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.an-card figcaption .num { color: var(--ink); }
+.an-card svg { width: 100%; height: auto; display: block; overflow: visible; }
+.an-card .g { stroke: var(--line); stroke-width: 1; }
+.an-card .ax { font: 10px var(--mono); fill: var(--muted); }
+.an-card .end { font: 600 10px var(--mono); fill: var(--ink); }
+.an-card .end.muted { fill: var(--muted); font-weight: 400; }
+.an-card .s-mine { fill: none; stroke: var(--s1); stroke-width: 2; stroke-linejoin: round; }
+.an-card .s-none { fill: none; stroke: var(--s2); stroke-width: 2; stroke-dasharray: 5 4; }
+.an-card .dot-mine { fill: var(--s1); stroke: var(--bg); stroke-width: 2; }
+.an-card .lvl { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
+.an-card .step { stroke: var(--muted); stroke-width: 2; }
+.an-card .cross line { stroke: var(--ink); stroke-width: 1; opacity: .5; }
+.an-card .hitbox { fill: transparent; cursor: pointer; }
+.an-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; max-width: 80ch; }
+.bench { position: relative; }
+.an-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-size: 12px; display: grid; gap: 3px; box-shadow: 0 2px 8px rgba(0,0,0,.15); white-space: nowrap; }
+.an-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.an-table th, .an-table td { padding: 4px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+.an-table th:first-child { text-align: left; font-weight: 500; }
+.an-table thead th { font: 600 11px var(--mono); color: var(--muted); text-transform: uppercase; }
+.an-table tr.diff td:nth-child(2) { font-weight: 600; }
+.an-blind { font-size: 12px; color: var(--muted); }
+.an-spent li { display: block; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 
@@ -184,10 +239,17 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
   let sel = null; // { type: "node", id } | { type: "edge", from, to }
   let dirty = false;
   const views = {}; // per-skill pan/zoom
+  let mode = "tree"; // "tree" (edit the graph) | "analysis" (charts of a path)
+  try { if (localStorage.getItem("escaldon-workbench-analysis-v1-mode") === "analysis") mode = "analysis"; } catch (e) { /* ignore */ }
 
+  // The game's data has a version (build.py hashes it): a draft made on older data would
+  // otherwise bring back old numbers (a cooldown already changed in the game) without a word.
+  const DATA_VERSION = raw.version || "";
+  let staleDraft = false;
   try {
     const draft = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
-    if (draft && draft.savedAt === state.savedAt && Array.isArray(draft.skills)) { state.skills = draft.skills.map(toGraph); state.note = draft.note || ""; dirty = true; }
+    if (draft && draft.savedAt === state.savedAt && (draft.version || "") === DATA_VERSION && Array.isArray(draft.skills)) { state.skills = draft.skills.map(toGraph); state.note = draft.note || ""; dirty = true; }
+    else if (draft) { staleDraft = true; localStorage.removeItem(STORE_KEY); }
   } catch (e) { /* storage unavailable: work in memory */ }
 
   const $ = id => document.getElementById(id);
@@ -222,7 +284,7 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
   }
 
   function persist() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ savedAt: state.savedAt, version: DATA_VERSION, skills: state.skills, note: state.note })); } catch (e) { /* ignore */ }
   }
   function touch() { dirty = true; persist(); renderList(); renderChanges(); setStatus("Cambios sin guardar."); }
   function setStatus(t) { $("status").textContent = t; }
@@ -247,11 +309,12 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
     const s = skill(current);
     const bench = $("bench");
     if (!s) { bench.innerHTML = `<p class="empty" style="padding:12px">Elige una habilidad.</p>`; return; }
+    if (mode === "analysis") return renderAnalysis(s);
     const live = s.nodes.filter(n => !n.removed);
     const points = live.filter(n => !n.exclusive).reduce((a, n) => a + n.ranks.length, 0) + new Set(live.filter(n => n.exclusive).map(n => n.exclusive)).size;
     bench.innerHTML = `
       <div class="bench-head"><h2>${esc(s.name)}</h2><span class="meta">${esc(s.id)} · ${esc(s.type)}</span>
-        <span class="meta num">${points} rangos · ${live.filter(n => !s.edges.some(e => e.to === n.id && !e.removed)).length} nodos de inicio · una gema de nivel 20 tiene 19 puntos</span></div>
+        <span class="meta num">${points} rangos · ${live.filter(n => !s.edges.some(e => e.to === n.id && !e.removed)).length} nodos de inicio · una gema de nivel 20 tiene 19 puntos</span>${tabs()}</div>
       <details class="skill-fields" ${skillStatus(s) === "new" ? "open" : ""}><summary>Datos de la habilidad</summary>
         <div class="fields">
           <label>Nombre<input id="f-name" value="${esc(s.name)}"></label>
@@ -288,6 +351,7 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
     }));
     $("btn-fit").addEventListener("click", () => { fit(s); applyView(s); });
     $("btn-layout").addEventListener("click", () => { autoLayout(s); touch(); drawNodes(s); fit(s); applyView(s); });
+    bindTabs();
     drawNodes(s);
     bindBoard(s);
     if (!views[s.id]) fit(s);
@@ -516,10 +580,230 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
     touch(); drawNodes(s); renderInspector();
   }
 
+  // --- analysis: pick a path, slide the gem level, watch the numbers --------------------
+  // Each node rank carries its numeric effect, measured by the game (DumpSkillTrees): factors
+  // multiply, "max" keys take the largest, the rest add. Gem level L has L-1 points, spent in
+  // the order the path was clicked, so the curve shows when each node kicks in.
+  const MULT = new Set(["damage", "cost", "cooldown", "useTime", "area", "duration", "range", "igniteDamage", "projectileSpeed", "projectileRange", "passive", "active", "drain"]);
+  const MAXK = new Set(["burst", "burstShare", "killBlast", "oilSlow", "splash", "stacksKept"]);
+  const ANAL_KEY = "escaldon-workbench-analysis-v1";
+  let anal = {};
+  try { anal = JSON.parse(localStorage.getItem(ANAL_KEY) || "{}") || {}; } catch (e) { anal = {}; }
+  const analOf = s => anal[s.id] || (anal[s.id] = { path: [], level: 20 });
+  function persistAnal() { try { localStorage.setItem(ANAL_KEY, JSON.stringify(anal)); } catch (e) { /* ignore */ } }
+  const liveNode = (s, id) => s.nodes.find(n => n.id === id && !n.removed);
+
+  function ranksOf(path) { const r = {}; for (const id of path) r[id] = (r[id] || 0) + 1; return r; }
+  // Why a point cannot go into node n now (null = it can).
+  function blocker(s, n, r) {
+    if ((r[n.id] || 0) >= n.ranks.length) return "Ya está al máximo";
+    if (n.exclusive) {
+      const other = s.nodes.find(o => o !== n && !o.removed && o.exclusive === n.exclusive && r[o.id]);
+      if (other) return "Elige uno: ya tienes " + other.name;
+    }
+    const ins = s.edges.filter(e => e.to === n.id && !e.removed && liveNode(s, e.from));
+    if (ins.length && !ins.some(e => (r[e.from] || 0) >= (e.ranks || 1)))
+      return "Necesita " + ins.map(e => (e.ranks || 1) + " en " + liveNode(s, e.from).name).join(" o ");
+    return null;
+  }
+  // Replays a path, dropping points that are no longer legal (after a removal or an edit).
+  function cleanPath(s, path) {
+    const out = [], r = {};
+    for (const id of path) { const n = liveNode(s, id); if (n && !blocker(s, n, r)) { out.push(id); r[id] = (r[id] || 0) + 1; } }
+    return out;
+  }
+
+  function combine(s, ranks) {
+    const E = { converts: "" }, blind = [];
+    for (const [id, k] of Object.entries(ranks)) {
+      const n = liveNode(s, id);
+      const eff = n && Array.isArray(n.effects) ? n.effects[k - 1] : null;
+      if (!eff || !Object.keys(eff).length) { if (n) blind.push(n.name); continue; }
+      for (const [key, v] of Object.entries(eff)) {
+        if (key === "converts") E.converts = v;
+        else if (MULT.has(key)) E[key] = (E[key] ?? 1) * v;
+        else if (MAXK.has(key)) E[key] = Math.max(E[key] ?? 0, v);
+        else E[key] = (E[key] ?? 0) + v;
+      }
+    }
+    return { E, blind };
+  }
+  const f = (E, k) => E[k] ?? (MULT.has(k) ? 1 : 0);
+
+  function metrics(s, L, path) {
+    const ranks = ranksOf(path.slice(0, Math.max(0, L - 1)));
+    const { E, blind } = combine(s, ranks);
+    const lv = L - 1, isAura = /aura/i.test(s.type || "");
+    const dmg = (s.damage || 0) * (1 + (s.damagePerLevel ?? 0.12) * lv) * f(E, "damage");
+    const burst = Math.max(s.burst || 0, f(E, "burst")) > 0;
+    const share = burst ? Math.max(f(E, "burstShare"), s.burst ? s.burstShare || 0 : 0) : 0;
+    const perTarget = dmg * (1 + share);
+    const hits = ((s.hits || 1) + f(E, "extraHits")) * (1 + f(E, "repeats"));
+    const mana = (s.mana || 0) * (1 + (s.costPerLevel ?? 0.02) * lv) * f(E, "cost");
+    const cd = (s.cooldown || 0) * f(E, "cooldown"), ut = (s.useTime || 0) * f(E, "useTime");
+    const period = Math.max(ut, cd, 0.05);
+    const auraLv = 1 + (s.auraPerLevel ?? 0.03) * lv;
+    return {
+      L, E, blind, ranks, burst, share, hits, isAura,
+      dmg, perTarget, mana, cd, ut,
+      dps: perTarget * hits / period, mps: mana / period,
+      passive: isAura ? auraLv * f(E, "passive") * 100 : 0,
+      active: isAura ? auraLv * f(E, "active") * 100 : 0,
+    };
+  }
+
+  const fmt = (v, d = 1) => (Math.abs(v) >= 100 ? Math.round(v).toLocaleString("es") : (Math.round(v * 10 ** d) / 10 ** d).toLocaleString("es"));
+  const CHARTS = [
+    { k: "dmg", t: "Daño por golpe", u: "", show: s => s.damage > 0 },
+    { k: "dps", t: "DPS estimado (un enemigo)", u: "", show: s => s.damage > 0 },
+    { k: "mana", t: "Coste de maná", u: "", show: () => true },
+    { k: "mps", t: "Maná por segundo usándola sin parar", u: "/s", show: () => true },
+    { k: "cd", t: "Cooldown", u: " s", show: (s, a) => a.some(m => m.cd > 0) },
+    { k: "ut", t: "Tiempo de uso", u: " s", d: 2, show: () => true },
+    { k: "hits", t: "Golpes por uso", u: "", show: (s, a) => a.some(m => m.hits !== a[0].hits) },
+    { k: "passive", t: "Fuerza del pasivo (% del base)", u: "%", show: s => /aura/i.test(s.type || "") },
+    { k: "active", t: "Fuerza del activo (% del base)", u: "%", show: s => /aura/i.test(s.type || "") },
+  ];
+
+  function chartSvg(c, mine, none, level, steps) {
+    const W = 300, H = 160, P = { l: 38, r: 46, t: 10, b: 24 };
+    const vals = mine.map(m => m[c.k]).concat(none.map(m => m[c.k]));
+    let max = Math.max(...vals, 0);
+    if (max <= 0) max = 1;
+    const nice = (() => { const e = 10 ** Math.floor(Math.log10(max)); for (const m of [1, 2, 2.5, 5, 10]) if (m * e >= max) return m * e; return 10 * e; })();
+    const x = L => P.l + (L - 1) / 19 * (W - P.l - P.r), y = v => H - P.b - v / nice * (H - P.t - P.b);
+    const line = arr => arr.map((m, i) => (i ? "L" : "M") + x(m.L).toFixed(1) + " " + y(m[c.k]).toFixed(1)).join("");
+    const grid = [0, 0.5, 1].map(t => `<line class="g" x1="${P.l}" x2="${W - P.r}" y1="${y(nice * t)}" y2="${y(nice * t)}"/><text class="ax" x="${P.l - 6}" y="${y(nice * t) + 4}" text-anchor="end">${fmt(nice * t, c.d ?? 1)}</text>`).join("");
+    const xt = [1, 5, 10, 15, 20].map(L => `<text class="ax" x="${x(L)}" y="${H - 8}" text-anchor="middle">${L}</text>`).join("");
+    const ticks = steps.map(L => `<line class="step" x1="${x(L)}" x2="${x(L)}" y1="${H - P.b}" y2="${H - P.b + 5}"/>`).join("");
+    let ya = y(mine[19][c.k]), yb = y(none[19][c.k]);
+    if (Math.abs(ya - yb) < 13) { const mid = (ya + yb) / 2, up = ya <= yb ? -1 : 1; ya = mid + up * 6.5; yb = mid - up * 6.5; }
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.t)} del nivel 1 al 20">
+      ${grid}${xt}${ticks}
+      <line class="lvl" x1="${x(level)}" x2="${x(level)}" y1="${P.t}" y2="${H - P.b}"/>
+      <path class="s-mine" d="${line(mine)}"/><path class="s-none" d="${line(none)}"/>
+      <circle class="dot-mine" cx="${x(level)}" cy="${y(mine[level - 1][c.k])}" r="4"/>
+      <text class="end" x="${W - P.r + 6}" y="${ya + 4}">${fmt(mine[19][c.k], c.d ?? 1)}</text>
+      <text class="end muted" x="${W - P.r + 6}" y="${yb + 4}">${fmt(none[19][c.k], c.d ?? 1)}</text>
+      <g class="cross" visibility="hidden"><line x1="0" x2="0" y1="${P.t}" y2="${H - P.b}"/></g>
+      <rect class="hitbox" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}" data-chart="${c.k}"/>
+    </svg>`;
+  }
+
+  function renderAnalysis(s) {
+    const A = analOf(s);
+    A.path = cleanPath(s, A.path);
+    const L = A.level = Math.min(20, Math.max(1, A.level | 0 || 20));
+    const mine = [], none = [];
+    for (let l = 1; l <= 20; l++) { mine.push(metrics(s, l, A.path)); none.push(metrics(s, l, [])); }
+    const steps = A.path.slice(0, 19).map((_, i) => i + 2);
+    const r = ranksOf(A.path);
+    const groups = {};
+    for (const n of s.nodes.filter(n => !n.removed)) {
+      const g = (s.branches || [])[n.branch] ?? "Otros";
+      (groups[g] = groups[g] || []).push(n);
+    }
+    const bench = $("bench");
+    bench.innerHTML = `
+      <div class="bench-head"><h2>${esc(s.name)}</h2><span class="meta">${esc(s.id)} · ${esc(s.type)}</span>${tabs()}</div>
+      <div class="an-controls">
+        <label class="an-level">Nivel de la gema <output class="num" id="an-level-out">${L}</output>
+          <input id="an-level" type="range" min="1" max="20" step="1" value="${L}"></label>
+        <span class="meta num">${A.path.length} puntos en tu camino · al nivel ${L} tienes ${L - 1} · ${Math.min(L - 1, A.path.length)} gastados</span>
+        <span class="row" style="margin:0"><button type="button" id="an-undo" ${A.path.length ? "" : "disabled"}>Quitar el último</button><button type="button" id="an-clear" class="danger" ${A.path.length ? "" : "disabled"}>Vaciar camino</button></span>
+      </div>
+      <div class="an-layout">
+        <div class="an-path">
+          <h3>Tu camino <span class="meta">pulsa + en el orden en que gastarías los puntos</span></h3>
+          ${Object.entries(groups).map(([g, ns]) => `<div class="an-group"><div class="an-gname">${esc(g)}</div>${ns.map(n => {
+            const k = r[n.id] || 0, why = blocker(s, n, r), used = A.path.indexOf(n.id);
+            const hasNums = Array.isArray(n.effects) && n.effects.some(e => e && Object.keys(e).length);
+            return `<div class="an-node ${k ? "on" : ""}">
+              <button type="button" class="pm" data-minus="${esc(n.id)}" ${k ? "" : "disabled"} aria-label="Quitar un punto de ${esc(n.name)}">−</button>
+              <span class="nm"><b>${esc(n.name)}</b> <span class="num rk">${k}/${n.ranks.length}</span>${hasNums ? "" : ` <span class="chip changed" title="El juego no da números para este nodo: no entra en las gráficas">ver texto</span>`}
+                <span class="tx">${esc(n.ranks[Math.max(0, k - 1)] || "")}</span>${why && !k ? `<span class="why">${esc(why)}</span>` : ""}</span>
+              <button type="button" class="pm" data-plus="${esc(n.id)}" ${why ? `disabled title="${esc(why)}"` : ""} aria-label="Añadir un punto a ${esc(n.name)}">+</button>
+              ${used >= 0 ? `<span class="from num" title="Nivel de la gema en que entra el primer punto">nv ${used + 2}</span>` : `<span class="from"></span>`}
+            </div>`;
+          }).join("")}</div>`).join("")}
+        </div>
+        <div class="an-charts">
+          <div class="an-legend"><span><i class="ln mine"></i>Con tu camino</span><span><i class="ln none"></i>Sin árbol (solo nivel)</span><span><i class="tk"></i>Nivel en que entra un punto</span></div>
+          <div class="an-grid">${CHARTS.filter(c => c.show(s, mine)).map(c => `<figure class="an-card"><figcaption>${esc(c.t)}<span class="num">${fmt(mine[L - 1][c.k], c.d ?? 1)}${c.u}</span></figcaption>${chartSvg(c, mine, none, L, steps)}</figure>`).join("")}</div>
+          <p class="an-note">Cuentas de la habilidad sola: sin estadísticas del personaje, pasivas, soportes, críticos ni daño en el tiempo (quemadura, sangrado). El DPS supone que todos los golpes y la explosión dan al mismo enemigo y que la usas en cuanto puedes (lo que tarde más: tiempo de uso o cooldown). Usa los números de la ficha de arriba, así que si editas el cooldown o el maná lo verás aquí.</p>
+        </div>
+      </div>
+      <div class="an-tip" id="an-tip" hidden></div>`;
+    bindTabs();
+    $("an-level").addEventListener("input", e => { A.level = Number(e.target.value); persistAnal(); renderAnalysis(s); renderInspector(); $("an-level").focus(); });
+    $("an-undo").addEventListener("click", () => { A.path.pop(); persistAnal(); renderAnalysis(s); renderInspector(); });
+    $("an-clear").addEventListener("click", () => { A.path = []; persistAnal(); renderAnalysis(s); renderInspector(); });
+    bench.querySelectorAll("[data-plus]").forEach(b => b.addEventListener("click", () => { A.path.push(b.dataset.plus); persistAnal(); renderAnalysis(s); renderInspector(); }));
+    bench.querySelectorAll("[data-minus]").forEach(b => b.addEventListener("click", () => {
+      const i = A.path.lastIndexOf(b.dataset.minus); if (i >= 0) A.path.splice(i, 1); persistAnal(); renderAnalysis(s); renderInspector();
+    }));
+    const tip = $("an-tip");
+    bench.querySelectorAll(".hitbox").forEach(h => {
+      const c = CHARTS.find(c => c.k === h.dataset.chart), svg = h.ownerSVGElement, cross = svg.querySelector(".cross");
+      const levelAt = ev => { const b = h.getBoundingClientRect(); return Math.min(20, Math.max(1, Math.round(1 + (ev.clientX - b.left) / b.width * 19))); };
+      h.addEventListener("pointermove", ev => {
+        const l = levelAt(ev), m = mine[l - 1], o = none[l - 1];
+        const vb = svg.viewBox.baseVal, bx = h.x.baseVal.value + (l - 1) / 19 * h.width.baseVal.value;
+        cross.setAttribute("visibility", "visible"); cross.setAttribute("transform", `translate(${bx},0)`);
+        const spent = l >= 2 && A.path[l - 2] ? liveNode(s, A.path[l - 2]) : null;
+        tip.innerHTML = `<b>Nivel ${l}</b><span><i class="ln mine"></i>Con tu camino <b class="num">${fmt(m[c.k], c.d ?? 1)}${c.u}</b></span><span><i class="ln none"></i>Sin árbol <b class="num">${fmt(o[c.k], c.d ?? 1)}${c.u}</b></span>${spent ? `<span class="meta">+1 punto en ${esc(spent.name)}</span>` : ""}`;
+        tip.hidden = false;
+        const br = bench.getBoundingClientRect(), tw = tip.offsetWidth;
+        let left = ev.clientX - br.left + 14; if (left + tw > br.width - 8) left = ev.clientX - br.left - tw - 14;
+        tip.style.left = left + "px"; tip.style.top = (ev.clientY - br.top + 14) + "px";
+        void vb;
+      });
+      h.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); tip.hidden = true; });
+      h.addEventListener("click", ev => { A.level = levelAt(ev); persistAnal(); renderAnalysis(s); renderInspector(); });
+    });
+  }
+
+  // The right-hand panel in analysis mode: every number at the chosen level, path vs none.
+  function analysisInspector(box, s) {
+    const A = analOf(s), L = A.level;
+    const m = metrics(s, L, cleanPath(s, A.path)), o = metrics(s, L, []);
+    const rows = [];
+    const add = (label, a, b, unit = "", d = 1) => { if (a === b && !a) return; rows.push(`<tr${a !== b ? ' class="diff"' : ""}><th>${esc(label)}</th><td class="num">${fmt(a, d)}${unit}</td><td class="num">${fmt(b, d)}${unit}</td></tr>`); };
+    const pct = (label, key) => { const a = f(m.E, key); if (a) rows.push(`<tr class="diff"><th>${esc(label)}</th><td class="num">+${fmt(a * 100)}%</td><td class="num">—</td></tr>`); };
+    const times = (label, key) => { const a = f(m.E, key); if (a !== 1) rows.push(`<tr class="diff"><th>${esc(label)}</th><td class="num">×${fmt(a, 2)}</td><td class="num">×1</td></tr>`); };
+    const plus = (label, key) => { const a = f(m.E, key); if (a) rows.push(`<tr class="diff"><th>${esc(label)}</th><td class="num">+${fmt(a, 1)}</td><td class="num">—</td></tr>`); };
+    if (s.damage > 0) { add("Daño por golpe", m.dmg, o.dmg); if (m.burst) rows.push(`<tr class="diff"><th>Explosión al impactar</th><td class="num">${fmt(m.share * 100)}% del golpe</td><td class="num">—</td></tr>`); add("Golpes por uso", m.hits, o.hits); add("DPS estimado", m.dps, o.dps); }
+    add("Maná", m.mana, o.mana); add("Maná por segundo", m.mps, o.mps, "/s"); add("Cooldown", m.cd, o.cd, " s", 2); add("Tiempo de uso", m.ut, o.ut, " s", 2);
+    if (m.isAura) { add("Pasivo (% del base)", m.passive, o.passive, "%"); add("Activo (% del base)", m.active, o.active, "%"); }
+    times("Área", "area"); times("Duración", "duration"); times("Alcance", "range"); times("Velocidad del proyectil", "projectileSpeed"); times("Distancia del proyectil", "projectileRange");
+    times("Daño de la quemadura", "igniteDamage"); times("Drenaje de vida", "drain");
+    pct("Prob. de quemar", "ignite"); pct("Prob. de electrocutar", "shock"); pct("Prob. de congelar", "freeze"); pct("Prob. de sangrado", "bleed");
+    pct("Convertido a frío", "coldShare"); pct("Explosión al matar (del golpe)", "killBlast"); pct("Curación del activo (vida)", "heal"); pct("Ralentización del aceite", "oilSlow"); pct("Salpicadura de la detonación", "splash"); pct("Cargas que se quedan", "stacksKept"); pct("Potencia", "potency");
+    plus("Atraviesa", "pierce"); plus("Encadena", "chains"); plus("Se divide", "forks"); plus("Rebota", "bounces"); plus("Réplicas", "aftershocks"); plus("Tótems extra", "totems"); plus("Empuje", "knockback"); plus("Invulnerabilidad (s)", "invulnerable"); plus("Cargas extra", "charges"); plus("Ventana para volver (s)", "rewind");
+    if (m.E.converts) rows.push(`<tr class="diff"><th>Convierte el daño a</th><td>${esc(m.E.converts)}</td><td>—</td></tr>`);
+    const spent = Object.entries(m.ranks).map(([id, k]) => { const n = liveNode(s, id); return n ? `<li><b>${esc(n.name)}</b> ${k}/${n.ranks.length}<br><span class="meta">${esc(n.ranks[k - 1])}</span></li>` : ""; }).join("");
+    box.innerHTML = `<h2>Al nivel ${L}</h2>
+      <table class="an-table"><thead><tr><th></th><th>Tu camino</th><th>Sin árbol</th></tr></thead><tbody>${rows.join("")}</tbody></table>
+      ${m.blind.length ? `<p class="an-blind">Sin números (no entran en las cuentas, mira su texto): ${m.blind.map(esc).join(", ")}.</p>` : ""}
+      <h2 style="margin-top:14px">Puntos gastados (${L - 1 < A.path.length ? L - 1 : A.path.length} de ${L - 1})</h2>
+      ${spent ? `<ul class="links-list an-spent">${spent}</ul>` : `<p class="empty">Ninguno todavía: añade nodos con + en tu camino.</p>`}`;
+  }
+
+  function tabs() {
+    return `<span class="tabs" role="tablist" aria-label="Vista"><button type="button" role="tab" data-mode="tree" aria-selected="${mode === "tree"}">Árbol</button><button type="button" role="tab" data-mode="analysis" aria-selected="${mode === "analysis"}">Análisis</button></span>`;
+  }
+  function bindTabs() {
+    $("bench").querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
+      mode = b.dataset.mode; try { localStorage.setItem(ANAL_KEY + "-mode", mode); } catch (e) { /* ignore */ }
+      sel = null; renderBench(); renderInspector();
+    }));
+  }
+
   // --- the inspector ------------------------------------------------------------------
   function renderInspector() {
     const box = $("inspector");
     const s = skill(current);
+    if (s && mode === "analysis") return analysisInspector(box, s);
     if (!s || !sel) {
       box.innerHTML = `<h2>Selección</h2><p class="empty">Pulsa un nodo o una flecha para editarlos. Para unir dos nodos, arrastra desde el punto derecho de uno hasta el otro.</p>`;
       return;
@@ -634,7 +918,7 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
 
   // --- saving -----------------------------------------------------------------------
   const RESET = ":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}";
-  function payload(savedAt) { return { format: 2, savedAt, note: state.note, base: state.base, edited: state.skills, skills: state.skills }; }
+  function payload(savedAt) { return { format: 2, version: DATA_VERSION, savedAt, note: state.note, base: state.base, edited: state.skills, skills: state.skills }; }
   function documentFor(data) {
     const json = JSON.stringify(data).replace(/</g, "\\u003c");
     const style = document.getElementById("page-style").outerHTML;
@@ -722,6 +1006,6 @@ svg.edges .elabel { pointer-events: all; cursor: pointer; }
 
   function renderAll() { renderList(); renderBench(); renderInspector(); renderChanges(); }
   renderAll();
-  setStatus(dirty ? "Tienes un borrador sin guardar de la última vez." : state.savedAt ? "Última versión guardada: " + new Date(state.savedAt).toLocaleString() : "Datos sacados del juego. Edita y guarda.");
+  setStatus(staleDraft ? "Los datos del juego han cambiado desde tu último borrador en este navegador: se ha descartado y ves los valores actuales." : dirty ? "Tienes un borrador sin guardar de la última vez." : state.savedAt ? "Última versión guardada: " + new Date(state.savedAt).toLocaleString() : "Datos sacados del juego. Edita y guarda.");
 })();
 </script>

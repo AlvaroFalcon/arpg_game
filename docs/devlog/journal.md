@@ -840,3 +840,17 @@ Same day: the spawner got an enemy picker, a card per monster and boss with its 
 
 ![The enemy picker](screenshots/playground-picker.png)
 ![A boss's card](screenshots/playground-picker-boss.png)
+
+## 2026-11-04: charts of a skill's path
+
+The skill-tree editor got an *Análisis* tab: pick the points of a path in the order you would spend them, slide the gem level from 1 to 20 and see small charts of damage, estimated DPS, mana, cooldown and use time, against the same gem without its tree. The numbers aren't parsed from node texts: the game itself measures each node rank on a neutral cast and exports the difference, and the page only combines them. Doing that turned up a real bug — Fireball's Volley promised "+1 projectile" and fired one; it does now.
+
+![The editor's analysis tab](screenshots/workbench-analysis.png)
+
+## 2026-11-04 (later): a balance pass from the editor
+
+The owner sent a list from the skill-tree editor: smaller damage nodes everywhere (Power is now 8/12/20%) so gear matters, Combust and Exsanguinate toned down (20 s cooldowns, weaker potency, power and splash), Douse a bit dearer. Three bigger pieces came with it. Spark's "+wall bounces" node, pointless since sparks already bounce, became Cold Current, which converts part of each hit to cold (the damage model already allowed several damage types per hit, so it is a real partial conversion that chills). Blink gained Rewind (press again within 3 s to go back) and Second Wind (a second charge). Spell Totems now wait for their skill's use time and cooldown (a Meteor totem used to drop a meteor every 0.9 s) and have life: monsters target them and can break them.
+
+## 2026-11-05: a damage matrix, and what it said
+
+A new bot mode (`--mode=matrix`) puts a character at the tier's reference level into the playground and measures every skill, tree and gear profile against standing tier monsters. At tier 20, no gearless character comes close: the best one, Fireball with a full tree, deals 9–17% of what monster life is built for. Trees on melee and cooldown skills multiplied damage by 4–6.5×, so their second damage nodes, Overwhelm, Flurry, Echo and Firestorm were cut (melee trees now 2.4–3.8×). Two bugs showed up along the way. Volley's two Fireballs flew either side of the aim and both missed a single target (a fan now always keeps one on the aim). The first "typical gear" run had worn nothing. The uncomfortable finding: even with typical gear most builds sit at 10–70% of the monster curve, because it was calibrated with support gems that are parked.

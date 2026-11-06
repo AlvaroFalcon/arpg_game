@@ -90,9 +90,13 @@ public partial class SkillUser : Node
         }
     }
 
+    /// <summary>Game time this skill user has lived (physics seconds): Blink's rewind window.</summary>
+    private float _clock;
+
     public override void _PhysicsProcess(double delta)
     {
         float dt = (float)delta;
+        _clock += dt;
         foreach (LoadoutSlot slot in _loadout)
         {
             if (slot.Skill is not { } instance)
@@ -103,6 +107,11 @@ public partial class SkillUser : Node
             if (instance.UseTimeRemaining > 0f)
             {
                 instance.UseTimeRemaining -= dt;
+            }
+
+            if (instance.RewindUntil >= 0f && !instance.RewindArmed && Engine.GetPhysicsFrames() > instance.LastTryFrame + 1)
+            {
+                instance.RewindArmed = true;
             }
 
             TickCharge(instance, dt);
@@ -127,8 +136,30 @@ public partial class SkillUser : Node
     public void EquipSkill(SkillSlotId slot, SkillInstance instance)
     {
         _loadout[(int)slot] = new LoadoutSlot { Skill = instance };
+        RefreshCharges(instance);
         Auras?.Refresh();
         SkillEquipped?.Invoke(instance);
+    }
+
+    /// <summary>Reads the charges a skill's tree adds (Blink's "Second Wind"); a freshly
+    /// equipped skill starts with all of them banked.</summary>
+    public void RefreshCharges(SkillInstance instance)
+    {
+        if (_stats is null || _caster is null)
+        {
+            return;
+        }
+
+        bool full = instance.ChargesAvailable >= instance.MaxCharges;
+        instance.ExtraCharges = Mathf.Max(0, ResolveContext(instance, Vector2.Right).ExtraCharges);
+        if (full)
+        {
+            instance.ChargesAvailable = instance.MaxCharges;
+        }
+        else
+        {
+            instance.ChargesAvailable = Mathf.Min(instance.ChargesAvailable, instance.MaxCharges);
+        }
     }
 
     /// <summary>Empties a slot entirely (no skill, no built-in).</summary>
@@ -191,6 +222,18 @@ public partial class SkillUser : Node
         if (slot.Skill is not { } instance)
         {
             return CastFailure.SlotEmpty();
+        }
+
+        instance.LastTryFrame = Engine.GetPhysicsFrames();
+        // Blink's "Rewind" (2026-11-04): a second press within its window takes the caster back
+        // to where the last blink started — no charge, no mana, as if time ran backwards.
+        if (instance.RewindUntil >= 0f && instance.RewindArmed && _clock <= instance.RewindUntil && instance.UseTimeRemaining <= 0f
+            && instance.Definition is MovementSkillDefinition { Kind: MovementKind.Blink } rewinding)
+        {
+            instance.RewindUntil = -1f;
+            instance.UseTimeRemaining = EffectiveUseTime(rewinding);
+            Rewind(instance.RewindPoint, rewinding);
+            return null;
         }
 
         bool chargeReady = instance.ChargesAvailable > 0;
@@ -261,6 +304,16 @@ public partial class SkillUser : Node
         }
 
         ApplyCastModifiers(context, modifiers);
+
+        // "+1 projectile" nodes (Volley) count in ExtraCount; projectiles read their own Count.
+        // Folded in once here, so a repeat or a totem cast never adds them twice.
+        if (context.Projectile is { } p && context.ExtraCount > 0)
+        {
+            p.Count += context.ExtraCount;
+            context.ExtraCount = 0;
+            EnsureSpreadForCount(p);
+        }
+
         return context;
     }
 
@@ -269,18 +322,23 @@ public partial class SkillUser : Node
     /// (docs/design/skills.md -> "Totems"): the skill fires from <paramref name="anchor"/>,
     /// with the anchor's own <paramref name="extra"/> modifiers (the totem's tree) on top of
     /// the gem's, costs nothing and leaves the gem's own timers alone.
+    /// Returns the seconds the anchor must wait before casting it again: the socketed skill's
+    /// own use time and cooldown (the caster's speed, the gem's tree and the totem's tree
+    /// applied), so a totem never casts a skill faster than its owner could (owner,
+    /// 2026-11-04). 0 when nothing was cast.
     /// </summary>
-    public void CastFrom(SkillInstance instance, Node2D anchor, Vector2 aimDirection, Vector2 targetPoint, IEnumerable<CastModifier> extra, float damageMultiplier)
+    public float CastFrom(SkillInstance instance, Node2D anchor, Vector2 aimDirection, Vector2 targetPoint, IEnumerable<CastModifier> extra, float damageMultiplier)
     {
         if (instance.Definition is AuraSkillDefinition or MovementSkillDefinition or TotemSkillDefinition)
         {
-            return;
+            return 0f;
         }
 
         CastContext context = ResolveContext(instance, aimDirection, targetPoint, anchor, extra);
         context.Tags |= SkillTags.Totem;
         context.DamageMultiplier *= damageMultiplier;
         Execute(instance, context, anchor);
+        return Mathf.Max(EffectiveUseTime(instance.Definition) * context.UseTimeMultiplier, EffectiveCooldown(instance) * context.CooldownMultiplier);
     }
 
     /// <summary>
@@ -460,7 +518,7 @@ public partial class SkillUser : Node
 
     private void TickCharge(SkillInstance instance, float dt)
     {
-        if (instance.ChargesAvailable >= instance.Definition.MaxCharges)
+        if (instance.ChargesAvailable >= instance.MaxCharges)
         {
             return;
         }
@@ -469,7 +527,7 @@ public partial class SkillUser : Node
         if (instance.RechargeTimer <= 0f)
         {
             instance.ChargesAvailable++;
-            instance.RechargeTimer = instance.ChargesAvailable < instance.Definition.MaxCharges
+            instance.RechargeTimer = instance.ChargesAvailable < instance.MaxCharges
                 ? EffectiveCooldown(instance)
                 : 0f;
         }
@@ -547,6 +605,7 @@ public partial class SkillUser : Node
             IgniteDurationMultiplier = context.IgniteDurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.IgniteDuration).Value),
             KillBlastFraction = context.KillBlastFraction,
             KillBlastRadius = context.KillBlastRadius,
+            ColdConversion = context.ColdConversion,
             CanInflictAilments = context.CanInflictAilments,
             IgniteDamageMultiplier = context.IgniteDamageMultiplier,
             KnockbackForce = knockback,
@@ -696,6 +755,19 @@ public partial class SkillUser : Node
     /// Leap Slam jumps there and slams on landing. The <see cref="Dodge"/> component moves
     /// the body (walls stop it) and grants the invulnerability; an actor without one stays put.
     /// </summary>
+    /// <summary>Blink's "Rewind": back to <paramref name="point"/> along the way it came.</summary>
+    private void Rewind(Vector2 point, MovementSkillDefinition definition)
+    {
+        if (_caster.GetNodeOrNull<Dodge>("Dodge") is not { } dodge)
+        {
+            return;
+        }
+
+        Core.Sfx.Play(this, "dodge");
+        float time = Mathf.Max(0.04f, definition.TravelTime);
+        dodge.Travel(point - _caster.GlobalPosition, time, time + 0.15f, new Color(0.75f, 0.6f, 1f), () => { });
+    }
+
     private void ExecuteMovement(SkillInstance instance, MovementSkillDefinition definition, CastContext context)
     {
         if (_caster.GetNodeOrNull<Dodge>("Dodge") is not { } dodge)
@@ -716,6 +788,13 @@ public partial class SkillUser : Node
         if (definition.Kind == MovementKind.Blink)
         {
             Core.Sfx.Play(this, "dodge");
+            if (context.RewindWindow > 0f)
+            {
+                instance.RewindPoint = _caster.GlobalPosition;
+                instance.RewindUntil = _clock + time + context.RewindWindow;
+                instance.RewindArmed = false;
+            }
+
             HitProfile wake = BuildHitProfile(instance, context);
             wake.Damage *= Mathf.Max(context.DepartBurst, context.ArriveBurst ? 0.6f : 0f);
             if (context.DepartBurst > 0f)
@@ -801,6 +880,7 @@ public partial class SkillUser : Node
             Modifiers = instance.TreeModifiers,
             Lifetime = definition.Duration * context.DurationMultiplier * Mathf.Max(0.1f, _stats.Get(StatId.SkillDuration).Value),
             Interval = Mathf.Max(0.15f, definition.CastInterval * context.UseTimeMultiplier),
+            MaxLife = Mathf.Max(definition.MinLife, (_stats.Life?.Max ?? 0f) * definition.LifeFraction),
             Reach = definition.Reach * context.RangeMultiplier,
             DamageEffectiveness = definition.DamageEffectiveness * instance.LevelDamageMultiplier,
             Tint = definition.Tint,
@@ -1023,7 +1103,10 @@ public partial class SkillUser : Node
         bool isFullCircle = Mathf.Abs(p.SpreadDegrees) >= 360f;
         float spread = Mathf.DegToRad(p.SpreadDegrees);
         float step = isFullCircle ? spread / count : spread / (count - 1);
-        float start = isFullCircle ? baseAngle : baseAngle - spread * 0.5f;
+        // An even fan used to leave the aim itself empty: two projectiles at ±6° both missed a
+        // monster at 240 px (Volley on Fireball, measured 2026-11-05). One always flies at the aim;
+        // the fan keeps its width, one more step on one side.
+        float start = isFullCircle ? baseAngle : baseAngle - step * ((count - 1) / 2);
 
         for (int i = 0; i < count; i++)
         {

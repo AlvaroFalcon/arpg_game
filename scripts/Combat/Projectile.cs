@@ -441,6 +441,7 @@ public partial class Projectile : Area2D
             ? _hit.BuildPayload(_direction)
             : new DamagePayload(_damage, _damageType, _sourceActor, _sourceFaction, _tags, DamageDeliveryKind.Hit);
         health.TakeDamage(payload);
+
         // The caster can be gone by the time its projectile lands (a co-op player
         // who disconnected, a dead enemy): only report to a live skill user.
         if (_ownerSkillUser is { } owner && IsInstanceValid(owner))

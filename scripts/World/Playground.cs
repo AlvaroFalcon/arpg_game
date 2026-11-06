@@ -607,7 +607,7 @@ public partial class Playground : Node
         foreach ((Skills.SkillSlotId _, Skills.SkillInstance s) in p.SkillUser.EquippedSkills())
         {
             s.UseTimeRemaining = 0f;
-            s.ChargesAvailable = s.Definition.MaxCharges;
+            s.ChargesAvailable = s.MaxCharges;
             s.RechargeTimer = 0f;
         }
     }

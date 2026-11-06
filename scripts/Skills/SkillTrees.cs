@@ -123,25 +123,32 @@ public static class SkillTrees
     };
 
     // Lesser nodes shared by many trees (ids are per tree, so ranks never leak between skills).
-    private static SkillTreeNode Power(int branch) => Lesser("power", "Power", branch, 0, new[] { 0.08f, 0.16f, 0.25f },
-        v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v);
+    // Owner, 2026-11-04: 8/12/20 (was 8/16/25) — damage must come from gear too, not only from the trees.
+    private static readonly float[] PowerRanks = { 0.08f, 0.12f, 0.2f };
 
-    private static SkillTreeNode Power(int branch, int depth, string? requires) => Lesser("power", "Power", branch, depth, new[] { 0.08f, 0.16f, 0.25f },
+    // Balance matrix, 2026-11-05 (docs/design/balance-testing.md): the second "more damage"
+    // node of a branch (Rend, Fault Line, Heavy Head...) was 10/20/30%, and stacked with Power,
+    // Overwhelm and Flurry/Echo a full tree multiplied a melee skill's damage by 4–6.5.
+    private static readonly float[] SecondaryDamage = { 0.06f, 0.1f, 0.15f };
+
+    private static SkillTreeNode Power(int branch) => Power(branch, 0, null);
+
+    private static SkillTreeNode Power(int branch, int depth, string? requires, float[]? values = null) => Lesser("power", "Power", branch, depth, values ?? PowerRanks,
         v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, requires);
 
     private static SkillTreeNode Haste(int branch, int depth, string? requires = null) => Lesser("haste", "Haste", branch, depth, new[] { 0.05f, 0.1f, 0.15f },
         v => $"{Pct(v)} faster to use", (c, v) => c.UseTimeMultiplier *= 1f - v, requires);
 
-    private static SkillTreeNode Efficiency(int branch, int depth, string? requires = null) => Lesser("efficiency", "Efficiency", branch, depth, new[] { 0.08f, 0.16f, 0.25f },
+    private static SkillTreeNode Efficiency(int branch, int depth, string? requires = null, float[]? values = null) => Lesser("efficiency", "Efficiency", branch, depth, values ?? new[] { 0.08f, 0.16f, 0.25f },
         v => $"{Pct(v)} less mana cost", (c, v) => c.CostMultiplier *= 1f - v, requires);
 
-    private static SkillTreeNode Patience(int branch, int depth, string? requires = null) => Lesser("patience", "Patience", branch, depth, new[] { 0.1f, 0.2f, 0.3f },
+    private static SkillTreeNode Patience(int branch, int depth, string? requires = null, float[]? values = null) => Lesser("patience", "Patience", branch, depth, values ?? new[] { 0.1f, 0.2f, 0.3f },
         v => $"{Pct(v)} shorter cooldown", (c, v) => c.CooldownMultiplier *= 1f - v, requires);
 
     private static SkillTreeNode Reach(int branch, int depth, string? requires = null) => Lesser("reach", "Reach", branch, depth, new[] { 0.1f, 0.2f, 0.3f },
         v => $"{Pct(v)} more area", (c, v) => c.AreaMultiplier *= 1f + v, requires);
 
-    private static SkillTreeNode Velocity(int branch, int depth, string? requires = null) => Lesser("velocity", "Velocity", branch, depth, new[] { 0.1f, 0.2f, 0.35f },
+    private static SkillTreeNode Velocity(int branch, int depth, string? requires = null, float[]? values = null) => Lesser("velocity", "Velocity", branch, depth, values ?? new[] { 0.1f, 0.2f, 0.35f },
         v => $"{Pct(v)} faster projectiles", (c, v) => { if (c.Projectile is { } p) { p.Speed *= 1f + v; } }, requires);
 
     private static SkillTreeNode Lingering(int branch, int depth, string? requires = null) => Lesser("lingering", "Lingering", branch, depth, new[] { 0.15f, 0.3f, 0.5f },
@@ -150,7 +157,7 @@ public static class SkillTrees
     private static SkillTreeNode Kindle(int branch, int depth, string? requires = null) => Lesser("kindle", "Kindle", branch, depth, new[] { 0.1f, 0.2f, 0.3f },
         v => $"+{Pct(v)} chance to ignite", (c, v) => c.IgniteChanceBonus += v, requires);
 
-    private static SkillTreeNode Searing(int branch, int depth, string? requires = null) => Lesser("searing", "Searing", branch, depth, new[] { 0.2f, 0.4f, 0.7f },
+    private static SkillTreeNode Searing(int branch, int depth, string? requires = null, float[]? values = null) => Lesser("searing", "Searing", branch, depth, values ?? new[] { 0.2f, 0.4f, 0.7f },
         v => $"Ignites deal {Pct(v)} more damage", (c, v) => c.IgniteDamageMultiplier *= 1f + v, requires);
 
     private static SkillTreeNode Static(int branch, int depth, string? requires = null) => Lesser("static", "Static", branch, depth, new[] { 0.1f, 0.2f, 0.3f },
@@ -185,7 +192,7 @@ public static class SkillTrees
 
     private static AuraStat Res(Stats.StatId id, float v) => new(id, Stats.ModifierType.Flat, v);
 
-    private static SkillTreeNode Potency(int branch, int depth, string? requires = null) => Lesser("potency", "Potency", branch, depth, new[] { 10f, 20f, 35f },
+    private static SkillTreeNode Potency(int branch, int depth, string? requires = null, float[]? values = null) => Lesser("potency", "Potency", branch, depth, values ?? new[] { 10f, 20f, 35f },
         v => $"+{v:0}% to its effect", (c, v) => c.AfflictionPotency += v, requires);
 
     // Notables shared by many trees.
@@ -203,10 +210,10 @@ public static class SkillTrees
     }
 
     private static SkillTreeNode Echo(int branch, string requires, string? exclusive = null) => Notable("echo", "Echo", branch,
-        "The skill repeats once, 20% less damage", c => { c.Repeats += 1; c.DamageMultiplier *= 0.8f; }, requires, exclusive, 20);
+        "The skill repeats once, 35% less damage", c => { c.Repeats += 1; c.DamageMultiplier *= 0.65f; }, requires, exclusive, 20);
 
-    private static SkillTreeNode Brutal(int branch, string requires, string? exclusive = null) => Notable("brutal", "Overwhelm", branch,
-        "35% more damage, 25% more mana cost", c => { c.DamageMultiplier *= 1.35f; c.CostMultiplier *= 1.25f; }, requires, exclusive);
+    private static SkillTreeNode Brutal(int branch, string requires, string? exclusive = null, float damage = 0.25f, float cost = 0.2f) => Notable("brutal", "Overwhelm", branch,
+        $"{Pct(damage)} more damage, {Pct(cost)} more mana cost", c => { c.DamageMultiplier *= 1f + damage; c.CostMultiplier *= 1f + cost; }, requires, exclusive);
 
     private static SkillTreeNode ExtraProjectile(int branch, string requires, string? exclusive = null) => Notable("volley", "Volley", branch,
         "+1 projectile, 10% less damage", c => { c.ExtraCount += 1; c.DamageMultiplier *= 0.9f; }, requires, exclusive, 10);
@@ -218,7 +225,7 @@ public static class SkillTrees
         "Projectiles chain to 2 more enemies", c => { if (c.Projectile is { } p) { p.Chains += 2; } }, requires, exclusive, 10);
 
     private static SkillTreeNode Flurry(int branch, string requires, string? exclusive = null) => Notable("flurry", "Flurry", branch,
-        "Strikes one more time, 15% less damage", c => { c.ExtraCount += 1; c.DamageMultiplier *= 0.85f; }, requires, exclusive, 10);
+        "Strikes one more time, 35% less damage", c => { c.ExtraCount += 1; c.DamageMultiplier *= 0.65f; }, requires, exclusive, 10);
 
     private static SkillTreeNode Wide(int branch, string requires, string? exclusive = null) => Notable("wide", "Shockwave", branch,
         "40% more area, 10% less damage", c => { c.AreaMultiplier *= 1.4f; c.DamageMultiplier *= 0.9f; }, requires, exclusive);
@@ -233,9 +240,9 @@ public static class SkillTrees
             Power(0),
             // Owner's sheet (2026-11-01): Fireball no longer bursts by default; this node adds it.
             Lesser("blast", "Impact Burst", 0, 1, new[] { 40f, 55f, 70f }, v => $"Bursts on impact: {v:0} px, half the hit", (c, v) => { if (c.Projectile is { } p) { p.ExplodeRadius = Math.Max(p.ExplodeRadius, v); p.ExplodeDamageFraction = Math.Max(p.ExplodeDamageFraction, 0.5f); } }, "power"),
-            Notable("firestorm", "Firestorm", 0, "The burst deals the full hit instead of half", c => { if (c.Projectile is { } p) { p.ExplodeDamageFraction = 1f; } }, "blast"),
+            Notable("firestorm", "Firestorm", 0, "The burst deals 75% of the hit instead of half", c => { if (c.Projectile is { } p) { p.ExplodeDamageFraction = Math.Max(p.ExplodeDamageFraction, 0.75f); } }, "blast"),
             Kindle(1, 0),
-            Searing(1, 1, "kindle"),
+            Searing(1, 1, "kindle", new[] { 0.1f, 0.15f, 0.25f }),
             KillBlast(1, "searing"),
             Velocity(2, 0),
             Efficiency(2, 1, "velocity"),
@@ -248,24 +255,25 @@ public static class SkillTrees
             Ricochet(0, "static", "spark_charge"),
             Notable("arc_blast", "Arc Blast", 0, "Sparks burst on hit (40 px, 40% of the hit)", c => { if (c.Projectile is { } p) { p.ExplodeRadius = Math.Max(p.ExplodeRadius, 40f); p.ExplodeDamageFraction = 0.4f; } }, "static", "spark_charge"),
             Haste(1, 0),
-            Efficiency(1, 1, "haste"),
+            Efficiency(1, 1, "haste", new[] { 0.08f, 0.12f, 0.2f }),
             ExtraProjectile(1, "efficiency", "spark_storm"),
             Piercing(1, "efficiency", "spark_storm"),
-            Lesser("bounce", "Rebound", 2, 0, new[] { 1f, 2f, 3f }, v => $"+{v:0} wall bounce{(v > 1f ? "s" : "")}", (c, v) => { if (c.Projectile is { } p) { p.Bounces += (int)v; } }, null, 10),
-            Lesser("range", "Long Arc", 2, 1, new[] { 0.15f, 0.3f, 0.5f }, v => $"Sparks fly {Pct(v)} farther", (c, v) => { if (c.Projectile is { } p) { p.Range *= 1f + v; } }, "bounce"),
+            // Owner, 2026-11-04: "Rebound" (+wall bounces) is gone, sparks already bounce.
+            Lesser("cold_current", "Cold Current", 2, 0, new[] { 0.08f, 0.12f, 0.2f }, v => $"Converts {Pct(v)} of the damage to cold (can chill)", (c, v) => c.ColdConversion += v),
+            Lesser("range", "Long Arc", 2, 1, new[] { 0.15f, 0.3f, 0.5f }, v => $"Sparks fly {Pct(v)} farther", (c, v) => { if (c.Projectile is { } p) { p.Range *= 1f + v; } }, "cold_current"),
             Convert("grounded", "Grounded", 2, SkillTags.None, "range", "spark_path"),
             KillBlast(2, "range", "spark_path")),
 
         Tree("frost_shards", new[] { "Ice", "Volley", "Shatter" },
             Power(0),
             Rime(0, 1, "power"),
-            Brutal(0, "rime"),
+            Brutal(0, "rime", null, 0.25f, 0.2f),
             Velocity(1, 0),
             Efficiency(1, 1, "velocity"),
             ExtraProjectile(1, "efficiency", "shards_volley"),
             Piercing(1, "efficiency", "shards_volley"),
             Haste(2, 0),
-            Lesser("brittle", "Brittle", 2, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage, shards fly {Pct(v / 2f)} slower", (c, v) => { c.DamageMultiplier *= 1f + v; if (c.Projectile is { } p) { p.Speed *= 1f - v / 2f; } }, "haste"),
+            Lesser("brittle", "Brittle", 2, 1, SecondaryDamage, v => $"{Pct(v)} more damage, shards fly {Pct(v / 2f)} slower", (c, v) => { c.DamageMultiplier *= 1f + v; if (c.Projectile is { } p) { p.Speed *= 1f - v / 2f; } }, "haste"),
             KillBlast(2, "brittle")),
 
         Tree("throwing_knives", new[] { "Edge", "Fan", "Venom" },
@@ -274,7 +282,7 @@ public static class SkillTrees
             Piercing(0, "haste", "knives_edge"),
             Ricochet(0, "haste", "knives_edge"),
             Velocity(1, 0),
-            Lesser("spread", "Wide Fan", 1, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "velocity"),
+            Lesser("spread", "Wide Fan", 1, 1, SecondaryDamage, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "velocity"),
             ExtraProjectile(1, "spread"),
             Laceration(2, 0),
             Efficiency(2, 1, "laceration"),
@@ -287,7 +295,7 @@ public static class SkillTrees
             Brutal(0, "rime"),
             Reach(1, 0),
             // Owner's sheet (2026-11-01): no push back by default; this node adds it.
-            Lesser("knock", "Gale", 1, 1, new[] { 120f, 180f, 260f }, v => $"Pushes enemies back ({v:0} force), {Math.Round(v / 12f)}% more damage", (c, v) => { c.ExtraKnockback += v; c.DamageMultiplier *= 1f + v / 1200f; }, "reach"),
+            Lesser("knock", "Gale", 1, 1, new[] { 120f, 180f, 260f }, v => $"Pushes enemies back ({v:0} force), {Math.Round(v / 24f)}% more damage", (c, v) => { c.ExtraKnockback += v; c.DamageMultiplier *= 1f + v / 2400f; }, "reach"),
             Wide(1, "knock"),
             Patience(2, 0),
             Efficiency(2, 1, "patience"),
@@ -327,7 +335,7 @@ public static class SkillTrees
             Wide(1, "efficiency", "cleave_arc"),
             Flurry(1, "efficiency", "cleave_arc"),
             Laceration(2, 0),
-            Lesser("rend", "Rend", 2, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "laceration"),
+            Lesser("rend", "Rend", 2, 1, SecondaryDamage, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "laceration"),
             Convert("flame_cleave", "Flame Edge", 2, SkillTags.Fire, "rend", "cleave_blood"),
             KillBlast(2, "rend", "cleave_blood")),
 
@@ -339,7 +347,7 @@ public static class SkillTrees
             Efficiency(1, 1, "haste"),
             Flurry(1, "efficiency"),
             Laceration(2, 0),
-            Lesser("deep", "Deep Cuts", 2, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "laceration"),
+            Lesser("deep", "Deep Cuts", 2, 1, SecondaryDamage, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "laceration"),
             Convert("venom_strike", "Storm Edge", 2, SkillTags.Lightning, "deep", "ds_wounds"),
             KillBlast(2, "deep", "ds_wounds")),
 
@@ -351,7 +359,7 @@ public static class SkillTrees
             Efficiency(1, 1, "haste"),
             Flurry(1, "efficiency"),
             Reach(2, 0),
-            Lesser("charged", "Charged", 2, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "reach"),
+            Lesser("charged", "Charged", 2, 1, SecondaryDamage, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "reach"),
             KillBlast(2, "charged", "storm_conduit"),
             Convert("thunder_steel", "Bare Steel", 2, SkillTags.None, "charged", "storm_conduit")),
 
@@ -360,7 +368,7 @@ public static class SkillTrees
             Rime(0, 1, "power"),
             Brutal(0, "rime"),
             Reach(1, 0),
-            Lesser("heavy", "Heavy Head", 1, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "reach"),
+            Lesser("heavy", "Heavy Head", 1, 1, SecondaryDamage, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "reach"),
             KillBlast(1, "heavy", "hammer_weight"),
             Wide(1, "heavy", "hammer_weight"),
             Haste(2, 0),
@@ -373,7 +381,7 @@ public static class SkillTrees
             Reach(0, 1, "power"),
             Notable("aftershock", "Aftershock", 0, "The landing slams again 0.35 s later for 60% of the hit", c => c.Aftershocks += 1, "reach", null, 20),
             Laceration(1, 0),
-            Lesser("fault", "Fault Line", 1, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "laceration"),
+            Lesser("fault", "Fault Line", 1, 1, SecondaryDamage, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "laceration"),
             Convert("magma", "Magma", 1, SkillTags.Fire, "fault", "slam_fault"),
             KillBlast(1, "fault", "slam_fault"),
             Lesser("long_jump", "Long Jump", 2, 0, new[] { 0.15f, 0.3f, 0.5f }, v => $"Leaps {Pct(v)} farther", (c, v) => c.RangeMultiplier *= 1f + v),
@@ -384,9 +392,12 @@ public static class SkillTrees
             Patience(0, 0),
             Efficiency(0, 1, "patience"),
             Notable("flicker", "Flicker", 0, "40% shorter cooldown, 30% shorter range", c => { c.CooldownMultiplier *= 0.6f; c.RangeMultiplier *= 0.7f; }, "efficiency"),
+            // Owner, 2026-11-04: two new notables.
+            Notable("rewind", "Rewind", 0, "Press again within 3 s to go back to where you blinked from, as if time ran backwards", c => c.RewindWindow = Math.Max(c.RewindWindow, 3f), "efficiency"),
             Lesser("far_step", "Far Step", 1, 0, new[] { 0.15f, 0.3f, 0.5f }, v => $"Blinks {Pct(v)} farther", (c, v) => c.RangeMultiplier *= 1f + v),
             Lesser("phasing", "Phasing", 1, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"Untouchable {v:0.0} s longer after arriving", (c, v) => c.ExtraInvulnerability += v, "far_step"),
             Notable("elusive", "Elusive", 1, "30% more movement speed for 3 s after arriving", c => c.AfterMoveSpeed = Math.Max(c.AfterMoveSpeed, 30f), "phasing"),
+            Notable("second_wind", "Second Wind", 1, "+1 charge: blink twice before the cooldown", c => c.ExtraCharges = Math.Max(c.ExtraCharges, 1), "phasing"),
             Lesser("static_wake", "Static Wake", 2, 0, new[] { 0.3f, 0.6f, 1f }, v => $"The point you leave bursts for {Pct(v)} of the skill's damage", (c, v) => c.DepartBurst = Math.Max(c.DepartBurst, v)),
             Power(2, 1, "static_wake"),
             Notable("frozen_arrival", "Frozen Arrival", 2, "Where you arrive bursts too, as cold (chills)", c => { c.ArriveBurst = true; UpgradeCatalog.Convert(c, SkillTags.Cold); }, "power", null, 5)),
@@ -396,7 +407,7 @@ public static class SkillTrees
             Laceration(0, 1, "power"),
             Brutal(0, "laceration"),
             Reach(1, 0),
-            Lesser("split", "Split Earth", 1, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "reach"),
+            Lesser("split", "Split Earth", 1, 1, SecondaryDamage, v => $"{Pct(v)} more damage", (c, v) => c.DamageMultiplier *= 1f + v, "reach"),
             Convert("volcanic", "Volcanic Rift", 1, SkillTags.Fire, "split", "sunder_length"),
             KillBlast(1, "split", "sunder_length"),
             Patience(2, 0),
@@ -407,7 +418,7 @@ public static class SkillTrees
         Tree("corruption", new[] { "Rot", "Plague", "Reach" },
             Power(0),
             Lingering(0, 1, "power"),
-            Brutal(0, "lingering"),
+            Brutal(0, "lingering", null, 0.25f, 0.2f),
             Efficiency(1, 0),
             Lesser("virulence", "Virulence", 1, 1, new[] { 1f, 2f }, v => $"Spreads to {v:0} enem{(v > 1f ? "ies" : "y")} when its bearer dies", (c, v) => c.CurseSpread = Math.Max(c.CurseSpread, (int)v), "efficiency", 10),
             Notable("pandemic", "Pandemic", 1, "Spreads to 3 enemies, and on from them", c => c.CurseSpread = Math.Max(c.CurseSpread, 3), "virulence", null, 11),
@@ -524,10 +535,10 @@ public static class SkillTrees
         // the skill socketed into it (damage, forks, projectiles).
         Tree("totem", new[] { "Elements", "Form", "Ritual" },
             Power(0),
-            Lesser("attunement", "Attunement", 0, 1, new[] { 0.1f, 0.2f, 0.3f }, v => $"{Pct(v)} more elemental damage", (c, v) => { if ((c.Tags & UpgradeCatalog.Elements) != 0) { c.DamageMultiplier *= 1f + v; } }, "power"),
+            Lesser("attunement", "Attunement", 0, 1, SecondaryDamage, v => $"{Pct(v)} more elemental damage", (c, v) => { if ((c.Tags & UpgradeCatalog.Elements) != 0) { c.DamageMultiplier *= 1f + v; } }, "power"),
             Notable("conduit", "Conduit", 0, "+15% chance to ignite and shock, +5% to freeze", c => { c.IgniteChanceBonus += 0.15f; c.ShockChanceBonus += 0.15f; c.FreezeChanceBonus += 0.05f; }, "attunement"),
             Lesser("splitting", "Splitting", 1, 0, new[] { 1f, 2f }, v => $"Its projectiles fork {v:0} time{(v > 1f ? "s" : "")} on hit", (c, v) => { if (c.Projectile is { } p) { p.Forks += (int)v; } }, null, 10),
-            Velocity(1, 1, "splitting"),
+            Velocity(1, 1, "splitting", new[] { 0.08f, 0.12f, 0.2f }),
             ExtraProjectile(1, "velocity", "totem_form"),
             Wide(1, "velocity", "totem_form"),
             Lesser("quickened", "Quickened", 2, 0, new[] { 0.08f, 0.16f, 0.25f }, v => $"The totem casts {Pct(v)} faster", (c, v) => c.UseTimeMultiplier *= 1f - v),
@@ -535,7 +546,7 @@ public static class SkillTrees
             Notable("ancestral_ring", "Ancestral Ring", 2, "+1 totem at once, 15% less damage", c => { c.ExtraTotems += 1; c.DamageMultiplier *= 0.85f; }, "lingering")),
 
         Tree("douse", new[] { "Slick", "Spill", "Rhythm" },
-            Potency(0, 0),
+            Potency(0, 0, null, new[] { 5f, 8f, 12f }),
             Lingering(0, 1, "potency"),
             Notable("tar", "Tar", 0, "The oil also slows by 30%", c => c.OilSlow = Math.Max(c.OilSlow, 30f), "lingering"),
             Reach(1, 0),
@@ -546,26 +557,26 @@ public static class SkillTrees
             Notable("accelerant", "Accelerant", 2, "Ignites on oiled enemies last 50% longer", c => c.OilIgniteDuration = Math.Max(c.OilIgniteDuration, 0.5f), "haste")),
 
         Tree("combust", new[] { "Blaze", "Reach", "Rhythm" },
-            Potency(0, 0),
-            Power(0, 1, "potency"),
-            Notable("chain_reaction", "Chain Reaction", 0, "Each detonation splashes 50% of its damage around and ignites what it hits", c => c.DetonationSplash = Math.Max(c.DetonationSplash, 0.5f), "power"),
+            Potency(0, 0, null, new[] { 5f, 10f, 20f }),
+            Power(0, 1, "potency", new[] { 0.05f, 0.08f, 0.12f }),
+            Notable("chain_reaction", "Chain Reaction", 0, "Each detonation splashes 35% of its damage around and ignites what it hits", c => c.DetonationSplash = Math.Max(c.DetonationSplash, 0.35f), "power"),
             Reach(1, 0),
             Efficiency(1, 1, "reach"),
             Notable("embers_remain", "Embers Remain", 1, "Each detonated enemy keeps 3 of its ignite stacks", c => c.StacksKept = Math.Max(c.StacksKept, 3), "efficiency"),
-            Patience(2, 0),
+            Patience(2, 0, null, new[] { 0.1f, 0.14f, 0.2f }),
             Haste(2, 1, "patience"),
-            Brutal(2, "haste")),
+            Brutal(2, "haste", null, 0.2f)),
 
         Tree("exsanguinate", new[] { "Hemorrhage", "Reach", "Rhythm" },
-            Potency(0, 0),
-            Power(0, 1, "potency"),
-            Notable("blood_nova", "Blood Nova", 0, "Each detonation splashes 50% of its damage around and makes what it hits bleed", c => c.DetonationSplash = Math.Max(c.DetonationSplash, 0.5f), "power"),
+            Potency(0, 0, null, new[] { 5f, 10f, 20f }),
+            Power(0, 1, "potency", new[] { 0.05f, 0.08f, 0.12f }),
+            Notable("blood_nova", "Blood Nova", 0, "Each detonation splashes 35% of its damage around and makes what it hits bleed", c => c.DetonationSplash = Math.Max(c.DetonationSplash, 0.35f), "power"),
             Reach(1, 0),
             Efficiency(1, 1, "reach"),
             Notable("open_wounds", "Open Wounds", 1, "Each detonated enemy keeps 3 of its bleed stacks", c => c.StacksKept = Math.Max(c.StacksKept, 3), "efficiency"),
-            Patience(2, 0),
+            Patience(2, 0, null, new[] { 0.1f, 0.14f, 0.2f }),
             Haste(2, 1, "patience"),
-            Brutal(2, "haste")),
+            Brutal(2, "haste", null, 0.2f)),
     }.ToDictionary(t => t.SkillId);
 
     public static SkillTree? For(string skillId) => All.TryGetValue(skillId, out SkillTree? t) ? t : null;

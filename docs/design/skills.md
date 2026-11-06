@@ -2203,9 +2203,10 @@ Tree: Elements (Power, *Attunement*: more elemental damage, *Conduit*: ignite/sh
 chances), Form (*Splitting*: projectiles fork, Velocity, Volley or Shockwave), Ritual
 (*Quickened*: casts faster, Lingering, *Ancestral Ring*: +1 totem). Any skill that hits
 fits (`SkillRules.FitsTotem`); auras, movement skills and other totems do not. A totem
-with nothing socketed refuses to be cast (no mana spent). Totems cannot be hit for now.
+with nothing socketed refuses to be cast (no mana spent). Since 2026-11-04 totems have
+life and monsters attack them (below, "Balance pass of 2026-11-04").
 
-Open questions: totems as targets for monsters; a totem model in the voxel view (it is a
+Open questions: a totem model in the voxel view (it is a
 drawn pole on the 2D canvas); whether a socketed skill should also need to be owned at a
 level (it is any owned gem).
 
@@ -2223,6 +2224,11 @@ compares everything with the game's data and can be copied as text.
   to `docs/design/skill-trees.json`; `python3 tools/skill-tree-editor/build.py` injects
   it into `template.html` → `index.html` (open it in any browser; drafts stay in that
   browser; Exportar JSON / Copiar cambios to hand them over).
+- **The published page is a copy:** it changes only when `index.html` is rebuilt and
+  republished (read the live version first: the owner's saved edits live inside it). The
+  data carries a version (`build.py` hashes it): a draft kept in the browser from older data
+  is dropped with a notice instead of bringing old numbers back (2026-11-03: the owner saw
+  Combust's old cooldown after it had changed in the game).
 - The same page is published as a claude.ai Artifact
   (https://claude.ai/artifact/Ciif2bpuYHGhtm27wjTePM, private to the owner) whose
   **Guardar** republishes the page with the edits inside it (the `artifact` capability),
@@ -2269,6 +2275,37 @@ condition) and notes. Old saves of the editor (format 1, `requires`) open as gra
 The game's own panel still lays trees out in rows and columns (branch, depth); a graph
 from the editor is mapped onto that when it is implemented.
 
+### Analysis mode (2026-11-04) **[IMPLEMENTED]**
+
+Owner's ask: pick a path in a skill's tree, raise the gem's level and see on charts how
+mana, cooldown, damage and the rest change. The editor's **Análisis** tab (next to
+**Árbol**) has a level slider (1–20) and the tree as a list where `+` spends a point in
+the order you would spend it (requirements, any-of arrows, "pick one" groups and max ranks
+are enforced; removing a point drops the later ones it made illegal). Gem level L has L−1
+points, so the charts show *when* each node arrives: one small chart per number (damage per
+hit, estimated single-target DPS, mana, mana per second, cooldown, use time, hits per use,
+an aura's passive/active strength), each with the path against the same gem with no tree
+(dashed), a tick where a point lands, a hover readout and a click that sets the level. The
+right panel lists every number at the chosen level, path vs none (area, duration, chances,
+pierce/chain, conversion…).
+
+**Where the numbers come from:** `DumpSkillTrees` evaluates every node rank on a neutral
+`CastContext` of its skill (the same `ApplyCastModifiers` the game runs) and exports the
+difference as `effects` — a factor for multipliers (damage, cost, cooldown, area…), the
+value for "max" knobs (burst, burst share, kill blast…), a difference for counts and
+chances. The page multiplies factors, takes the largest "max" value and adds the rest, so
+it never re-implements a node's text. Nodes with no number (an aura's extra stat line,
+a curse's spread) are flagged "ver texto" and left out. Per level: damage × (1 + 12 % ×
+(L−1)), mana × (1 + 2 % × (L−1)), auras × (1 + 3 % × (L−1)). DPS = per-target damage
+(hit + burst share) × hits per use × (1 + repeats) / max(use time, cooldown) — the skill
+alone: no character stats, crits or damage over time. The skill's own numbers come from the
+editable fields, so an edited cooldown shows on the charts.
+
+Building it found a bug: **Volley's "+1 projectile" did nothing** — it raised
+`CastContext.ExtraCount`, which projectiles never read. `SkillUser.ResolveContext` now folds
+it into the projectile's `Count` once (so repeats and totems don't add it twice);
+`VOLLEY-ADDS-A-PROJECTILE` (SkillKitTest) covers it.
+
 ## Node tooltips at Escaldón (2026-11-02) **[IMPLEMENTED]**
 
 Owner's report: a node's text is sometimes cut to the node's width. Every node of
@@ -2278,3 +2315,59 @@ node (`TreeCanvas.FillTip`, `UiTheme.RefreshInstantTooltip`): the name and rank,
 excludes, and what a left or right click does. Before, the canvas had one tooltip filled on
 entering it — with no node under the mouse yet, so it never showed. `ESCALDON-NODE-TOOLTIP`
 (EndgameSmokeTest) points at the node with the longest text and checks every rank is there.
+
+## Balance pass of 2026-11-04 **[IMPLEMENTED]**
+
+Owner's list from the editor. The aim: damage must not come only from the skill trees —
+gear has to matter too — and Combust/Exsanguinate were too strong.
+
+**Numbers**
+- **Power** (every tree): 8 / 12 / 20% more damage (was 8 / 16 / 25). Combust and
+  Exsanguinate: 5 / 8 / 12.
+- Fireball **Searing**: ignites deal 10 / 15 / 25% more (was 20 / 40 / 70; Meteor's Searing
+  is unchanged). Spark **Efficiency**: 8 / 12 / 20% less mana (was 8 / 16 / 25).
+- **Overwhelm**: Frost Shards and Corruption 25% more damage, 20% more mana (was 35 / 25);
+  Combust and Exsanguinate 20% more damage (mana +25% unchanged). Others keep 35 / 25.
+- Combust and Exsanguinate: **Potency** +5 / 10 / 20% (was 10 / 20 / 35), **Patience**
+  10 / 14 / 20% shorter cooldown, **Chain Reaction / Blood Nova** splash 35% (was 50%).
+  Exsanguinate's cooldown 3 → 20 s (Combust was already 20).
+- Douse: 15 mana (was 10), its Potency +5 / 8 / 12%.
+- Spell Totem: cooldown 4 → 8 s; its Velocity 8 / 12 / 20% (was 10 / 20 / 35).
+
+**Spark: Rebound → Cold Current.** "+N wall bounces" made no sense: sparks already bounce.
+The node is now **Cold Current** — 8 / 12 / 20% of the damage is *converted* to cold. One hit
+with two damage types (`HitProfile.ColdConversion` builds a two-component `DamagePayload`), so
+that share is resisted by cold resistance and the hit chills (`Ailments` handles each
+component). Long Arc now needs it. Other ideas offered to the owner for that slot: a short
+chill on every bounce, or +1 pierce after a bounce. A character whose saved Spark tree had
+points in Rebound has that tree reset (points refunded) by `SkillTreeRules.Sanitize`.
+
+**Blink: two notables.** **Rewind** (after Efficiency 2): pressing again within 3 s takes you
+back to where you blinked from, as if time ran backwards; it spends no charge or mana
+(`SkillInstance.RewindPoint/RewindUntil`). Because a held button retries the cast every
+frame, the rewind only arms once the button has been let go (`RewindArmed`), so holding it
+never rewinds by itself. **Second Wind** (after Phasing 2): +1 charge
+(`CastContext.ExtraCharges` → `SkillInstance.ExtraCharges`, read from the tree when the skill is
+equipped; `SkillInstance.MaxCharges` now counts it). The owner's change list named both new
+nodes "Notable nuevo" with one arrow each from Efficiency and from Phasing; Rewind went to
+Efficiency (the Rift branch) and Second Wind to Phasing (the Distance branch).
+
+**Totems respect their skill and can be killed.**
+- A totem waits the socketed skill's **use time and cooldown** (with the caster's speed, the
+  gem's tree and the totem's tree), never less than 0.9 s: `SkillUser.CastFrom` now returns
+  that wait. A Meteor totem casts once every 5 s instead of every 0.9 s.
+- A totem has **life** (30% of its owner's maximum life, at least 60): it is an `Area2D` on
+  the players' collision layer with its own `Stats` + `Health`, joins the players' group, so
+  bursts, projectiles and contact hits reach it, and monsters go for it when it is nearer than
+  any player (`Enemy.FindTarget`). It breaks at 0 life; a small life bar shows once it is hit.
+  Code that wants players filters on `is Player` (`CombatQuery.LocalPlayer` no longer takes the
+  first node of the group blindly).
+
+Tests: SkillKitTest `TOTEM-HAS-LIFE`, `TOTEM-BREAKS`, `TOTEM-RESPECTS-COOLDOWN`,
+`BLINK-SECOND-WIND`, `BLINK-REWIND`, `BLINK-TWO-CHARGES`, `SPARK-COLD-CURRENT`.
+
+**Second pass (2026-11-05), from the balance matrix** (docs/design/balance-testing.md ->
+"First run"): the second "more damage" node of a branch 6/10/15% (was 10/20/30), Overwhelm
+25% damage / 20% mana by default, Flurry and Echo 35% less damage, Firestorm 75% of the hit,
+Gale half its damage bonus. A projectile fan with an even count now keeps one projectile on
+the aim.

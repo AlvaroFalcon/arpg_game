@@ -13,11 +13,11 @@ Mode = 0
 [resource]
 script = ExtResource("s")
 DisplayName = "Spell Totem"
-Description = "Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy every 0.9 s, at 70% of that skill's damage. Its tree boosts what it casts."
+Description = "Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy as often as that skill allows (its use time and cooldown), at 70% of its damage. Monsters can attack it: it has 30% of your maximum life. Its tree boosts what it casts."
 BaseDamage = 0.0
 AddedDamageEffectiveness = 0.0
 BaseUseTime = 0.5
-Cooldown = 4.0
+Cooldown = 8.0
 Tags = 131106
 Duration = 8.0
 CastInterval = 0.9

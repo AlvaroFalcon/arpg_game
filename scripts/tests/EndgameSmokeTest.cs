@@ -737,7 +737,7 @@ public partial class EndgameSmokeTest : Node2D
             m.Apply(ctx);
         }
 
-        Check("SKILLTREE-APPLIES", ctx.Projectile.ExplodeDamageFraction == 1f && ctx.Projectile.ExplodeRadius >= 55f && ctx.ExtraCount == 1 && ctx.DamageMultiplier > 1f && ctx.CostMultiplier < 1f && ctx.Projectile.Speed > 340f,
+        Check("SKILLTREE-APPLIES", Mathf.IsEqualApprox(ctx.Projectile.ExplodeDamageFraction, 0.75f) && ctx.Projectile.ExplodeRadius >= 55f && ctx.ExtraCount == 1 && ctx.DamageMultiplier > 1f && ctx.CostMultiplier < 1f && ctx.Projectile.Speed > 340f,
             $"blast {ctx.Projectile.ExplodeRadius:0} px at {ctx.Projectile.ExplodeDamageFraction:P0}, +{ctx.ExtraCount} projectile, damage ×{ctx.DamageMultiplier:0.00}, cost ×{ctx.CostMultiplier:0.00}, speed {ctx.Projectile.Speed:0}");
 
         var bad = new GemData { Id = "fireball", Level = 3, Tree = new Dictionary<string, int> { ["power"] = 3, ["firestorm"] = 1 } };

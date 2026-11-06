@@ -74,7 +74,7 @@ public partial class SkillKitTest : Node2D
     private void Ready(SkillInstance i)
     {
         i.UseTimeRemaining = 0f;
-        i.ChargesAvailable = i.Definition.MaxCharges;
+        i.ChargesAvailable = i.MaxCharges;
         i.RechargeTimer = 0f;
         if (_player.Stats.Mana is { } mana)
         {
@@ -98,6 +98,7 @@ public partial class SkillKitTest : Node2D
         await TitanChecks();
         await TotemChecks();
         await MovementChecks();
+        await VolleyChecks();
 
         string verdict = _failed ? "[SKILLKIT] === RESULT: FAIL ===" : "[SKILLKIT] === RESULT: PASS ===";
         _lines.Add(verdict);
@@ -157,6 +158,47 @@ public partial class SkillKitTest : Node2D
         bool bFree = SkillTreeRules.CannotLower(gem, tree, b) is null;
         Check("TREE-TWO-PATHS", closed && viaB && bLocked && bFree,
             $"closed with no points (\"Needs … or …\")={closed}; opened by 1 point in B={viaB}; B can't be refunded while it is C's only way in={bLocked}; once A has 2 points it can={bFree}");
+    }
+
+    /// <summary>Volley ("+1 projectile") really adds one: it used to only cost 10% damage
+    /// (found 2026-11-04 while exporting the trees' numbers for the editor's analysis).</summary>
+    private async Task VolleyChecks()
+    {
+        Vector2 at = new(14000f, 0f);
+        _player.GlobalPosition = at;
+        await Seconds(0.1f);
+        int Count(bool volley)
+        {
+            SkillInstance fb = Equip("fireball");
+            if (volley)
+            {
+                fb.TreeModifiers.AddRange(SkillTrees.ModifiersFor("fireball", new Dictionary<string, int> { ["velocity"] = 2, ["efficiency"] = 2, ["volley"] = 1 }));
+            }
+
+            Ready(fb);
+            int before = GetChildren().OfType<Projectile>().Count();
+            _skills.TryCast(SkillSlotId.Slot1, Vector2.Right);
+            return GetChildren().OfType<Projectile>().Count() - before;
+        }
+
+        int plain = Count(false);
+        int volley = Count(true);
+        Check("VOLLEY-ADDS-A-PROJECTILE", plain == 1 && volley == 2, $"Fireball fires {plain}; with Volley {volley}");
+        // Spark's Cold Current (2026-11-04): a share of each hit lands as cold.
+        var spark = new HitProfile { Damage = 100f, Type = DamageType.Lightning, Faction = Faction.Player, Tags = SkillTags.Lightning | SkillTags.Projectile, ColdConversion = 0.2f };
+        DamagePayload split = spark.BuildPayload(Vector2.Zero);
+        float coldPart = split.Components.Where(x => x.Type == DamageType.Cold).Sum(x => x.Amount);
+        float lightningPart = split.Components.Where(x => x.Type == DamageType.Lightning).Sum(x => x.Amount);
+        var currentTree = SkillTrees.For("spark")!;
+        Check("SPARK-COLD-CURRENT", Mathf.IsEqualApprox(coldPart, 20f) && Mathf.IsEqualApprox(lightningPart, 80f) && currentTree.Node("bounce") is null && currentTree.Node("cold_current") is not null,
+            $"a 100 lightning hit with 20% Cold Current lands as {lightningPart:0} lightning + {coldPart:0} cold; Rebound is gone from Spark's tree");
+        await Seconds(0.1f);
+        foreach (Projectile p in GetChildren().OfType<Projectile>())
+        {
+            p.QueueFree();
+        }
+
+        _skills.ClearSlot(SkillSlotId.Slot1);
     }
 
     private void SlotChecks()
@@ -411,6 +453,27 @@ public partial class SkillKitTest : Node2D
         int casts = totems.Sum(t => t.Casts);
         Check("TOTEM-CASTS", empty is not null && placed is null && totems.Count == 2 && casts >= 3 && Missing(dummy) > 0f,
             $"an empty totem is refused={empty is not null}; with Frost Shards socketed: {totems.Count} totems up (Ancestral Ring: 2), {casts} casts in 2.5 s, the dummy took {Missing(dummy):0}");
+        // Owner, 2026-11-04: a totem waits for its skill's use time and cooldown, and has life.
+        Totem first = totems[0];
+        Check("TOTEM-HAS-LIFE", first.Health is { IsDead: false } && CombatQuery.NearestHostile(GetTree(), first.GlobalPosition, Faction.Enemy, 40f) == first,
+            $"a totem has a Health and monsters' targeting finds it (nearest hostile to a monster beside it: {CombatQuery.NearestHostile(GetTree(), first.GlobalPosition, Faction.Enemy, 40f)?.Name})");
+        first.Health.TakeDamage(new DamagePayload(1e6f, DamageType.Physical, null, Faction.Enemy, SkillTags.Melee, DamageDeliveryKind.Hit));
+        await Seconds(0.1f);
+        Check("TOTEM-BREAKS", !IsInstanceValid(first) || first.IsQueuedForDeletion(), "a monster's hit that takes all its life breaks it");
+        foreach (Totem t in GetTree().GetNodesInGroup(Totem.Group).OfType<Totem>())
+        {
+            t.Expire();
+        }
+
+        await Seconds(0.1f);
+        Ready(totem);
+        totem.Socketed = new SkillInstance(UpgradeCatalog.FindSkill("meteor")!.Definition);
+        _skills.TryCast(SkillSlotId.Slot1, Vector2.Right, at + new Vector2(120f, 0f));
+        await Seconds(1.5f);
+        Totem? slow = GetTree().GetNodesInGroup(Totem.Group).OfType<Totem>().FirstOrDefault(t => !t.IsQueuedForDeletion());
+        float meteorCd = UpgradeCatalog.FindSkill("meteor")!.Definition.Cooldown;
+        Check("TOTEM-RESPECTS-COOLDOWN", slow is { Casts: 1 } && slow.LastWait >= meteorCd * 0.8f,
+            $"with Meteor (cooldown {meteorCd} s) socketed: {slow?.Casts} cast in 1.5 s, waits {slow?.LastWait:0.0} s before the next");
         await Seconds(10f);
         Check("TOTEM-EXPIRES", !GetTree().GetNodesInGroup(Totem.Group).OfType<Totem>().Any(t => !t.IsQueuedForDeletion()), "every totem is gone after its duration");
         _skills.ClearSlot(SkillSlotId.Slot1);
@@ -431,6 +494,26 @@ public partial class SkillKitTest : Node2D
         float moved = _player.GlobalPosition.X - at.X;
         Check("BLINK-ON-SPACE", moved > 200f && moved < 250f && dodge.Charges == charges,
             $"Space with Blink moved the player {moved:0} px (range 230) and spent {charges - dodge.Charges} dodge charges");
+
+        // Owner, 2026-11-04: Rewind (press again within 3 s: back where you started) and
+        // Second Wind (+1 charge).
+        at = _player.GlobalPosition;
+        var tree = new Dictionary<string, int> { ["patience"] = 2, ["efficiency"] = 2, ["rewind"] = 1, ["far_step"] = 2, ["phasing"] = 2, ["second_wind"] = 1 };
+        var blink2 = new SkillInstance(UpgradeCatalog.FindSkill("blink")!.Definition);
+        blink2.TreeModifiers.AddRange(SkillTrees.ModifiersFor("blink", tree));
+        _skills.EquipSkill(SkillSlotId.Space, blink2);
+        Check("BLINK-SECOND-WIND", blink2.MaxCharges == 2 && blink2.ChargesAvailable == 2, $"with Second Wind: {blink2.ChargesAvailable}/{blink2.MaxCharges} charges");
+        dodge.SpacePressed(Vector2.Right, at + new Vector2(600f, 0f));
+        await Seconds(0.4f);
+        float away = _player.GlobalPosition.X - at.X;
+        dodge.SpacePressed(Vector2.Right, at + new Vector2(900f, 0f));
+        await Seconds(0.4f);
+        float back = Mathf.Abs(_player.GlobalPosition.X - at.X);
+        Check("BLINK-REWIND", away > 150f && back < 8f && blink2.ChargesAvailable == 1,
+            $"blinked {away:0} px, pressed again within 3 s and is {back:0} px from the start; charges left {blink2.ChargesAvailable}/2 (the rewind spends none)");
+        dodge.SpacePressed(Vector2.Right, at + new Vector2(600f, 0f));
+        await Seconds(0.4f);
+        Check("BLINK-TWO-CHARGES", blink2.ChargesAvailable == 0 && _player.GlobalPosition.X - at.X > 150f, $"a second blink right away (Second Wind): charges {blink2.ChargesAvailable}");
 
         at = _player.GlobalPosition;
         Node2D dummy = Dummy(at + new Vector2(200f, 0f));

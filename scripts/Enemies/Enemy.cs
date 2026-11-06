@@ -567,7 +567,7 @@ public partial class Enemy : CharacterBody2D
                 return Vector2.Zero;
             }
 
-            // Target is Player: only players join CombatQuery.PlayerGroup (Player._Ready), and the
+            // Target is Player (not a totem, whose position the field does not lead to), and the
             // group test turned a string into a StringName on every call (16 KB a frame).
             if (World.FlowField.Current is { } field && Target is Player && GlobalPosition.DistanceSquaredTo(Target.GlobalPosition) > 60f * 60f)
             {
@@ -616,8 +616,33 @@ public partial class Enemy : CharacterBody2D
         }
 
         _retarget = 0.4f + _rng.Randf() * 0.3f;
-        return CombatQuery.NearestTargetablePlayer(tree, GlobalPosition);
+        Player? player = CombatQuery.NearestTargetablePlayer(tree, GlobalPosition);
+        // Totems have life since 2026-11-04 (docs/design/skills.md -> "Totems"): a monster goes
+        // for one when it stands closer than any player. Re-checked on each retarget.
+        if (tree.HasGroup(TotemGroupName))
+        {
+            float best = player is null ? float.MaxValue : GlobalPosition.DistanceSquaredTo(player.GlobalPosition);
+            Node2D? totem = null;
+            foreach (Node node in tree.GetNodesInGroup(TotemGroupName))
+            {
+                if (node is Combat.Totem t && IsInstanceValid(t) && !t.IsQueuedForDeletion() && t.Health is { IsDead: false }
+                    && GlobalPosition.DistanceSquaredTo(t.GlobalPosition) is var d && d < best)
+                {
+                    best = d;
+                    totem = t;
+                }
+            }
+
+            if (totem is not null)
+            {
+                return totem;
+            }
+        }
+
+        return player;
     }
+
+    private static readonly StringName TotemGroupName = Combat.Totem.Group;
 
     protected virtual void UpdateVisual(float delta)
     {
