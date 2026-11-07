@@ -513,7 +513,7 @@ public partial class SkillTreePanel : ModalPanel
             Font font = ThemeDB.FallbackFont;
             for (int b = 0; b < Tree.Branches.Length; b++)
             {
-                DrawString(font, new Vector2(28f, 16f + b * RowH), Tree.Branches[b].ToUpperInvariant(), HorizontalAlignment.Left, -1, 11, UiTheme.TextDim);
+                DrawString(font, new Vector2(28f, 16f + b * RowH), ArpgGame.Core.Loc.T(Tree.Branches[b].ToUpperInvariant()), HorizontalAlignment.Left, -1, 11, UiTheme.TextDim);
             }
 
             // Links first, under the nodes.
@@ -532,7 +532,7 @@ public partial class SkillTreePanel : ModalPanel
                     Vector2 a = new(from.End.X, from.GetCenter().Y);
                     Vector2 c = new(to.Position.X, to.GetCenter().Y);
                     DrawLine(a, c, met ? Accent : new Color(0.35f, 0.32f, 0.45f), met ? 2.5f : 1.5f, true);
-                    DrawString(font, (a + c) / 2f + new Vector2(-12f, -4f), $"{ranks} pt", HorizontalAlignment.Left, -1, 10, met ? Accent : UiTheme.TextDim);
+                    DrawString(font, (a + c) / 2f + new Vector2(-12f, -4f), ArpgGame.Core.Loc.T($"{ranks} pt"), HorizontalAlignment.Left, -1, 10, met ? Accent : UiTheme.TextDim);
                 }
             }
 
@@ -562,17 +562,17 @@ public partial class SkillTreePanel : ModalPanel
             DrawStyleBox(box, r);
             float textW = r.Size.X - 16f;
             bool compact = r.Size.Y < NodeH;
-            DrawString(font, r.Position + new Vector2(8f, 18f), node.Name, HorizontalAlignment.Left, textW - 40f, 15, rank > 0 || can ? Colors.White : UiTheme.TextDim);
-            DrawString(font, r.Position + new Vector2(8f, 18f), $"{rank}/{node.MaxRank}", HorizontalAlignment.Right, textW, 13, rank >= node.MaxRank ? UiTheme.Gold : UiTheme.TextDim);
+            DrawString(font, r.Position + new Vector2(8f, 18f), ArpgGame.Core.Loc.T(node.Name), HorizontalAlignment.Left, textW - 40f, 15, rank > 0 || can ? Colors.White : UiTheme.TextDim);
+            DrawString(font, r.Position + new Vector2(8f, 18f), ArpgGame.Core.Loc.T($"{rank}/{node.MaxRank}"), HorizontalAlignment.Right, textW, 13, rank >= node.MaxRank ? UiTheme.Gold : UiTheme.TextDim);
             string line = node.Describe(rank > 0 ? rank : 1);
-            DrawString(font, r.Position + new Vector2(8f, compact ? 36f : 38f), line, HorizontalAlignment.Left, textW, 12, UiTheme.Text);
+            DrawString(font, r.Position + new Vector2(8f, compact ? 36f : 38f), ArpgGame.Core.Loc.T(line), HorizontalAlignment.Left, textW, 12, UiTheme.Text);
             if (!compact && rank > 0 && rank < node.MaxRank)
             {
-                DrawString(font, r.Position + new Vector2(8f, 58f), $"next: {node.Describe(rank + 1)}", HorizontalAlignment.Left, textW, 11, UiTheme.TextDim);
+                DrawString(font, r.Position + new Vector2(8f, 58f), ArpgGame.Core.Loc.T($"next: {node.Describe(rank + 1)}"), HorizontalAlignment.Left, textW, 11, UiTheme.TextDim);
             }
             else if (!compact && node.Exclusive is not null)
             {
-                DrawString(font, r.Position + new Vector2(8f, 58f), "one of two", HorizontalAlignment.Left, textW, 11, UiTheme.TextDim);
+                DrawString(font, r.Position + new Vector2(8f, 58f), ArpgGame.Core.Loc.T("one of two"), HorizontalAlignment.Left, textW, 11, UiTheme.TextDim);
             }
 
             // Rank pips along the bottom edge.

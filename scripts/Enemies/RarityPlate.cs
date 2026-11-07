@@ -73,11 +73,11 @@ public partial class RarityPlate : Node2D
                 return;
             }
 
-            DrawString(font, new Vector2(-150f, top - 6f), e.ShownName, HorizontalAlignment.Center, 300f, 14, c);
+            DrawString(font, new Vector2(-150f, top - 6f), ArpgGame.Core.Loc.T(e.ShownName), HorizontalAlignment.Center, 300f, 14, c);
             string mods = string.Join(" · ", e.Mods.Select(m => m.Name));
             if (mods.Length > 0)
             {
-                DrawString(font, new Vector2(-150f, top - 22f), mods, HorizontalAlignment.Center, 300f, 11, new Color(0.85f, 0.85f, 0.9f, 0.9f));
+                DrawString(font, new Vector2(-150f, top - 22f), ArpgGame.Core.Loc.T(mods), HorizontalAlignment.Center, 300f, 11, new Color(0.85f, 0.85f, 0.9f, 0.9f));
             }
         }
     }

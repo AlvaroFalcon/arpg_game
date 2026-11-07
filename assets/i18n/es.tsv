@@ -1,0 +1,2267 @@
+# Spanish table — docs/design/localization.md. English text <TAB> Spanish text; \n is a line break.
+# Regenerate the English list with: python3 tools/i18n/extract.py --missing es
+   ({0} more after this)	   ({0} más después de esta)
+   ·   Banish: {0} left (Ctrl + number)   ·   Skip: {1} left (S)	   ·   Desterrar: quedan {0} (Ctrl + número)   ·   Saltar: quedan {1} (S)
+  (Shift + number)	  (Mayús + número)
+  (sealed)	  (sellado)
+  ·  Quest: {0}	  ·  Misión: {0}
+  ·  {0:0}% crits	  ·  {0:0}% críticos
+  · {0} pt	  · {0} pt
+ (playground)	 (zona de pruebas)
+ (shared, party of {0})	 (compartido, grupo de {0})
+ (tier {0})	 (nivel {0})
+ Added damage effectiveness {0:0}%.	 Efectividad del daño añadido {0:0}%.
+ Orb	 Orbe
+ [font_size=11][color=#e8b84a](sealed)[/color][/font_size]	 [font_size=11][color=#e8b84a](sellado)[/color][/font_size]
+ increased	 aumentado
+ less	 menos
+ more	 más
+ of your best cleared tier	 de tu mejor nivel superado
+ or 	 o
+ · J opens your quests	 · J abre tus misiones
+ · New quest	 · Misión nueva
+ · Quest in progress	 · Misión en curso
+ · Quest ready to turn in	 · Misión lista para entregar
+ · chest at {0} min deep	 · cofre a los {0} min de profundidad
+ · cooldown {0:0.#} s	 · enfriamiento {0:0.#} s
+ · crafted	 · fabricado
+ — the seal breaks	 — el sello se rompe
+% more	% más
+(their router opens the port by itself when it can), or a VPN both of you run — Tailscale, Radmin VPN, ZeroTier.	(su router abre el puerto solo cuando puede), o una VPN que uséis los dos: Tailscale, Radmin VPN, ZeroTier.
+**The choice of ascendancy is permanent.** Its nodes can be refunded later for gold.	**La elección de ascendencia es permanente.** Sus nodos se pueden reembolsar más tarde por oro.
+**Your skills:** raise a skill's level for gold, up to {0}. Every level is a point for its upgrade tree: left click spends it, right click takes it back for a little gold.	**Tus habilidades:** sube el nivel de una habilidad por oro, hasta {0}. Cada nivel es un punto para su árbol de mejoras: clic izquierdo para gastarlo, clic derecho para recuperarlo por un poco de oro.
++ Buy tab ({0} gold)	+ Comprar pestaña ({0} de oro)
++ skill for the totem	+ habilidad para el tótem
++ support	+ soporte
++1 Ascendant Orb	+1 Orbe Ascendente
++1 Banish every run	+1 Desterrar en cada partida
++1 Dodge charge	+1 carga de esquiva
++1 Projectile for all projectile skills\n+1 orbiting blade	+1 proyectil para todas las habilidades de proyectiles\n+1 hoja orbital
++1 Skip every run	+1 Saltar en cada partida
++1 charge: blink twice before the cooldown	+1 carga: parpadea dos veces antes del enfriamiento
++1 point for the tree, {0:0}% more damage and {1:0}% more mana cost per level	+1 punto para el árbol, {0:0}% más daño y {1:0}% más coste de maná por nivel
++1 projectile	+1 proyectil
++1 projectile, 10% less damage	+1 proyectil, 10% menos daño
++1 projectile.	+1 proyectil.
++1 totem at once, 15% less damage	+1 tótem a la vez, 15% menos daño
++15% chance to ignite and shock, +5% to freeze	+15% de probabilidad de ignición y electrocución, +5% de congelación
++15% to all elemental resistances.	+15% a todas las resistencias elementales.
++150 armour, 10% increased maximum life.	+150 de armadura, 10% más de vida máxima.
++2 Dodge charges, 50% faster Dodge recharge.\nDodging releases a Frost Nova.\nYou take 15% more damage.	+2 cargas de esquiva, la esquiva se recarga un 50% más rápido.\nAl esquivar sueltas una Nova de escarcha.\nRecibes un 15% más de daño.
++2 orbiting objects.\n10% less damage.	+2 objetos orbitales.\n10% menos daño.
++2 projectiles, 15% less projectile damage.	+2 proyectiles, 15% menos daño de proyectiles.
++2 projectiles, fanned out.\n20% less damage.	+2 proyectiles, en abanico.\n20% menos daño.
++20 maximum Rage.	+20 de Furia máxima.
++20% to all elemental resistances.	+20% a todas las resistencias elementales.
++25% to all elemental resistances.	+25% a todas las resistencias elementales.
++30% to all elemental resistances and 10% less physical damage taken.	+30% a todas las resistencias elementales y 10% menos daño físico recibido.
++300 armour and 15% less damage taken.	+300 de armadura y 15% menos daño recibido.
++40 maximum mana, +3 mana regenerated per second.	+40 de maná máximo, +3 de maná regenerado por segundo.
++40% chance to ignite with Fire hits.	+40% de probabilidad de ignición con golpes de fuego.
++40% chance to shock with Lightning hits.	+40% de probabilidad de electrocutar con golpes de rayo.
++40% critical strike multiplier.	+40% al multiplicador de golpe crítico.
++5 Life gained per enemy killed.\nLife on kill is tripled.\nYou cannot regenerate Life.	+5 de vida por enemigo abatido.\nLa vida por muerte se triplica.\nNo puedes regenerar vida.
++50% Luck: more 4th cards, rarer power-ups, bigger chests.\n10% less damage.	+50% de Suerte: más cuartas cartas, power-ups más raros, cofres más grandes.\n10% menos daño.
++50% critical strike multiplier.	+50% al multiplicador de golpe crítico.
++60 Energy Shield.\n15% less maximum Life.	+60 de Escudo de energía.\n15% menos vida máxima.
++8 life regenerated per second.	+8 de vida regenerada por segundo.
++{0:0.#} Life gained per enemy killed	+{0:0.#} de vida por enemigo abatido
++{0:0.#} Life regenerated per second	+{0:0.#} de vida regenerada por segundo
++{0:0}% chance a boss shard is one tier higher	+{0:0}% de probabilidad de que un fragmento de jefe sea un nivel más alto
++{0:0}% chance for magic and rare packs	+{0:0}% de probabilidad de grupos mágicos y raros
++{0:0}% chance of an extra boss shard	+{0:0}% de probabilidad de un fragmento de jefe extra
++{0:0}% item quantity · +{1:0}% item rarity	+{0:0}% de cantidad de objetos · +{1:0}% de rareza de objetos
++{0:0}% to its effect	+{0:0}% a su efecto
++{0:N0} gold	+{0:N0} de oro
++{0} Armour	+{0} de armadura
++{0} Critical Strike Multiplier	+{0} al multiplicador de golpe crítico
++{0} Energy Shield\n(takes hits before Life, recharges after 2 s unhurt)	+{0} de Escudo de energía\n(recibe los golpes antes que la vida, se recarga tras 2 s sin daño)
++{0} Luck\n(a 4th card, rarer power-ups, bigger chests)	+{0} de Suerte\n(una cuarta carta, power-ups más raros, cofres más grandes)
++{0} chains, +{1} pierce	+{0} cadenas, +{1} perforación
++{0} chance to Ignite with Fire hits	+{0} de probabilidad de ignición con golpes de fuego
++{0} chance to Shock with Lightning hits	+{0} de probabilidad de electrocutar con golpes de rayo
++{0} chance to freeze	+{0} de probabilidad de congelar
++{0} chance to ignite	+{0} de probabilidad de ignición
++{0} chance to shock	+{0} de probabilidad de electrocutar
++{0} life, +{1} armour	+{0} de vida, +{1} de armadura
++{0} mana, +{1:0.##} mana/s	+{0} de maná, +{1:0.##} de maná/s
++{0} maximum Life\n{1} increased maximum Life	+{0} de vida máxima\n{1} más de vida máxima
++{0} more · J	+{0} más · J
++{0} to all Elemental Resistances	+{0} a todas las resistencias elementales
++{0}% critical chance	+{0}% de probabilidad de crítico
++{0}% more damage than the previous level.	+{0}% más daño que el nivel anterior.
+, 2 h lease, renewed while you host	, concesión de 2 h, renovada mientras alojas
+, {0}% come as magic monsters	, {0}% salen como monstruos mágicos
+. Right-click to empty.	. Clic derecho para vaciar.
+.\nItems +{0} item levels.\nHighest cleared: {1}.	.\nObjetos +{0} niveles de objeto.\nNivel más alto superado: {1}.
+0 kills	0 muertes
+1 Crown Orb	1 Orbe de la Corona
+1 Tempest Orb	1 Orbe de Tempestad
+1 card guaranteed Rare or better	1 carta garantizada Rara o mejor
+1 crafting orb	1 orbe de fabricación
+1 · Choose a base	1 · Elige una base
+1.  Reaching the host's PC	1.  Llegando al PC del anfitrión
+100% increased Pickup Radius.\n20% increased Experience gained.\n10% less damage.	100% más radio de recogida.\n20% más experiencia obtenida.\n10% menos daño.
+115 Gold	115 de oro
+12% increased movement speed.	12% más velocidad de movimiento.
+15% increased attack speed.	15% más velocidad de ataque.
+15% increased maximum life.	15% más vida máxima.
+2 Crown Orbs	2 Orbes de la Corona
+2 Sundering Orbs	2 Orbes de Fractura
+2 Tuning Orbs	2 Orbes de Afinación
+2 cards guaranteed Rare or better	2 cartas garantizadas Raras o mejores
+2 · Choose the modifier it will carry	2 · Elige el modificador que llevará
+2.  Checking the join code	2.  Comprobando el código de unión
+20% less damage taken.\n15% less movement speed.	20% menos daño recibido.\n15% menos velocidad de movimiento.
+20% more Movement Speed, +1 Dodge charge.\nYou take 10% more damage.	20% más velocidad de movimiento, +1 carga de esquiva.\nRecibes un 10% más de daño.
+20% more damage while above 90% life.	20% más daño mientras tengas más del 90% de vida.
+20% shorter cooldown, and the active heals 10% more of your life	20% menos enfriamiento, y la activa cura un 10% más de tu vida
+25% chance to block hits.	25% de probabilidad de bloquear golpes.
+25% increased critical chance.	25% más probabilidad de crítico.
+25% less Elemental damage taken.\n15% more Physical damage taken.	25% menos daño elemental recibido.\n15% más daño físico recibido.
+25% less cast time and cooldown.	25% menos tiempo de lanzamiento y enfriamiento.
+25% more monsters, and a higher crowd cap.	25% más monstruos, y un tope de multitud más alto.
+3 Ascendant Orbs	3 Orbes Ascendentes
+3 Ash Orbs	3 Orbes de Ceniza
+3 Tempest Orbs	3 Orbes de Tempestad
+3 cards guaranteed Rare or better	3 cartas garantizadas Raras o mejores
+3 · Forge	3 · Forjar
+3.  Joining the party	3.  Uniéndose al grupo
+30% increased area of effect for curses.	30% más área de efecto para maldiciones.
+30% increased cold damage.	30% más daño de frío.
+30% increased critical chance.	30% más probabilidad de crítico.
+30% increased curse damage.	30% más daño de maldiciones.
+30% increased fire damage.	30% más daño de fuego.
+30% increased holy damage.	30% más daño sagrado.
+30% increased lightning damage.	30% más daño de rayo.
+30% increased projectile damage.	30% más daño de proyectiles.
+30% increased projectile speed.	30% más velocidad de proyectiles.
+30% less area of effect.\n45% more damage.	30% menos área de efecto.\n45% más daño.
+30% more damage against rare, unique-rare and boss enemies.	30% más daño contra enemigos raros, únicos raros y jefes.
+30% more movement speed for 3 s after arriving	30% más velocidad de movimiento durante 3 s tras llegar
+4 cards guaranteed Rare or better	4 cartas garantizadas Raras o mejores
+4 item cards, keep 1	4 cartas de objeto, te quedas 1
+40% increased mana regeneration, 10% reduced mana costs.	40% más regeneración de maná, 10% menos coste de maná.
+40% more area for melee strikes.\n10% less damage.	40% más área para golpes cuerpo a cuerpo.\n10% menos daño.
+40% more area, 10% less damage	40% más área, 10% menos daño
+40% more damage with attacks.\nCannot inflict ailments.	40% más daño con ataques.\nNo puede infligir estados alterados.
+40% more damage, drains twice the life	40% más daño, drena el doble de vida
+40% shorter cooldown, 30% shorter range	40% menos enfriamiento, 30% menos alcance
+45% more area of effect.	45% más área de efecto.
+45% more damage.\nCannot inflict ailments.	45% más daño.\nNo puede infligir estados alterados.
+5 Gold	5 de oro
+5 cards	5 cartas
+5 cards guaranteed Rare or better	5 cartas garantizadas Raras o mejores
+5 item cards	5 cartas de objeto
+50% more Armour.\n10% less attack speed.	50% más armadura.\n10% menos velocidad de ataque.
+50% more projectile speed.\n15% more damage.	50% más velocidad de proyectiles.\n15% más daño.
+60% more damage.\n40% less maximum Life.	60% más daño.\n40% menos vida máxima.
+60% more skill duration.	60% más duración de habilidades.
+8% increased attack and movement speed.	8% más velocidad de ataque y de movimiento.
+; supports never level	; los soportes nunca suben de nivel
+A boss every 2 minutes	Un jefe cada 2 minutos
+A challenger rises	Se alza un retador
+A far wider arc that swings twice.	Un arco mucho más amplio que golpea dos veces.
+A full circle of knives that pierce.	Un círculo completo de cuchillos que perforan.
+A golden chest for everyone	Un cofre dorado para todos
+A golden chest!	¡Un cofre dorado!
+A heavy overhead blow that shatters frost over a wide arc. Cold hits chill enemies.	Un golpe descendente pesado que hace añicos la escarcha en un arco amplio. Los golpes de frío ralentizan a los enemigos.
+A herald of the dead answers the slaughter	Un heraldo de los muertos responde a la matanza
+A hostile host	Un anfitrión hostil
+A jewel comes back out for free as long as the rest stay connected, so experiment. Jewels work in Altered Realities, not in the Survival Rift. Reality bosses drop them.	Una joya vuelve a salir gratis mientras el resto siga conectado, así que experimenta. Las joyas funcionan en las Realidades Alteradas, no en la Grieta de Supervivencia. Las sueltan los jefes de las realidades.
+A jewel for the Mirror	Una joya para el Espejo
+A join code is {0} letters or digits (no 0, O, 1, I or L).	Un código de unión tiene {0} letras o dígitos (sin 0, O, 1, I ni L).
+A join code is {0} letters or digits, like K7Q-29M (there is no 0, O, 1, I or L).	Un código de unión tiene {0} letras o dígitos, como K7Q-29M (no hay 0, O, 1, I ni L).
+A lesser keystone: a smaller trade that bends one part of your build.	Una piedra angular menor: un intercambio más pequeño que dobla una parte de tu build.
+A lightning-charged thrust in a narrow arc. Lightning hits can shock.	Una estocada cargada de rayos en un arco estrecho. Los golpes de rayo pueden electrocutar.
+A mixed horde	Una horda mixta
+A modifier of your choosing	Un modificador a tu elección
+A new reality takes shape…	Una nueva realidad toma forma…
+A party is at most {0} players. Ask someone to leave the lobby, then try again.	Un grupo es de {0} jugadores como máximo. Pide a alguien que salga de la sala y vuelve a intentarlo.
+A portal home opens where the Colossus fell. Leave whenever you want.	Se abre un portal a casa donde cayó el Coloso. Vete cuando quieras.
+A quarter of monsters explode on death	Una cuarta parte de los monstruos explotan al morir
+A reroll costs {0} gold now	Un relanzamiento cuesta ahora {0} de oro
+A ring of ice bursts around you, chilling enemies. (Its tree can make it push them back.)	Un anillo de hielo estalla a tu alrededor y ralentiza a los enemigos. (Su árbol puede hacer que los empuje.)
+A short introduction — follow the objectives on the left	Una breve introducción: sigue los objetivos de la izquierda
+A surge rises	Se alza una oleada
+A thought about the game: balance, feel, art, anything.	Una idea sobre el juego: equilibrio, sensaciones, arte, lo que sea.
+A tier-2 shard costs {0} gold.	Un fragmento de nivel 2 cuesta {0} de oro.
+A tier-2 shard costs {0} gold; tier {1} costs {2:N0}.	Un fragmento de nivel 2 cuesta {0} de oro; el de nivel {1} cuesta {2:N0}.
+A tier-{0} Mirror Shard changes hands.	Un Fragmento del Espejo de nivel {0} cambia de manos.
+A training dummy: no armour, no resistances, never dies	Un muñeco de entrenamiento: sin armadura, sin resistencias, nunca muere
+A wide swing that hits every enemy in front of you. Scales with weapon damage.	Un barrido amplio que golpea a todos los enemigos que tienes delante. Escala con el daño del arma.
+A wider nova that pulses a second time.	Una nova más amplia que late una segunda vez.
+A worker of wonders. Fragile up close, devastating from range with the elements and with curses.	Un obrador de prodigios. Frágil de cerca, devastador a distancia con los elementos y las maldiciones.
+ACTIVE ({0})	ACTIVA ({0})
+ARPG GAME	ARPG GAME
+ARPG co-op	ARPG cooperativo
+Abandon reality	Abandonar la realidad
+Abandon run	Abandonar la partida
+Abundance	Abundancia
+Accelerant	Acelerante
+Acrobatics	Acrobacias
+Active: also +30 thorns damage	Activa: también +30 de daño de espinas
+Active: also 15% increased movement speed	Activa: también 15% más velocidad de movimiento
+Active: also 15% less physical damage taken	Activa: también 15% menos daño físico recibido
+Active: also 2% of damage leeched as life	Activa: también el 2% del daño se roba como vida
+Active: also 20% increased attack and cast speed	Activa: también 20% más velocidad de ataque y de lanzamiento
+Active: also 20% increased attack speed	Activa: también 20% más velocidad de ataque
+Active: also 20% less elemental damage taken	Activa: también 20% menos daño elemental recibido
+Active: also 30% increased movement speed	Activa: también 30% más velocidad de movimiento
+Active: {0:0}% less damage taken on top	Activa: {0:0}% menos daño recibido además
+Address	Dirección
+Address copied.	Dirección copiada.
+Adds a random modifier to a magic item with room for one.	Añade un modificador aleatorio a un objeto mágico con hueco para uno.
+Adds a random modifier to a rare item with room for one.	Añade un modificador aleatorio a un objeto raro con hueco para uno.
+Admin mode (testing: max-level test characters)	Modo administrador (pruebas: personajes de prueba a nivel máximo)
+Aegis	Égida
+After 5 wrong codes in a minute the host ignores your address for a minute.	Tras 5 códigos erróneos en un minuto el anfitrión ignora tu dirección durante un minuto.
+Aftershock	Réplica
+Agility	Agilidad
+Ailments	Estados alterados
+All	Todo
+All skills deal Cold damage.\n25% more damage, +15% chance to Freeze.\nFire and Lightning bonuses no longer apply.	Todas las habilidades infligen daño de frío.\n25% más daño, +15% de probabilidad de congelar.\nLas bonificaciones de fuego y rayo dejan de aplicarse.
+All skills deal Fire damage.\n25% more damage, +15% ignite chance.\nCold and Lightning bonuses no longer apply.	Todas las habilidades infligen daño de fuego.\n25% más daño, +15% de probabilidad de ignición.\nLas bonificaciones de frío y rayo dejan de aplicarse.
+Allies on the maps	Aliados en los mapas
+Allocate	Asignar
+Allocated	Asignado
+Allocated {0} nodes.	{0} nodos asignados.
+Allocated — right-click to refund (free)	Asignado: clic derecho para reembolsar (gratis)
+Allow editing	Permitir editar
+Ally	Aliado
+Already at full life	Ya tienes la vida al máximo
+Already at full mana	Ya tienes el maná al máximo
+Already at its highest rank	Ya está en su rango más alto
+Altar	Altar
+Altar of Ascension	Altar de la Ascensión
+Altered Realities with friends arrive in the next update	Las Realidades Alteradas con amigos llegan en la próxima actualización
+Altered Realities with friends arrive in the next update. The Survival Rift already opens for the whole party.	Las Realidades Alteradas con amigos llegan en la próxima actualización. La Grieta de Supervivencia ya se abre para todo el grupo.
+Amulet	Amuleto
+An **ascendancy** is your class's specialisation. As a {0} you can become {1}. Each has {2} nodes with effects found nowhere else.\n\n	Una **ascendencia** es la especialización de tu clase. Como {0} puedes convertirte en {1}. Cada una tiene {2} nodos con efectos que no encontrarás en ningún otro sitio.\n\n
+An Ember Colossus	Un Coloso de Ascuas
+An elite approaches	Se acerca un élite
+An orb is not consumed when the flask is already full	Un orbe no se gasta si el frasco ya está lleno
+Ancestral Ring	Anillo Ancestral
+Another heart kindles	Otro corazón se enciende
+Any	Cualquiera
+Any: a mixed horde from every reality	Cualquiera: una horda mixta de todas las realidades
+Arc	Arco
+Arc Blast	Estallido de arco
+Arc Weaving	Tejido de arcos
+Arcana	Arcanos
+Arcane	Arcano
+Arcane Charges	Cargas arcanas
+Arcane Charges — every spell cast grants a charge (cast speed and spell damage). Charges drain slowly.	Cargas arcanas: cada hechizo lanzado otorga una carga (velocidad de lanzamiento y daño de hechizos). Las cargas se agotan poco a poco.
+Arcane Focus	Foco arcano
+Arcane Torrent	Torrente arcano
+Area	Área
+Area Damage	Daño de área
+Area of Effect	Área de efecto
+Area of effect	Área de efecto
+Arehucaz	Arehucaz
+Arehucaz sells Mirror Shards for gold, but only of tiers you've already cleared: {0}. Tier 1 is always free at the Mirror, so he doesn't sell it. {1}\n\n	Arehucaz vende Fragmentos del Espejo por oro, pero solo de niveles que ya has superado: {0}. El nivel 1 siempre es gratis en el Espejo, así que no lo vende. {1}\n\n
+Arehucaz, by the north gate	Arehucaz, junto a la puerta norte
+Arena	Arena
+Armour	Armadura
+Armour {0:N0}: a 100 physical hit deals {1:0}	Armadura {0:N0}: un golpe físico de 100 hace {1:0}
+Armour, axes and stubbornness. Wades into the pack and hits everything in front of it.	Armadura, hachas y tozudez. Se mete en la manada y golpea todo lo que tiene delante.
+Armoured	Acorazado
+Artifice	Artificio
+Artificer	Artífice
+Artificer's Bench	Banco del Artífice
+Artificer's Forge	Forja del Artífice
+Artificer's Seal	Sello del Artífice
+Artificer's Seal — protect a modifier from the next orb	Sello del Artífice: protege un modificador del siguiente orbe
+Ascend	Ascender
+Ascendancy	Ascendencia
+Ascendant Orb	Orbe Ascendente
+Ascending Echo	Eco ascendente
+Ash	Ceniza
+Ash Orb	Orbe de Ceniza
+Ashen	Ceniciento
+Ashen stone	Piedra cenicienta
+Ask for the code in their lobby now: it changes with every new lobby and with New code.	Pide el código en su sala ahora: cambia con cada sala nueva y con Código nuevo.
+Ask the host to open a new lobby and send the new invite: the code changes every time.	Pide al anfitrión que abra una sala nueva y te mande la invitación nueva: el código cambia cada vez.
+Asking {0} for the editor…	Pidiendo el editor a {0}…
+Attack	Ataque
+Attack Speed	Velocidad de ataque
+Attack name	Nombre del ataque
+Attack speed	Velocidad de ataque
+Attack speed, critical strikes and swift feet. The duellist.	Velocidad de ataque, golpes críticos y pies ligeros. El duelista.
+Attributes	Atributos
+Attributes and derived bonuses	Atributos y bonificaciones derivadas
+Attunement	Sintonía
+Audio	Audio
+Aura. While it is in a slot: +10 to fire, cold and lightning resistance. Use: +40 more to all three for 6 s.	Aura. Mientras esté en una ranura: +10 a la resistencia al fuego, al frío y al rayo. Uso: +40 más a las tres durante 6 s.
+Aura. While it is in a slot: +3% critical strike chance and +20% critical strike multiplier. Use: +10% chance and +60% multiplier for 5 s.	Aura. Mientras esté en una ranura: +3% de probabilidad de golpe crítico y +20% al multiplicador de crítico. Uso: +10% de probabilidad y +60% al multiplicador durante 5 s.
+Aura. While it is in a slot: +40 armour and 30% increased armour. Use: 80% more armour for 6 s, and nothing can knock you back.	Aura. Mientras esté en una ranura: +40 de armadura y 30% más armadura. Uso: 80% más armadura durante 6 s, y nada puede empujarte.
+Aura. While it is in a slot: 12% increased maximum life. Use: heals 25% of your maximum life, and you take 30% less damage for 4 s.	Aura. Mientras esté en una ranura: 12% más vida máxima. Uso: cura el 25% de tu vida máxima y recibes un 30% menos de daño durante 4 s.
+Aura. While it is in a slot: 15% increased fire, cold and lightning damage. Use: 30% more elemental damage for 6 s. Its tree can focus it on one element.	Aura. Mientras esté en una ranura: 15% más daño de fuego, frío y rayo. Uso: 30% más daño elemental durante 6 s. Su árbol puede centrarla en un elemento.
+Aura. While it is in a slot: physical attacks have +15% chance to cause bleeding, and bleeds last 25% longer. Use: for 6 s every bleed adds 3 stacks instead of 1, and +20% bleed chance.	Aura. Mientras esté en una ranura: los ataques físicos tienen +15% de probabilidad de causar sangrado, y los sangrados duran un 25% más. Uso: durante 6 s cada sangrado añade 3 acumulaciones en vez de 1, y +20% de probabilidad de sangrado.
+Auras	Auras
+Auras, totems and stacks	Auras, tótems y acumulaciones
+Auto-cast timing	Ritmo del lanzamiento automático
+Automatic	Automático
+Avarice	Avaricia
+Avatar of Fire	Avatar del fuego
+Avatar of Frost	Avatar de la escarcha
+Azure Dust	Polvo azur
+Azure banner	Estandarte azur
+Azure forging	Forja azur
+Back	Volver
+Back in your hideout	De vuelta en tu refugio
+Back to co-op	Volver al cooperativo
+Back to the hideout — you keep everything you collected	Volver al refugio: te quedas con todo lo que has recogido
+Back up in {0:0} s, or an ally revives you · {1}	Te levantas en {0:0} s, o un aliado te revive · {1}
+Banish  [Ctrl+{0}]	Desterrar  [Ctrl+{0}]
+Banished: {0}	Desterrado: {0}
+Bare Steel	Acero desnudo
+Barrage	Andanada
+Barrel	Barril
+Bastion	Bastión
+Bat	Murciélago
+Battery	Batería
+Battle Hardened	Curtido en batalla
+Battlemage	Mago de batalla
+Become a {0}	Convertirse en {0}
+Become a {0}: this is permanent. Click again.	Convertirse en {0}: es permanente. Pulsa otra vez.
+Belt	Cinturón
+Bench	Banco
+Bite	Mordisco
+Bitter	Amargo
+Blade Count	Número de hojas
+Blade Dancer	Danzante de hojas
+Blade Storm	Tormenta de hojas
+Blaze	Llamarada
+Bleed	Sangrado
+Blight Field	Campo de plaga
+Blink	Parpadeo
+Blinks {0} farther	Parpadea {0} más lejos
+Block	Bloqueo
+Blocked	Bloqueado
+Blood	Sangre
+Blood Frenzy	Frenesí de sangre
+Blood Magic	Magia de sangre
+Blood Nova	Nova de sangre
+Blood Pyre	Pira de sangre
+Bloodthirst	Sed de sangre
+Bloom	Florecer
+Body	Cuerpo
+Bone Bolt	Proyectil de hueso
+Bone Dagger	Daga de hueso
+Bone Herald in {0}	Heraldo de Hueso en {0}
+Bone Spiral	Espiral de hueso
+Boots	Botas
+Borderless	Sin bordes
+Boss	Jefe
+Boss items roll {0:0}% rarer	Los objetos de jefe salen un {0:0}% más raros
+Boss name	Nombre del jefe
+Boss: phases and telegraphed attacks	Jefe: fases y ataques anunciados
+Bosses drop {0:0}% more gold	Los jefes sueltan un {0:0}% más de oro
+Bottom of the Rift	El fondo de la Grieta
+Bought a {0}	Has comprado {0}
+Bought back {0}	Has recomprado {0}
+Bought {0}. It's in your skills (K) at level 1.	Has comprado {0}. Está en tus habilidades (K) a nivel 1.
+Bound	Ligado
+Brazier	Brasero
+Breaking it down	Desmontarlo
+Brittle	Quebradizo
+Broadheads	Puntas anchas
+Browse	Explorar
+Brutality	Brutalidad
+Brute	Bruto
+Bug	Error
+Bulwark	Baluarte
+Bulwark of Faith	Baluarte de la fe
+Burning bright	Arder con fuerza
+Burns every modifier away, leaving a common item.	Quema todos los modificadores y deja un objeto común.
+Bursts on impact: {0:0} px, half the hit	Estalla al impactar: {0:0} px, la mitad del golpe
+Bushido	Bushido
+Butcher	Carnicero
+Button	Botón
+Buy	Comprar
+Buy a Mirror Shard from Arehucaz	Compra un Fragmento del Espejo a Arehucaz
+Buy a skill from Escaldón	Compra una habilidad a Escaldón
+Buy skills	Comprar habilidades
+Buy your first skill in the Buy skills tab.	Compra tu primera habilidad en la pestaña Comprar habilidades.
+Buy · {0:N0} g	Comprar · {0:N0} o
+Buy · {0}g	Comprar · {0} o
+Buyback	Recomprar
+Buying it back costs {0} gold	Recomprarlo cuesta {0} de oro
+C · K · P	C · K · P
+COMPLETED ({0})	COMPLETADAS ({0})
+Call the Brood	Llamar a la prole
+Calls down a meteor at the target after a short delay. Huge damage, small area.	Hace caer un meteoro sobre el objetivo tras un breve retraso. Daño enorme, área pequeña.
+Can edit	Puede editar
+Can't buy yet\n	Aún no se puede comprar\n
+Can't die	No puede morir
+Canal	Canal
+Canal water	Agua del canal
+Cancel	Cancelar
+Cannot be knocked back	No puede ser empujado
+Cash-out offer and the infinite Rift	Oferta de retirada y la Grieta infinita
+Cast Speed	Velocidad de lanzamiento
+Cast speed	Velocidad de lanzamiento
+Caster	Lanzador
+Cataclysm — {0} slain	Cataclismo: {0} abatidos
+Caverns	Cavernas
+Chain	Cadena
+Chain Reaction	Reacción en cadena
+Challenge	Desafío
+Challenge complete: {0} — {1}	Reto completado: {0} — {1}
+Challenges	Retos
+Challenges  {0}/{1}	Retos  {0}/{1}
+Change	Cambiar
+Change address or code	Cambiar dirección o código
+Character	Personaje
+Character level	Nivel de personaje
+Character level {0} (passive points to spend: {1})	Nivel de personaje {0} (puntos pasivos por gastar: {1})
+Character select	Selección de personaje
+Character: level {0} {1}, best tier {2}	Personaje: nivel {0} {1}, mejor nivel {2}
+Charge	Carga
+Charged	Cargado
+Charges from {0:0} px	Embiste desde {0:0} px
+Chases and hits on contact	Persigue y golpea al contacto
+Check the code with the host, then try again.	Comprueba el código con el anfitrión y vuelve a intentarlo.
+Chest · 	Cofre ·
+Chest · {0}	Cofre · {0}
+Choose	Elegir
+Choose an ascendancy	Elige una ascendencia
+Choose an ascendancy and spend ascendancy points.	Elige una ascendencia y gasta puntos de ascendencia.
+Choose an ascendancy at the Altar of Ascension	Elige una ascendencia en el Altar de la Ascensión
+Choose an upgrade  (1 / 2 / 3 / 4) — Luck gave you a fourth card	Elige una mejora  (1 / 2 / 3 / 4) — la Suerte te ha dado una cuarta carta
+Choose an upgrade  (1 / 2 / 3)	Elige una mejora  (1 / 2 / 3)
+Choose one item to keep	Elige un objeto para quedártelo
+Choose who plays with friends	Elige quién juega con amigos
+Choose your first skill	Elige tu primera habilidad
+Choose your hero	Elige a tu héroe
+Choose your path, {0}. This choice is permanent.	Elige tu camino, {0}. Esta elección es permanente.
+Choose {0} items to keep	Elige {0} objetos para quedártelos
+Choosing the skill for Space: movement skills only (Blink, Leap Slam). Empty, Space is the dodge roll. Right-click to empty.	Eligiendo la habilidad para Espacio: solo habilidades de movimiento (Parpadeo, Salto demoledor). Vacío, Espacio es la voltereta de esquiva. Clic derecho para vaciar.
+Choosing the skill for {0}. Escaldón raises skill levels for gold	Eligiendo la habilidad para {0}. Escaldón sube los niveles de las habilidades por oro
+Choosing what the totem on {0} casts: any skill that hits, with its own level and tree. Right-click to empty.	Eligiendo qué lanza el tótem en {0}: cualquier habilidad que golpee, con su propio nivel y árbol. Clic derecho para vaciar.
+Cinder Skin	Piel de ceniza
+Claim reward	Reclamar recompensa
+Claimed	Reclamada
+Class	Clase
+Clear a tier-{0} reality first.	Supera primero una realidad de nivel {0}.
+Clear monsters	Elimina monstruos
+Cleared	Superado
+Cleave	Tajo
+Click	Clic
+Click again to confirm	Pulsa otra vez para confirmar
+Click an orb, then click an item. Shift keeps it in hand.	Haz clic en un orbe y luego en un objeto. Con Mayús lo mantienes en la mano.
+Click to pick it up, then click an item · Shift keeps it in hand · right-click puts it away	Clic para cogerlo, luego clic en un objeto · Mayús lo mantiene en la mano · clic derecho lo guarda
+Clock	Reloj
+Close	Cerrar
+Close (Esc)	Cerrar (Esc)
+Close lobby	Cerrar la sala
+Close the party	Cerrar el grupo
+Close the reality for everyone	Cerrar la realidad para todos
+Co-op	Cooperativo
+Co-op is unavailable (no session service).	El cooperativo no está disponible (no hay servicio de sesión).
+Co-op is unavailable (the join-code check could not be set up).	El cooperativo no está disponible (no se pudo preparar la comprobación del código de unión).
+Co-op realities	Realidades cooperativas
+Cobblestone	Adoquines
+Codes never contain 0, O, 1, I or L. Case and the dash don't matter.	Los códigos nunca contienen 0, O, 1, I ni L. Las mayúsculas y el guion dan igual.
+Cold	Frío
+Cold Conversion	Conversión al frío
+Cold Current	Corriente fría
+Cold Damage	Daño de frío
+Cold Resistance	Resistencia al frío
+Cold resistance	Resistencia al frío
+Collect your loot — press F at the portal to go home	Recoge tu botín y pulsa F en el portal para volver a casa
+Collector of forms	Coleccionista de formas
+Colossal Heart	Corazón colosal
+Colossus	Coloso
+Combo	Combo
+Combo — consecutive hits build stacks (attack speed and critical chance). Stop hitting and they fall away.	Combo: los golpes seguidos acumulan cargas (velocidad de ataque y probabilidad de crítico). Si dejas de golpear, se pierden.
+Combust	Combustión
+Comet	Cometa
+Common	Común
+Compact: numbers only	Compacto: solo números
+Compared to {0}:	Comparado con {0}:
+Concentrated Effect	Efecto concentrado
+Conduction	Conducción
+Conduit	Conducto
+Connected — checking the join code…	Conectado: comprobando el código de unión…
+Connected — joining the party…	Conectado: uniéndose al grupo…
+Connecting to {0}:{1}…	Conectando con {0}:{1}…
+Consecration	Consagración
+Contact hit {0:N0} every {1:0.#} s	Golpe por contacto de {0:N0} cada {1:0.#} s
+Contagion	Contagio
+Controls	Controles
+Converts the damage to physical: 15% more damage and +25% chance to cause bleeding	Convierte el daño en físico: 15% más daño y +25% de probabilidad de causar sangrado
+Converts the damage to {0}	Convierte el daño en {0}
+Converts the skill's damage to Cold.\nCold hits chill (slow) enemies.	Convierte el daño de la habilidad en frío.\nLos golpes de frío ralentizan a los enemigos.
+Converts the skill's damage to Fire.\n+15% chance to ignite.	Convierte el daño de la habilidad en fuego.\n+15% de probabilidad de ignición.
+Converts the skill's damage to Lightning.\n+15% chance to shock.	Convierte el daño de la habilidad en rayo.\n+15% de probabilidad de electrocutar.
+Converts {0} of the damage to cold (can chill)	Convierte {0} del daño en frío (puede ralentizar)
+Cooldown Recovery	Recuperación de enfriamiento
+Cooldown recovery	Recuperación de enfriamiento
+Copied to the clipboard.	Copiado al portapapeles.
+Copper Amulet	Amuleto de cobre
+Copper Ring	Anillo de cobre
+Copy	Copiar
+Copy invite	Copiar invitación
+Copy invite (address + code)	Copiar invitación (dirección + código)
+Copy text	Copiar texto
+Corpse	Cadáver
+Corruption	Corrupción
+Costs {0} gold and {1} {2} (seal #{3} on this item)	Cuesta {0} de oro y {1} {2} (sello n.º {3} en este objeto)
+Could not connect to {0}:{1} ({2}).	No se pudo conectar con {0}:{1} ({2}).
+Could not host on port {0} ({1}). Is another game using it?	No se pudo alojar en el puerto {0} ({1}). ¿Lo está usando otro juego?
+Couldn't look it up — search \"what is my IP\" in a browser.	No se pudo averiguar: busca \"cuál es mi IP\" en un navegador.
+Couldn't reach the host	No se pudo llegar al anfitrión
+Craft	Fabricar
+Crafting	Fabricación
+Crate	Caja
+Crater	Cráter
+Create & play	Crear y jugar
+Create a character	Crear un personaje
+Crimson banner	Estandarte carmesí
+Critical Strike Chance	Probabilidad de golpe crítico
+Critical Strike Multiplier	Multiplicador de golpe crítico
+Critical chance	Probabilidad de crítico
+Critical multiplier	Multiplicador de crítico
+Critical strikes	Golpes críticos
+Crown Orb	Orbe de la Corona
+Crowned Spoils	Botín coronado
+Crucible	Crisol
+Cryomancy	Criomancia
+Crypt stone	Piedra de cripta
+Ctrl	Ctrl
+Curse of Elements	Maldición de los elementos
+Curse of the World	Maldición del mundo
+Cursed enemies also take 15% more damage of every kind	Los enemigos malditos también reciben un 15% más de daño de todo tipo
+Cursed enemies are also chilled.	Los enemigos malditos también se ralentizan.
+Cursed enemies burst when they die, for 10% of their maximum life	Los enemigos malditos estallan al morir, por el 10% de su vida máxima
+Curses	Maldiciones
+Curses every enemy in an area: their fire, cold and lightning resistances drop by 25 for 6 s.	Maldice a todos los enemigos de un área: sus resistencias al fuego, al frío y al rayo bajan 25 durante 6 s.
+Curses every enemy in an area: they move 35% slower for 5 s.	Maldice a todos los enemigos de un área: se mueven un 35% más lentos durante 5 s.
+Curses last 50% longer and deal 30% more damage.	Las maldiciones duran un 50% más e infligen un 30% más de daño.
+Curses that hurt, spread and break resistances.	Maldiciones que hieren, se propagan y rompen resistencias.
+Curses the enemy nearest the cursor with a corruption that eats it away: shadow damage every second for 6 s. No resistance stops it.	Maldice al enemigo más cercano al cursor con una corrupción que lo devora: daño de sombra cada segundo durante 6 s. Ninguna resistencia lo detiene.
+DPS meter · F3	Medidor de DPS · F3
+Damage	Daño
+Damage numbers	Números de daño
+Damage taken	Daño recibido
+Damage types	Tipos de daño
+Damage {0:0.#} · use {1:0.00} s	Daño {0:0.#} · uso {1:0.00} s
+Danger {0}	Peligro {0}
+Danger {0} · Tier {1}	Peligro {0} · Nivel {1}
+Danger {0} · {1}	Peligro {0} · {1}
+Dangerous Company	Compañía peligrosa
+Dark Arts	Artes oscuras
+Deadly	Letal
+Deadly Precision	Precisión letal
+Deal	Hecho
+Deaths	Muertes
+Deaths and revives	Muertes y reanimaciones
+Decline (cancels it for everyone)	Rechazar (lo cancela para todos)
+Decorations	Decoraciones
+Decorator	Decorador
+Deep Cuts	Cortes profundos
+Deep Wounds	Heridas profundas
+Deeper still	Aún más hondo
+Defeat the boss of a tier {0} (or higher) Altered Reality to earn your first {1} ascendancy points. A tier {2} boss grants {3} more.	Derrota al jefe de una Realidad Alterada de nivel {0} (o superior) para ganar tus primeros {1} puntos de ascendencia. Un jefe de nivel {2} da {3} más.
+Defence	Defensa
+Delete	Borrar
+Delete — sure?	Borrar: ¿seguro?
+Detonates the ignites on every enemy in a circle: all the fire damage their stacks had left lands at once, 30% stronger.	Detona las igniciones de todos los enemigos de un círculo: todo el daño de fuego que les quedaba a sus acumulaciones cae de golpe, un 30% más fuerte.
+Detonation	Detonación
+Devotion	Devoción
+Dexterity	Destreza
+Different game versions	Versiones del juego distintas
+Discipline	Disciplina
+Disenchant an item at the Artificer's Forge	Desencanta un objeto en la Forja del Artífice
+Disenchant gear into dust and forge items with a chosen modifier.	Desencanta equipo en polvo y forja objetos con el modificador que elijas.
+Disenchanted from common items. Pays for forging.	Se obtiene desencantando objetos comunes. Sirve para forjar.
+Disenchanted from magic items. Pays for forging.	Se obtiene desencantando objetos mágicos. Sirve para forjar.
+Disenchanted from majestic and set items. Pays for the finest forging.	Se obtiene desencantando objetos majestuosos y de conjunto. Sirve para la mejor forja.
+Disenchanted from rare items. Pays for forging.	Se obtiene desencantando objetos raros. Sirve para forjar.
+Display	Pantalla
+Distance	Distancia
+Dodge	Esquiva
+Dodge charge	Carga de esquiva
+Dodge charges	Cargas de esquiva
+Dodge recharge speed	Velocidad de recarga de la esquiva
+Dodging a hit in the first 0.2 s of a roll refunds the charge and makes your next hit deal 100% more damage.	Esquivar un golpe en los primeros 0,2 s de una voltereta devuelve la carga y hace que tu siguiente golpe inflija un 100% más de daño.
+Done	Hecho
+Done: turn it in at {0}	Hecho: entrégala en {0}
+Double Strike	Golpe doble
+Douse	Empapar
+Drag	Arrastrar
+Drag a panel to move it; drag its corner or use the wheel to resize. Esc or Done saves.	Arrastra un panel para moverlo; arrastra su esquina o usa la rueda para cambiar su tamaño. Esc o Hecho guarda.
+Drag anything to move it — stations too. Right-click a decoration to put it in storage. WASD to walk around.	Arrastra lo que quieras para moverlo, también las estaciones. Clic derecho en una decoración para guardarla. WASD para caminar.
+Drains {0} less life	Drena {0} menos vida
+Dread	Pavor
+Drezzik	Drezzik
+Drop tables (cascade)	Tablas de botín (cascada)
+Drowned stone	Piedra anegada
+Duelist	Duelista
+Dust	Polvo
+E prompt and station panels	Aviso E y paneles de estación
+EVO	EVO
+Each Mirror Shard opens one Altered Reality of its tier. Bosses drop shards of the same tier or higher.	Cada Fragmento del Espejo abre una Realidad Alterada de su nivel. Los jefes sueltan fragmentos del mismo nivel o superior.
+Each detonated enemy keeps 3 of its bleed stacks	Cada enemigo detonado conserva 3 de sus acumulaciones de sangrado
+Each detonated enemy keeps 3 of its ignite stacks	Cada enemigo detonado conserva 3 de sus acumulaciones de ignición
+Each detonation splashes 35% of its damage around and ignites what it hits	Cada detonación salpica el 35% de su daño alrededor e incendia lo que golpea
+Each detonation splashes 35% of its damage around and makes what it hits bleed	Cada detonación salpica el 35% de su daño alrededor y hace sangrar lo que golpea
+Earthshaker	Sacudetierras
+Echo	Eco
+Echoing Mind	Mente resonante
+Edge	Filo
+Edit HUD	Editar HUD
+Edit hideout	Editar refugio
+Edit permission	Permiso de edición
+Edit town	Editar pueblo
+Effects	Efectos
+Effects volume	Volumen de efectos
+Efficiency	Eficiencia
+Elemental	Elemental
+Elemental 	Elemental
+Elemental Body	Cuerpo elemental
+Elemental Damage taken	Daño elemental recibido
+Elemental Focus	Foco elemental
+Elemental Mastery	Maestría elemental
+Elemental Overload	Sobrecarga elemental
+Elemental Shell	Coraza elemental
+Elemental Storm	Tormenta elemental
+Elemental Tips	Puntas elementales
+Elemental Ward	Guarda elemental
+Elemental damage taken	Daño elemental recibido
+Elemental hits have a 20% chance to also inflict every other elemental ailment.	Los golpes elementales tienen un 20% de probabilidad de infligir también todos los demás estados elementales.
+Elementalist	Elementalista
+Elements	Elementos
+Elites burst when they die. Step away.	Los élites estallan al morir. Apártate.
+Elusive	Escurridizo
+Ember	Ascua
+Ember Blades	Hojas de ascuas
+Ember Colossus in {0}	Coloso de Ascuas en {0}
+Embers	Ascuas
+Embers Remain	Quedan ascuas
+Empower	Potenciar
+Empower ({0} gold)	Potenciar ({0} de oro)
+Empowered	Potenciado
+Empowered:\n  	Potenciado:\n
+Empty slot — equipping adds:	Ranura vacía: al equipar se añade:
+End the run	Terminar la partida
+End the run for everyone	Terminar la partida para todos
+End the run for everyone?	¿Terminar la partida para todos?
+Endless waves: survive as long as you can.	Oleadas sin fin: aguanta todo lo que puedas.
+Enemies	Enemigos
+Enemies within 140 px take 12% more damage from you.	Los enemigos a menos de 140 px reciben un 12% más de daño tuyo.
+Enemies you kill explode, dealing 20% of their\nmaximum Life as Fire damage around them.	Los enemigos que matas explotan e infligen el 20% de su\nvida máxima como daño de fuego a su alrededor.
+Enemy	Enemigo
+Energy Shield	Escudo de energía
+Engine notes	Notas del motor
+Enter creates · Esc goes back	Intro crea · Esc vuelve
+Enter the Rift	Entrar en la Grieta
+Enter the Survival Rift	Entrar en la Grieta de Supervivencia
+Equipment	Equipo
+Esc	Esc
+Esc → skip the introduction	Esc → saltar la introducción
+Escaldon	Escaldón
+Escaldón	Escaldón
+Escaldón's craft	El oficio de Escaldón
+Escaldón, east of the plaza	Escaldón, al este de la plaza
+Ethereal Blades	Hojas etéreas
+Every item breaks down into the dust of its rarity: grey from common, azure from magic, gilded from rare, prismatic from majestic and set items. Dust pays for forging.	Cada objeto se deshace en el polvo de su rareza: gris de los comunes, azur de los mágicos, dorado de los raros, prismático de los majestuosos y de conjunto. El polvo paga la forja.
+Every minute survived adds gold, orbs, item cards and items to keep.	Cada minuto que sobrevives añade oro, orbes, cartas de objeto y objetos que conservar.
+Every minute: more gold, orbs, item level and rarity	Cada minuto: más oro, orbes, nivel de objeto y rareza
+Every reality's monsters, at tier {0} (monster level {1}). Pick one for its numbers.	Los monstruos de todas las realidades, a nivel {0} (nivel de monstruo {1}). Elige uno por sus números.
+Every spell repeats one additional time.\n35% less cast speed.	Cada hechizo se repite una vez más.\n35% menos velocidad de lanzamiento.
+Everyone else goes back to their main menu. You stay here, playing alone.	Todos los demás vuelven a su menú principal. Tú te quedas aquí, jugando solo.
+Everyone goes home with their reward.	Todos vuelven a casa con su recompensa.
+Everyone goes to your hideout. Friends can still join from there, and anyone can open a rift for the party.	Todos van a tu refugio. Los amigos aún pueden unirse desde allí, y cualquiera puede abrir una grieta para el grupo.
+Everyone in the hideout is asked to join; you set off with whoever does, within {0:0} s.	Se invita a todos los del refugio; partes con quienes acepten, en {0:0} s.
+Everyone needs the same version. Update the game from the launcher (both of you), then try again.	Todos necesitáis la misma versión. Actualizad el juego desde el lanzador (los dos) y volved a intentarlo.
+Everyone plays their own saved character in co-op, and keeps what they find. Create one (it takes a few seconds), then come back here to host or join.	En cooperativo cada uno juega con su propio personaje guardado y se queda lo que encuentra. Crea uno (son unos segundos) y vuelve aquí para alojar o unirte.
+Everything below is yours the moment you leave. You can come back to the Rift any time.	Todo lo de abajo es tuyo en cuanto salgas. Puedes volver a la Grieta cuando quieras.
+Everything flies to you	Todo vuela hacia ti
+Everything you buy is stored for your whole account. Press H in the hideout to pave floors and place decorations.	Todo lo que compras se guarda para toda tu cuenta. Pulsa H en el refugio para pavimentar suelos y colocar decoraciones.
+Evolve 5 skills (over any runs).	Evoluciona 5 habilidades (en cualquier partida).
+Evolve a skill.	Evoluciona una habilidad.
+Evolved: {0}	Evolucionada: {0}
+Evolved: {0} → {1}	Evolucionada: {0} → {1}
+Excludes {0}: only one of them	Excluye {0}: solo uno de ellos
+Expanse	Expansión
+Experience gain	Ganancia de experiencia
+Experience gained	Experiencia obtenida
+Explodes for {0:N0} in {1:0} px	Explota por {0:N0} en {1:0} px
+Exposure	Exposición
+Exsanguinate	Desangrar
+Extended Duration	Duración prolongada
+Extra projectiles	Proyectiles extra
+F — talk to {0}	F: hablar con {0}
+FIND THE LIGHT!	¡BUSCA LA LUZ!
+Faction / friendly fire	Facción / fuego amigo
+Famine	Hambruna
+Fan	Abanico
+Fan of Blades	Abanico de hojas
+Fang	Colmillo
+Far Step	Paso lejano
+Faster Casting	Lanzamiento rápido
+Faster Projectiles	Proyectiles más rápidos
+Fault	Falla
+Fault Line	Línea de falla
+Fear cards (up to {0}, +{1}% rewards each)	Cartas de miedo (hasta {0}, +{1}% de recompensas cada una)
+Fearless	Sin miedo
+Feast	Festín
+Feature request	Petición de función
+Ferocity	Ferocidad
+Find my public IP	Buscar mi IP pública
+Find your feet	Ponte en pie
+Fire	Fuego
+Fire Conversion	Conversión al fuego
+Fire Damage	Daño de fuego
+Fire Fan	Abanico de fuego
+Fire Resistance	Resistencia al fuego
+Fire resistance	Resistencia al fuego
+Fire, cold and lightning mastered one by one, and the mana to cast them.	Fuego, frío y rayo dominados uno a uno, y el maná para lanzarlos.
+Fire-touched	Tocado por el fuego
+Fireball	Bola de fuego
+Fireball evolves	Bola de fuego evoluciona
+Firestorm	Tormenta de fuego
+First blood	Primera sangre
+Fit tree	Árbol adecuado
+Fits my skills	Encaja con mis habilidades
+Flame Beams	Rayos de llamas
+Flame Edge	Filo de llama
+Flasks	Frascos
+Flasks and refill orbs	Frascos y orbes de recarga
+Fleet Foot	Pie ligero
+Flicker	Parpadear
+Floor tiles (packs of {0})	Baldosas (paquetes de {0})
+Floor tiles and decorations for your town.	Baldosas y decoraciones para tu pueblo.
+Flow	Flujo
+Flower bed	Parterre
+Flurry	Ráfaga
+Flux Shard	Fragmento de Flujo
+Focus	Foco
+For friends on the internet once the port is forwarded (asks api.ipify.org).	Para amigos en internet una vez redirigido el puerto (consulta api.ipify.org).
+Forge	Forja
+Forge an item	Forja un objeto
+Forged items are item level {0}. Clear higher reality tiers to forge better tiers.	Los objetos forjados son de nivel {0}. Supera niveles de realidad más altos para forjar mejor.
+Forged {0}	Forjado: {0}
+Fork	Bifurcación
+Form	Forma
+Fortify	Fortificar
+Fortune	Fortuna
+Four more shards that pierce two enemies.	Cuatro esquirlas más que perforan a dos enemigos.
+Frailty	Fragilidad
+Frame budget pass	Pasada del presupuesto de fotograma
+Free — waiting for a friend	Libre: esperando a un amigo
+Freeze chance	Probabilidad de congelar
+Frenzy	Frenesí
+Friends who join appear here in your town.	Los amigos que se unan aparecerán aquí, en tu pueblo.
+From {0}	De {0}
+From {0} · {1}	De {0} · {1}
+Frost	Escarcha
+Frost Aura	Aura de escarcha
+Frost Blades	Hojas de escarcha
+Frost Nova	Nova de escarcha
+Frost Shards	Esquirlas de escarcha
+Frostbinder	Atascarcha
+Frostbite	Congelación
+Frostfire	Fuego helado
+Frozen Arrival	Llegada helada
+Full Quiver	Carcaj lleno
+Full life, mana and cooldowns	Vida, maná y enfriamientos al máximo
+Full: tags, skill icons, big-hit flash	Completo: etiquetas, iconos de habilidad, destello en golpes grandes
+Fullscreen	Pantalla completa
+GET CLOSE!	¡ACÉRCATE!
+GET OUT!	¡SAL DE AHÍ!
+Gale	Vendaval
+Gameplay	Jugabilidad
+Garden	Jardín
+Gate	Puerta
+Gear up	Equípate
+Getting up in {0} s… or wait for an ally	Te levantas en {0} s… o espera a un aliado
+Ghost Step	Paso fantasma
+Gilded Dust	Polvo dorado
+Gilded Glass	Cristal dorado
+Gilded forging	Forja dorada
+Gilded mosaic	Mosaico dorado
+Girth	Contorno
+Glacial Hammer	Martillo glacial
+Glacier	Glaciar
+Glacier Focus	Foco glaciar
+Glass Cannon	Cañón de cristal
+Gloom	Penumbra
+Gloves	Guantes
+Go to the hideout	Ir al refugio
+Go to the hideout — {0} players	Ir al refugio: {0} jugadores
+Godot 4 · C# · art made with EasyPixel	Godot 4 · C# · arte hecho con EasyPixel
+Gold	Oro
+Gold   {0}	Oro   {0}
+Gold beneath the ash	Oro bajo la ceniza
+Gold {0:N0}  ·  Gems go to your skills (K) at level 1, not to your bag.	Oro {0:N0}  ·  Las gemas van a tus habilidades (K) a nivel 1, no a tu bolsa.
+Gold: {0:N0}	Oro: {0:N0}
+Gold: {0}	Oro: {0}
+Graft Shard	Fragmento de Injerto
+Grasp	Agarre
+Grass	Hierba
+Grave	Tumba
+Grave Circles	Círculos funerarios
+Great keystone	Piedra angular mayor
+Great keystones change how your whole build works. Choose carefully.	Las piedras angulares mayores cambian cómo funciona toda tu build. Elige con cuidado.
+Greed	Codicia
+Greed ×{0}	Codicia ×{0}
+Grey Dust	Polvo gris
+Grey forging	Forja gris
+Greyed-out skills unlock at a higher character level.	Las habilidades en gris se desbloquean a un nivel de personaje más alto.
+Grim	Sombrío
+Grounded	Con los pies en el suelo
+Grow stronger	Hazte más fuerte
+Guardian defeated	Guardián derrotado
+Guide	Guía
+HD-2D with flat figures	HD-2D con figuras planas
+HUD: top-right corner	HUD: esquina superior derecha
+Haemorrhage	Hemorragia
+Hailstorm	Granizada
+Half an hour of night	Media hora de noche
+Halveth	Halveth
+Haste	Celeridad
+Hasted	Acelerado
+Hawk Eye	Ojo de halcón
+Hazards	Peligros
+He keeps {0} shards on his cloth. They come back after {1} more cleared realities, or at once for {2:N0} gold. Buy from him when bosses haven't dropped the tier you want to run.	Tiene {0} fragmentos en su manta. Vuelven tras {1} realidades superadas más, o al momento por {2:N0} de oro. Cómprale cuando los jefes no hayan soltado el nivel que quieres jugar.
+He never sells a tier above your best cleared one.	Nunca vende un nivel por encima de tu mejor nivel superado.
+He reaches into the dark and the cloth is full again.	Mete la mano en la oscuridad y la manta vuelve a estar llena.
+Healed, and a chest each	Curados, y un cofre para cada uno
+Health	Salud
+Heart of embers	Corazón de ascuas
+Heavy Head	Cabeza pesada
+Hedge Ward	Guarda de seto
+Helmet	Casco
+Hemophilia	Hemofilia
+Hemorrhage	Hemorragia
+Hero	Héroe
+Hero statue	Estatua del héroe
+Hex	Maleficio
+Hideout	Refugio
+Hideout HUD	HUD del refugio
+His wares are already full.	Su género ya está completo.
+Hit something to start. A pause of 5 s starts a new fight.	Golpea algo para empezar. Una pausa de 5 s empieza un combate nuevo.
+Hitting with a different element than your last hit grants a stack of 8% more elemental damage (max 5, 4 s).	Golpear con un elemento distinto al de tu último golpe da una acumulación de un 8% más de daño elemental (máx. 5, 4 s).
+Hoarder's Reflection	Reflejo del acaparador
+Hoarfrost	Escarcha blanca
+Hold Alt	Mantén Alt
+Hold F to revive {0}	Mantén F para revivir a {0}
+Hollow	Hueco
+Holy Aura	Aura sagrada
+Holy light, healing and elemental wards. Faith with a hammer.	Luz sagrada, curación y guardas elementales. Fe con un martillo.
+Home	Inicio
+Hone skills	Mejora habilidades
+Hordes	Hordas
+Host	Anfitrión
+Host a game	Alojar una partida
+Host a party or join one — up to {0} players, each with their own character and loot.	Aloja un grupo o únete a uno: hasta {0} jugadores, cada uno con su personaje y su botín.
+Host lobby	Sala del anfitrión
+Host's address	Dirección del anfitrión
+Hosting on port {0}.	Alojando en el puerto {0}.
+How do you want to play?	¿Cómo quieres jugar?
+How high a tier you can forge depends on the highest reality tier you've cleared, so the forge keeps pace with you.	El nivel que puedes forjar depende del nivel de realidad más alto que hayas superado, así que la forja avanza contigo.
+Howl	Aullido
+Hud	HUD
+Hunter	Cazador
+Hurls a fan of ice shards. Cold hits chill enemies.	Lanza un abanico de esquirlas de hielo. Los golpes de frío ralentizan a los enemigos.
+Hurls a slow ball of fire. Fire hits can ignite. (Its tree can make it burst on impact.)	Lanza una bola de fuego lenta. Los golpes de fuego pueden incendiar. (Su árbol puede hacer que estalle al impactar.)
+INTRODUCTION  ·  {0} / {1}	INTRODUCCIÓN  ·  {0} / {1}
+Iaido	Iaido
+Ice	Hielo
+Icon	Icono
+Idea	Idea
+If you fall, you keep the reward you had.	Si caes, te quedas la recompensa que tuvieras.
+If you typed wrong codes several times, wait a minute: the host ignores an address for a minute after 5 wrong codes.	Si has escrito códigos erróneos varias veces, espera un minuto: el anfitrión ignora una dirección durante un minuto tras 5 códigos erróneos.
+Ignite	Ignición
+Ignite / shock chance	Probabilidad de ignición / electrocución
+Ignites deal {0} more damage	Las igniciones infligen {0} más daño
+Ignites on oiled enemies last 50% longer	Las igniciones sobre enemigos empapados duran un 50% más
+Ignition	Ignición
+Ilsemar	Ilsemar
+Immolation Aura	Aura de inmolación
+Immovable	Inamovible
+Imp	Diablillo
+Impact	Impacto
+Impact Burst	Estallido de impacto
+In a party, rifts open for everyone: choose one at the Mirror or walk into the portal	En grupo, las grietas se abren para todos: elige una en el Espejo o entra en el portal
+In the **Disenchant** tab, right-click an item in your bag. It turns into dust of its rarity: Grey from common items, Azure from magic, Gilded from rare. Higher item levels give more.\n\n	En la pestaña **Desencantar**, haz clic derecho en un objeto de tu bolsa. Se convierte en polvo de su rareza: gris de los objetos comunes, azur de los mágicos, dorado de los raros. Los niveles de objeto más altos dan más.\n\n
+In the **Forge** tab: choose a base, then a modifier it can carry, then a grade. Grey and Azure make a magic item, Gilded and Prismatic a rare one. Better grades give a higher tier of your modifier and more random extras, and cost more dust.\n\n	En la pestaña **Forja**: elige una base, luego un modificador que pueda llevar y luego una calidad. El gris y el azur hacen un objeto mágico; el dorado y el prismático, uno raro. Las mejores calidades dan un nivel más alto de tu modificador y más extras aleatorios, y cuestan más polvo.\n\n
+In the party — waiting for the host to start.	En el grupo: esperando a que el anfitrión empiece.
+In the party — waiting for {0} to open the hideout.	En el grupo: esperando a que {0} abra el refugio.
+In the {0}	En {0}
+In your hideout: the {0}	En tu refugio: {0}
+In your hideout: {0}	En tu refugio: {0}
+Include game info (version, system, where you are — nothing personal)	Incluir información del juego (versión, sistema, dónde estás; nada personal)
+Increased Area	Área aumentada
+Inferno	Infierno
+Inferno Focus	Foco infernal
+Inferno Ring	Anillo infernal
+Input behaviour	Comportamiento de los controles
+Insight	Perspicacia
+Intelligence	Inteligencia
+Internet address — works for friends anywhere.	Dirección de internet: sirve para amigos de cualquier sitio.
+Internet: not reachable yet. {0}	Internet: aún no accesible. {0}
+Internet: ready. {0}	Internet: listo. {0}
+Introduction guide	Guía de introducción
+Introduction skipped	Introducción saltada
+Inventory	Inventario
+Inventory full	Inventario lleno
+Inventory interaction	Interacción con el inventario
+Invite copied — paste it to your friends; their address field fills both.	Invitación copiada: pégasela a tus amigos; su campo de dirección rellena las dos cosas.
+Invite friends	Invitar amigos
+Invite pasted — address and join code filled in.	Invitación pegada: dirección y código de unión rellenados.
+Invite with {0} copied.	Invitación con {0} copiada.
+Iron	Hierro
+Iron Axe	Hacha de hierro
+Iron Skin	Piel de hierro
+Iron Wand	Varita de hierro
+Iron Will	Voluntad de hierro
+It will not stay dead	No se quedará muerto
+Item art	Arte de objetos
+Its burns have +40% chance to ignite	Sus quemaduras tienen +40% de probabilidad de ignición
+Its ignites last 50% longer	Sus igniciones duran un 50% más
+Jewels	Joyas
+Jewels ({0})	Joyas ({0})
+Join	Unirse
+Join a friend	Unirse a un amigo
+Join code	Código de unión
+Join code accepted — joining the party…	Código aceptado: uniéndose al grupo…
+Join code copied.	Código de unión copiado.
+Joining {0}	Uniéndose a {0}
+Juggernaut	Juggernaut
+Keen Edge	Filo agudo
+Keen Eye	Ojo agudo
+Keep going	Seguir
+Keeps its distance and shoots	Mantiene la distancia y dispara
+Kethra	Kethra
+Keystone cadence	Ritmo de piedras angulares
+Keystone rows cannot be skipped	Las filas de piedras angulares no se pueden saltar
+Keystone: {0}	Piedra angular: {0}
+Kills	Muertes
+Kills burst for 30% of the hit around the body	Las muertes estallan por el 30% del golpe alrededor del cuerpo
+Kills restore 3% of your life and mana.	Matar restaura el 3% de tu vida y maná.
+Kindle	Prender
+Kindling	Yesca
+Kindling Heart	Corazón de yesca
+Kindling Shard	Fragmento de Yesca
+LMB allocate (whole path) · RMB refund (free) · drag pan · wheel zoom · green ring = reachable · gold = allocated · cyan = path preview · yellow glow = search match	Clic izq. asignar (todo el camino) · clic der. reembolsar (gratis) · arrastrar mover · rueda zoom · anillo verde = alcanzable · dorado = asignado · cian = vista previa del camino · brillo amarillo = coincide con la búsqueda
+Label	Etiqueta
+Laceration	Laceración
+Lamp post	Farola
+Lands harder: +150 knockback and 25% more area	Cae con más fuerza: +150 de empuje y 25% más área
+Last 10 minutes of the endless phase.	Aguanta 10 minutos de la fase infinita.
+Last 30 minutes of the endless phase.	Aguanta 30 minutos de la fase infinita.
+Last 5 s	Últimos 5 s
+Later (Esc)	Más tarde (Esc)
+Layout	Disposición
+Leap Slam	Salto demoledor
+Leaps up to 260 px towards the cursor, untouchable in the air, and slams the ground where you land, knocking enemies back.	Salta hasta 260 px hacia el cursor, intocable en el aire, y golpea el suelo donde caes, empujando a los enemigos.
+Leaps {0} farther	Salta {0} más lejos
+Leather Cap	Gorro de cuero
+Leave	Salir
+Leave any time: the portal or Esc	Sal cuando quieras: el portal o Esc
+Leave the party	Salir del grupo
+Leave the playground	Salir de la zona de pruebas
+Leave the reality	Salir de la realidad
+Leave the run	Salir de la partida
+Leave the run?	¿Salir de la partida?
+Leave with reward	Salir con la recompensa
+Leave with your reward?	¿Salir con tu recompensa?
+Leave without an item?	¿Salir sin un objeto?
+Leave: walk into the portal, or Esc	Salir: entra en el portal, o Esc
+Left click: spend a point	Clic izquierdo: gastar un punto
+Left-click to allocate: {0} (you have {1})	Clic izquierdo para asignar: {0} (tienes {1})
+Left-click to socket a jewel	Clic izquierdo para engarzar una joya
+Length	Longitud
+Lesser keystone	Piedra angular menor
+Let {0} rearrange your town (H): one editor at a time, with your storage. For this party only.	Deja que {0} reorganice tu pueblo (H): un editor cada vez, con tu almacén. Solo para este grupo.
+Let's go	Vamos
+Lethal Shot	Disparo letal
+Lethality	Letalidad
+Level	Nivel
+Level {0}	Nivel {0}
+Level {0} {1}	Nivel {0} {1}
+Level {0} {1}   ·   best tier {2}   ·   {3} passive / {4} ascendancy points free	Nivel {0} {1}   ·   mejor nivel {2}   ·   {3} puntos pasivos / {4} de ascendencia libres
+Level {0} {1}  ·  best tier {2}  ·  {3} realities  ·  {4} deaths	Nivel {0} {1}  ·  mejor nivel {2}  ·  {3} realidades  ·  {4} muertes
+Level {0} — choose a Great Keystone	Nivel {0}: elige una piedra angular mayor
+Level {0} — choose a Lesser Keystone	Nivel {0}: elige una piedra angular menor
+Level {0}! A passive point is waiting (P)	¡Nivel {0}! Tienes un punto pasivo esperando (P)
+Level-up and results	Subida de nivel y resultados
+Level-ups	Subidas de nivel
+Life	Vida
+Life & flask	Vida y frasco
+Life and mana bars over your character	Barras de vida y maná sobre tu personaje
+Life flask	Frasco de vida
+Life gained on kill	Vida por muerte
+Life leech	Robo de vida
+Life on kill	Vida por muerte
+Life regenerated per second	Vida regenerada por segundo
+Life {0:N0}	Vida {0:N0}
+Life {0}\nMana {1}\nArmour {2:0}\n	Vida {0}\nManá {1}\nArmadura {2:0}\n
+Life, mana & flasks	Vida, maná y frascos
+Light Bearer	Portador de luz
+Light Step	Paso ligero
+Lightning	Rayo
+Lightning Conversion	Conversión al rayo
+Lightning Damage	Daño de rayo
+Lightning Resistance	Resistencia al rayo
+Lightning resistance	Resistencia al rayo
+Linen Trousers	Pantalones de lino
+Lingering	Persistente
+Loading screen	Pantalla de carga
+Local network only — friends on the same Wi-Fi. This is not your internet address: for friends elsewhere, see below.	Solo red local: amigos en la misma wifi. Esta no es tu dirección de internet: para amigos de fuera, mira abajo.
+Lodestone — everything comes to you	Piedra imán: todo viene a ti
+Long Arc	Arco largo
+Long Jump	Salto largo
+Long Shadow	Sombra alargada
+Look	Aspecto
+Looking up…	Buscando…
+Loot	Botín
+Loot picked up	Botín recogido
+Lv 1	Nv 1
+Lv {0}	Nv {0}
+Lv{0}	Nv{0}
+Magic	Mágico
+Magic item, your modifier one tier below the best, plus one random modifier.	Objeto mágico, tu modificador un nivel por debajo del mejor, más un modificador aleatorio.
+Magic item, your modifier two tiers below the best.	Objeto mágico, tu modificador dos niveles por debajo del mejor.
+Magic packs {0:0}%  ·  rare packs {1:0}%  ·  unique-rare chance {2:0}%\n	Grupos mágicos {0:0}%  ·  grupos raros {1:0}%  ·  probabilidad de único raro {2:0}%\n
+Magma	Magma
+Magnet	Imán
+Magnet shrine	Santuario imán
+Magnetism	Magnetismo
+Main menu	Menú principal
+Malediction	Maledicción
+Mana	Maná
+Mana Cost of Skills	Coste de maná de las habilidades
+Mana Flow	Flujo de maná
+Mana cost of skills	Coste de maná de las habilidades
+Mana flask	Frasco de maná
+Mana gained on kill	Maná por muerte
+Mana on kill	Maná por muerte
+Mana regenerated per second	Maná regenerado por segundo
+Many Hosts	Muchas huestes
+Marble	Mármol
+Mark the Prey	Marcar la presa
+Marks every enemy in a wide circle, 20% less damage over time	Marca a todos los enemigos de un círculo amplio, 20% menos daño a lo largo del tiempo
+Mass deaths	Muertes masivas
+Master	General
+Master volume	Volumen general
+Mastered	Dominado
+Melee	Cuerpo a cuerpo
+Melee Damage	Daño cuerpo a cuerpo
+Melee Splash	Salpicadura cuerpo a cuerpo
+Melee hits release a burst of holy light (30% of the hit).	Los golpes cuerpo a cuerpo sueltan un estallido de luz sagrada (30% del golpe).
+Melee strikes repeat twice more.\n25% less damage.	Los golpes cuerpo a cuerpo se repiten dos veces más.\n25% menos daño.
+Mending	Remiendo
+Menu	Menú
+Menu bar	Barra de menú
+Merchant	Mercader
+Metamorphosis	Metamorfosis
+Meteor	Meteoro
+Midas' Mirror	Espejo de Midas
+Might	Poderío
+Minimap	Minimapa
+Minimap, clock & quests	Minimapa, reloj y misiones
+Mire	Lodazal
+Mirror	Espejo
+Mirror Images	Imágenes del espejo
+Mirror Jewel	Joya del Espejo
+Mirror Jewel ({0}/{1}) — socket it at the Mirror	Joya del Espejo ({0}/{1}): engárzala en el Espejo
+Mirror Shard	Fragmento del Espejo
+Mirror Shard (tier {0})	Fragmento del Espejo (nivel {0})
+Mirror Shards	Fragmentos del Espejo
+Mirror jewels	Joyas del Espejo
+Mirror of Realities	Espejo de las Realidades
+Mirror tier	Nivel del Espejo
+Mitigation	Mitigación
+Molten Rain	Lluvia fundida
+Momentum	Impulso
+Monster level {0}  ·  monster life ×{1:0.0}  ·  damage ×{2:0.0}\n	Nivel de monstruo {0}  ·  vida de monstruo ×{1:0.0}  ·  daño ×{2:0.0}\n
+Monster level {0} · {1} portals · {2}\n{3}	Nivel de monstruo {0} · {1} portales · {2}\n{3}
+Monsters	Monstruos
+Monsters deal 25% more damage	Los monstruos infligen un 25% más de daño
+Monsters don't attack	Los monstruos no atacan
+Monsters have 40% more life	Los monstruos tienen un 40% más de vida
+Monsters have 40% more life.	Los monstruos tienen un 40% más de vida.
+Monsters move 20% faster	Los monstruos se mueven un 20% más rápido
+Monsters move 20% faster.	Los monstruos se mueven un 20% más rápido.
+Monsters slain	Monstruos abatidos
+Monsters stand still	Los monstruos se quedan quietos
+More gems: reality bosses drop them, and Escaldón sells every one (Buy skills tab).	Más gemas: los jefes de las realidades las sueltan, y Escaldón las vende todas (pestaña Comprar habilidades).
+More magic and rare packs	Más grupos mágicos y raros
+More projectiles, faster and deadlier. Nothing escapes the volley.	Más proyectiles, más rápidos y más letales. Nada escapa a la andanada.
+More, always more	Más, siempre más
+Morvain	Morvain
+Move all to stash	Mover todo al alijo
+Movement Speed	Velocidad de movimiento
+Movement speed	Velocidad de movimiento
+Multiple Projectiles	Proyectiles múltiples
+Multistrike	Golpe múltiple
+Music	Música
+Music volume	Volumen de la música
+My start	Mi inicio
+NEW QUEST	MISIÓN NUEVA
+Name	Nombre
+Navigation	Navegación
+Needs	Necesita
+Needs ... first	Necesita ... antes
+Needs {0}	Necesita {0}
+Needs {0} first	Necesita {0} antes
+Needs {0}, you have {1}	Necesita {0}, tienes {1}
+Nereth	Nereth
+Nereth splits into reflections	Nereth se divide en reflejos
+Never offer this again this run (the card is replaced)	No volver a ofrecer esto en esta partida (la carta se reemplaza)
+New character	Personaje nuevo
+New code	Código nuevo
+New quest	Misión nueva
+New quest: Choose an ascendancy	Misión nueva: Elige una ascendencia
+New shards glint on the cloth.	Nuevos fragmentos brillan en la manta.
+New skill	Habilidad nueva
+New skill gem: {0} — equip it in the skills panel (K)	Gema de habilidad nueva: {0}. Equípala en el panel de habilidades (K)
+New skill · {0}	Habilidad nueva · {0}
+Next: 	Siguiente:
+No answer from {0} after {1:0} s. The host's game may not be reachable from where you are.	Sin respuesta de {0} tras {1:0} s. Puede que la partida del anfitrión no sea accesible desde donde estás.
+No banishes left this run	No quedan destierros en esta partida
+No characters yet.	Aún no hay personajes.
+No item cards yet	Aún no hay cartas de objeto
+No item this time: a Rift pays an item after {0} s or {1} kills (this one: {2} s, {3} kills).	Esta vez no hay objeto: una Grieta da un objeto tras {0} s o {1} muertes (esta: {2} s, {3} muertes).
+No jewels to socket	No hay joyas que engarzar
+No life orbs drop.	No caen orbes de vida.
+No modifier can be added to this item	No se puede añadir ningún modificador a este objeto
+No modifier can roll on this item	Ningún modificador puede salir en este objeto
+No movement skills yet — Escaldón sells Blink and Leap Slam.	Aún no tienes habilidades de movimiento: Escaldón vende Parpadeo y Salto demoledor.
+No points in it	Sin puntos en ella
+No points left	No quedan puntos
+No points left: raise the skill's level for more	No quedan puntos: sube el nivel de la habilidad para tener más
+No profile	Sin perfil
+No profile to keep the item in.	No hay perfil donde guardar el objeto.
+No quests yet. A quest appears when something new opens up in your town, and teaches you how it works.	Aún no hay misiones. Aparece una cuando se abre algo nuevo en tu pueblo, y te enseña cómo funciona.
+No rerolls left this run	No quedan relanzamientos en esta partida
+No skill gems.	No hay gemas de habilidad.
+No skills yet	Aún no hay habilidades
+No skips left this run	No quedan saltos en esta partida
+No such modifier	No existe ese modificador
+No support gems that fit this skill yet — rare monsters and bosses drop them.	Aún no hay gemas de soporte que encajen con esta habilidad: las sueltan los monstruos raros y los jefes.
+No way there	No hay camino
+Nobody can join a run in progress. When it ends, the host opens a new lobby and you join that one (with its new code).	Nadie puede unirse a una partida en curso. Cuando termine, el anfitrión abre una sala nueva y te unes a esa (con su código nuevo).
+None of your skills can use this yet	Ninguna de tus habilidades puede usar esto todavía
+Normal	Normal
+Normal (reality mix)	Normal (mezcla de realidades)
+North gate	Puerta norte
+Not answering in time counts as staying.	No responder a tiempo cuenta como quedarse.
+Not connected to your tree	No está conectado a tu árbol
+Not connected yet	Aún no conectado
+Not empowered.	Sin potenciar.
+Not enough gold.	No tienes oro suficiente.
+Not enough gold: {0:N0} more	No tienes oro suficiente: faltan {0:N0}
+Not now	Ahora no
+Not yet	Todavía no
+Notable power-up	Power-up notable
+Notable socket	Engarce notable
+Notable · one rank, changes how the skill plays	Notable · un rango, cambia cómo se juega la habilidad
+Notables: {0}	Notables: {0}
+Nothing else to offer for that card.	No hay nada más que ofrecer para esa carta.
+Nothing here is saved · F2 opens the spawner	Aquí no se guarda nada · F2 abre el generador
+Nothing here is saved. Escaldón and the Artificer are in the camp (F).	Aquí no se guarda nada. Escaldón y el Artífice están en el campamento (F).
+Nothing here you can buy right now. Untick \"Only what I can buy\" to see the whole shelf.	Ahora mismo no puedes comprar nada de aquí. Desmarca \"Solo lo que puedo comprar\" para ver todo el estante.
+Nothing matches this filter.	Nada coincide con este filtro.
+Nothing to show	Nada que mostrar
+Nothing yet. Socket a jewel next to the Mirror's Heart.	Todavía nada. Engarza una joya junto al Corazón del Espejo.
+Notice	Aviso
+Notifications	Notificaciones
+Notifications appear here	Las notificaciones aparecen aquí
+Nymra	Nymra
+Oak Buckler	Rodela de roble
+Oak planks	Tablones de roble
+Oak tree	Roble
+Odran the Trader	Odran el Comerciante
+Odran's stall	Puesto de Odran
+Off	No
+Offence	Ataque
+Offer composition	Composición de las ofertas
+Offhand	Mano secundaria
+Oil and detonations	Aceite y detonaciones
+On the cloth	En la manta
+Only items with modifiers can be sealed	Solo se pueden sellar objetos con modificadores
+Only someone in the hideout can open a rift	Solo alguien en el refugio puede abrir una grieta
+Only the sealed modifier is left	Solo queda el modificador sellado
+Only what I can buy	Solo lo que puedo comprar
+Only {0} can edit this town — ask them to allow it (their Party menu)	Solo {0} puede editar este pueblo: pídele que lo permita (su menú de Grupo)
+Open	Abrir
+Open Arehucaz	Abrir Arehucaz
+Open Buy skills	Abrir Comprar habilidades
+Open Disenchant	Abrir Desencantar
+Open Forge	Abrir Forja
+Open Wounds	Heridas abiertas
+Open a golden chest.	Abre un cofre dorado.
+Open a lobby on this PC for up to {0} players. You get an address and a join code to send your friends.	Abre una sala en este PC para hasta {0} jugadores. Obtienes una dirección y un código de unión para mandar a tus amigos.
+Open it	Abrirla
+Open my hideout to friends	Abrir mi refugio a amigos
+Open on GitHub	Abrir en GitHub
+Open realities	Abrir realidades
+Open skills (K)	Abrir habilidades (K)
+Open stash	Abrir el alijo
+Open the Jewels tab	Abrir la pestaña Joyas
+Open the Mirror's **Jewels** tab and click a glowing socket next to the Mirror's Heart. Each socket adds a bonus to every Altered Reality you open: more items, rarer items, more shards, more monsters, more gold or more crafting orbs. The large sockets at the end of each branch are stronger.\n\n	Abre la pestaña **Joyas** del Espejo y haz clic en un engarce brillante junto al Corazón del Espejo. Cada engarce añade una bonificación a cada Realidad Alterada que abras: más objetos, objetos más raros, más fragmentos, más monstruos, más oro o más orbes de fabricación. Los engarces grandes al final de cada rama son más fuertes.\n\n
+Open the Survival Rift for the party?	¿Abrir la Grieta de Supervivencia para el grupo?
+Open the altar	Abrir el altar
+Open your hideout to friends	Abre tu refugio a amigos
+Opened in your browser — press Submit there. Thank you!	Abierto en tu navegador: pulsa Enviar allí. ¡Gracias!
+Opening Strike	Golpe inicial
+Opening UDP {0} on your router (UPnP)…	Abriendo UDP {0} en tu router (UPnP)…
+Opens the project's GitHub in your browser with everything filled in and tagged — you only press Submit there (a free GitHub account is needed).	Abre el GitHub del proyecto en tu navegador con todo rellenado y etiquetado; allí solo tienes que pulsar Enviar (hace falta una cuenta gratuita de GitHub).
+Orb Spiral	Espiral de orbes
+Orb tooltips	Tooltips de orbes
+Orbs	Orbes
+Orbs — shared by all your characters	Orbes: compartidos por todos tus personajes
+Oruun	Oruun
+Other	Otro
+Overcharge	Sobrecarga
+Overclock	Sobrevelocidad
+Overflowing Glass	Cristal desbordante
+Overwhelm	Arrollar
+Owned · Lv {0}	En propiedad · Nv {0}
+Packs are larger and appear more often	Los grupos son más grandes y aparecen más a menudo
+Paladin	Paladín
+Pandemic	Pandemia
+Panel	Panel
+Pants	Pantalones
+Paper doll	Muñeco de equipo
+Parry!	¡Parada!
+Party	Grupo
+Party  {0}/{1}	Grupo  {0}/{1}
+Party & invite	Grupo e invitación
+Party minimap (co-op)	Minimapa del grupo (cooperativo)
+Party rules	Reglas del grupo
+Party session	Sesión de grupo
+Passive	Pasiva
+Passive Tree	Árbol pasivo
+Passive tree stats	Estadísticas del árbol pasivo
+Passive: +{0:0} life regeneration per second	Pasiva: +{0:0} de regeneración de vida por segundo
+Passive: +{0:0} more to all three resistances	Pasiva: +{0:0} más a las tres resistencias
+Passive: +{0} chance to cause bleeding	Pasiva: +{0} de probabilidad de causar sangrado
+Passive: +{0} chance to freeze	Pasiva: +{0} de probabilidad de congelar
+Passive: +{0} chance to ignite	Pasiva: +{0} de probabilidad de ignición
+Passive: +{0} chance to shock	Pasiva: +{0} de probabilidad de electrocutar
+Passive: +{0} critical strike chance	Pasiva: +{0} de probabilidad de golpe crítico
+Passive: +{0} critical strike multiplier	Pasiva: +{0} al multiplicador de golpe crítico
+Passive: also 8% less elemental damage taken	Pasiva: también 8% menos daño elemental recibido
+Passive: bleeds last {0:0}% longer	Pasiva: los sangrados duran un {0:0}% más
+Passive: every bleed adds one more stack, but bleeds last 25% shorter	Pasiva: cada sangrado añade una acumulación más, pero los sangrados duran un 25% menos
+Passive: {0:0}% increased cold damage	Pasiva: {0:0}% más daño de frío
+Passive: {0:0}% increased fire damage	Pasiva: {0:0}% más daño de fuego
+Passive: {0:0}% increased lightning damage	Pasiva: {0:0}% más daño de rayo
+Passive: {0:0}% increased maximum life	Pasiva: {0:0}% más vida máxima
+Passive: {0:0}% more increased armour	Pasiva: {0:0}% más de armadura aumentada
+Passive: {0:0}% more increased maximum life	Pasiva: {0:0}% más de vida máxima aumentada
+Passives	Pasivas
+Path	Camino
+Path to Exile	Camino al exilio
+Patience	Paciencia
+Pause	Pausa
+Paused	En pausa
+Pausing	Pausar
+Pending ({0}/{1})	Pendientes ({0}/{1})
+Pending items	Objetos pendientes
+Pending items is empty. Rewards that find your inventory full wait here.	No hay objetos pendientes. Aquí esperan las recompensas que encuentran tu inventario lleno.
+Pending items only holds rewards — pick a stash tab	Los objetos pendientes solo guardan recompensas: elige una pestaña del alijo
+Pending items\nRewards that arrived while your inventory was full	Objetos pendientes\nRecompensas que llegaron con tu inventario lleno
+Perfect Parry	Parada perfecta
+Permafrost	Permafrost
+Persistence	Persistencia
+Phase Dancer	Danzante de fase
+Phase {0}	Fase {0}
+Phasing	Desfase
+Physical Damage taken	Daño físico recibido
+Physical damage taken	Daño físico recibido
+Pick a floor below, then paint with the left button. Right button restores the town's floor and refunds the tile. Buy tiles from Ysolde.	Elige un suelo abajo y pinta con el botón izquierdo. El derecho restaura el suelo del pueblo y devuelve la baldosa. Compra baldosas a Ysolde.
+Pick a stored decoration below, then click to place it. Buy decorations from Ysolde in the plaza.	Elige una decoración guardada abajo y haz clic para colocarla. Compra decoraciones a Ysolde en la plaza.
+Picked-up loot shows here	El botín recogido aparece aquí
+Pickup Radius	Radio de recogida
+Pickup radius	Radio de recogida
+Pickups	Recogibles
+Pierce	Perforación
+Piercing	Perforante
+Piercing Elements	Elementos perforantes
+Piercing Shots	Disparos perforantes
+Plague	Plaga
+Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy as often as that skill allows (its use time and cooldown), at 70% of its damage. Monsters can attack it: it has 30% of your maximum life. Its tree boosts what it casts.	Planta un tótem en el cursor durante 8 s. Lanza la habilidad engarzada en él (elígela en Habilidades, K) al enemigo más cercano tan a menudo como esa habilidad permita (su tiempo de uso y enfriamiento), con el 70% de su daño. Los monstruos pueden atacarlo: tiene el 30% de tu vida máxima. Su árbol mejora lo que lanza.
+Plated	Chapado
+Plating	Blindaje
+Play	Jugar
+Play it first (solo)	Jugarla primero (solo)
+Play it first and join your friends after, or skip it now — the same as \"Skip the introduction\" in its menu.	Juégala primero y únete a tus amigos después, o sáltala ahora: lo mismo que \"Saltar la introducción\" en su menú.
+Play with friends	Jugar con amigos
+Player	Jugador
+Players	Jugadores
+Players have -20% to all elemental resistances	Los jugadores tienen -20% a todas las resistencias elementales
+Players have 15% less maximum life	Los jugadores tienen un 15% menos de vida máxima
+Playground	Zona de pruebas
+Playground · F2	Zona de pruebas · F2
+Playing as {0}, level {1} {2}	Jugando como {0}, {2} de nivel {1}
+Plaza	Plaza
+Plaza mosaic	Mosaico de la plaza
+Port	Puerto
+Portal	Portal
+Portal home: the whole party walks in to leave	Portal a casa: todo el grupo entra para salir
+Portal home: walk in to leave with your reward	Portal a casa: entra para salir con tu recompensa
+Potency	Potencia
+Potted plant	Planta en maceta
+Power	Poder
+Precision	Precisión
+Press F again to close the reality for everyone	Pulsa F otra vez para cerrar la realidad para todos
+Press again within 3 s to go back to where you blinked from, as if time ran backwards	Pulsa otra vez en menos de 3 s para volver al punto desde el que parpadeaste, como si el tiempo retrocediera
+Press any key to continue	Pulsa cualquier tecla para continuar
+Preview	Vista previa
+Prismatic	Prismático
+Prismatic Bulwark	Baluarte prismático
+Prismatic Dust	Polvo prismático
+Prismatic forging	Forja prismática
+Probes	Sondeos
+Profile	Perfil
+Projectile	Proyectil
+Projectile Damage	Daño de proyectiles
+Projectile Speed	Velocidad de proyectiles
+Projectile speed	Velocidad de proyectiles
+Projectiles	Proyectiles
+Projectiles chain +1 time	Los proyectiles encadenan +1 vez
+Projectiles chain to 2 more enemies	Los proyectiles encadenan a 2 enemigos más
+Projectiles chain to 2 more enemies.\n10% less damage.	Los proyectiles encadenan a 2 enemigos más.\n10% menos daño.
+Projectiles chain to one more enemy and pierce one more.	Los proyectiles encadenan a un enemigo más y perforan a uno más.
+Projectiles pass through 2 more enemies	Los proyectiles atraviesan a 2 enemigos más
+Projectiles pierce 2 additional enemies.	Los proyectiles perforan a 2 enemigos adicionales.
+Projectiles split in two on hit.\n10% less damage.	Los proyectiles se dividen en dos al impactar.\n10% menos daño.
+Prompt	Indicación
+Protects one modifier of an item from the next orb. Each seal on the same item costs more (40 gold doubling, plus dust).	Protege un modificador de un objeto del siguiente orbe. Cada sello en el mismo objeto cuesta más (40 de oro que se duplica, más polvo).
+Purity	Pureza
+Pushes enemies back ({0:0} force), {1}% more damage	Empuja a los enemigos (fuerza {0:0}), {1}% más daño
+Pyre Ward	Guarda de la pira
+Pyromancer	Piromante
+Pyromancy	Piromancia
+QUEST COMPLETE	MISIÓN COMPLETADA
+Quake	Terremoto
+Quest	Misión
+Quest complete: close {0} to claim your reward	Misión completada: cierra {0} para reclamar tu recompensa
+Quest: {0} · {1}	Misión: {0} · {1}
+Quests	Misiones
+Quick Hands	Manos rápidas
+Quick, precise and hard to pin down. Critical strikes, speed and the best dodge in the game.	Rápido, preciso y difícil de atrapar. Golpes críticos, velocidad y la mejor esquiva del juego.
+Quickened	Acelerado
+Quickening	Aceleración
+Quit	Salir
+Quit to desktop	Salir al escritorio
+READY TO TURN IN ({0})	LISTAS PARA ENTREGAR ({0})
+REWARD · TIER {0}	RECOMPENSA · NIVEL {0}
+Radiance	Resplandor
+Rage	Furia
+Rage — dealing and taking hits fills Rage, which grants damage and reduces damage taken. It fades out of combat.	Furia: dar y recibir golpes llena la Furia, que da daño y reduce el daño recibido. Se desvanece fuera de combate.
+Raise Dead	Alzar a los muertos
+Raise to level {0} · {1:N0} g	Subir a nivel {0} · {1:N0} o
+Raises your skills' levels for gold and shapes each one with its upgrade tree.	Sube el nivel de tus habilidades por oro y da forma a cada una con su árbol de mejoras.
+Rank {0}: 	Rango {0}:
+Rare	Raro
+Rare item, your modifier at the best tier with a perfect roll, plus 3 random modifiers.	Objeto raro, tu modificador al mejor nivel con una tirada perfecta, más 3 modificadores aleatorios.
+Rare item, your modifier at the best tier, plus 2–3 random modifiers.	Objeto raro, tu modificador al mejor nivel, más 2–3 modificadores aleatorios.
+Rarity	Rareza
+Rawhide Boots	Botas de cuero crudo
+Rawhide Gloves	Guantes de cuero crudo
+Re-roll modifiers ({0} gold)	Volver a tirar modificadores ({0} de oro)
+Reach	Alcance
+Reach Greed ×5 in one run.	Llega a Codicia ×5 en una partida.
+Reach run level 40.	Llega al nivel 40 en una partida.
+Reach the Ember Colossus — and break it	Llega al Coloso de Ascuas y destrúyelo
+Read all of them first; you can't change your mind.	Léelas todas antes; no podrás cambiar de opinión.
+Realities	Realidades
+Realities cleared	Realidades superadas
+Reality abandoned	Realidad abandonada
+Reality closed	Realidad cerrada
+Reality info (Tab map)	Información de la realidad (mapa Tab)
+Reality mix	Mezcla de realidades
+Reality stabilised	Realidad estabilizada
+Reaper's Arc	Arco del segador
+Rebound	Rebote
+Records	Registros
+Refund	Reembolsar
+Regenerate 1.5% of maximum life per second.	Regenera el 1,5% de la vida máxima por segundo.
+Regenerate 2% of maximum life per second, twice as fast below 35% life.	Regenera el 2% de la vida máxima por segundo, el doble de rápido por debajo del 35% de vida.
+Regenerating	Regenerando
+Regeneration	Regeneración
+Regrowth	Rebrote
+Releases slow, crackling sparks that zigzag like lightning, pass through one enemy and bounce off walls. Lightning hits can shock.	Suelta chispas lentas y crepitantes que zigzaguean como rayos, atraviesan a un enemigo y rebotan en las paredes. Los golpes de rayo pueden electrocutar.
+Removes one random modifier from a magic or rare item.	Quita un modificador aleatorio de un objeto mágico o raro.
+Rend	Desgarro
+Renewal	Renovación
+Replace this card only	Reemplazar solo esta carta
+Replace this card only, for {0} gold	Reemplazar solo esta carta, por {0} de oro
+Replication	Replicación
+Reroll	Relanzar
+Reroll {0}g	Relanzar {0} o
+Rerolls a rare item with a new name and 3–4 new modifiers.	Vuelve a tirar un objeto raro con un nombre nuevo y 3–4 modificadores nuevos.
+Rerolls every modifier on a magic item.	Vuelve a tirar todos los modificadores de un objeto mágico.
+Rerolls the numbers of every modifier and base stat within their tiers.	Vuelve a tirar los números de cada modificador y estadística base dentro de sus niveles.
+Rerolls: {0} free left	Relanzamientos: quedan {0} gratis
+Rerolls: {0} gold each now (you have {1})	Relanzamientos: {0} de oro cada uno ahora (tienes {1})
+Reset	Restablecer
+Reset layout	Restablecer disposición
+Reset tree	Restablecer árbol
+Resistance	Resistencia
+Resistances drop {0:0} more	Las resistencias bajan {0:0} más
+Resistances, armour, life and regeneration. The wall that walks.	Resistencias, armadura, vida y regeneración. La muralla que camina.
+Resistances: fire {0:0}% · cold {1:0}% · lightning {2:0}%	Resistencias: fuego {0:0}% · frío {1:0}% · rayo {2:0}%
+Resolve	Determinación
+Resources are per-actor	Los recursos son de cada actor
+Restock now ({0:N0} gold)	Reponer ahora ({0:N0} de oro)
+Restocking costs {0:N0} gold.	Reponer cuesta {0:N0} de oro.
+Results	Resultados
+Resume	Continuar
+Retaliation	Represalia
+Return to hideout	Volver al refugio
+Returning home…	Volviendo a casa…
+Reviving {0}… {1:0.0} s — stay still	Reviviendo a {0}… {1:0.0} s, no te muevas
+Reward tier {0} · next at {1}	Nivel de recompensa {0} · siguiente a los {1}
+Reward tier {0}: 	Nivel de recompensa {0}:
+Reward tiers	Niveles de recompensa
+Rewards	Recompensas
+Rewards that found your inventory full. Right-click one to take it, or move them all to the stash. Holds {0}: when a new reward arrives with it full, the oldest is sold for gold.	Recompensas que encontraron tu inventario lleno. Haz clic derecho en una para cogerla, o muévelas todas al alijo. Caben {0}: si llega una recompensa nueva con esto lleno, la más antigua se vende por oro.
+Rewards: gold and orbs ×{0:0.00}, item rarity +{1}%	Recompensas: oro y orbes ×{0:0.00}, rareza de objetos +{1}%
+Rewind	Rebobinar
+Rhythm	Ritmo
+Ricochet	Rebote
+Rift	Grieta
+Rift reward	Recompensa de la Grieta
+Rift reward:  +{0} gold	Recompensa de la Grieta:  +{0} de oro
+Right click: take one back ({0:N0} gold)	Clic derecho: recuperar uno ({0:N0} de oro)
+Right-click an item to move it between the stash and your inventory. Drag to rearrange. Tabs are shared by all your characters.	Haz clic derecho en un objeto para moverlo entre el alijo y tu inventario. Arrastra para reorganizar. Las pestañas son compartidas por todos tus personajes.
+Rime	Escarcha
+Ring	Anillo
+Ringmail Vest	Cota de anillas
+Ripple	Onda
+Rising Tide	Marea creciente
+Ritual	Ritual
+Rogue	Pícaro
+Rope Belt	Cinturón de cuerda
+Rot	Podredumbre
+Router port not opened (UPnP off for this lobby): same PC, same network or VPN only.	Puerto del router sin abrir (UPnP desactivado en esta sala): solo mismo PC, misma red o VPN.
+Royal carpet	Alfombra real
+Ruin	Ruina
+Run stats	Estadísticas de la partida
+Runs at you and explodes	Corre hacia ti y explota
+Rusted Sword	Espada oxidada
+Ruthlessness	Despiadado
+STAND BETWEEN THE BEAMS	COLÓCATE ENTRE LOS RAYOS
+STR {0} · DEX {1} · INT {2}	FUE {0} · DES {1} · INT {2}
+Sacrifice	Sacrificio
+Same PC: 127.0.0.1:7777.  Same Wi-Fi: the host's 192.168… address, not the internet one.	Mismo PC: 127.0.0.1:7777.  Misma wifi: la dirección 192.168… del anfitrión, no la de internet.
+Same PC: 127.0.0.1:{0}.  Same Wi-Fi: the host's 192.168… address.  Over the internet: the address the host's lobby shows 	Mismo PC: 127.0.0.1:{0}.  Misma wifi: la dirección 192.168… del anfitrión.  Por internet: la dirección que muestra la sala del anfitrión
+Samurai	Samurái
+Sanguine Thirst	Sed sanguina
+Scavenger	Carroñero
+Screen shake	Vibración de pantalla
+Seal in hand — click an item, then choose the modifier to protect. Each seal on the same item costs more.	Sello en la mano: haz clic en un objeto y elige el modificador que proteger. Cada sello en el mismo objeto cuesta más.
+Seal which modifier of {0}?	¿Qué modificador de {0} sellar?
+Sealed {0} — safe from the next orb	{0} sellado: a salvo del siguiente orbe
+Sealing costs {0} gold and {1} {2}	Sellar cuesta {0} de oro y {1} {2}
+Seals	Sellos
+Search name or effect…	Buscar nombre o efecto…
+Searing	Abrasador
+Second Wind	Segundo aliento
+Second ascendancy trial complete: +2 ascendancy points.	Segunda prueba de ascendencia completada: +2 puntos de ascendencia.
+Security	Seguridad
+Seismic Slam	Golpe sísmico
+Selected	Seleccionado
+Sell gear, buy crafting shards and skill gems.	Vende equipo, compra fragmentos de fabricación y gemas de habilidad.
+Selling gives you gold now. Dust is what the forge spends later.	Vender te da oro ahora. El polvo es lo que la forja gasta después.
+Sells Mirror Shards of tiers you have cleared. Five at a time.	Vende Fragmentos del Espejo de niveles que has superado. Cinco cada vez.
+Send feedback	Enviar comentarios
+Send them both — or Copy invite, which holds both:	Mándales las dos cosas, o Copiar invitación, que las lleva juntas:
+Send them the invite	Mándales la invitación
+Sent from the game	Enviado desde el juego
+Settings	Ajustes
+Sfx	Efectos
+Shadow	Sombra
+Shard	Fragmento
+Shard-Sworn	Juramentado del fragmento
+Shardbound	Ligado al fragmento
+Shards	Fragmentos
+Shared hideout	Refugio compartido
+Sharpshooter	Tirador experto
+Shatter	Hacer añicos
+Shield Conduit	Conducto del escudo
+Shockwave	Onda de choque
+Short fuse	Mecha corta
+Shoulder to shoulder	Hombro con hombro
+Show FPS (F3)	Mostrar FPS (F3)
+Show me	Enséñamelo
+Siphon	Sifón
+Siren	Sirena
+Six skill buttons	Seis botones de habilidad
+Skeleton	Esqueleto
+Skill Duration	Duración de habilidades
+Skill duration	Duración de habilidades
+Skill gem	Gema de habilidad
+Skill level ({0}/{1})	Nivel de habilidad ({0}/{1})
+Skill upgrade trees	Árboles de mejora de habilidades
+Skill: {0}	Habilidad: {0}
+Skills	Habilidades
+Skills & Supports	Habilidades y soportes
+Skills cost Life instead of Mana,\nbut never take you below 40% Life.\n30% more maximum Life, +3 Life regenerated per second.	Las habilidades cuestan vida en vez de maná,\npero nunca te bajan del 40% de vida.\n30% más vida máxima, +3 de vida regenerada por segundo.
+Skills fire 35% more often.\n20% less damage.	Las habilidades se lanzan un 35% más a menudo.\n20% menos daño.
+Skills fire {0} more often	Las habilidades se lanzan un {0} más a menudo
+Skills {0}	Habilidades {0}
+Skip	Saltar
+Skip  [S]	Saltar  [S]
+Skip  [S]  ({0} left)	Saltar  [S]  (quedan {0})
+Skip it and play with friends	Saltarla y jugar con amigos
+Skip the introduction	Saltar la introducción
+Skipped a level	Nivel saltado
+Skipped level {0}	Nivel {0} saltado
+Sky	Cielo
+Slay it for a chest	Mátalo para conseguir un cofre
+Slay the Colossus in a party.	Mata al Coloso en grupo.
+Slay the Colossus on tier 10.	Mata al Coloso en el nivel 10.
+Slay the Colossus on tier 3 or higher.	Mata al Coloso en el nivel 3 o superior.
+Slay the Colossus on tier 5 or higher.	Mata al Coloso en el nivel 5 o superior.
+Slay the Colossus with only melee skills.	Mata al Coloso solo con habilidades cuerpo a cuerpo.
+Slay the Colossus with three Fear cards.	Mata al Coloso con tres cartas de miedo.
+Slay the Ember Colossus on tier {0} to open it	Mata al Coloso de Ascuas en el nivel {0} para abrirlo
+Slay the Ember Colossus.	Mata al Coloso de Ascuas.
+Slick	Resbaladizo
+Slime	Limo
+Slow +20% more, and the curse is 20% shorter	Ralentiza un 20% más, y la maldición dura un 20% menos
+Slowed enemies also take 10% more damage	Los enemigos ralentizados también reciben un 10% más de daño
+Smithy	Herrería
+Smoulder	Rescoldo
+Socket	Engarce
+Socket a jewel in the Mirror's Jewels tab	Engarza una joya en la pestaña Joyas del Espejo
+Socket it in the Skills panel (K): click a slot, then the skill.	Engárzala en el panel de Habilidades (K): haz clic en una ranura y luego en la habilidad.
+Socketed (others depend on it)	Engarzada (otras dependen de ella)
+Socketed — right-click to take the jewel out	Engarzada: clic derecho para sacar la joya
+Socketing a support into {0} ({1}) — only supports that fit it are listed. Right-click a socket to empty it.	Engarzando un soporte en {0} ({1}): solo se muestran los soportes que encajan. Clic derecho en un engarce para vaciarlo.
+Sockets you can fill now glow green.	Los engarces que puedes llenar ahora brillan en verde.
+Sold items and rewards pay it. Odran, Ysolde and the Artificer take it.	Lo pagan los objetos vendidos y las recompensas. Lo aceptan Odran, Ysolde y el Artífice.
+Sold out.	Agotado.
+Sold this visit — right-click to buy back	Vendido en esta visita: clic derecho para recomprarlo
+Sold {0} for {1} gold	Has vendido {0} por {1} de oro
+Solo	Solo
+Something broken: what happened, and what did you expect?	Algo roto: ¿qué ha pasado y qué esperabas?
+Something in town blocks every way to {0}	Algo en el pueblo bloquea todos los caminos hacia {0}
+Something is in the way to {0}	Hay algo en el camino hacia {0}
+Something old guards the seal beyond the gate. The gate closes behind you once the fight starts.\nWatch the ground: red markings show where an attack will land, so dodge out of them.	Algo antiguo guarda el sello tras la puerta. La puerta se cierra a tu espalda en cuanto empieza el combate.\nVigila el suelo: las marcas rojas muestran dónde caerá un ataque, así que esquiva fuera de ellas.
+Something went wrong	Algo ha ido mal
+Something you'd like the game to have.	Algo que te gustaría que tuviera el juego.
+Sorting	Orden
+Space	Espacio
+Space · Shift	Espacio · Mayús
+Spark	Chispa
+Sparks burst on hit (40 px, 40% of the hit)	Las chispas estallan al impactar (40 px, 40% del golpe)
+Sparks fly {0} farther	Las chispas vuelan {0} más lejos
+Spawn	Generar
+Spawn {0}	Generar {0}
+Spawn {0} mixed	Generar {0} mezclados
+Spawn {0} × {1}	Generar {0} × {1}
+Spawner	Generador
+Speed {0:0} px/s	Velocidad {0:0} px/s
+Spell	Hechizo
+Spell Damage	Daño de hechizos
+Spell Echo	Eco de hechizo
+Spell Totem	Tótem de hechizos
+Spellcraft	Arte de los hechizos
+Spend Mirror Shards to step into an Altered Reality.	Gasta Fragmentos del Espejo para entrar en una Realidad Alterada.
+Spill	Derramar
+Splashes oil over every enemy in a circle for 6 s: they take 25% more fire damage, and every fire hit ignites them.	Salpica aceite sobre todos los enemigos de un círculo durante 6 s: reciben un 25% más de daño de fuego, y cada golpe de fuego los incendia.
+Split Earth	Partir la tierra
+Splits the ground in a line ahead of you after a brief wind-up.	Parte el suelo en línea delante de ti tras una breve preparación.
+Splitter	Divisor
+Splitting	División
+Spreads to 2 enemies when its bearer dies	Se propaga a 2 enemigos cuando muere su portador
+Spreads to 3 enemies, and on from them	Se propaga a 3 enemigos, y desde ellos a más
+Sprint	Esprintar
+Sprint and dodge	Esprint y esquiva
+Sprite	Sprite
+Stacking bleed and ignite	Sangrado e ignición acumulables
+Stamina	Aguante
+Stand inside: heal and a chest	Quédate dentro: cura y un cofre
+Standing still for 1 s consecrates the ground: 4% life per second, enemies on it take 15% more damage.	Quedarte quieto 1 s consagra el suelo: 4% de vida por segundo, y los enemigos sobre él reciben un 15% más de daño.
+Starfall	Lluvia de estrellas
+Start	Empezar
+Start of the run — choose a skill card	Inicio de la partida: elige una carta de habilidad
+Starting skills	Habilidades iniciales
+Starts with {0} + {1}.	Empieza con {0} + {1}.
+Starts with {0}.	Empieza con {0}.
+Stash	Alijo
+Stasis	Estasis
+Static	Estática
+Static Chains	Cadenas estáticas
+Static Charge	Carga estática
+Static Nova	Nova estática
+Static Wake	Estela estática
+Stats	Estadísticas
+Stay in the hideout	Quedarse en el refugio
+Steady Ward	Guarda firme
+Steel	Acero
+Step through the Mirror	Cruzar el Espejo
+Steps to reproduce (optional)	Pasos para reproducirlo (opcional)
+Stillness	Quietud
+Stone Skin	Piel de piedra
+Stop hosting	Dejar de alojar
+Storage is empty — Ysolde in the plaza sells decorations. Right-click one in Move to store it.	El almacén está vacío: Ysolde, en la plaza, vende decoraciones. Haz clic derecho en una en Mover para guardarla.
+Storage shared by all your characters.	Almacén compartido por todos tus personajes.
+Storm	Tormenta
+Storm Edge	Filo de tormenta
+Storm Lattice	Retícula de tormenta
+Storm Strike	Golpe de tormenta
+Stormcaller	Invocatormentas
+Stormcalling	Invocación de tormentas
+Str {0:0}  Dex {1:0}  Int {2:0}	Fue {0:0}  Des {1:0}  Int {2:0}
+Streets	Calles
+Strength	Fuerza
+Strikes one more time, 35% less damage	Golpea una vez más, 35% menos daño
+Stronger for its rest	Más fuerte tras su descanso
+Summons blades that orbit you, cutting anything they touch.	Invoca hojas que orbitan a tu alrededor y cortan todo lo que tocan.
+Sunder	Quebrar
+Sundering Orb	Orbe de Fractura
+Support gem	Gema de soporte
+Support gem: {0}	Gema de soporte: {0}
+Support → {0}	Soporte → {0}
+Supports	Soportes
+Supports {0}	Soportes {0}
+Surge	Oleada
+Surge! The horde presses in	¡Oleada! La horda aprieta
+Survival Rift	Grieta de Supervivencia
+Survival Rift: the endless arena — gear, gold and character experience.	Grieta de Supervivencia: la arena infinita. Equipo, oro y experiencia de personaje.
+Survive the waves, slay the Ember Colossus, then stay as long as you dare. A harder Rift pays more.	Sobrevive a las oleadas, mata al Coloso de Ascuas y luego quédate todo lo que te atrevas. Una Grieta más difícil paga más.
+Survived {0}   ·   Level {1}   ·   {2} kills   ·   {3} elites   ·   {4} bosses   ·   {5} chests   ·   +{6} gold	Sobrevivido {0}   ·   Nivel {1}   ·   {2} muertes   ·   {3} élites   ·   {4} jefes   ·   {5} cofres   ·   +{6} de oro
+Swarm — two waves!	¡Enjambre: dos oleadas!
+Swarm!	¡Enjambre!
+Swarming Reflections	Reflejos en enjambre
+Swarms come twice as often.	Los enjambres vienen el doble de a menudo.
+Swift	Veloces
+Switch on / off. While on, burns every enemy within 110 px for 14 fire damage per second (it can ignite) — and costs you 2% of your maximum life every second.	Encender / apagar. Mientras está encendida, quema a todos los enemigos a menos de 110 px con 14 de daño de fuego por segundo (puede incendiar), y te cuesta un 2% de tu vida máxima cada segundo.
+System: {0} {1} · {2}	Sistema: {0} {1} · {2}
+Sythe	Sythe
+THE EYE ERUPTS	EL OJO ERUPCIONA
+TOWN MAP	MAPA DEL PUEBLO
+TURN IN	ENTREGAR
+TURNED IN	ENTREGADA
+Tab	Tab
+Tab {0}	Pestaña {0}
+Tabs	Pestañas
+Take it and leave	Cogerla y salir
+Take nothing this level	No coger nada en este nivel
+Take nothing, get {0}% of this level's experience back	No coger nada y recuperar el {0}% de la experiencia de este nivel
+Take your reward home now, or stay: the Rift keeps getting harder, and what it pays keeps growing.	Llévate tu recompensa a casa ahora, o quédate: la Grieta se vuelve cada vez más difícil, y lo que paga no deja de crecer.
+Taking a point back costs {0:N0} gold	Recuperar un punto cuesta {0:N0} de oro
+Tar	Alquitrán
+Target / boss life	Objetivo / vida del jefe
+Tears open the wounds of every enemy in a circle: all the physical damage their bleed stacks had left lands at once, 30% stronger.	Abre las heridas de todos los enemigos de un círculo: todo el daño físico que les quedaba a sus acumulaciones de sangrado cae de golpe, un 30% más fuerte.
+Teeming	Rebosante
+Tempered Flesh	Carne templada
+Tempest Focus	Foco de tempestad
+Tempest Orb	Orbe de Tempestad
+Temple	Templo
+Tempo	Tempo
+Ten minutes in the deep	Diez minutos en las profundidades
+Test character (lv {0})	Personaje de prueba (nv {0})
+Tester	Probador
+That can't be used on items	Eso no se puede usar en objetos
+That is not an ARPG co-op client.	Eso no es un cliente cooperativo de ARPG.
+That isn't an address. It looks like 203.0.113.7:7777 — four numbers with dots, then : and the port.	Eso no es una dirección. Tiene este aspecto: 203.0.113.7:7777, cuatro números con puntos, luego : y el puerto.
+That item could not be stored.	Ese objeto no se pudo guardar.
+That rift can't be opened	Esa grieta no se puede abrir
+That's enough dust for your first forge. Come back when you're ready.	Con ese polvo tienes para tu primera forja. Vuelve cuando estés listo.
+Thaumaturge	Taumaturgo
+The Ashen Depths	Las Profundidades Cenicientas
+The Ashen Halls	Los Salones Cenicientos
+The Bone Crypt	La Cripta de Hueso
+The Bone Herald	El Heraldo de Hueso
+The Bone Herald returns	El Heraldo de Hueso regresa
+The Bone Warrens	Las Madrigueras de Hueso
+The Colossus falls	El Coloso cae
+The Colossus is enraged!	¡El Coloso está enfurecido!
+The Colossus roars — the arena burns	El Coloso ruge: la arena arde
+The Drowned Grotto	La Gruta Anegada
+The Drowned Mirror	El Espejo Anegado
+The Ember Colossus	El Coloso de Ascuas
+The Ember Colossus has fallen	El Coloso de Ascuas ha caído
+The Herald's chant grows louder	El cántico del Heraldo se hace más fuerte
+The Mirror hums. Here is another jewel to place.	El Espejo zumba. Aquí tienes otra joya que colocar.
+The Mirror opens	El Espejo se abre
+The Mirror's Heart	El Corazón del Espejo
+The Onslaught	La Embestida
+The Onslaught! Hold until the Colossus wakes	¡La Embestida! Aguanta hasta que despierte el Coloso
+The Proving Ground	El Campo de Pruebas
+The Rift deepens	La Grieta se hace más honda
+The Rift grows richer, and deadlier	La Grieta se vuelve más rica, y más letal
+The Rift throws everything at you before its heart wakes	La Grieta te lanza de todo antes de que despierte su corazón
+The Survival Rift	La Grieta de Supervivencia
+The Threshold	El Umbral
+The Threshold takes about 5 minutes and is played alone: it shows the basics, then leads home to your hideout. 	El Umbral dura unos 5 minutos y se juega solo: enseña lo básico y luego te lleva a casa, a tu refugio.
+The Witch's curses	Las maldiciones de la Bruja
+The active heals {0} more of your life	La activa cura {0} más de tu vida
+The active is {0} stronger	La activa es {0} más fuerte
+The active lasts 60% longer, 20% weaker	La activa dura un 60% más, un 20% más débil
+The already-hit set	El conjunto ya golpeado
+The altar is dormant.	El altar está dormido.
+The arena stirs…	La arena se agita…
+The arena's heart awakens	El corazón de la arena despierta
+The burst deals 75% of the hit instead of half	El estallido inflige el 75% del golpe en vez de la mitad
+The director	El director
+The endless arena — survive, break the Ember Colossus, take the reward home.\n{0}	La arena infinita: sobrevive, destruye al Coloso de Ascuas y llévate la recompensa a casa.\n{0}
+The fifth circle	El quinto círculo
+The game resumes when everyone has chosen.	La partida sigue cuando todos hayan elegido.
+The guardian	El guardián
+The host	El anfitrión
+The host checks every character for broken data. Pick another character in Play and try again.	El anfitrión revisa cada personaje en busca de datos rotos. Elige otro personaje en Jugar y vuelve a intentarlo.
+The host closed the connection before checking your code (too many wrong codes from your address lately, or the host's game closed).	El anfitrión cerró la conexión antes de comprobar tu código (demasiados códigos erróneos desde tu dirección últimamente, o se cerró su partida).
+The host closed the lobby	El anfitrión cerró la sala
+The host closed the session.	El anfitrión cerró la sesión.
+The host is still in their lobby (the lobby closes if they press Back).	El anfitrión sigue en su sala (la sala se cierra si pulsa Volver).
+The host left	El anfitrión se ha ido
+The host turned the connection away	El anfitrión rechazó la conexión
+The host turned you away.	El anfitrión te ha rechazado.
+The host's PC answered, so the address is right — only the code didn't match.	El PC del anfitrión respondió, así que la dirección es correcta: solo falló el código.
+The host's firewall lets the game in (Windows asks the first time you host: allow it).	El cortafuegos del anfitrión deja pasar el juego (Windows lo pregunta la primera vez que alojas: permítelo).
+The host's lobby says whether their router opened the port. If it says it didn't, the host forwards UDP 7777 to their PC in the router's settings — or you both install a VPN like Tailscale or Radmin VPN and the host sends their VPN address instead.	La sala del anfitrión dice si su router abrió el puerto. Si dice que no, el anfitrión redirige UDP 7777 a su PC en los ajustes del router, o instaláis los dos una VPN como Tailscale o Radmin VPN y el anfitrión manda su dirección de la VPN.
+The landing slams again 0.35 s later for 60% of the hit	El aterrizaje golpea otra vez 0,35 s después por el 60% del golpe
+The oil also slows by 30%	El aceite también ralentiza un 30%
+The party ended	El grupo ha terminado
+The party is full	El grupo está lleno
+The party is full.	El grupo está lleno.
+The party is in a rift — wait for them to return	El grupo está en una grieta: espera a que vuelvan
+The party leaves only if everyone takes the reward. Nobody answering counts as leaving.	El grupo solo se va si todos cogen la recompensa. Que nadie responda cuenta como irse.
+The party set off without you: {0} — you can join the next one	El grupo partió sin ti: {0}. Puedes unirte a la siguiente
+The party stays ({0} chose to keep going). You can still leave alone: Esc → Leave the party, with your reward.	El grupo se queda ({0} eligió seguir). Aún puedes irte solo: Esc → Salir del grupo, con tu recompensa.
+The party's portals are spent — the shard is lost	Los portales del grupo se han agotado: el fragmento se pierde
+The passive alone stops every knockback	La pasiva por sí sola detiene todos los empujones
+The passive is 50% stronger, the active 20% weaker	La pasiva es un 50% más fuerte, la activa un 20% más débil
+The passive is 50% stronger; the active heals 40% less	La pasiva es un 50% más fuerte; la activa cura un 40% menos
+The passive is {0} stronger	La pasiva es {0} más fuerte
+The path is chosen. Spend your points on its nodes; hover one to read it.	El camino está elegido. Gasta tus puntos en sus nodos; pasa el ratón por uno para leerlo.
+The playground is solo only	La zona de pruebas es solo para un jugador
+The point you leave bursts for {0} of the skill's damage	El punto que dejas estalla por el {0} del daño de la habilidad
+The port is a number from 1 to 65535 (7777 unless you changed it on purpose).	El puerto es un número de 1 a 65535 (7777 salvo que lo cambiaras a propósito).
+The quest toast	El aviso de misión
+The reality collapses	La realidad se derrumba
+The right-click conflict — resolved	El conflicto del clic derecho, resuelto
+The root of the tree	La raíz del árbol
+The run has already started	La partida ya ha empezado
+The run has already started.	La partida ya ha empezado.
+The shard dealer	El vendedor de fragmentos
+The shard is lost	El fragmento se pierde
+The shrine answers	El santuario responde
+The skill repeats once, 35% less damage	La habilidad se repite una vez, 35% menos daño
+The skill repeats once.\n10% less damage.	La habilidad se repite una vez.\n10% menos daño.
+The start pick	La elección inicial
+The stash is full	El alijo está lleno
+The stat list after this pass	La lista de estadísticas tras esta pasada
+The storm is all cold: twice its bonus, to cold damage only; the active also +10% chance to freeze	La tormenta es toda de frío: el doble de bonificación, solo al daño de frío; la activa también +10% de probabilidad de congelar
+The storm is all fire: twice its bonus, to fire damage only; the active also +25% chance to ignite	La tormenta es toda de fuego: el doble de bonificación, solo al daño de fuego; la activa también +25% de probabilidad de ignición
+The storm is all lightning: twice its bonus, to lightning damage only; the active also +25% chance to shock	La tormenta es toda de rayo: el doble de bonificación, solo al daño de rayo; la activa también +25% de probabilidad de electrocutar
+The tide rises!	¡La marea sube!
+The tooltip shows how much dust an item gives while the tab is open.	El tooltip muestra cuánto polvo da un objeto mientras la pestaña está abierta.
+The totem casts {0} faster	El tótem lanza {0} más rápido
+The town can only be edited while everyone who edits is in it	El pueblo solo se puede editar mientras todos los que lo editan estén en él
+The town isn't loaded	El pueblo no está cargado
+The way back is sealed	El camino de vuelta está sellado
+The whole party is down — back at the entrance · {0}	Todo el grupo ha caído: de vuelta a la entrada · {0}
+They come from every side	Vienen por todos lados
+Thick	Recios
+This PC only.	Solo este PC.
+This item has no modifiers to remove	Este objeto no tiene modificadores que quitar
+This item has no room for another modifier	Este objeto no tiene hueco para otro modificador
+This item has nothing to tune	Este objeto no tiene nada que afinar
+This item is already common	Este objeto ya es común
+This skill is at its highest level	Esta habilidad está en su nivel más alto
+This stash tab is full	Esta pestaña del alijo está llena
+Thorns	Espinas
+Thrall	Siervo
+Three fireballs that burst on impact.	Tres bolas de fuego que estallan al impactar.
+Three more orbiting blades on a wider ring.	Tres hojas orbitales más en un anillo más amplio.
+Three more sparks, and every spark chains twice.	Tres chispas más, y cada chispa encadena dos veces.
+Three new skills	Tres habilidades nuevas
+Throwing Knives	Cuchillos arrojadizos
+Throws a fan of knives that pierce one enemy each.	Lanza un abanico de cuchillos que atraviesan a un enemigo cada uno.
+Thunder	Trueno
+Tidal Lanes	Carriles de marea
+Tide Bolt	Proyectil de marea
+Tier	Nivel
+Tier 1 is always free at the Mirror.	El nivel 1 siempre es gratis en el Espejo.
+Tier 3 · Greed ×2	Nivel 3 · Codicia ×2
+Tier {0}	Nivel {0}
+Tier {0} Mirror Shard	Fragmento del Espejo de nivel {0}
+Tier {0} at {1}: {2}	Nivel {0} a los {1}: {2}
+Tier {0} reality	Realidad de nivel {0}
+Tier {0} · {1}	Nivel {0} · {1}
+Tier {0} · {1} · {2}	Nivel {0} · {1} · {2}
+Tier {0}: monsters ×{1:0.0} life and ×{2:0.0} damage	Nivel {0}: monstruos ×{1:0.0} de vida y ×{2:0.0} de daño
+Tiles	Baldosas
+Time	Tiempo
+Time's up — a card was taken for you.	Se acabó el tiempo: se ha cogido una carta por ti.
+Time's up — {0} was taken for you.	Se acabó el tiempo: se ha cogido {0} por ti.
+Time's up: that counts as leaving. The party goes home only if everyone does.	Se acabó el tiempo: eso cuenta como irse. El grupo solo vuelve a casa si todos lo hacen.
+Timer	Temporizador
+Titan Aura	Aura del titán
+Tithe of Kings	Diezmo de reyes
+Title screen	Pantalla de título
+Title — one line	Título: una línea
+To reroll one card, press Shift + its number (or the button under it).	Para relanzar una carta, pulsa Mayús + su número (o el botón de debajo).
+Took a point back from {0} ({1:N0} gold).	Has recuperado un punto de {0} ({1:N0} de oro).
+Total {0}  ·  peak {1} in 1 s\n	Total {0}  ·  pico de {1} en 1 s\n
+Totem casts: {0}	El tótem lanza: {0}
+Totems	Tótems
+Touch: every gem flies to you	Toca: todas las gemas vuelan hacia ti
+Touch: fight an elite for a chest	Toca: lucha contra un élite por un cofre
+Touch: harder and richer	Toca: más difícil y más rico
+Town	Pueblo
+Town map\nClick or press M for the big map	Mapa del pueblo\nHaz clic o pulsa M para el mapa grande
+Trade	Comerciar
+Training dummy	Muñeco de entrenamiento
+Training dummy (never dies)	Muñeco de entrenamiento (nunca muere)
+Training yard	Patio de entrenamiento
+Treasure Hunter	Cazatesoros
+Tree reset — all points refunded.	Árbol restablecido: todos los puntos reembolsados.
+Troll Blood	Sangre de trol
+Try again	Reintentar
+Tuning Orb	Orbe de Afinación
+Turn in	Entregar
+Turn it in at {0}	Entrégala en {0}
+Two more meteors fall after the first.	Caen dos meteoros más tras el primero.
+Two quick stabs in a narrow arc. Fast, precise, crit-friendly.	Dos puñaladas rápidas en un arco estrecho. Rápido, preciso y bueno para críticos.
+Type the host's address. They see it in their lobby (Copy invite).	Escribe la dirección del anfitrión. La ve en su sala (Copiar invitación).
+Type the host's join code: {0} letters or digits, like K7Q-29M.	Escribe el código de unión del anfitrión: {0} letras o dígitos, como K7Q-29M.
+Type the join code from the host's lobby — 6 letters or digits, like K7Q-29M.	Escribe el código de unión de la sala del anfitrión: 6 letras o dígitos, como K7Q-29M.
+T{0}\n{1}	N{0}\n{1}
+UDP · leave 7777 unless you know why	UDP · deja 7777 salvo que sepas por qué
+UDP · your router opens it by itself when it can	UDP · tu router lo abre solo cuando puede
+Unbreakable	Irrompible
+Unbreakable Hide	Pellejo irrompible
+Undying	Imperecedero
+Unending Rage	Furia sin fin
+Unique	Único
+Unlocked at level {0}	Desbloqueado a nivel {0}
+Unlocks at character level {0}	Se desbloquea a nivel de personaje {0}
+Unlocks at character level {0} · you are {1}	Se desbloquea a nivel de personaje {0} · tú eres {1}
+Unlocks the Hailstorm evolution (Frost Shards + Velocity)	Desbloquea la evolución Granizada (Esquirlas de escarcha + Velocidad)
+Unlocks the Starfall evolution (Meteor + Kindling)	Desbloquea la evolución Lluvia de estrellas (Meteoro + Yesca)
+Unlocks the Treasure Hunter keystone	Desbloquea la piedra angular Cazatesoros
+Untouchable {0:0.0} s longer after arriving	Intocable {0:0.0} s más tras llegar
+Up close	De cerca
+Up to {0} friends can join you here, each with their own character, wallet and loot. 	Hasta {0} amigos pueden unirse a ti aquí, cada uno con su personaje, su cartera y su botín.
+Upgrades a common item to magic with 1–2 random modifiers.	Mejora un objeto común a mágico con 1–2 modificadores aleatorios.
+Upgrades a magic item to rare, adding one random modifier.	Mejora un objeto mágico a raro, añadiendo un modificador aleatorio.
+Use	Usar
+Use the Crown Orb from the inventory's Crafting tab (I) to turn a magic item rare. Your new one, perhaps.	Usa el Orbe de la Corona desde la pestaña Fabricación del inventario (I) para convertir un objeto mágico en raro. Quizá el nuevo.
+Use the whole screen on ultrawide (21:9, 32:9) — off: 16:9 with side bars	Usar toda la pantalla en ultrapanorámicas (21:9, 32:9). Desactivado: 16:9 con bandas laterales
+Utility	Utilidad
+V-Sync	Sincronización vertical
+VPN address — friends need the same VPN running (Tailscale, Radmin VPN, ZeroTier).	Dirección de la VPN: tus amigos necesitan la misma VPN en marcha (Tailscale, Radmin VPN, ZeroTier).
+Valka	Valka
+Vampiric	Vampírico
+Vampiric Pact	Pacto vampírico
+Vanishes and reappears up to 230 px towards the cursor, untouchable for an instant. Walls stop it.	Desaparece y reaparece hasta 230 px hacia el cursor, intocable un instante. Las paredes lo detienen.
+Vault	Cámara
+Velocity	Velocidad
+Venom	Veneno
+Version: {0}	Versión: {0}
+Victory	Victoria
+Vigour	Vigor
+Vile	Vil
+Virulence	Virulencia
+Visual	Visual
+Vitality	Vitalidad
+Void	Vacío
+Volatile	Volátiles
+Volcanic Rift	Grieta volcánica
+Volley	Andanada
+Volley Master	Maestro de andanadas
+Vorrath	Vorrath
+WASD move  ·  Space dodge (charges refill)  ·  skills fire on their own timers  ·  Esc pause	WASD mover  ·  Espacio esquivar (las cargas se recargan)  ·  las habilidades se lanzan solas con su temporizador  ·  Esc pausa
+WASD move · Mouse aim · LMB/RMB/Q/E skills · Space dodge · Shift sprint · 1/2 flasks\nF interact · G pick up · Tab map · I inventory · C character · K skills · P passive tree · J quests · Esc menu	WASD mover · Ratón apuntar · Clic izq./der./Q/E habilidades · Espacio esquivar · Mayús esprintar · 1/2 frascos\nF interactuar · G recoger · Tab mapa · I inventario · C personaje · K habilidades · P árbol pasivo · J misiones · Esc menú
+WATCH THE REFLECTIONS	VIGILA LOS REFLEJOS
+Wait a moment before proposing again	Espera un momento antes de volver a proponer
+Walk in	Entra
+Walk there	Ir allí
+Wall	Muro
+Wallet	Cartera
+Walls	Muros
+Ward	Guarda
+Warded	Protegido
+Warding	Protección
+Wares	Mercancías
+Warrior	Guerrero
+Weakness	Debilidad
+Weapon	Arma
+Weapon rack	Armero
+Weight	Peso
+Well	Pozo
+Wellspring	Manantial
+What the host checks	Qué comprueba el anfitrión
+What to check	Qué comprobar
+When a cursed enemy dies, its curses spread to up to 2 enemies within 220 px.	Cuando muere un enemigo maldito, sus maldiciones se propagan a hasta 2 enemigos a menos de 220 px.
+Where orbs come from	De dónde salen los orbes
+Where you arrive bursts too, as cold (chills)	Donde llegas también estalla, como frío (ralentiza)
+Where: {0}	Dónde: {0}
+While on: +{0:0} fire resistance	Mientras está encendida: +{0:0} de resistencia al fuego
+While on: 15% less damage taken	Mientras está encendida: 15% menos daño recibido
+Whirling Wall	Muro giratorio
+Whirlpool	Remolino
+Why would it help? (optional)	¿Por qué ayudaría? (opcional)
+Wide Fan	Abanico amplio
+Wildfire	Fuego salvaje
+Wind Runner	Corredor del viento
+Wind Step	Paso del viento
+Window mode	Modo de ventana
+Window size	Tamaño de ventana
+Windowed	En ventana
+Winds up and charges	Se prepara y embiste
+Winter	Invierno
+Witch	Bruja
+With friends	Con amigos
+With {0} players: {1} · monster life ×{2:0.0}	Con {0} jugadores: {1} · vida de monstruo ×{2:0.0}
+Wither	Marchitar
+Without replacement by stat	Sin reemplazo por estadística
+World	Mundo
+Wounds	Heridas
+Wrong join code	Código de unión incorrecto
+Wrong join code. Ask the host for the code shown in their lobby.	Código de unión incorrecto. Pide al anfitrión el código que aparece en su sala.
+YOU HAVE FALLEN	HAS CAÍDO
+You	Tú
+You are opening {0}	Estás abriendo {0}
+You are the host: the rift runs on your game, so it only opens if you join.	Eres el anfitrión: la grieta va en tu partida, así que solo se abre si te unes.
+You can't afford that	No te lo puedes permitir
+You chose to keep going. Waiting for the others…	Has elegido seguir. Esperando a los demás…
+You chose to leave. The party goes home only if everyone does.	Has elegido irte. El grupo solo vuelve a casa si todos lo hacen.
+You chose {0}.	Has elegido {0}.
+You defeated a tier-{0} guardian, and the altar has woken for you.\n\n	Has derrotado a un guardián de nivel {0}, y el altar ha despertado para ti.\n\n
+You fell at {0} in the endless phase. The reward is yours.	Caíste a los {0} en la fase infinita. La recompensa es tuya.
+You found a **Mirror Jewel**. Jewels power the Mirror itself, and every character on your account shares them.\n\n	Has encontrado una **Joya del Espejo**. Las joyas alimentan al propio Espejo, y todos los personajes de tu cuenta las comparten.\n\n
+You get an address and a join code to send them; they join from the main menu: Play → With friends → Join a friend.	Obtienes una dirección y un código de unión para mandárselos; se unen desde el menú principal: Jugar → Con amigos → Unirse a un amigo.
+You go back to the hideout and the others keep playing. You take your reward, and you stay in the party.	Vuelves al refugio y los demás siguen jugando. Te llevas tu recompensa y sigues en el grupo.
+You have **{0} ascendancy points** now, and a tier-{1} guardian grants {2} more: {3} points for {4} nodes, so pick the ones that fit your build.\n\n	Ahora tienes **{0} puntos de ascendencia**, y un guardián de nivel {1} da {2} más: {3} puntos para {4} nodos, así que elige los que encajen con tu build.\n\n
+You have fallen	Has caído
+You have none. Orbs drop in realities and the Survival Rift	No tienes ninguno. Los orbes caen en las realidades y en la Grieta de Supervivencia
+You have this skill: raise its level in the Your skills tab.	Ya tienes esta habilidad: sube su nivel en la pestaña Tus habilidades.
+You have {0} of {1}, one per loadout slot	Tienes {0} de {1}, uno por ranura de equipo
+You have ×{0}	Tienes ×{0}
+You haven't chosen an item yet — press again to leave without one.	Aún no has elegido un objeto: pulsa otra vez para irte sin ninguno.
+You left the reality	Has salido de la realidad
+You left the run.	Has salido de la partida.
+You need a character first	Primero necesitas un personaje
+You need both from the host's lobby: the address finds their PC, the code lets you in.	Necesitas las dos cosas de la sala del anfitrión: la dirección encuentra su PC, el código te deja entrar.
+You own {0}  ·  monster level {1}	Tienes {0}  ·  nivel de monstruo {1}
+You're in {0}'s town: everything you buy is delivered to your own town's storage, for your whole account.	Estás en el pueblo de {0}: todo lo que compres se entrega al almacén de tu propio pueblo, para toda tu cuenta.
+Your	Tu
+Your build grows from here: every level adds a skill or a power-up.	Tu build crece desde aquí: cada nivel añade una habilidad o un power-up.
+Your build grows from here: every level adds a skill, a support or a power-up.	Tu build crece desde aquí: cada nivel añade una habilidad, un soporte o un power-up.
+Your changes weren't kept ({0})	No se han conservado tus cambios ({0})
+Your character	Tu personaje
+Your character could not be read.	No se pudo leer tu personaje.
+Your character was refused	Tu personaje fue rechazado
+Your character was refused (bad window size).	Tu personaje fue rechazado (tamaño de ventana incorrecto).
+Your character was refused (too large).	Tu personaje fue rechazado (demasiado grande).
+Your character was refused ({0}).	Tu personaje fue rechazado ({0}).
+Your elemental hits penetrate 15% resistance.	Tus golpes elementales penetran un 15% de resistencia.
+Your first hit after 2 s without attacking deals 80% more damage.	Tu primer golpe tras 2 s sin atacar inflige un 80% más de daño.
+Your friends are here — everything you use is your own	Tus amigos están aquí: todo lo que usas es tuyo
+Your friends are in your town.	Tus amigos están en tu pueblo.
+Your friends are still inside	Tus amigos siguen dentro
+Your game version does not match the host's.	Tu versión del juego no coincide con la del anfitrión.
+Your hideout	Tu refugio
+Your hideout, your rifts, at your pace.	Tu refugio, tus grietas, a tu ritmo.
+Your hits curse enemies with Vulnerability: 20% more damage taken for 4 s.	Tus golpes maldicen a los enemigos con Vulnerabilidad: reciben un 20% más de daño durante 4 s.
+Your inventory is full	Tu inventario está lleno
+Your inventory — right-click an item to disenchant it	Tu inventario: clic derecho en un objeto para desencantarlo
+Your inventory — right-click an item to sell it	Tu inventario: clic derecho en un objeto para venderlo
+Your jewels grant	Tus joyas otorgan
+Your party	Tu grupo
+Your projectiles bounce off walls up to 2 times.\n15% less projectile damage.	Tus proyectiles rebotan en las paredes hasta 2 veces.\n15% menos daño de proyectiles.
+Your public IP. Friends on the internet reach it only once UDP {0} is forwarded in your router to this PC ({1}).	Tu IP pública. Los amigos de internet solo llegan a ella cuando UDP {0} está redirigido en tu router a este PC ({1}).
+Your reward from the last quest pays for an Azure forge.	La recompensa de la última misión paga una forja azur.
+Your router didn't open the port automatically — forward UDP {0} manually or use a VPN like Tailscale/Radmin.	Tu router no abrió el puerto automáticamente: redirige UDP {0} a mano o usa una VPN como Tailscale/Radmin.
+Your skills	Tus habilidades
+Your skills start at level 1 here. Learn a new one or level one up.  (1 / 2 / 3)	Tus habilidades empiezan aquí a nivel 1. Aprende una nueva o sube una de nivel.  (1 / 2 / 3)
+Your town between realities — ? opens the guide	Tu pueblo entre realidades: ? abre la guía
+Your town between realities. Walk up to a station and press F — or click a place in the Town list (left) to walk there.	Tu pueblo entre realidades. Acércate a una estación y pulsa F, o haz clic en un lugar de la lista del pueblo (izquierda) para ir allí.
+Ysolde's Furnishings	Mobiliario de Ysolde
+[Bug] 	[Error]
+[F] Return to the hideout	[F] Volver al refugio
+[Feature] 	[Función]
+[Idea] 	[Idea]
+[color=#e8b84a]Buy back for {0} gold[/color]	[color=#e8b84a]Recomprar por {0} de oro[/color]
+[color=#e8b84a]Seal: {0} gold + {1} {2}[/color]	[color=#e8b84a]Sello: {0} de oro + {1} {2}[/color]
+[color=#e8b84a]Sells for {0} gold[/color]	[color=#e8b84a]Se vende por {0} de oro[/color]
+[color=#{0}]Disenchants into {1} {2}[/color]	[color=#{0}]Se desencanta en {1} {2}[/color]
+\"Come back when you have cleared a reality beyond the first tier.\"\nTier 1 is always free at the Mirror.	\"Vuelve cuando hayas superado una realidad más allá del primer nivel.\"\nEl nivel 1 siempre es gratis en el Espejo.
+\"Every skill can be more than it is. First, though, you need the skill.\"\n\n	\"Toda habilidad puede ser más de lo que es. Pero antes necesitas la habilidad.\"\n\n
+\"Every skill can be more than it is. Gold buys the practice; the choices are yours.\"	\"Toda habilidad puede ser más de lo que es. El oro paga la práctica; las elecciones son tuyas.\"
+\"Gear you'll never wear still has worth, if you break it right.\"\n\n	\"El equipo que nunca te pondrás aún vale algo, si lo deshaces bien.\"\n\n
+\"Now make something. You pick the modifier; the forge guarantees it.\"\n\n	\"Ahora haz algo. Tú eliges el modificador; la forja lo garantiza.\"\n\n
+\"Shards... for those who have already walked through. Only those. Never more than I have.\"	\"Fragmentos... para quienes ya han pasado. Solo para ellos. Nunca más de los que tengo.\"
+\"Take one more. You'll be back.\"	\"Llévate uno más. Volverás.\"
+\"You have walked through tier {0}. Now we can deal.\"\n\n	\"Has pasado por el nivel {0}. Ahora podemos tratar.\"\n\n
+\n  → +{0:0}% item quantity, +{1:0}% item rarity	\n  → +{0:0}% de cantidad de objetos, +{1:0}% de rareza de objetos
+\nAt Lv {0} it evolves into {1} with {2}.	\nA Nv {0} evoluciona a {1} con {2}.
+\nEvolves {0} into {1} at Lv {2}.	\nEvoluciona {0} a {1} a Nv {2}.
+\nKeystones: 	\nPiedras angulares:
+\nPending items was full: {0}, the oldest, was sold for {1} gold to make room.	\nLos objetos pendientes estaban llenos: {0}, el más antiguo, se vendió por {1} de oro para hacer sitio.
+\nReady to evolve into {0}: the next big chest does it.	\nLista para evolucionar a {0}: el siguiente cofre grande lo hace.
+\nWhen the time runs out, the first card is taken for you.	\nCuando se acabe el tiempo, se coge la primera carta por ti.
+]Hold Alt for modifier tiers[/color][/font_size]	]Mantén Alt para ver los niveles de modificador[/color][/font_size]
+]Item Level 	]Nivel de objeto
+]No stat changes[/color]	]Sin cambios de estadísticas[/color]
+a card	una carta
+an Altered Reality — Tier {0}	una Realidad Alterada: nivel {0}
+attack speed	velocidad de ataque
+bleed duration	duración del sangrado
+bleed stacks per bleed	acumulaciones por sangrado
+cast speed	velocidad de lanzamiento
+chance for physical attacks to cause bleeding	probabilidad de que los ataques físicos causen sangrado
+chance to Freeze	probabilidad de congelar
+chance to Ignite	probabilidad de ignición
+chance to Shock	probabilidad de electrocutar
+chance to freeze	probabilidad de congelar
+chance to ignite	probabilidad de ignición
+chance to shock	probabilidad de electrocutar
+character · skills · passive tree	personaje · habilidades · árbol pasivo
+click a station to walk there  ·  M or Esc to close	haz clic en una estación para ir allí  ·  M o Esc para cerrar
+click to walk	clic para ir
+cold damage	daño de frío
+cold resistance	resistencia al frío
+critical strike chance	probabilidad de golpe crítico
+critical strike multiplier	multiplicador de golpe crítico
+damage taken	daño recibido
+dev build	versión de desarrollo
+dodge · sprint	esquiva · esprint
+e.g. 203.0.113.7:7777 — or paste the invite	p. ej. 203.0.113.7:7777, o pega la invitación
+edit permission	permiso de edición
+edit your town	editar tu pueblo
+elemental damage	daño elemental
+every socket can be filled — no more jewels drop	todos los engarces se pueden llenar: no caen más joyas
+favoured by	favorecido por
+fire damage	daño de fuego
+fire resistance	resistencia al fuego
+inventory · Crafting tab for orbs	inventario · pestaña Fabricación para los orbes
+keep 2	te quedas 2
+keep 2 items	te quedas 2 objetos
+keep 3	te quedas 3
+keep 3 items	te quedas 3 objetos
+less/more damage taken	menos/más daño recibido
+life and mana flasks	frascos de vida y maná
+life regeneration per second	regeneración de vida por segundo
+lightning damage	daño de rayo
+lightning resistance	resistencia al rayo
+local network or VPN	red local o VPN
+max level	nivel máx.
+maximum Life	vida máxima
+maximum Mana	maná máximo
+maximum life	vida máxima
+menu (settings, Edit HUD)	menú (ajustes, Editar HUD)
+more damage	más daño
+no UPnP router answered — it may be off in the router's settings	ningún router UPnP respondió: puede que esté desactivado en los ajustes del router
+no bonuses	sin bonificaciones
+no bonuses at all	ninguna bonificación
+no change	sin cambios
+no item yet · item level {0}	aún sin objeto · nivel de objeto {0}
+not empowered	sin potenciar
+of Damage leeched as Life	del daño robado como vida
+of Efficiency	de Eficiencia
+one of two	uno de dos
+only bosses of tier {0}+ drop more	solo los jefes de nivel {0}+ sueltan más
+path along X	camino a lo largo de X
+quest log	registro de misiones
+reality {0}, tier {1}	realidad {0}, nivel {1}
+recovery {0}	recuperación {0}
+reroll everything	relanzar todo
+same Wi-Fi / LAN	misma wifi / LAN
+sprint ×{0:0.##}	esprint ×{0:0.##}
+the Altar of Ascension	el Altar de la Ascensión
+the Altar of Ascension, in the temple	el Altar de la Ascensión, en el templo
+the Artificer	el Artífice
+the Artificer's Forge	la Forja del Artífice
+the Artificer's Forge, in the smithy	la Forja del Artífice, en la herrería
+the Bone-Crowned	el Coronado de Hueso
+the Ember-Sworn	el Juramentado de las Ascuas
+the Hollow King	el Rey Hueco
+the Mirror	el Espejo
+the Mirror of Realities	el Espejo de las Realidades
+the Mirror of Realities, in the plaza	el Espejo de las Realidades, en la plaza
+the Mirror-Born	el Nacido del Espejo
+the Shattered	el Destrozado
+the Survival Rift	la Grieta de Supervivencia
+the Tide-Caller	el Invocamareas
+the Undying	el Imperecedero
+the Veiled	el Velado
+the altar	el altar
+the character data could not be read	no se pudieron leer los datos del personaje
+the character data is empty	los datos del personaje están vacíos
+the forge	la forja
+the host	el anfitrión
+the host declined	el anfitrión lo rechazó
+the host didn't answer	el anfitrión no respondió
+the item could not be read	no se pudo leer el objeto
+the layout can't be read	no se puede leer la disposición
+the next visit	la próxima visita
+the party is setting off	el grupo está partiendo
+the router did not report a public address	el router no informó de una dirección pública
+the router refused the mapping (the port may be taken by another PC)	el router rechazó la redirección (puede que otro PC use el puerto)
+the stations changed	las estaciones han cambiado
+the town can only be edited while you're both in it	el pueblo solo se puede editar mientras estéis los dos en él
+the town isn't loaded	el pueblo no está cargado
+the world keeps running	el mundo sigue en marcha
+this PC	este PC
+this window	esta ventana
+tier 2	nivel 2
+tier 2 up to your best, tier {0}	del nivel 2 hasta tu mejor nivel, el {0}
+town map (click a place to walk there)	mapa del pueblo (haz clic en un lugar para ir allí)
+unknown class	clase desconocida
+use the station you're next to	usa la estación que tienes al lado
+walk there	ir allí
+your ally	tu aliado
+your skill	tu habilidad
+{0:0.##}% of Damage leeched as Life	{0:0.##}% del daño robado como vida
+{0:0.#}/s regen	{0:0.#}/s de regeneración
+{0:0} FPS  ·  {1:0.0} ms  ·  worst {2:0.0} ms	{0:0} FPS  ·  {1:0.0} ms  ·  peor {2:0.0} ms
+{0:0} s	{0:0} s
+{0:0} s — no answer yet. Gives up after {1:0} s.	{0:0} s: aún sin respuesta. Se rinde a los {1:0} s.
+{0:0} s — the host answered.	{0:0} s: el anfitrión ha respondido.
+{0:0}% increased gold found	{0:0}% más oro encontrado
+{0:0}% increased item quantity	{0:0}% más cantidad de objetos
+{0:0}% increased item rarity	{0:0}% más rareza de objetos
+{0:0}% increased {1}{2}	{0:0}% de {1}{2} aumentado
+{0:0}% less {1}{2}	{0:0}% menos {1}{2}
+{0:0}% more character experience	{0:0}% más experiencia de personaje
+{0:0}% more crafting orbs	{0:0}% más orbes de fabricación
+{0:0}% more monsters	{0:0}% más monstruos
+{0:0}% more {1}{2}	{0:0}% más {1}{2}
+{0:0}% reduced {1}{2}	{0:0}% de {1}{2} reducido
+{0:0}% stronger slow	{0:0}% más de ralentización
+{0:0}% · {1}/s	{0:0}% · {1}/s
+{0:0}/{1:0} xp	{0:0}/{1:0} xp
+{0:N0} g	{0:N0} o
+{0:N0} gold	{0:N0} de oro
+{0:N0} gold · {1} orbs	{0:N0} de oro · {1} orbes
+{0}   — done	{0}   — hecho
+{0}  Lv {1}	{0}  Nv {1}
+{0}  Lv{1}	{0}  Nv{1}
+{0}  Refunding a node costs {1} gold.	{0}  Reembolsar un nodo cuesta {1} de oro.
+{0}  [Shift+{1}]	{0}  [Mayús+{1}]
+{0}  {1} more to choose.	{0}  Quedan {1} por elegir.
+{0}  ·  Tab to close	{0}  ·  Tab para cerrar
+{0}  ·  T{1}	{0}  ·  N{1}
+{0} (duplicate) → {1:N0} gold	{0} (duplicado) → {1:N0} de oro
+{0} (support): {1}	{0} (soporte): {1}
+{0} (surplus) → {1} gold	{0} (sobrante) → {1} de oro
+{0} (the router stopped renewing the mapping)	{0} (el router dejó de renovar la redirección)
+{0} (tier {1}) died in {2:0.0} s	{0} (nivel {1}) murió en {2:0.0} s
+{0} / {1} XP	{0} / {1} XP
+{0} / {1} chosen	{0} / {1} han elegido
+{0} / {1} owned	{0} / {1} en propiedad
+{0} / {1} owned · {2}	{0} / {1} en propiedad · {2}
+{0} Lv{1}	{0} Nv{1}
+{0} Lv{1} ({2}) — {3}: {4}{5}	{0} Nv{1} ({2}): {3}: {4}{5}
+{0} Lv{1} [{2}]	{0} Nv{1} [{2}]
+{0} added to your inventory.	{0} añadido a tu inventario.
+{0} and {1}	{0} y {1}
+{0} at tier {1}: {2:N0} life	{0} en nivel {1}: {2:N0} de vida
+{0} cancelled it	{0} lo canceló
+{0} cards · keep {1} · item level {2}	{0} cartas · te quedas {1} · nivel de objeto {2}
+{0} chance to cause bleeding	{0} de probabilidad de causar sangrado
+{0} changed into something else	{0} se ha convertido en otra cosa
+{0} closed the party.	{0} ha cerrado el grupo.
+{0} crafting orbs	{0} orbes de fabricación
+{0} evolves	{0} evoluciona
+{0} faster Dodge recharge	Recarga de la esquiva {0} más rápida
+{0} faster projectiles	Proyectiles {0} más rápidos
+{0} faster to use	{0} más rápida de usar
+{0} gets back up!	¡{0} se levanta!
+{0} gold	{0} de oro
+{0} has fallen — the whole party is down · {1}	{0} ha caído: todo el grupo está en el suelo · {1}
+{0} hasn't allowed you to edit the town	{0} no te ha dado permiso para editar el pueblo
+{0} hasn't played the introduction	{0} no ha jugado la introducción
+{0} hits	{0} golpes
+{0} in hand — {1}	{0} en la mano: {1}
+{0} in storage · {1} laid	{0} en el almacén · {1} colocadas
+{0} in storage · {1} placed	{0} en el almacén · {1} colocadas
+{0} increased Area of Effect	{0} más área de efecto
+{0} increased Attack Speed	{0} más velocidad de ataque
+{0} increased Cast Speed	{0} más velocidad de lanzamiento
+{0} increased Cooldown Recovery	{0} más recuperación de enfriamiento
+{0} increased Critical Strike Chance	{0} más probabilidad de golpe crítico
+{0} increased Damage	{0} más daño
+{0} increased Experience gained	{0} más experiencia obtenida
+{0} increased Movement Speed	{0} más velocidad de movimiento
+{0} increased Pickup Radius	{0} más radio de recogida
+{0} increased Projectile Speed	{0} más velocidad de proyectiles
+{0} increased Skill Duration	{0} más duración de habilidades
+{0} increased {1}	{0} más {1}
+{0} is already opening a rift	{0} ya está abriendo una grieta
+{0} is down — back in {1:0} s, or hold E next to them to revive	{0} está en el suelo: vuelve en {1:0} s, o mantén E a su lado para revivirlo
+{0} is down — {1}; hold E next to them to revive	{0} está en el suelo: {1}; mantén E a su lado para revivirlo
+{0} is editing the town	{0} está editando el pueblo
+{0} is editing the town — wait until they're done	{0} está editando el pueblo: espera a que termine
+{0} is empty	{0} está vacío
+{0} is here	{0} está aquí
+{0} is opening {1}	{0} está abriendo {1}
+{0} is reviving you… {1:0.0} s	{0} te está reviviendo… {1:0.0} s
+{0} is reviving {1}	{0} está reviviendo a {1}
+{0} item cards, keep {1}	{0} cartas de objeto, te quedas {1}
+{0} items can't be altered	Los objetos {0} no se pueden alterar
+{0} kills	{0} muertes
+{0} left	quedan {0}
+{0} left the party	{0} ha salido del grupo
+{0} left — the run is over.	{0} se ha ido: la partida ha terminado.
+{0} less mana cost	{0} menos coste de maná
+{0} lets you edit the town (H)	{0} te deja editar el pueblo (H)
+{0} longer duration	{0} más de duración
+{0} minutes in the deep	{0} minutos en las profundidades
+{0} more area	{0} más área
+{0} more damage	{0} más daño
+{0} more damage, shards fly {1} slower	{0} más daño, las esquirlas vuelan {1} más despacio
+{0} more damage, {1} more mana cost	{0} más daño, {1} más coste de maná
+{0} more elemental damage	{0} más daño elemental
+{0} more to choose — press again to leave without them.	Quedan {0} por elegir: pulsa otra vez para irte sin ellos.
+{0} needs a common item	{0} necesita un objeto común
+{0} needs a magic item	{0} necesita un objeto mágico
+{0} needs a rare item	{0} necesita un objeto raro
+{0} needs it: take that back first	{0} lo necesita: recupera ese antes
+{0} of {1} left. He restocks after you clear {2} realities once his cloth is bare.	Quedan {0} de {1}. Repone tras superar {2} realidades cuando su manta se queda vacía.
+{0} power-up	Power-up {0}
+{0} props in town · {1} decorations in storage	{0} objetos en el pueblo · {1} decoraciones en el almacén
+{0} reached gem level {1}	{0} ha llegado al nivel de gema {1}
+{0} reached level {1}: one more point for its tree.	{0} ha llegado al nivel {1}: un punto más para su árbol.
+{0} revived {1}!	¡{0} ha revivido a {1}!
+{0} rift was cancelled — {1}	La grieta {0} se ha cancelado: {1}
+{0} s	{0} s
+{0} sent to Pending items (your inventory is full) — take it from the stash in the hideout.	{0} enviado a Objetos pendientes (tu inventario está lleno): recógelo del alijo en el refugio.
+{0} shorter cooldown	{0} menos enfriamiento
+{0} slain in {1:0.0} s	{0} abatido en {1:0.0} s
+{0} stands where nothing can	{0} se alza donde nada puede
+{0} started the fight · the way back is sealed	{0} ha empezado el combate · el camino de vuelta está sellado
+{0} tiles: {1} owned before, {2} after	{0} baldosas: {1} en propiedad antes, {2} después
+{0} took back editing rights	{0} ha retirado los permisos de edición
+{0} · Odran sells it for {1} gold	{0} · Odran lo vende por {1} de oro
+{0} · being revived	{0} · siendo revivido
+{0} · down	{0} · en el suelo
+{0} · {1} m	{0} · {1} m
+{0} — level {1} {2}   ·   {3} / {4} points   ·   {5} free	{0}: nivel {1} {2}   ·   {3} / {4} puntos   ·   {5} libres
+{0} — tier {1}\n{2}, level {3} {4}\n{5} / {6} monsters slain  ·  {7} portals left	{0}: nivel {1}\n{2}, {4} de nivel {3}\n{5} / {6} monstruos abatidos  ·  quedan {7} portales
+{0} — {1} of {2} points free	{0}: {1} de {2} puntos libres
+{0} — {1}{2}  ·  click to walk there	{0}: {1}{2}  ·  haz clic para ir allí
+{0} → Lv {1}	{0} → Nv {1}
+{0}'s hideout	Refugio de {0}
+{0}'s party is coming back from the {1}	El grupo de {0} vuelve de {1}
+{0}'s party is in the {1} · {2} — wait here, you're asked next time	El grupo de {0} está en {1} · {2}: espera aquí, se te preguntará la próxima vez
+{0}/s regen	{0}/s de regeneración
+{0}: {1:N0} damage every {2:0.#} s	{0}: {1:N0} de daño cada {2:0.#} s
+{0}: {1} owned before, {2} after	{0}: {1} en propiedad antes, {2} después
+{0}\nReward: {1}	{0}\nRecompensa: {1}
+{0}\nWaiting for the others…	{0}\nEsperando a los demás…
+{0}{1}   Lv {2}	{0}{1}   Nv {2}
+— Altered Realities —	— Realidades Alteradas —
+— empty skill —	— habilidad vacía —
+→ {0}{1} {2} (tier {3})	→ {0}{1} {2} (nivel {3})
+◆ Artificer's Seal	◆ Sello del Artífice

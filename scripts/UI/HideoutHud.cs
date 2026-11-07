@@ -536,12 +536,12 @@ public partial class HideoutHud : CanvasLayer
             Color face = _hover ? new Color(1f, 0.95f, 0.82f) : new Color(0.88f, 0.84f, 0.75f);
             DrawRect(new Rect2(cap.Position + new Vector2(0f, 3f), cap.Size), new Color(0.35f, 0.3f, 0.25f));
             DrawRect(cap, face);
-            DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + 13f), Key, HorizontalAlignment.Center, cap.Size.X, 11, new Color(0.12f, 0.1f, 0.08f));
+            DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + 13f), ArpgGame.Core.Loc.T(Key), HorizontalAlignment.Center, cap.Size.X, 11, new Color(0.12f, 0.1f, 0.08f));
             if (Badge?.Invoke() is > 0 and var n)
             {
                 Vector2 c = new(cap.End.X - 3f, cap.Position.Y + 3f);
                 DrawCircle(c, 6f, UiTheme.Ember);
-                DrawString(font, c + new Vector2(-6f, 3.5f), n.ToString(), HorizontalAlignment.Center, 12f, 9, Colors.White);
+                DrawString(font, c + new Vector2(-6f, 3.5f), ArpgGame.Core.Loc.T(n.ToString()), HorizontalAlignment.Center, 12f, 9, Colors.White);
             }
         }
     }
@@ -607,8 +607,8 @@ public partial class HideoutHud : CanvasLayer
             }
 
             DrawRect(new Rect2(0f, 5f, 3f, Size.Y - 10f), Def.Accent);
-            DrawString(font, new Vector2(9f, 12f), Def.Name, HorizontalAlignment.Left, Size.X - 46f, 12, _hover ? Colors.White : UiTheme.Text);
-            DrawString(font, new Vector2(9f, 24f), _where, HorizontalAlignment.Left, Size.X - 46f, 10, UiTheme.TextDim);
+            DrawString(font, new Vector2(9f, 12f), ArpgGame.Core.Loc.T(Def.Name), HorizontalAlignment.Left, Size.X - 46f, 12, _hover ? Colors.White : UiTheme.Text);
+            DrawString(font, new Vector2(9f, 24f), ArpgGame.Core.Loc.T(_where), HorizontalAlignment.Left, Size.X - 46f, 10, UiTheme.TextDim);
             // A quest's marker wins over the ascendancy-points dot (the altar has both).
             if (_quest != QuestMarker.None)
             {

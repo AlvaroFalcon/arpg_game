@@ -1,0 +1,2465 @@
+   ({0} more after this)
+   ·   Banish: {0} left (Ctrl + number)   ·   Skip: {1} left (S)
+  (Shift + number)
+  (sealed)
+  ·  Quest: {0}
+  ·  {0:0}% crits
+  · {0} pt
+ (playground)
+ (shared, party of {0})
+ (tier {0})
+ Added damage effectiveness {0:0}%.
+ Orb
+ [font_size=11][color=#
+ [font_size=11][color=#e8b84a](sealed)[/color][/font_size]
+ increased
+ less
+ more
+ of your best cleared tier
+ or 
+ · J opens your quests
+ · New quest
+ · Quest in progress
+ · Quest ready to turn in
+ · chest at {0} min deep
+ · cooldown {0:0.#} s
+ · crafted
+ · fits {(TagText(o).Length > 0 ? TagText(o) : 
+ — the seal breaks
+% more
+'{0: key)}' is not an answer to the cash-out offer
+'{0}' does not apply to their build
+'{0}' is not on their row
+(?<=[a-z])(?=[A-Z])
+(?<=[a-z])([A-Z])
+(?<g{0}>.+?)
+(their router opens the port by itself when it can), or a VPN both of you run — Tailscale, Radmin VPN, ZeroTier.
+).Name} starting point
+)}  {f.Name} — {f.Description}
+)} — reach the Ember Colossus and break it
+)}in the game, unlocked as your character levels. A bought gem goes straight to your skills (K) at level 1.\n\n
+)}{Number(affix.Value)}{Unit(affix.Definition.Type)} {SpacedStatName(affix.Definition.Stat)}
+)}{label}{node.Describe(i)}
+)}{node.Name}: {node.Description}
+**Buy skills:** every skill {(Features.SupportGems ? 
+**The choice of ascendancy is permanent.** Its nodes can be refunded later for gold.
+**Your skills:** raise a skill's level for gold, up to {0}. Every level is a point for its upgrade tree: left click spends it, right click takes it back for a little gold.
++ Buy tab ({0} gold)
++ skill for the totem
++ support
++1 Ascendant Orb
++1 Banish every run
++1 Dodge charge
++1 Projectile for all projectile skills\n+1 orbiting blade
++1 Skip every run
++1 charge: blink twice before the cooldown
++1 point for the tree, {0:0}% more damage and {1:0}% more mana cost per level
++1 projectile
++1 projectile, 10% less damage
++1 projectile.
++1 totem at once, 15% less damage
++15% chance to ignite and shock, +5% to freeze
++15% to all elemental resistances.
++150 armour, 10% increased maximum life.
++2 Dodge charges, 50% faster Dodge recharge.\nDodging releases a Frost Nova.\nYou take 15% more damage.
++2 orbiting objects.\n10% less damage.
++2 projectiles, 15% less projectile damage.
++2 projectiles, fanned out.\n20% less damage.
++20 maximum Rage.
++20% to all elemental resistances.
++25% to all elemental resistances.
++30% to all elemental resistances and 10% less physical damage taken.
++300 armour and 15% less damage taken.
++40 maximum mana, +3 mana regenerated per second.
++40% chance to ignite with Fire hits.
++40% chance to shock with Lightning hits.
++40% critical strike multiplier.
++5 Life gained per enemy killed.\nLife on kill is tripled.\nYou cannot regenerate Life.
++50% Luck: more 4th cards, rarer power-ups, bigger chests.\n10% less damage.
++50% critical strike multiplier.
++60 Energy Shield.\n15% less maximum Life.
++8 life regenerated per second.
++{0:0.#} Life gained per enemy killed
++{0:0.#} Life regenerated per second
++{0:0} blade{(v > 1f ? 
++{0:0} {1}{(m.Value > 1 ? 
++{0:0}% chance a boss shard is one tier higher
++{0:0}% chance for magic and rare packs
++{0:0}% chance of an extra boss shard
++{0:0}% item quantity · +{1:0}% item rarity
++{0:0}% to its effect
++{0:N0} gold
++{0} Armour
++{0} Ascendant {(r.BonusAscendant == 1 ? 
++{0} Critical Strike Multiplier
++{0} Energy Shield\n(takes hits before Life, recharges after 2 s unhurt)
++{0} Luck\n(a 4th card, rarer power-ups, bigger chests)
++{0} chains, +{1} pierce
++{0} chance to Ignite with Fire hits
++{0} chance to Shock with Lightning hits
++{0} chance to freeze
++{0} chance to ignite
++{0} chance to shock
++{0} life, +{1} armour
++{0} mana, +{1:0.##} mana/s
++{0} maximum Life\n{1} increased maximum Life
++{0} more · J
++{0} to all Elemental Resistances
++{0}% critical chance
++{0}% more damage than the previous level.
+, (c, v) => c.ExtraCount += (int)v, 
+, 2 h lease, renewed while you host
+, cls.Ascendancies.Select(id => ClassCatalog.GetAscendancy(id)?.Name ?? id))}
+, fits)}
+, keys.Take(4))}
+, others)}
+, {0}% come as magic monsters
+. Right-click to empty.
+.\nItems +{0} item levels.\nHighest cleared: {1}.
+0 kills
+1 Crown Orb
+1 Tempest Orb
+1 card guaranteed Rare or better
+1 crafting orb
+1 · Choose a base
+1.  Reaching the host's PC
+100% increased Pickup Radius.\n20% increased Experience gained.\n10% less damage.
+115 Gold
+12% increased movement speed.
+15% increased attack speed.
+15% increased maximum life.
+2 Crown Orbs
+2 Sundering Orbs
+2 Tuning Orbs
+2 cards guaranteed Rare or better
+2 · Choose the modifier it will carry
+2.  Checking the join code
+20% less damage taken.\n15% less movement speed.
+20% more Movement Speed, +1 Dodge charge.\nYou take 10% more damage.
+20% more damage while above 90% life.
+20% shorter cooldown, and the active heals 10% more of your life
+23456789ABCDEFGHJKMNPQRSTUVWXYZ
+25% chance to block hits.
+25% increased critical chance.
+25% less Elemental damage taken.\n15% more Physical damage taken.
+25% less cast time and cooldown.
+25% more monsters, and a higher crowd cap.
+3 Ascendant Orbs
+3 Ash Orbs
+3 Tempest Orbs
+3 cards guaranteed Rare or better
+3 · Forge
+3.  Joining the party
+30% increased area of effect for curses.
+30% increased cold damage.
+30% increased critical chance.
+30% increased curse damage.
+30% increased fire damage.
+30% increased holy damage.
+30% increased lightning damage.
+30% increased projectile damage.
+30% increased projectile speed.
+30% less area of effect.\n45% more damage.
+30% more damage against rare, unique-rare and boss enemies.
+30% more movement speed for 3 s after arriving
+4 cards guaranteed Rare or better
+4 item cards, keep 1
+40% increased mana regeneration, 10% reduced mana costs.
+40% more area for melee strikes.\n10% less damage.
+40% more area, 10% less damage
+40% more damage with attacks.\nCannot inflict ailments.
+40% more damage, drains twice the life
+40% shorter cooldown, 30% shorter range
+45% more area of effect.
+45% more damage.\nCannot inflict ailments.
+5 Gold
+5 cards
+5 cards guaranteed Rare or better
+5 item cards
+50% more Armour.\n10% less attack speed.
+50% more projectile speed.\n15% more damage.
+60% more damage.\n40% less maximum Life.
+60% more skill duration.
+8% increased attack and movement speed.
+; supports never level
+A boss every 2 minutes
+A challenger rises
+A far wider arc that swings twice.
+A full circle of knives that pierce.
+A golden chest for everyone
+A golden chest!
+A heavy overhead blow that shatters frost over a wide arc. Cold hits chill enemies.
+A herald of the dead answers the slaughter
+A hostile host
+A jewel comes back out for free as long as the rest stay connected, so experiment. Jewels work in Altered Realities, not in the Survival Rift. Reality bosses drop them.
+A jewel for the Mirror
+A join code is {0} letters or digits (no 0, O, 1, I or L).
+A join code is {0} letters or digits, like K7Q-29M (there is no 0, O, 1, I or L).
+A lesser keystone: a smaller trade that bends one part of your build.
+A lightning-charged thrust in a narrow arc. Lightning hits can shock.
+A mixed horde
+A modifier of your choosing
+A new reality takes shape…
+A party is at most {0} players. Ask someone to leave the lobby, then try again.
+A party of {0}{(bonus.Length > 0 ? $
+A portal home opens where the Colossus fell. Leave whenever you want.
+A quarter of monsters explode on death
+A reroll costs {0} gold now
+A ring of ice bursts around you, chilling enemies. (Its tree can make it push them back.)
+A short introduction — follow the objectives on the left
+A surge rises
+A thought about the game: balance, feel, art, anything.
+A tier-2 shard costs {0} gold.
+A tier-2 shard costs {0} gold; tier {1} costs {2:N0}.
+A tier-{0} Mirror Shard changes hands.
+A training dummy: no armour, no resistances, never dies
+A wide swing that hits every enemy in front of you. Scales with weapon damage.
+A wider nova that pulses a second time.
+A worker of wonders. Fragile up close, devastating from range with the elements and with curses.
+ACTIVE ({0})
+ARPG GAME
+ARPG co-op
+Abandon reality
+Abandon run
+Abundance
+Accelerant
+Acrobatics
+Active: also +30 thorns damage
+Active: also 15% increased movement speed
+Active: also 15% less physical damage taken
+Active: also 2% of damage leeched as life
+Active: also 20% increased attack and cast speed
+Active: also 20% increased attack speed
+Active: also 20% less elemental damage taken
+Active: also 30% increased movement speed
+Active: {0:0}% less damage taken on top
+Address
+Address copied.
+Adds a random modifier to a magic item with room for one.
+Adds a random modifier to a rare item with room for one.
+Admin mode (testing: max-level test characters)
+Aegis
+After 5 wrong codes in a minute the host ignores your address for a minute.
+Aftershock
+Agility
+Ailments
+All
+All skills deal Cold damage.\n25% more damage, +15% chance to Freeze.\nFire and Lightning bonuses no longer apply.
+All skills deal Fire damage.\n25% more damage, +15% ignite chance.\nCold and Lightning bonuses no longer apply.
+Allies on the maps
+Allocate
+Allocated
+Allocated {0} nodes.
+Allocated — right-click to refund (free)
+Allow editing
+Ally
+Already at full life
+Already at full mana
+Already at its highest rank
+Altar
+Altar of Ascension
+Altered Realities with friends arrive in the next update
+Altered Realities with friends arrive in the next update. The Survival Rift already opens for the whole party.
+Amulet
+An **ascendancy** is your class's specialisation. As a {0} you can become {1}. Each has {2} nodes with effects found nowhere else.\n\n
+An Ember Colossus
+An elite approaches
+An orb is not consumed when the flask is already full
+Ancestral Ring
+Another heart kindles
+Any
+Any: a mixed horde from every reality
+Arc
+Arc Blast
+Arc Weaving
+Arcana
+Arcane
+Arcane Charges
+Arcane Charges — every spell cast grants a charge (cast speed and spell damage). Charges drain slowly.
+Arcane Focus
+Arcane Torrent
+Area
+Area Damage
+Area of Effect
+Area of effect
+Arehucaz
+Arehucaz sells Mirror Shards for gold, but only of tiers you've already cleared: {0}. Tier 1 is always free at the Mirror, so he doesn't sell it. {1}\n\n
+Arehucaz, by the north gate
+Arena
+Armour
+Armour {0:N0}: a 100 physical hit deals {1:0}
+Armour, axes and stubbornness. Wades into the pack and hits everything in front of it.
+Armoured
+Artifice
+Artificer
+Artificer's Bench
+Artificer's Forge
+Artificer's Seal
+Artificer's Seal — protect a modifier from the next orb
+Ascend
+Ascendancy
+Ascendant Orb
+Ascending Echo
+Ascends into: {string.Join(
+Ash
+Ash Orb
+Ashen
+Ashen stone
+Ask for the code in their lobby now: it changes with every new lobby and with New code.
+Ask the host to open a new lobby and send the new invite: the code changes every time.
+Asking {0} for the editor…
+Attack
+Attack Speed
+Attack name
+Attack speed
+Attack speed, critical strikes and swift feet. The duellist.
+Attributes
+Attributes and derived bonuses
+Attunement
+Audio
+Aura. While it is in a slot: +10 to fire, cold and lightning resistance. Use: +40 more to all three for 6 s.
+Aura. While it is in a slot: +3% critical strike chance and +20% critical strike multiplier. Use: +10% chance and +60% multiplier for 5 s.
+Aura. While it is in a slot: +40 armour and 30% increased armour. Use: 80% more armour for 6 s, and nothing can knock you back.
+Aura. While it is in a slot: 12% increased maximum life. Use: heals 25% of your maximum life, and you take 30% less damage for 4 s.
+Aura. While it is in a slot: 15% increased fire, cold and lightning damage. Use: 30% more elemental damage for 6 s. Its tree can focus it on one element.
+Aura. While it is in a slot: physical attacks have +15% chance to cause bleeding, and bleeds last 25% longer. Use: for 6 s every bleed adds 3 stacks instead of 1, and +20% bleed chance.
+Auras
+Auras, totems and stacks
+Auto-cast timing
+Automatic
+Avarice
+Avatar of Fire
+Avatar of Frost
+Azure Dust
+Azure banner
+Azure forging
+Back
+Back in your hideout
+Back to co-op
+Back to the hideout — you keep everything you collected
+Back up in {0:0} s, or an ally revives you · {1}
+Banish  [Ctrl+{0}]
+Banished: {0}
+Banish{0}
+Bare Steel
+Barrage
+Barrel
+Bastion
+Bat
+Battery
+Battle Hardened
+Battlemage
+Become a {0}
+Become a {0}: this is permanent. Click again.
+Belt
+Bench
+Bite
+Bitter
+Blade Count
+Blade Dancer
+Blade Storm
+Blaze
+Bleed
+Blight Field
+Blink
+Blinks {0} farther
+Block
+Blocked
+Blood
+Blood Frenzy
+Blood Magic
+Blood Nova
+Blood Pyre
+Bloodthirst
+Bloom
+Body
+Bone Bolt
+Bone Dagger
+Bone Herald in {0}
+Bone Spiral
+Boots
+Borderless
+Boss
+Boss items roll {0:0}% rarer
+Boss name
+Boss: phases and telegraphed attacks
+Bosses drop {0:0} extra item{(a == 1f ? 
+Bosses drop {0:0}% more gold
+Bottom of the Rift
+Bought a {0}
+Bought back {0}
+Bought {0}. It's in your skills (K) at level 1.
+Bound
+Brazier
+Breaking it down
+Brittle
+Broadheads
+Browse
+Brutality
+Brute
+Bug
+Bulwark
+Bulwark of Faith
+Burning bright
+Burns every modifier away, leaving a common item.
+Bursts on impact: {0:0} px, half the hit
+Bushido
+Butcher
+Button
+Buy
+Buy a Mirror Shard from Arehucaz
+Buy a skill from Escaldón
+Buy skills
+Buy your first skill in the Buy skills tab.
+Buy · {0:N0} g
+Buy · {0}g
+Buyback
+Buying it back costs {0} gold
+C · K · P
+COMPLETED ({0})
+Call the Brood
+Calls down a meteor at the target after a short delay. Huge damage, small area.
+Can edit
+Can't buy yet\n
+Can't die
+Canal
+Canal water
+Cancel
+Cannot be knocked back
+Cash-out offer and the infinite Rift
+Cast Speed
+Cast speed
+Caster
+Cataclysm — {0} slain
+Caverns
+Chain
+Chain Reaction
+Challenge
+Challenge complete: {0} — {1}
+Challenge_{0}
+Challenges
+Challenges  {0}/{1}
+Change
+Change address or code
+Character
+Character level
+Character level {0} (passive points to spend: {1})
+Character select
+Character: level {0} {1}, best tier {2}
+Charge
+Charged
+Charges from {0:0} px
+Chases and hits on contact
+Check the code with the host, then try again.
+Chest · 
+Chip_{0}
+Choose
+Choose an ascendancy
+Choose an ascendancy and spend ascendancy points.
+Choose an ascendancy at the Altar of Ascension
+Choose an upgrade  (1 / 2 / 3 / 4) — Luck gave you a fourth card
+Choose an upgrade  (1 / 2 / 3)
+Choose one item to keep
+Choose one: excludes {string.Join(
+Choose who plays with friends
+Choose your first skill
+Choose your hero
+Choose your path, {0}. This choice is permanent.
+Choose {0} items to keep
+Choosing the skill for Space: movement skills only (Blink, Leap Slam). Empty, Space is the dodge roll. Right-click to empty.
+Choosing the skill for {0}. Escaldón raises skill levels for gold
+Choosing what the totem on {0} casts: any skill that hits, with its own level and tree. Right-click to empty.
+Cinder Skin
+Claim reward
+Claimed
+Class
+Clear a tier-{0} reality first.
+Clear monsters
+Cleared
+Cleave
+Click
+Click again to confirm
+Click an orb, then click an item. Shift keeps it in hand.
+Click to pick it up, then click an item · Shift keeps it in hand · right-click puts it away
+Clock
+Close
+Close (Esc)
+Close lobby
+Close the party
+Close the reality for everyone
+Co-op
+Co-op UPnP: {0}
+Co-op UPnP: {0}{(ok ? $
+Co-op is unavailable (no session service).
+Co-op is unavailable (the join-code check could not be set up).
+Co-op realities
+Co-op: a malformed party message ({0}) from the host was dropped: {1}
+Co-op: could not read {0}'s character: {1}
+Co-op: could not show {0} in the hideout: {1}
+Co-op: {0}
+Cobblestone
+Codes never contain 0, O, 1, I or L. Case and the dash don't matter.
+Cold
+Cold Conversion
+Cold Current
+Cold Damage
+Cold Resistance
+Cold resistance
+Collect the loot, then press {Key(
+Collect your loot — press F at the portal to go home
+Collector of forms
+Colossal Heart
+Colossus
+Combo
+Combo — consecutive hits build stacks (attack speed and critical chance). Stop hitting and they fall away.
+Combust
+Comet
+Compact: numbers only
+Compared to {0}:
+Concentrated Effect
+Conduction
+Conduit
+Connected — checking the join code…
+Connected — joining the party…
+Connecting to {0}:{1}…
+Consecration
+Contact hit {0:N0} every {1:0.#} s
+Contagion
+Controls
+Converts the damage to physical: 15% more damage and +25% chance to cause bleeding
+Converts the damage to {0}
+Converts the skill's damage to Cold.\nCold hits chill (slow) enemies.
+Converts the skill's damage to Fire.\n+15% chance to ignite.
+Converts the skill's damage to Lightning.\n+15% chance to shock.
+Converts {0} of the damage to cold (can chill)
+Cooldown Recovery
+Cooldown recovery
+Copied to the clipboard.
+Copper Amulet
+Copper Ring
+Copy
+Copy invite
+Copy invite (address + code)
+Copy text
+Corpse
+Corruption
+Costs {0} gold and {1} {2} (seal #{3} on this item)
+Could not connect to {0}:{1} ({2}).
+Could not host on port {0} ({1}). Is another game using it?
+Couldn't look it up — search \"what is my IP\" in a browser.
+Couldn't reach the host
+Craft
+Crafting
+Crate
+Crater
+Create & play
+Create a character
+Crimson banner
+Critical Strike Chance
+Critical Strike Multiplier
+Critical chance
+Critical multiplier
+Critical strikes
+Crown Orb
+Crowned Spoils
+Crucible
+Cryomancy
+Crypt stone
+Ctrl
+Curse of Elements
+Curse of the World
+Cursed enemies also take 15% more damage of every kind
+Cursed enemies are also chilled.
+Cursed enemies burst when they die, for 10% of their maximum life
+Curses
+Curses every enemy in an area: their fire, cold and lightning resistances drop by 25 for 6 s.
+Curses every enemy in an area: they move 35% slower for 5 s.
+Curses last 50% longer and deal 30% more damage.
+Curses that hurt, spread and break resistances.
+Curses the enemy nearest the cursor with a corruption that eats it away: shadow damage every second for 6 s. No resistance stops it.
+DPS meter · F3
+Damage
+Damage numbers
+Damage taken
+Damage types
+Damage {0:0.#} · use {1:0.00} s
+Danger {0}
+Danger {0} · {1}
+Dangerous Company
+Dark Arts
+Deadly
+Deadly Precision
+Deal
+Deaths
+Deaths and revives
+Decline (cancels it for everyone)
+Decorations
+Decorator
+Deep Cuts
+Deep Wounds
+Deeper still
+Defeat the boss of a tier {0} (or higher) Altered Reality to earn your first {1} ascendancy points. A tier {2} boss grants {3} more.
+Defence
+Delete
+Delete — sure?
+Detonates the ignites on every enemy in a circle: all the fire damage their stacks had left lands at once, 30% stronger.
+Detonation
+Devotion
+Dexterity
+Different game versions
+Discipline
+Disenchant an item at the Artificer's Forge
+Disenchant gear into dust and forge items with a chosen modifier.
+Disenchanted from common items. Pays for forging.
+Disenchanted from magic items. Pays for forging.
+Disenchanted from majestic and set items. Pays for the finest forging.
+Disenchanted from rare items. Pays for forging.
+Display
+Distance
+Dodge
+Dodge charge
+Dodge charges
+Dodge recharge speed
+Dodging a hit in the first 0.2 s of a roll refunds the charge and makes your next hit deal 100% more damage.
+Done
+Done: turn it in at {0}
+Double Strike
+Douse
+Drag
+Drag a panel to move it; drag its corner or use the wheel to resize. Esc or Done saves.
+Drag anything to move it — stations too. Right-click a decoration to put it in storage. WASD to walk around.
+Drains {0} less life
+Dread
+Drezzik
+Drop tables (cascade)
+Drowned stone
+Duelist
+Dust
+E prompt and station panels
+Each Mirror Shard opens one Altered Reality of its tier. Bosses drop shards of the same tier or higher.
+Each detonated enemy keeps 3 of its bleed stacks
+Each detonated enemy keeps 3 of its ignite stacks
+Each detonation splashes 35% of its damage around and ignites what it hits
+Each detonation splashes 35% of its damage around and makes what it hits bleed
+Earthshaker
+Echo
+Echoing Mind
+Edge
+Edit HUD
+Edit hideout
+Edit permission
+Edit town
+Effects
+Effects volume
+Efficiency
+Elemental
+Elemental 
+Elemental Body
+Elemental Damage taken
+Elemental Focus
+Elemental Mastery
+Elemental Overload
+Elemental Shell
+Elemental Storm
+Elemental Tips
+Elemental Ward
+Elemental damage taken
+Elemental hits have a 20% chance to also inflict every other elemental ailment.
+Elementalist
+Elements
+Elites burst when they die. Step away.
+Elusive
+Ember
+Ember Blades
+Ember Colossus in {0}
+Embers
+Embers Remain
+Empower
+Empower ({0} gold)
+Empowered
+Empowered:\n  
+Empty slot — equipping adds:
+End the run
+End the run for everyone
+End the run for everyone?
+Endless waves: survive as long as you can.
+Enemies
+Enemies within 140 px take 12% more damage from you.
+Enemies you kill explode, dealing 20% of their\nmaximum Life as Fire damage around them.
+Enemy
+Energy Shield
+Engine notes
+English
+Enter creates · Esc goes back
+Enter the Rift
+Enter the Survival Rift
+Equipment
+Esc
+Esc → skip the introduction
+Escaldon
+Escaldón
+Escaldón's craft
+Escaldón, east of the plaza
+Español
+Ethereal Blades
+Every item breaks down into the dust of its rarity: grey from common, azure from magic, gilded from rare, prismatic from majestic and set items. Dust pays for forging.
+Every minute survived adds gold, orbs, item cards and items to keep.
+Every minute: more gold, orbs, item level and rarity
+Every reality's monsters, at tier {0} (monster level {1}). Pick one for its numbers.
+Every spell repeats one additional time.\n35% less cast speed.
+Everyone else goes back to their main menu. You stay here, playing alone.
+Everyone goes home with their reward.
+Everyone goes to your hideout. Friends can still join from there, and anyone can open a rift for the party.
+Everyone in the hideout is asked to join; you set off with whoever does, within {0:0} s.
+Everyone needs the same version. Update the game from the launcher (both of you), then try again.
+Everyone plays their own saved character in co-op, and keeps what they find. Create one (it takes a few seconds), then come back here to host or join.
+Everything below is yours the moment you leave. You can come back to the Rift any time.
+Everything flies to you
+Everything you buy is stored for your whole account. Press H in the hideout to pave floors and place decorations.
+Evolve 5 skills (over any runs).
+Evolve a skill.
+Evolved: {0}
+Evolved: {0} → {1}
+Excludes {0}: only one of them
+Expanse
+Experience gain
+Experience gained
+Explodes for {0:N0} in {1:0} px
+Exposure
+Exsanguinate
+Extended Duration
+Extra projectiles
+F — talk to {0}
+FIND THE LIGHT!
+Faction / friendly fire
+Famine
+Fan
+Fan of Blades
+Fang
+Far Step
+Faster Casting
+Faster Projectiles
+Fault
+Fault Line
+Fear cards (up to {0}, +{1}% rewards each)
+Fear_{0}
+Fearless
+Feast
+Feature request
+Ferocity
+Find my public IP
+Find your feet
+Fire
+Fire Conversion
+Fire Damage
+Fire Fan
+Fire Resistance
+Fire resistance
+Fire, cold and lightning mastered one by one, and the mana to cast them.
+Fire-touched
+Fireball
+Firestorm
+First blood
+Fit tree
+Fits my skills
+Fits your: {string.Join(
+Flame Beams
+Flame Edge
+Flasks
+Flasks and refill orbs
+Fleet Foot
+Flicker
+Floor tiles (packs of {0})
+Floor tiles and decorations for your town.
+Flow
+Flower bed
+Flurry
+Flux Shard
+Focus
+For friends on the internet once the port is forwarded (asks api.ipify.org).
+Forge
+Forge an item
+Forged items are item level {0}. Clear higher reality tiers to forge better tiers.
+Forged {0}
+Fork
+Form
+Fortify
+Fortune
+Four more shards that pierce two enemies.
+Frailty
+Frame budget pass
+Free — waiting for a friend
+Freeze chance
+Frenzy
+Friends who join appear here in your town.
+From {0}
+From {0} · {1}
+Frost
+Frost Aura
+Frost Blades
+Frost Nova
+Frost Shards
+Frostbinder
+Frostbite
+Frostfire
+Frozen Arrival
+Full Quiver
+Full life, mana and cooldowns
+Full: tags, skill icons, big-hit flash
+Fullscreen
+GET CLOSE!
+GET OUT!
+Gale
+Gameplay
+Garden
+Gate
+Gear up
+Getting up in {0} s… or wait for an ally
+Ghost Step
+Gilded Dust
+Gilded Glass
+Gilded forging
+Gilded mosaic
+Girth
+Glacial Hammer
+Glacier
+Glacier Focus
+Glass Cannon
+Gloom
+Gloves
+Go to the hideout
+Go to the hideout — {0} players
+Godot 4 · C# · art made with EasyPixel
+Gold
+Gold   {0}
+Gold beneath the ash
+Gold {0:N0}  ·  Gems go to your skills (K) at level 1, not to your bag.
+Gold: {0:N0}
+Gold: {0}
+Graft Shard
+Grasp
+Grass
+Grave
+Grave Circles
+Great keystone
+Great keystones change how your whole build works. Choose carefully.
+Greed
+Greed ×{0}
+Grey Dust
+Grey forging
+Greyed-out skills unlock at a higher character level.
+Grim
+Grounded
+Grow stronger
+Guardian defeated
+Guide
+HD-2D with flat figures
+HUD: top-right corner
+Haemorrhage
+Hailstorm
+Half an hour of night
+Halveth
+Haste
+Hasted
+Hawk Eye
+Hazards
+He keeps {0} shards on his cloth. They come back after {1} more cleared realities, or at once for {2:N0} gold. Buy from him when bosses haven't dropped the tier you want to run.
+He never sells a tier above your best cleared one.
+He reaches into the dark and the cloth is full again.
+Healed, and a chest each
+Health
+Heart of embers
+Heavy Head
+Hedge Ward
+Helmet
+Hemophilia
+Hemorrhage
+Hero
+Hero statue
+Hex
+Hideout
+Hideout HUD
+Highest tier cleared: {0}  ·  owned: {(t2 == 1 ? 
+His wares are already full.
+Hit something to start. A pause of 5 s starts a new fight.
+Hitting with a different element than your last hit grants a stack of 8% more elemental damage (max 5, 4 s).
+Hoarder's Reflection
+Hoarfrost
+Hold Alt
+Hold F to revive {0}
+Hold {Key(
+Hollow
+Holy Aura
+Holy light, healing and elemental wards. Faith with a hammer.
+Home
+Hone skills
+Hordes
+Host
+Host a game
+Host a party or join one — up to {0} players, each with their own character and loot.
+Host lobby
+Host's address
+Hosting on port {0}.
+How do you want to play?
+How high a tier you can forge depends on the highest reality tier you've cleared, so the forge keeps pace with you.
+Howl
+Hud
+HudMovable_{0}
+Hunter
+Hurls a fan of ice shards. Cold hits chill enemies.
+Hurls a slow ball of fire. Fire hits can ignite. (Its tree can make it burst on impact.)
+INTRODUCTION  ·  {0} / {1}
+Iaido
+Ice
+Icon
+Idea
+If you fall, you keep the reward you had.
+If you typed wrong codes several times, wait a minute: the host ignores an address for a minute after 5 wrong codes.
+Ignite
+Ignite / shock chance
+Ignites deal {0} more damage
+Ignites on oiled enemies last 50% longer
+Ignition
+Ilsemar
+Immolation Aura
+Immovable
+Imp
+Impact
+Impact Burst
+In a party, rifts open for everyone: choose one at the Mirror or walk into the portal
+In the **Disenchant** tab, right-click an item in your bag. It turns into dust of its rarity: Grey from common items, Azure from magic, Gilded from rare. Higher item levels give more.\n\n
+In the **Forge** tab: choose a base, then a modifier it can carry, then a grade. Grey and Azure make a magic item, Gilded and Prismatic a rare one. Better grades give a higher tier of your modifier and more random extras, and cost more dust.\n\n
+In the party — waiting for the host to start.
+In the party — waiting for {0} to open the hideout.
+In the {0}
+In your hideout: the {0}
+In your hideout: {0}
+Include game info (version, system, where you are — nothing personal)
+Increased Area
+Inferno
+Inferno Focus
+Inferno Ring
+Input behaviour
+Insight
+Intelligence
+Internet address — works for friends anywhere.
+Internet: not reachable yet. {0}
+Internet: ready. {0}
+Introduction guide
+Introduction skipped
+Inventory
+Inventory full
+Inventory interaction
+Invite copied — paste it to your friends; their address field fills both.
+Invite friends
+Invite pasted — address and join code filled in.
+Invite with {0} copied.
+Iron
+Iron Axe
+Iron Skin
+Iron Wand
+Iron Will
+It will not stay dead
+Item art
+Its burns have +40% chance to ignite
+Its ignites last 50% longer
+Its projectiles fork {0:0} time{(v > 1f ? 
+Jewels
+Jewels ({0})
+Join
+Join a friend
+Join code
+Join code accepted — joining the party…
+Join code copied.
+Joining {0}
+Juggernaut
+K7Q-29M
+Keen Edge
+Keen Eye
+Keep going
+Keeps its distance and shoots
+Kethra
+Keystone cadence
+Keystone rows cannot be skipped
+Keystone: {0}
+Kills
+Kills burst for 30% of the hit around the body
+Kills give experience. Each level grants a passive point: spend it on the tree with {Key(
+Kills restore 3% of your life and mana.
+Kindle
+Kindling
+Kindling Heart
+Kindling Shard
+LMB allocate (whole path) · RMB refund (free) · drag pan · wheel zoom · green ring = reachable · gold = allocated · cyan = path preview · yellow glow = search match
+Label
+Laceration
+Lamp post
+Lands harder: +150 knockback and 25% more area
+Language / Idioma
+Last 10 minutes of the endless phase.
+Last 30 minutes of the endless phase.
+Last 5 s
+Later (Esc)
+Layout
+Leap Slam
+Leaps up to 260 px towards the cursor, untouchable in the air, and slams the ground where you land, knocking enemies back.
+Leaps {0} farther
+Leather Cap
+Leave
+Leave any time: the portal or Esc
+Leave the party
+Leave the playground
+Leave the reality
+Leave the run
+Leave the run?
+Leave with reward
+Leave with your reward?
+Leave without an item?
+Leave: walk into the portal, or Esc
+Left click: spend a point
+Left-click to allocate: {0} (you have {1})
+Left-click to socket a jewel
+Length
+Lesser keystone
+Lesser · {0} rank{(node.MaxRank == 1 ? 
+Let {0} rearrange your town (H): one editor at a time, with your storage. For this party only.
+Let's go
+Lethal Shot
+Lethality
+Level
+Level {0}
+Level {0} / {1}   ·   {2} point{(_gem.TreePointsFree == 1 ? 
+Level {0} {1}
+Level {0} {1}   ·   best tier {2}   ·   {3} passive / {4} ascendancy points free
+Level {0} {1}  ·  best tier {2}  ·  {3} realities  ·  {4} deaths
+Level {0} — choose a Great Keystone
+Level {0} — choose a Lesser Keystone
+Level {0}! A passive point is waiting (P)
+Level-up and results
+Level-ups
+Life
+Life & flask
+Life and mana bars over your character
+Life flask
+Life gained on kill
+Life leech
+Life on kill
+Life regenerated per second
+Life {0:N0}
+Life {0}\nMana {1}\nArmour {2:0}\n
+Life, mana & flasks
+Light Bearer
+Light Step
+Lightning
+Lightning Conversion
+Lightning Damage
+Lightning Resistance
+Lightning resistance
+Linen Trousers
+Lingering
+Loading screen
+Loc: no table at {0}; the game stays in English.
+Local network only — friends on the same Wi-Fi. This is not your internet address: for friends elsewhere, see below.
+Lodestone — everything comes to you
+Long Arc
+Long Jump
+Long Shadow
+Look
+Looking up…
+Loot
+Loot picked up
+Lv 1
+Lv {0}
+Lv{0}
+Magic
+Magic item, your modifier one tier below the best, plus one random modifier.
+Magic item, your modifier two tiers below the best.
+Magic packs {0:0}%  ·  rare packs {1:0}%  ·  unique-rare chance {2:0}%\n
+Magma
+Magnet
+Magnet shrine
+Magnetism
+Main menu
+Malediction
+Mana
+Mana Cost of Skills
+Mana Flow
+Mana cost of skills
+Mana flask
+Mana gained on kill
+Mana on kill
+Mana regenerated per second
+Many Hosts
+Marble
+Mark the Prey
+Marks every enemy in a wide circle, 20% less damage over time
+Marks {0:0} more enem{(v > 1f ? 
+Mass deaths
+Master
+Master volume
+Mastered
+Melee
+Melee Damage
+Melee Splash
+Melee hits release a burst of holy light (30% of the hit).
+Melee strikes repeat twice more.\n25% less damage.
+Mending
+Menu
+Menu bar
+Merchant
+Metamorphosis
+Meteor
+Midas' Mirror
+Might
+Minimap
+Minimap, clock & quests
+Mire
+Mirror
+Mirror Images
+Mirror Jewel
+Mirror Jewel ({0}/{1}) — socket it at the Mirror
+Mirror Shard
+Mirror Shard (tier {0})
+Mirror Shards
+Mirror jewels
+Mirror of Realities
+Mirror tier
+Mitigation
+Molten Rain
+Momentum
+Monster level {0}  ·  monster life ×{1:0.0}  ·  damage ×{2:0.0}\n
+Monster level {0}  ·  {1} portal{(portals == 1 ? 
+Monster level {0} · {1} portals · {2}\n{3}
+Monsters
+Monsters ahead in the yard. Aim with the mouse and press {Key(
+Monsters deal 25% more damage
+Monsters don't attack
+Monsters have 40% more life
+Monsters have 40% more life.
+Monsters move 20% faster
+Monsters move 20% faster.
+Monsters slain
+Monsters stand still
+More gems: reality bosses drop them, and Escaldón sells every one (Buy skills tab).
+More magic and rare packs
+More projectiles, faster and deadlier. Nothing escapes the volley.
+More, always more
+Morvain
+Move all to stash
+Move with {Key(
+Movement Speed
+Movement speed
+Multiple Projectiles
+Multistrike
+Music
+Music volume
+My start
+NEW QUEST
+Name
+Navigation
+Needs
+Needs ... first
+Needs {0}
+Needs {0} first
+Needs {0} point{(path.Count == 1 ? 
+Needs {0}, you have {1}
+Nereth
+Nereth splits into reflections
+Never offer this again this run (the card is replaced)
+New character
+New code
+New quest
+New quest: Choose an ascendancy
+New shards glint on the cloth.
+New skill
+New skill gem: {0} — equip it in the skills panel (K)
+New skill · {0}
+Next: 
+No answer from {0} after {1:0} s. The host's game may not be reachable from where you are.
+No banishes left this run
+No characters yet.
+No item cards yet
+No item this time: a Rift pays an item after {0} s or {1} kills (this one: {2} s, {3} kills).
+No jewels to socket
+No life orbs drop.
+No modifier can be added to this item
+No modifier can roll on this item
+No movement skills yet — Escaldón sells Blink and Leap Slam.
+No points in it
+No points left
+No points left: raise the skill's level for more
+No profile
+No profile to keep the item in.
+No quests yet. A quest appears when something new opens up in your town, and teaches you how it works.
+No rerolls left this run
+No skill gems.
+No skills yet
+No skips left this run
+No such modifier
+No support gems that fit this skill yet — rare monsters and bosses drop them.
+No way there
+Nobody can join a run in progress. When it ends, the host opens a new lobby and you join that one (with its new code).
+None of your skills can use this yet
+Normal
+Normal (reality mix)
+North gate
+Not answering in time counts as staying.
+Not connected to your tree
+Not connected yet
+Not empowered.
+Not enough gold.
+Not enough gold: {0:N0} more
+Not now
+Not yet
+Notable power-up
+Notable socket
+Notable · one rank, changes how the skill plays
+Notables: {0}
+Nothing else to offer for that card.
+Nothing here is saved · F2 opens the spawner
+Nothing here is saved. Escaldón and the Artificer are in the camp (F).
+Nothing here you can buy right now. Untick \"Only what I can buy\" to see the whole shelf.
+Nothing matches this filter.
+Nothing to show
+Nothing yet. Socket a jewel next to the Mirror's Heart.
+Notice
+Notifications
+Notifications appear here
+Nymra
+Oak Buckler
+Oak planks
+Oak tree
+Odran the Trader
+Odran's stall
+Off
+Offence
+Offer composition
+Offhand
+Oil and detonations
+On the cloth
+Only items with modifiers can be sealed
+Only someone in the hideout can open a rift
+Only the sealed modifier is left
+Only what I can buy
+Only {0} can edit this town — ask them to allow it (their Party menu)
+Open
+Open Arehucaz
+Open Buy skills
+Open Disenchant
+Open Forge
+Open Wounds
+Open a golden chest.
+Open a lobby on this PC for up to {0} players. You get an address and a join code to send your friends.
+Open it
+Open my hideout to friends
+Open on GitHub
+Open realities
+Open skills (K)
+Open stash
+Open the Jewels tab
+Open the Mirror's **Jewels** tab and click a glowing socket next to the Mirror's Heart. Each socket adds a bonus to every Altered Reality you open: more items, rarer items, more shards, more monsters, more gold or more crafting orbs. The large sockets at the end of each branch are stronger.\n\n
+Open the Survival Rift for the party?
+Open the altar
+Open your hideout to friends
+Open your inventory with {Key(
+Opened in your browser — press Submit there. Thank you!
+Opening Strike
+Opening UDP {0} on your router (UPnP)…
+Opens the project's GitHub in your browser with everything filled in and tagged — you only press Submit there (a free GitHub account is needed).
+Orb Spiral
+Orb tooltips
+Orbs
+Orbs — shared by all your characters
+Oruun
+Other
+Overcharge
+Overclock
+Overflowing Glass
+Overwhelm
+Owned · Lv {0}
+Packs are larger and appear more often
+Paladin
+Pandemic
+Panel
+Pants
+Paper doll
+Parry!
+Party
+Party  {0}/{1}
+Party & invite
+Party minimap (co-op)
+Party rules
+Party session
+Passive
+Passive Tree
+Passive tree stats
+Passive: +{0:0} life regeneration per second
+Passive: +{0:0} more to all three resistances
+Passive: +{0} chance to cause bleeding
+Passive: +{0} chance to freeze
+Passive: +{0} chance to ignite
+Passive: +{0} chance to shock
+Passive: +{0} critical strike chance
+Passive: +{0} critical strike multiplier
+Passive: also 8% less elemental damage taken
+Passive: bleeds last {0:0}% longer
+Passive: every bleed adds one more stack, but bleeds last 25% shorter
+Passive: {0:0}% increased cold damage
+Passive: {0:0}% increased fire damage
+Passive: {0:0}% increased lightning damage
+Passive: {0:0}% increased maximum life
+Passive: {0:0}% more increased armour
+Passive: {0:0}% more increased maximum life
+Passives
+Path
+Path to Exile
+Patience
+Pause
+Paused
+Pausing
+Pending ({0}/{1})
+Pending items
+Pending items is empty. Rewards that find your inventory full wait here.
+Pending items only holds rewards — pick a stash tab
+Pending items\nRewards that arrived while your inventory was full
+Perfect Parry
+Permafrost
+Persistence
+Phase Dancer
+Phase {0}
+Phasing
+Physical Damage taken
+Physical damage taken
+Pick a floor below, then paint with the left button. Right button restores the town's floor and refunds the tile. Buy tiles from Ysolde.
+Pick a stored decoration below, then click to place it. Buy decorations from Ysolde in the plaza.
+Picked-up loot shows here
+Pickup Radius
+Pickup radius
+Pickups
+Pierce
+Piercing
+Piercing Elements
+Piercing Shots
+Plague
+Plants a totem at the cursor for 8 s. It casts the skill socketed into it (choose it in Skills, K) at the nearest enemy as often as that skill allows (its use time and cooldown), at 70% of its damage. Monsters can attack it: it has 30% of your maximum life. Its tree boosts what it casts.
+Plated
+Plating
+Play
+Play it first (solo)
+Play it first and join your friends after, or skip it now — the same as \"Skip the introduction\" in its menu.
+Play with friends
+Player
+Player_{0}
+Players
+Players have -20% to all elemental resistances
+Players have 15% less maximum life
+Playground
+Playground · F2
+Playing as {0}, level {1} {2}
+Plaza
+Plaza mosaic
+Port
+Portal
+Portal home: the whole party walks in to leave
+Portal home: walk in to leave with your reward
+Potency
+Potted plant
+Power
+Precision
+Press F again to close the reality for everyone
+Press again within 3 s to go back to where you blinked from, as if time ran backwards
+Press any key to continue
+Preview
+Prismatic
+Prismatic Bulwark
+Prismatic Dust
+Prismatic forging
+Probes
+Profile
+Profile: could not read {0} ({1}); starting fresh.
+Profile: could not write {0} ({1}).
+Profile: not saved, the account could not be written ({0}); the file on disk is unchanged.
+Projectile
+Projectile Damage
+Projectile Speed
+Projectile speed
+Projectiles
+Projectiles Pierce {0:0} additional {(m.Value > 1 ? 
+Projectiles chain +1 time
+Projectiles chain to 2 more enemies
+Projectiles chain to 2 more enemies.\n10% less damage.
+Projectiles chain to one more enemy and pierce one more.
+Projectiles pass through 2 more enemies
+Projectiles pierce 2 additional enemies.
+Projectiles split in two on hit.\n10% less damage.
+Prompt
+Prop_{0}
+Protects one modifier of an item from the next orb. Each seal on the same item costs more (40 gold doubling, plus dust).
+Purity
+Pushes enemies back ({0:0} force), {1}% more damage
+Pyre Ward
+Pyromancer
+Pyromancy
+QUEST COMPLETE
+Quake
+Quest
+Quest complete: close {0} to claim your reward
+Quest: {0} · {1}
+Quests
+Quick Hands
+Quick, precise and hard to pin down. Critical strikes, speed and the best dodge in the game.
+Quickened
+Quickening
+Quit
+Quit to desktop
+READY TO TURN IN ({0})
+REWARD · TIER {0}
+Radiance
+Rage
+Rage — dealing and taking hits fills Rage, which grants damage and reduces damage taken. It fades out of combat.
+Raise Dead
+Raise to level {0} · {1:N0} g
+Raises your skills' levels for gold and shapes each one with its upgrade tree.
+Rank {0}: 
+Rare
+Rare item, your modifier at the best tier with a perfect roll, plus 3 random modifiers.
+Rare item, your modifier at the best tier, plus 2–3 random modifiers.
+Rarity
+Rawhide Boots
+Rawhide Gloves
+Re-roll modifiers ({0} gold)
+Reach
+Reach Greed ×5 in one run.
+Reach run level 40.
+Reach the Ember Colossus — and break it
+Read all of them first; you can't change your mind.
+Realities
+Realities cleared
+Reality abandoned
+Reality closed
+Reality info (Tab map)
+Reality mix
+Reality stabilised
+Reaper's Arc
+Rebound
+Records
+Refund
+Regenerate 1.5% of maximum life per second.
+Regenerate 2% of maximum life per second, twice as fast below 35% life.
+Regenerating
+Regeneration
+Regrowth
+Releases slow, crackling sparks that zigzag like lightning, pass through one enemy and bounce off walls. Lightning hits can shock.
+Removes one random modifier from a magic or rare item.
+Rend
+Renewal
+Replace this card only
+Replace this card only, for {0} gold
+Replication
+Reroll
+Reroll {0}g
+Rerolls a rare item with a new name and 3–4 new modifiers.
+Rerolls every modifier on a magic item.
+Rerolls the numbers of every modifier and base stat within their tiers.
+Rerolls: {0} free left
+Rerolls: {0} gold each now (you have {1})
+Reroll{0}
+Reset
+Reset layout
+Reset tree
+Resistance
+Resistances drop {0:0} more
+Resistances, armour, life and regeneration. The wall that walks.
+Resistances: fire {0:0}% · cold {1:0}% · lightning {2:0}%
+Resolve
+Resources are per-actor
+Restock now ({0:N0} gold)
+Restocking costs {0:N0} gold.
+Results
+Resume
+Retaliation
+Return to hideout
+Returning home…
+Reviving {0}… {1:0.0} s — stay still
+Reward tier {0} · next at {1}
+Reward tier {0}: 
+Reward tiers
+Rewards
+Rewards that found your inventory full. Right-click one to take it, or move them all to the stash. Holds {0}: when a new reward arrives with it full, the oldest is sold for gold.
+Rewards: gold and orbs ×{0:0.00}, item rarity +{1}%
+Rewind
+Rhythm
+Ricochet
+Rift
+Rift reward
+Rift reward:  +{0} gold
+Right click: take one back ({0:N0} gold)
+Right-click an item to move it between the stash and your inventory. Drag to rearrange. Tabs are shared by all your characters.
+Rime
+Ring
+Ringmail Vest
+Ripple
+Rising Tide
+Ritual
+Rogue
+Rope Belt
+Rot
+Router port not opened (UPnP off for this lobby): same PC, same network or VPN only.
+Router port opened automatically (UPnP{(permanent ? 
+Row_{0}
+Royal carpet
+Ruin
+Run stats
+Runs at you and explodes
+Rusted Sword
+Ruthlessness
+STAND BETWEEN THE BEAMS
+STR {0} · DEX {1} · INT {2}
+Sacrifice
+Same PC: 127.0.0.1:7777.  Same Wi-Fi: the host's 192.168… address, not the internet one.
+Same PC: 127.0.0.1:{0}.  Same Wi-Fi: the host's 192.168… address.  Over the internet: the address the host's lobby shows 
+Samurai
+Sanguine Thirst
+Scavenger
+Screen shake
+Seal in hand — click an item, then choose the modifier to protect. Each seal on the same item costs more.
+Seal which modifier of {0}?
+Sealed {0} — safe from the next orb
+Sealing costs {0} gold and {1} {2}
+Seals
+Search name or effect…
+Searing
+Second Wind
+Second ascendancy trial complete: +2 ascendancy points.
+Security
+Seismic Slam
+Selected
+Sell gear, buy crafting shards and skill gems.
+Selling gives you gold now. Dust is what the forge spends later.
+Sells Mirror Shards of tiers you have cleared. Five at a time.
+Send feedback
+Send them both — or Copy invite, which holds both:
+Send them the invite
+Sent from the game
+Settings
+Sfx
+Shadow
+Shard
+Shard-Sworn
+Shardbound
+Shards
+Shared hideout
+Sharpshooter
+Shatter
+Shield Conduit
+Shockwave
+Short fuse
+Shoulder to shoulder
+Show FPS (F3)
+Show me
+Shrine{0}
+Siphon
+Siren
+Six skill buttons
+Skeleton
+Skill Duration
+Skill duration
+Skill gem
+Skill level ({0}/{1})
+Skill upgrade trees
+Skill: {0}
+SkillUser: ProjectileSkillDefinition cast with no ProjectileScene assigned.
+SkillUser: no executor implemented for {0}
+Skills
+Skills & Supports
+Skills cost Life instead of Mana,\nbut never take you below 40% Life.\n30% more maximum Life, +3 Life regenerated per second.
+Skills fire 35% more often.\n20% less damage.
+Skills fire {0} more often
+Skills {0}
+Skip
+Skip  [S]
+Skip  [S]  ({0} left)
+Skip it and play with friends
+Skip the introduction
+Skipped a level
+Skipped level {0}
+Sky
+Slay it for a chest
+Slay the Colossus in a party.
+Slay the Colossus on tier 10.
+Slay the Colossus on tier 3 or higher.
+Slay the Colossus on tier 5 or higher.
+Slay the Colossus with only melee skills.
+Slay the Colossus with three Fear cards.
+Slay the Ember Colossus on tier {0} to open it
+Slay the Ember Colossus.
+Slick
+Slime
+Slow +20% more, and the curse is 20% shorter
+Slowed enemies also take 10% more damage
+Smithy
+Smoulder
+Socket
+Socket a jewel in the Mirror's Jewels tab
+Socket it in the Skills panel (K): click a slot, then the skill.
+Socketed (others depend on it)
+Socketed — right-click to take the jewel out
+Socketing a support into {0} ({1}) — only supports that fit it are listed. Right-click a socket to empty it.
+Sockets you can fill now glow green.
+Sold items and rewards pay it. Odran, Ysolde and the Artificer take it.
+Sold out.
+Sold this visit — right-click to buy back
+Sold {0} for {1} gold
+Solo
+Something broken: what happened, and what did you expect?
+Something dropped! Hover it to read it, then click it to pick it up.\n{Key(
+Something in town blocks every way to {0}
+Something is in the way to {0}
+Something old guards the seal beyond the gate. The gate closes behind you once the fight starts.\nWatch the ground: red markings show where an attack will land, so dodge out of them.
+Something went wrong
+Something you'd like the game to have.
+Sorting
+Space
+Space · Shift
+Spark
+Sparks burst on hit (40 px, 40% of the hit)
+Sparks fly {0} farther
+Spawn
+Spawn {0}
+Spawn {0} mixed
+Spawn {0} × {1}
+Spawner
+Speed {0:0} px/s
+Spell
+Spell Damage
+Spell Echo
+Spell Totem
+Spellcraft
+Spend Mirror Shards to step into an Altered Reality.
+Spill
+Splashes oil over every enemy in a circle for 6 s: they take 25% more fire damage, and every fire hit ignites them.
+Split Earth
+Splits the ground in a line ahead of you after a brief wind-up.
+Splitter
+Splitting
+Spreads to 2 enemies when its bearer dies
+Spreads to 3 enemies, and on from them
+Spreads to {0:0} enem{(v > 1f ? 
+Sprint
+Sprint and dodge
+Sprite
+Stacking bleed and ignite
+Stamina
+Stand inside: heal and a chest
+Standing still for 1 s consecrates the ground: 4% life per second, enemies on it take 15% more damage.
+Starfall
+Start
+Start of the run — choose a skill card
+Starting skills
+Starts with {0} + {1}.
+Starts with {0}.
+Stash
+Stasis
+Static
+Static Chains
+Static Charge
+Static Nova
+Static Wake
+Stats
+Stay in the hideout
+Steady Ward
+Steel
+Step through the Mirror
+Steps to reproduce (optional)
+Stillness
+Stone Skin
+Stop hosting
+Storage is empty — Ysolde in the plaza sells decorations. Right-click one in Move to store it.
+Storage shared by all your characters.
+Storm
+Storm Edge
+Storm Lattice
+Storm Strike
+Stormcaller
+Stormcalling
+Str {0:0}  Dex {1:0}  Int {2:0}
+Streets
+Strength
+Strikes one more time, 35% less damage
+Stronger for its rest
+Summons blades that orbit you, cutting anything they touch.
+Sunder
+Sundering Orb
+Support gem
+Support gem: {0}
+Support → {0}
+Supports
+Supports {0}
+Surge
+Surge! The horde presses in
+Survival Rift
+Survival Rift: the endless arena — gear, gold and character experience.
+Survive the waves, slay the Ember Colossus, then stay as long as you dare. A harder Rift pays more.
+Survived {0}   ·   Level {1}   ·   {2} kills   ·   {3} elites   ·   {4} bosses   ·   {5} chests   ·   +{6} gold
+Survived {0} · {1} {(State.BossesKilled == 1 ? 
+Swarm — two waves!
+Swarm!
+Swarming Reflections
+Swarms come twice as often.
+Swift
+Switch on / off. While on, burns every enemy within 110 px for 14 fire damage per second (it can ignite) — and costs you 2% of your maximum life every second.
+System: {0} {1} · {2}
+Sythe
+THE EYE ERUPTS
+TOWN MAP
+TURN IN
+TURNED IN
+Tab
+Tab {0}
+Tabs
+Take it and leave
+Take nothing this level
+Take nothing, get {0}% of this level's experience back
+Take your reward home now, or stay: the Rift keeps getting harder, and what it pays keeps growing.
+Taking a point back costs {0:N0} gold
+Tar
+Target / boss life
+Tears open the wounds of every enemy in a circle: all the physical damage their bleed stacks had left lands at once, 30% stronger.
+Teeming
+Tempered Flesh
+Tempest Focus
+Tempest Orb
+Temple
+Tempo
+Ten minutes in the deep
+Terrain_rock
+Terrain_{0}
+Test character (lv {0})
+Tester
+That can't be used on items
+That is not an ARPG co-op client.
+That isn't an address. It looks like 203.0.113.7:7777 — four numbers with dots, then : and the port.
+That item could not be stored.
+That rift can't be opened
+That's enough dust for your first forge. Come back when you're ready.
+Thaumaturge
+The Ashen Depths
+The Ashen Halls
+The Bone Crypt
+The Bone Herald
+The Bone Herald returns
+The Bone Warrens
+The Colossus falls
+The Colossus is enraged!
+The Colossus roars — the arena burns
+The Drowned Grotto
+The Drowned Mirror
+The Ember Colossus
+The Ember Colossus has fallen
+The Herald's chant grows louder
+The Mirror hums. Here is another jewel to place.
+The Mirror opens
+The Mirror's Heart
+The Onslaught
+The Onslaught! Hold until the Colossus wakes
+The Proving Ground
+The Rift deepens
+The Rift grows richer, and deadlier
+The Rift throws everything at you before its heart wakes
+The Survival Rift
+The Threshold
+The Threshold takes about 5 minutes and is played alone: it shows the basics, then leads home to your hideout. 
+The Witch's curses
+The active heals {0} more of your life
+The active is {0} stronger
+The active lasts 60% longer, 20% weaker
+The address is exactly the one in the host's lobby, port included ({(target.Length > 0 ? target : 
+The already-hit set
+The altar is dormant.
+The arena stirs…
+The arena's heart awakens
+The burst deals 75% of the hit instead of half
+The director
+The endless arena — survive, break the Ember Colossus, take the reward home.\n{0}
+The fifth circle
+The game resumes when everyone has chosen.
+The guardian
+The host
+The host checks every character for broken data. Pick another character in Play and try again.
+The host closed the connection before checking your code (too many wrong codes from your address lately, or the host's game closed).
+The host closed the lobby
+The host closed the session.
+The host is still in their lobby (the lobby closes if they press Back).
+The host left
+The host turned the connection away
+The host turned you away.
+The host's PC answered, so the address is right — only the code didn't match.
+The host's firewall lets the game in (Windows asks the first time you host: allow it).
+The host's lobby says whether their router opened the port. If it says it didn't, the host forwards UDP 7777 to their PC in the router's settings — or you both install a VPN like Tailscale or Radmin VPN and the host sends their VPN address instead.
+The landing slams again 0.35 s later for 60% of the hit
+The oil also slows by 30%
+The party ended
+The party is full
+The party is full.
+The party is in a rift — wait for them to return
+The party leaves only if everyone takes the reward. Nobody answering counts as leaving.
+The party set off without you: {0} — you can join the next one
+The party stays ({0} chose to keep going). You can still leave alone: Esc → Leave the party, with your reward.
+The party's portals are spent — the shard is lost
+The passive alone stops every knockback
+The passive is 50% stronger, the active 20% weaker
+The passive is 50% stronger; the active heals 40% less
+The passive is {0} stronger
+The path is chosen. Spend your points on its nodes; hover one to read it.
+The playground is solo only
+The point you leave bursts for {0} of the skill's damage
+The port is a number from 1 to 65535 (7777 unless you changed it on purpose).
+The quest toast
+The reality collapses
+The right-click conflict — resolved
+The root of the tree
+The run has already started
+The run has already started.
+The shard dealer
+The shard is lost
+The shrine answers
+The skill repeats once, 35% less damage
+The skill repeats once.\n10% less damage.
+The start pick
+The stash is full
+The stat list after this pass
+The storm is all cold: twice its bonus, to cold damage only; the active also +10% chance to freeze
+The storm is all fire: twice its bonus, to fire damage only; the active also +25% chance to ignite
+The storm is all lightning: twice its bonus, to lightning damage only; the active also +25% chance to shock
+The tide rises!
+The tooltip shows how much dust an item gives while the tab is open.
+The totem casts {0} faster
+The town can only be edited while everyone who edits is in it
+The town isn't loaded
+The way back is sealed
+The whole party is down — back at the entrance · {0}
+They come from every side
+Thick
+This PC only.
+This item has no modifiers to remove
+This item has no room for another modifier
+This item has nothing to tune
+This item is already common
+This skill is at its highest level
+This stash tab is full
+Thorns
+Thorns needs a recursion guard
+Thrall
+Three fireballs that burst on impact.
+Three more orbiting blades on a wider ring.
+Three more sparks, and every spark chains twice.
+Three new skills
+Throwing Knives
+Throws a fan of knives that pierce one enemy each.
+Thunder
+Tidal Lanes
+Tide Bolt
+Tier
+Tier 1 is always free at the Mirror.
+Tier 3 · Greed ×2
+Tier {0}
+Tier {0}  ·  monster level {1}  ·  {2} portal{(PortalsLeft == 1 ? 
+Tier {0} Mirror Shard
+Tier {0} at {1}: {2}
+Tier {0} reality
+Tier {0}: monsters ×{1:0.0} life and ×{2:0.0} damage
+Tier{0}
+Tiles
+Tiles_{0}
+Time
+Time's up — a card was taken for you.
+Time's up — {0} was taken for you.
+Time's up: that counts as leaving. The party goes home only if everyone does.
+Timer
+Titan Aura
+Tithe of Kings
+Title screen
+Title — one line
+To reroll one card, press Shift + its number (or the button under it).
+Took a point back from {0} ({1:N0} gold).
+Total {0}  ·  peak {1} in 1 s\n
+Totem casts: {0}
+Totems
+Touch: every gem flies to you
+Touch: fight an elite for a chest
+Touch: harder and richer
+Town
+Town map\nClick or press M for the big map
+Trade
+Training dummy
+Training dummy (never dies)
+Training yard
+Treasure Hunter
+Tree reset — all points refunded.
+Troll Blood
+Try again
+Tuning Orb
+Turn in
+Turn it in at {0}
+Two more meteors fall after the first.
+Two quick stabs in a narrow arc. Fast, precise, crit-friendly.
+Type the host's address. They see it in their lobby (Copy invite).
+Type the host's join code: {0} letters or digits, like K7Q-29M.
+Type the join code from the host's lobby — 6 letters or digits, like K7Q-29M.
+T{0}\n{1}
+UDP · leave 7777 unless you know why
+UDP · your router opens it by itself when it can
+UPnP discovery failed ({0})
+UPnP: {0}
+Unbreakable
+Unbreakable Hide
+Undying
+Unending Rage
+Unique
+Unknown crafting currency '{0}'
+Unlocked at level {0}
+Unlocks at character level {0}
+Unlocks at character level {0} · you are {1}
+Unlocks the Hailstorm evolution (Frost Shards + Velocity)
+Unlocks the Starfall evolution (Meteor + Kindling)
+Unlocks the Treasure Hunter keystone
+Untouchable {0:0.0} s longer after arriving
+Up close
+Up to {0} friends can join you here, each with their own character, wallet and loot. 
+Upgrades a common item to magic with 1–2 random modifiers.
+Upgrades a magic item to rare, adding one random modifier.
+Use
+Use the Crown Orb from the inventory's Crafting tab (I) to turn a magic item rare. Your new one, perhaps.
+Use the whole screen on ultrawide (21:9, 32:9) — off: 16:9 with side bars
+Utility
+V-Sync
+VPN address — friends need the same VPN running (Tailscale, Radmin VPN, ZeroTier).
+Valka
+Vampiric
+Vampiric Pact
+Vanishes and reappears up to 230 px towards the cursor, untouchable for an instant. Walls stop it.
+Vault
+Velocity
+Venom
+Version: {0}
+Victory
+Vigour
+Vile
+Virulence
+Visual
+Vitality
+Void
+Volatile
+Volcanic Rift
+Volley
+Volley Master
+Vorrath
+WASD move  ·  Space dodge (charges refill)  ·  skills fire on their own timers  ·  Esc pause
+WASD move · Mouse aim · LMB/RMB/Q/E skills · Space dodge · Shift sprint · 1/2 flasks\nF interact · G pick up · Tab map · I inventory · C character · K skills · P passive tree · J quests · Esc menu
+WATCH THE REFLECTIONS
+Wait a moment before proposing again
+Waiting for the party — {0}/{1} joined{(view.Declined > 0 ? $
+Walk in
+Walk there
+Wall
+Wallet
+Walls
+Ward
+Warded
+Warding
+Wares
+Warrior
+Weakness
+Weapon
+Weapon rack
+Weight
+Well
+Wellspring
+What the host checks
+What to check
+When a cursed enemy dies, its curses spread to up to 2 enemies within 220 px.
+Where orbs come from
+Where you arrive bursts too, as cold (chills)
+Where: {0}
+While on: +{0:0} fire resistance
+While on: 15% less damage taken
+Whirling Wall
+Whirlpool
+Why would it help? (optional)
+Wide Fan
+Wildfire
+Wind Runner
+Wind Step
+Window mode
+Window size
+Window: {0} · voxel view {(View3D.HdView.Enabled(context) ? 
+Windowed
+Winds up and charges
+Winter
+Witch
+With friends
+With {0} players: {1} · monster life ×{2:0.0}
+Wither
+Without replacement by stat
+World
+Wounds
+Wrong join code
+Wrong join code. Ask the host for the code shown in their lobby.
+YOU HAVE FALLEN
+You
+You are opening {0}
+You are the host: the rift runs on your game, so it only opens if you join.
+You can't afford that
+You chose to keep going. Waiting for the others…
+You chose to leave. The party goes home only if everyone does.
+You chose {0}.
+You defeated a tier-{0} guardian, and the altar has woken for you.\n\n
+You fell at {0} in the endless phase. The reward is yours.
+You found a **Mirror Jewel**. Jewels power the Mirror itself, and every character on your account shares them.\n\n
+You get an address and a join code to send them; they join from the main menu: Play → With friends → Join a friend.
+You go back to the hideout and the others keep playing. You take your reward, and you stay in the party.
+You have **{0} ascendancy points** now, and a tier-{1} guardian grants {2} more: {3} points for {4} nodes, so pick the ones that fit your build.\n\n
+You have fallen
+You have none. Orbs drop in realities and the Survival Rift
+You have this skill: raise its level in the Your skills tab.
+You have {0} of {1}, one per loadout slot
+You have ×{0}
+You haven't chosen an item yet — press again to leave without one.
+You left the reality
+You left the run.
+You need a character first
+You need both from the host's lobby: the address finds their PC, the code lets you in.
+You own {0}  ·  monster level {1}
+You're in {0}'s town: everything you buy is delivered to your own town's storage, for your whole account.
+Your
+Your build grows from here: every level adds a skill or a power-up.
+Your build grows from here: every level adds a skill, a support or a power-up.
+Your changes weren't kept ({0})
+Your character
+Your character could not be read.
+Your character was refused
+Your character was refused (bad window size).
+Your character was refused (too large).
+Your character was refused ({0}).
+Your elemental hits penetrate 15% resistance.
+Your first hit after 2 s without attacking deals 80% more damage.
+Your friends are here — everything you use is your own
+Your friends are in your town.
+Your friends are still inside
+Your game version does not match the host's.
+Your hideout
+Your hideout, your rifts, at your pace.
+Your hits curse enemies with Vulnerability: 20% more damage taken for 4 s.
+Your inventory is full
+Your inventory — right-click an item to disenchant it
+Your inventory — right-click an item to sell it
+Your jewels grant
+Your party
+Your projectiles bounce off walls up to 2 times.\n15% less projectile damage.
+Your public IP. Friends on the internet reach it only once UDP {0} is forwarded in your router to this PC ({1}).
+Your reward from the last quest pays for an Azure forge.
+Your router didn't open the port automatically — forward UDP {0} manually or use a VPN like Tailscale/Radmin.
+Your skills
+Your skills start at level 1 here. Learn a new one or level one up.  (1 / 2 / 3)
+Your town between realities — ? opens the guide
+Your town between realities. Walk up to a station and press F — or click a place in the Town list (left) to walk there.
+Ysolde's Furnishings
+[A-Za-z]
+[Bug] 
+[F] Return to the hideout
+[Feature] 
+[Idea] 
+[LOADING] {0} ready after {1} ms
+[Save] migrated {0} from the pre-rename save folder
+[bgcolor=#2e2842][color=#ffd27a] {0} [/color][/bgcolor] 
+[color=#
+[color=#e8b84a]Buy back for {0} gold[/color]
+[color=#e8b84a]Seal: {0} gold + {1} {2}[/color]
+[color=#e8b84a]Sells for {0} gold[/color]
+[color=#{0}]Disenchants into {1} {2}[/color]
+[color=#{0}]{1}: {2}[/color]
+[lb]
+\"Come back when you have cleared a reality beyond the first tier.\"\nTier 1 is always free at the Mirror.
+\"Every skill can be more than it is. First, though, you need the skill.\"\n\n
+\"Every skill can be more than it is. Gold buys the practice; the choices are yours.\"
+\"Gear you'll never wear still has worth, if you break it right.\"\n\n
+\"Now make something. You pick the modifier; the forge guarantees it.\"\n\n
+\"Shards... for those who have already walked through. Only those. Never more than I have.\"
+\"Take one more. You'll be back.\"
+\"You have walked through tier {0}. Now we can deal.\"\n\n
+\\n
+\\t
+\n
+\n  
+\n  → +{0:0}% item quantity, +{1:0}% item rarity
+\nAt Lv {0} it evolves into {1} with {2}.
+\nEvolves {0} into {1} at Lv {2}.
+\nKeystones: 
+\nPending items was full: {0}, the oldest, was sold for {1} gold to make room.
+\nReady to evolve into {0}: the next big chest does it.
+\nWhen the time runs out, the first card is taken for you.
+\n[color=#
+\n[font_size=12][color=#
+\n[font_size=7] [/font_size]\n
+\n\n
+\n{0} passive{(passives == 1 ? 
+\t
+\u0001
+](T
+]Hold Alt for modifier tiers[/color][/font_size]
+]Item Level 
+]No stat changes[/color]
+][font_size=17]
+a 
+a card
+a row for the cash-out round, which has a fixed one
+an 
+an Altered Reality — Tier {0}
+any reality boss can drop one (first {0})
+attack speed
+bad ascendancy
+bad character name
+bad floor
+bad gems
+bad item
+bad item affixes
+bad item stats
+bad passive tree
+bad prop id
+bad quest data
+bad skill loadout
+bad station
+bad stock
+bad wallet
+bleed duration
+bleed stacks per bleed
+can't change this state while flushing queries
+cast speed
+chance for physical attacks to cause bleeding
+chance to Freeze
+chance to Ignite
+chance to Shock
+chance to freeze
+chance to ignite
+chance to shock
+character update
+character · skills · passive tree
+click a station to walk there  ·  M or Esc to close
+click to walk
+closed before the router answered
+cold damage
+cold resistance
+coop=1
+critical strike chance
+critical strike multiplier
+damage taken
+dev build
+dodge · sprint
+dropped {0}: no join code within {1:0} s{(blocked ? 
+e.g. 203.0.113.7:7777 — or paste the invite
+edit permission
+edit your town
+elemental damage
+event batch
+every socket can be filled — no more jewels drop
+favoured by
+fears=3
+fire damage
+fire resistance
+ignored {0}: already {1} connections waiting for their code
+ignored {0}: too many wrong codes from everyone lately, nobody new for a minute
+ignored {0}: too many wrong codes, blocked for a minute
+immutable after drop
+instance an EquipmentDrop anywhere and it's clickable
+inventory · Crafting tab for orbs
+item level {0} · rarity ×{1:0.0}
+item too large
+k7q 29m
+keep 2
+keep 2 items
+keep 3
+keep 3 items
+kept {0}'s previous character: the update was refused ({1})
+kicked {0} ({1}): {2}
+less/more damage taken
+level {0} is out of range
+life and mana flasks
+life regeneration per second
+lightning damage
+lightning resistance
+local network or VPN
+malformed key '{0}'
+malformed row of {0}: {string.Join(
+max level
+maximum Life
+maximum Mana
+maximum life
+melee=1
+menu (settings, Edit HUD)
+more damage
+more than {0:0} messages a second
+more than {0} rows in one round
+movement speed
+next: {0}
+no UPnP router answered — it may be off in the router's settings
+no attribution
+no bonuses
+no bonuses at all
+no change
+no item yet · item level {0}
+no label yet
+not empowered
+not holding the edit lock
+of Damage leeched as Life
+of Efficiency
+one of two
+only bosses of tier {0}+ drop more
+party message
+path along X
+peer {0}
+peer {0}: {1: why)}
+pick for round {0}, not open for them
+prop outside the town
+quest log
+reality {0}, tier {1}
+recovery {0}
+refused a town edit from {0}: {1}
+reroll everything
+row for round {0}, not open for them
+s are
+same Wi-Fi / LAN
+sprint ×{0:0.##}
+t={0:0.000} bosses={1} kills={2}
+the Altar of Ascension
+the Altar of Ascension, in the temple
+the Artificer
+the Artificer's Forge
+the Artificer's Forge, in the smithy
+the Bone-Crowned
+the Ember-Sworn
+the Hollow King
+the Mirror
+the Mirror of Realities
+the Mirror of Realities, in the plaza
+the Mirror-Born
+the Shattered
+the Survival Rift
+the Survival Rift — Tier {0}{(Modifiers.Count > 0 ? $
+the Tide-Caller
+the Undying
+the Veiled
+the altar
+the character data could not be read
+the character data is empty
+the forge
+the host
+the host declined
+the host didn't answer
+the item could not be read
+the layout can't be read
+the next visit
+the party is setting off
+the router did not report a public address
+the router refused the mapping (the port may be taken by another PC)
+the router's internet address {0} is not public — your provider or a second router shares it (CG-NAT), so forwarding won't work either
+the stations changed
+the town can only be edited while you're both in it
+the town isn't loaded
+the world keeps running
+this PC
+this window
+tier 2
+tier 2 up to your best, tier {0}
+tier=3;fears=2;coop=1;class=warrior;melee=1
+tier={0};fears={1};greed={2}
+too many floors
+too many items
+too many props
+town map (click a place to walk there)
+turned away peer {0} ({1}): {2}
+turned away {0}: {1}{(blocked ? 
+unknown class
+unknown prop
+use the station you're next to
+walk there
+your ally
+your skill
+{(affix.Value >= 0f ? 
+{(idle ? 
+{(node.Notable ? 
+{(now ? 
+{(on ? 
+{0: t.Recent(now))} DPS
+{0:0.##}% of Damage leeched as Life
+{0:0.#}/s regen
+{0:0} FPS  ·  {1:0.0} ms  ·  worst {2:0.0} ms
+{0:0} s
+{0:0} s — no answer yet. Gives up after {1:0} s.
+{0:0} s — the host answered.
+{0:0}% increased gold found
+{0:0}% increased item quantity
+{0:0}% increased item rarity
+{0:0}% increased {1}{2}
+{0:0}% less {1}{2}
+{0:0}% more character experience
+{0:0}% more crafting orbs
+{0:0}% more monsters
+{0:0}% more {1}{2}
+{0:0}% reduced {1}{2}
+{0:0}% stronger slow
+{0:0}% · {1}/s
+{0:0}/{1:0} xp
+{0:N0} g
+{0:N0} gold
+{0:N0} gold · {1} orbs
+{0}   — done
+{0}  Lv {1}
+{0}  Lv{1}
+{0}  Refunding a node costs {1} gold.
+{0}  [Shift+{1}]
+{0}  {1} more to choose.
+{0}  ·  Tab to close
+{0}  ·  T{1}
+{0} (duplicate) → {1:N0} gold
+{0} (support): {1}
+{0} (surplus) → {1} gold
+{0} (the router stopped renewing the mapping)
+{0} (tier {1}) died in {2:0.0} s
+{0} / {1} XP
+{0} / {1} chosen
+{0} / {1} owned
+{0} / {1} owned · {2}
+{0} Lv{1}
+{0} Lv{1} ({2}) — {3}: {4}{5}
+{0} Lv{1} [{2}]
+{0} added to your inventory.
+{0} and {1}
+{0} at tier {1}: {2:N0} life
+{0} cancelled it
+{0} cards · keep {1} · item level {2}
+{0} chance to cause bleeding
+{0} changed into something else
+{0} character{(profile.Characters.Count == 1 ? 
+{0} closed the party.
+{0} crafting orbs
+{0} evolves
+{0} faster Dodge recharge
+{0} faster projectiles
+{0} faster to use
+{0} gets back up!
+{0} gold
+{0} has fallen — the whole party is down · {1}
+{0} hasn't allowed you to edit the town
+{0} hasn't played the introduction
+{0} hits
+{0} in hand — {1}
+{0} in storage · {1} laid
+{0} in storage · {1} placed
+{0} increased Area of Effect
+{0} increased Attack Speed
+{0} increased Cast Speed
+{0} increased Cooldown Recovery
+{0} increased Critical Strike Chance
+{0} increased Damage
+{0} increased Experience gained
+{0} increased Movement Speed
+{0} increased Pickup Radius
+{0} increased Projectile Speed
+{0} increased Skill Duration
+{0} increased {1}
+{0} is already opening a rift
+{0} is down — back in {1:0} s, or hold E next to them to revive
+{0} is down — {1}; hold E next to them to revive
+{0} is editing the town
+{0} is editing the town — wait until they're done
+{0} is empty
+{0} is here
+{0} is opening {1}
+{0} is reviving you… {1:0.0} s
+{0} is reviving {1}
+{0} item cards, keep {1}
+{0} items can't be altered
+{0} jewel{(data.Free == 1 ? 
+{0} kills
+{0} left
+{0} left the party
+{0} left — the run is over.
+{0} less mana cost
+{0} lets you edit the town (H)
+{0} longer duration
+{0} minutes in the deep
+{0} more area
+{0} more damage
+{0} more damage, shards fly {1} slower
+{0} more damage, {1} more mana cost
+{0} more elemental damage
+{0} more to choose — press again to leave without them.
+{0} needs a common item
+{0} needs a magic item
+{0} needs a rare item
+{0} needs it: take that back first
+{0} new quest{(news == 1 ? 
+{0} of {1} bytes (limit {2})
+{0} of {1} left. He restocks after you clear {2} realities once his cloth is bare.
+{0} of {1} left. Restocks after {2} more cleared {(until == 1 ? 
+{0} passive point{(passive == 1 ? 
+{0} point{(cost == 1 ? 
+{0} point{(p.Ranks == 1 ? 
+{0} portal{(PortalsLeft == 1 ? 
+{0} portal{(portals == 1 ? 
+{0} power-up
+{0} props in town · {1} decorations in storage
+{0} pt
+{0} quest{(ready == 1 ? 
+{0} reached gem level {1}
+{0} reached level {1}: one more point for its tree.
+{0} revived {1}!
+{0} reward{(pending == 1 ? 
+{0} rift was cancelled — {1}
+{0} s
+{0} sent to Pending items (your inventory is full) — take it from the stash in the hideout.
+{0} shorter cooldown
+{0} slain in {1:0.0} s
+{0} stands where nothing can
+{0} started the fight · the way back is sealed
+{0} tiles: {1} owned before, {2} after
+{0} took back editing rights
+{0} {(r.GuaranteedRare == 1 ? 
+{0} {(type ?? 
+{0} {1}s
+{0} · Level {1} {2}{string.Concat(tags.Select(t => $
+{0} · Odran sells it for {1} gold
+{0} · being revived
+{0} · down
+{0} · {1} m
+{0} — level {1} {2}   ·   {3} / {4} points   ·   {5} free
+{0} — tier {1}\n{2}, level {3} {4}\n{5} / {6} monsters slain  ·  {7} portals left
+{0} — {1} of {2} points free
+{0} — {1}{2}  ·  click to walk there
+{0} → Lv {1}
+{0}'s
+{0}'s hideout
+{0}'s party is coming back from the {1}
+{0}'s party is in the {1} · {2} — wait here, you're asked next time
+{0}/s regen
+{0}: bad event batch from the host ({1}: {2})
+{0}: unknown event {1}, dropping the rest of the batch
+{0}: {1:N0} damage every {2:0.#} s
+{0}: {1} owned before, {2} after
+{0};coop={1: 0)};class={2};melee={3: 0)}
+{0}={r.Picks.GetValueOrDefault(p.PeerId, 
+{0}\nReward: {1}
+{0}\nWaiting for the others…
+{0}\n{1}
+{0}\n{1} · level {2}
+{0}\n×{1}
+{0}{(index == profile.ActiveIndex ? 
+{0}{1}   Lv {2}
+{ClassCatalog.Get(ClassId ?? 
+{Session?.HostName ?? 
+{orb.Name.Replace(
+— Altered Realities —
+— DPS
+— empty skill —
+→ {0}{1} {2} (tier {3})
+◆ Artificer's Seal

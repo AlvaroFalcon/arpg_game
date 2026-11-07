@@ -398,7 +398,7 @@ public partial class HideoutEditor : CanvasLayer, IClosablePanel
                     {
                         float r = HideoutCatalog.Prop(prop.Kind)?.PickRadius ?? 24f;
                         DrawArc(prop.Position + new Vector2(0f, -r * 0.6f), r, 0f, Mathf.Tau, 40, new Color(1f, 0.9f, 0.5f), 2.5f);
-                        DrawString(ThemeDB.FallbackFont, prop.Position + new Vector2(-60f, 18f), HideoutCatalog.Prop(prop.Kind)?.Name ?? prop.Kind,
+                        DrawString(ThemeDB.FallbackFont, prop.Position + new Vector2(-60f, 18f), ArpgGame.Core.Loc.T(HideoutCatalog.Prop(prop.Kind)?.Name ?? prop.Kind),
                             HorizontalAlignment.Center, 120f, 13, Colors.White);
                     }
 

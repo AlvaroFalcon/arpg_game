@@ -460,7 +460,7 @@ public partial class TargetFrame : Control
     {
         float w = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
         float x = align switch { HorizontalAlignment.Right => at.X - w, HorizontalAlignment.Center => at.X - w / 2f, _ => at.X };
-        DrawStringOutline(font, new Vector2(x, at.Y), text, HorizontalAlignment.Left, -1, size, 4, new Color(0f, 0f, 0f, 0.85f * color.A));
-        DrawString(font, new Vector2(x, at.Y), text, HorizontalAlignment.Left, -1, size, color);
+        DrawStringOutline(font, new Vector2(x, at.Y), ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, 4, new Color(0f, 0f, 0f, 0.85f * color.A));
+        DrawString(font, new Vector2(x, at.Y), ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, color);
     }
 }

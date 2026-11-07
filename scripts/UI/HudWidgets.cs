@@ -148,7 +148,7 @@ public partial class SkillBar : Control
         var cap = new Rect2(at, new Vector2(w, h));
         canvas.DrawRect(new Rect2(cap.Position + new Vector2(0f, 2f), cap.Size), new Color(0.3f, 0.26f, 0.22f));
         canvas.DrawRect(cap, new Color(0.9f, 0.86f, 0.77f));
-        canvas.DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + h - 4f), key, HorizontalAlignment.Center, w, size, new Color(0.12f, 0.1f, 0.08f));
+        canvas.DrawString(font, new Vector2(cap.Position.X, cap.Position.Y + h - 4f), ArpgGame.Core.Loc.T(key), HorizontalAlignment.Center, w, size, new Color(0.12f, 0.1f, 0.08f));
     }
 
     /// <summary>A mouse with the left or right button lit, its top-left corner at <paramref name="at"/>.</summary>
@@ -270,8 +270,8 @@ public partial class SkillSlotView : Control
             return;
         }
 
-        DrawStringOutline(font, new Vector2(0f, Size.Y - 4f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 3f, 10, 3, new Color(0f, 0f, 0f, 0.85f));
-        DrawString(font, new Vector2(0f, Size.Y - 4f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 3f, 10, UiTheme.Gold);
+        DrawStringOutline(font, new Vector2(0f, Size.Y - 4f), ArpgGame.Core.Loc.T($"Lv{Skill.Level}"), HorizontalAlignment.Right, Size.X - 3f, 10, 3, new Color(0f, 0f, 0f, 0.85f));
+        DrawString(font, new Vector2(0f, Size.Y - 4f), ArpgGame.Core.Loc.T($"Lv{Skill.Level}"), HorizontalAlignment.Right, Size.X - 3f, 10, UiTheme.Gold);
         int dots = 0;
         foreach (ISkillUpgrade upgrade in Skill.Attached)
         {
@@ -289,8 +289,8 @@ public partial class SkillSlotView : Control
         else if (EvolutionReady?.Invoke(Skill) == true)
         {
             DrawRect(new Rect2(Vector2.One, Size - Vector2.One * 2f), new Color(1f, 0.6f, 0.2f), false, 2f);
-            DrawStringOutline(font, new Vector2(0f, 12f), "EVO", HorizontalAlignment.Right, Size.X - 3f, 9, 3, new Color(0f, 0f, 0f, 0.9f));
-            DrawString(font, new Vector2(0f, 12f), "EVO", HorizontalAlignment.Right, Size.X - 3f, 9, new Color(1f, 0.7f, 0.3f));
+            DrawStringOutline(font, new Vector2(0f, 12f), ArpgGame.Core.Loc.T("EVO"), HorizontalAlignment.Right, Size.X - 3f, 9, 3, new Color(0f, 0f, 0f, 0.9f));
+            DrawString(font, new Vector2(0f, 12f), ArpgGame.Core.Loc.T("EVO"), HorizontalAlignment.Right, Size.X - 3f, 9, new Color(1f, 0.7f, 0.3f));
         }
     }
 }

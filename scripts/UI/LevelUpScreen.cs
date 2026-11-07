@@ -270,12 +270,12 @@ public partial class LevelUpScreen : CanvasLayer
         long price = Build.RerollPrice;
         bool can = Build.CanReroll;
         string rerolls = left > 0
-            ? $"Rerolls: {left} free left"
-            : pick ? $"Rerolls: {price} gold each now (you have {Build.Gold})" : "No rerolls left this run";
+            ? Loc.F("Rerolls: {0} free left", left)
+            : pick ? Loc.F("Rerolls: {0} gold each now (you have {1})", price, Build.Gold) : Loc.T("No rerolls left this run");
         string extra = pick
-            ? $"   ·   Banish: {Build.BanishesLeft} left (Ctrl + number)   ·   Skip: {Build.SkipsLeft} left (S)"
+            ? Loc.F("   ·   Banish: {0} left (Ctrl + number)   ·   Skip: {1} left (S)", Build.BanishesLeft, Build.SkipsLeft)
             : "";
-        _rerollInfo.Text = rerolls + (can ? "  (Shift + number)" : "") + extra;
+        _rerollInfo.Text = rerolls + (can ? Loc.T("  (Shift + number)") : "") + extra;
         _cards.SetRerollState(can,
             left > 0 ? "Replace this card only" : can ? $"Replace this card only, for {price} gold" : pick ? $"A reroll costs {price} gold now" : "No rerolls left this run",
             left > 0 || !pick ? "Reroll" : $"Reroll {price}g");
@@ -665,7 +665,8 @@ public partial class LevelUpScreen : CanvasLayer
         foreach (Skills.SkillInstance skill in build.Skills)
         {
             string supports = string.Join(", ", skill.Attached.OfType<SupportGem>().Select(g => g.Definition.Name));
-            parts.Add(supports.Length > 0 ? $"{skill.DisplayName} Lv{skill.Level} [{supports}]" : $"{skill.DisplayName} Lv{skill.Level}");
+            string name = Loc.T(skill.DisplayName);
+            parts.Add(supports.Length > 0 ? Loc.F("{0} Lv{1} [{2}]", name, skill.Level, supports) : Loc.F("{0} Lv{1}", name, skill.Level));
         }
 
         string text = string.Join("   ·   ", parts);

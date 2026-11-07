@@ -114,7 +114,7 @@ public partial class RiftEntryPanel : ModalPanel
         {
             FearDefinition f = fear;
             bool on = Fears.Contains(f.Id);
-            Button b = UiTheme.Button($"{(on ? "[x]" : "[  ]")}  {f.Name} — {f.Description}", () => ToggleFear(f.Id), 15, 460f);
+            Button b = UiTheme.Button($"{(on ? "[x]" : "[  ]")}  {Loc.T(f.Name)} — {Loc.T(f.Description)}", () => ToggleFear(f.Id), 15, 460f);
             b.Name = $"Fear_{f.Id}";
             b.Alignment = HorizontalAlignment.Left;
             b.Disabled = !on && Fears.Count >= RiftDifficulty.MaxFears;
@@ -128,9 +128,9 @@ public partial class RiftEntryPanel : ModalPanel
 
         RefreshChallenges();
         RiftDifficulty d = Preview();
-        _tierInfo.Text = $"Tier {Tier}: monsters ×{d.Life:0.0} life and ×{d.Damage:0.0} damage"
-            + (d.MagicChance > 0f ? $", {Mathf.RoundToInt(d.MagicChance * 100)}% come as magic monsters" : "")
-            + $".\nItems +{d.ItemLevelBonus} item levels.\nHighest cleared: {(Profile.Get(this)?.RiftTierCleared ?? 0)}.";
+        _tierInfo.Text = Loc.F("Tier {0}: monsters ×{1:0.0} life and ×{2:0.0} damage", Tier, d.Life, d.Damage)
+            + (d.MagicChance > 0f ? Loc.F(", {0}% come as magic monsters", Mathf.RoundToInt(d.MagicChance * 100)) : "")
+            + Loc.F(".\nItems +{0} item levels.\nHighest cleared: {1}.", d.ItemLevelBonus, Profile.Get(this)?.RiftTierCleared ?? 0);
         _summary.Text = $"Rewards: gold and orbs ×{d.Gold:0.00}, item rarity +{Mathf.RoundToInt(d.RarityBonus * 100)}%";
     }
 
@@ -149,16 +149,16 @@ public partial class RiftEntryPanel : ModalPanel
             bool complete = RiftChallenges.IsDone(progress, c);
             done += complete ? 1 : 0;
             string count = c.Count > 1 ? $"  ({RiftChallenges.ProgressOf(progress, c)}/{c.Count})" : "";
-            Label title = UiTheme.Label((complete ? "✓ " : "") + c.Title + count, 15, complete ? UiTheme.Experience : UiTheme.Text);
+            Label title = UiTheme.Label((complete ? "✓ " : "") + Loc.T(c.Title) + count, 15, complete ? UiTheme.Experience : UiTheme.Text);
             title.Name = $"Challenge_{c.Id}";
             _challenges.AddChild(title);
-            Label line = UiTheme.Label($"{c.Description}\nReward: {c.RewardText}", 12, UiTheme.TextDim);
+            Label line = UiTheme.Label(Loc.F("{0}\nReward: {1}", Loc.T(c.Description), Loc.T(c.RewardText)), 12, UiTheme.TextDim);
             line.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             line.CustomMinimumSize = new Vector2(310f, 0f);
             _challenges.AddChild(line);
         }
 
-        _challengeCount.Text = $"Challenges  {done}/{RiftChallenges.All.Count}";
+        _challengeCount.Text = Loc.F("Challenges  {0}/{1}", done, RiftChallenges.All.Count);
     }
 
     private void ToggleFear(string id)

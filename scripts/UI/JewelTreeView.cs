@@ -125,7 +125,7 @@ public partial class JewelTreeView : Control
 
             if (n.Kind == JewelNodeKind.Notable && Zoom > 0.35f)
             {
-                DrawString(font, p + new Vector2(-80f, r + 18f), n.Name, HorizontalAlignment.Center, 160f, 13, on ? branch : new Color(0.7f, 0.66f, 0.78f));
+                DrawString(font, p + new Vector2(-80f, r + 18f), ArpgGame.Core.Loc.T(n.Name), HorizontalAlignment.Center, 160f, 13, on ? branch : new Color(0.7f, 0.66f, 0.78f));
             }
         }
     }

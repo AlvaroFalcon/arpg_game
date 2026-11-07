@@ -509,7 +509,7 @@ public partial class PassiveTreePanel : ModalPanel
 
                 if (n.Kind != PassiveKind.Small && Zoom > 0.35f)
                 {
-                    DrawString(font, p + new Vector2(-60f, r + 14f), n.Name, HorizontalAlignment.Center, 120f, 12, _taken[i] ? Gold : LabelDim);
+                    DrawString(font, p + new Vector2(-60f, r + 14f), ArpgGame.Core.Loc.T(n.Name), HorizontalAlignment.Center, 120f, 12, _taken[i] ? Gold : LabelDim);
                 }
             }
         }

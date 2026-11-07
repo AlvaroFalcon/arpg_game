@@ -888,10 +888,10 @@ public partial class RunBuild : Node, IBuildContext
         string[] k = key.Split(':');
         return k[0] switch
         {
-            "l" when FindSkill(k[1]) is { } sk => $"{sk.DisplayName} → Lv {sk.Level}",
-            "p" when UpgradeCatalog.Passives.FirstOrDefault(p => p.Id == k[1]) is { } p => k.Length >= 3 && p.Scales ? $"{p.Name} ({(UpgradeRarity)k[2].ToInt()})" : p.Name,
-            "e" when FindSkill(k[1]) is { } sk => $"Evolved: {sk.DisplayName}",
-            _ when key.StartsWith(Run.ChestRules.GoldPrefix) => $"{key[Run.ChestRules.GoldPrefix.Length..]} gold",
+            "l" when FindSkill(k[1]) is { } sk => Loc.F("{0} → Lv {1}", Loc.T(sk.DisplayName), sk.Level),
+            "p" when UpgradeCatalog.Passives.FirstOrDefault(p => p.Id == k[1]) is { } p => k.Length >= 3 && p.Scales ? $"{Loc.T(p.Name)} ({Loc.T(((UpgradeRarity)k[2].ToInt()).ToString())})" : Loc.T(p.Name),
+            "e" when FindSkill(k[1]) is { } sk => Loc.F("Evolved: {0}", Loc.T(sk.DisplayName)),
+            _ when key.StartsWith(Run.ChestRules.GoldPrefix) => Loc.F("{0} gold", key[Run.ChestRules.GoldPrefix.Length..]),
             _ => key,
         };
     }

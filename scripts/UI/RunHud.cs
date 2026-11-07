@@ -173,7 +173,7 @@ public partial class RunHud : CanvasLayer
 
         // Evolutions (docs/design/survival-roadmap.md -> M5): the slot's mark, and a banner.
         SkillSlotView.EvolutionReady = skill => IsInstanceValid(Build) && Build.EvolutionReady(skill);
-        Build.Evolved += (skill, evo) => ShowBanner($"{skill.Definition.DisplayName} evolves", $"{evo.Name}: {evo.Description}", new Color(1f, 0.7f, 0.3f));
+        Build.Evolved += (skill, evo) => ShowBanner(Core.Loc.F("{0} evolves", Core.Loc.T(skill.Definition.DisplayName)), $"{Core.Loc.T(evo.Name)}: {Core.Loc.T(evo.Description)}", new Color(1f, 0.7f, 0.3f));
     }
 
     public override void _EnterTree() => RiftChallenges.Completed += OnChallenge;
@@ -185,7 +185,7 @@ public partial class RunHud : CanvasLayer
     }
 
     /// <summary>A Rift challenge completed (docs/design/survival-roadmap.md -> M7).</summary>
-    private void OnChallenge(ChallengeDef c) => ShowToast($"Challenge complete: {c.Title} — {c.RewardText}", new Color(0.55f, 1f, 0.6f));
+    private void OnChallenge(ChallengeDef c) => ShowToast(Core.Loc.F("Challenge complete: {0} — {1}", Core.Loc.T(c.Title), Core.Loc.T(c.RewardText)), new Color(0.55f, 1f, 0.6f));
 
 
     private void BuildRewardPanel(Control root)
@@ -305,7 +305,7 @@ public partial class RunHud : CanvasLayer
         Color top = new Color(1f, 0.75f, 0.25f).Lerp(new Color(0.85f, 0.15f, 0.35f), heat);
         // Tier, Fear cards and Greed (docs/design/survival-roadmap.md -> M3, M4): the gauge says why it is harder.
         string extra = State.Difficulty.Describe();
-        string title = extra.Length > 0 ? $"Danger {danger} · {extra}" : $"Danger {danger}";
+        string title = extra.Length > 0 ? Core.Loc.F("Danger {0} · {1}", danger, extra) : Core.Loc.F("Danger {0}", danger);
         return new PlayerHudBar.SideGauge(title, next, frac, top, top.Darkened(0.55f));
     }
 

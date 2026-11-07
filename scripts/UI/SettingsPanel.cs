@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using Godot;
 using ArpgGame.Core;
 
@@ -64,6 +65,11 @@ public partial class SettingsPanel : PanelContainer
         AddToggle(display, "Show FPS (F3)", settings?.ShowFps ?? false, v => settings?.SetShowFps(v));
 
         VBoxContainer gameplay = Tab(tabs, "Gameplay");
+        // docs/design/localization.md: "Automatic" follows the system's language when the game has it.
+        string[] languages = new[] { "Automatic" }.Concat(Loc.Languages.Select(l => l.Name)).ToArray();
+        string lang = settings?.Language ?? Loc.Auto;
+        int langIndex = lang == Loc.Auto ? 0 : 1 + Math.Max(0, Array.FindIndex(Loc.Languages, l => l.Locale == lang));
+        AddOptions(gameplay, "Language / Idioma", languages, langIndex, i => settings?.SetLanguage(i == 0 ? Loc.Auto : Loc.Languages[i - 1].Locale));
         AddToggle(gameplay, "Life and mana bars over your character", settings?.OverheadBars ?? true, v => settings?.SetOverheadBars(v));
         AddToggle(gameplay, "Screen shake", settings?.ScreenShake ?? true, v => settings?.SetScreenShake(v));
         AddOptions(gameplay, "Damage numbers", new[] { "Full: tags, skill icons, big-hit flash", "Compact: numbers only", "Off" },

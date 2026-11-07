@@ -355,7 +355,7 @@ public partial class QuestLogPanel : ModalPanel
 
         public override void _Draw()
         {
-            DrawString(ThemeDB.FallbackFont, new Vector2(8f, 19f), Caption, HorizontalAlignment.Left, -1, 12, UiTheme.TextDim);
+            DrawString(ThemeDB.FallbackFont, new Vector2(8f, 19f), ArpgGame.Core.Loc.T(Caption), HorizontalAlignment.Left, -1, 12, UiTheme.TextDim);
             if (Collapsible)
             {
                 QuestGlyphs.DrawDisclosure(this, new Vector2(Size.X - 16f, Size.Y / 2f), Open, UiTheme.TextDim);
@@ -410,8 +410,8 @@ public partial class QuestLogPanel : ModalPanel
             }
 
             bool dim = Status == QuestStatus.Done;
-            DrawString(font, new Vector2(44f, 21f), Quest.Title, HorizontalAlignment.Left, Size.X - 52f, 16, dim ? UiTheme.TextDim : Selected ? UiTheme.Gold : UiTheme.Text);
-            DrawString(font, new Vector2(44f, 38f), station?.Name ?? Quest.Speaker, HorizontalAlignment.Left, Size.X - 52f, 12, UiTheme.TextDim);
+            DrawString(font, new Vector2(44f, 21f), ArpgGame.Core.Loc.T(Quest.Title), HorizontalAlignment.Left, Size.X - 52f, 16, dim ? UiTheme.TextDim : Selected ? UiTheme.Gold : UiTheme.Text);
+            DrawString(font, new Vector2(44f, 38f), ArpgGame.Core.Loc.T(station?.Name ?? Quest.Speaker), HorizontalAlignment.Left, Size.X - 52f, 12, UiTheme.TextDim);
         }
     }
 

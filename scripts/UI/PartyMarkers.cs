@@ -98,8 +98,8 @@ public static class PartyMarkers
         const int size = 13;
         float w = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
         Vector2 p = at + new Vector2(-w / 2f, radius + 14f);
-        c.DrawStringOutline(font, p, text, HorizontalAlignment.Left, -1, size, 4, new Color(0f, 0f, 0f, 0.85f));
-        c.DrawString(font, p, text, HorizontalAlignment.Left, -1, size, m.Downed ? m.Color.Darkened(0.3f) : m.Color);
+        c.DrawStringOutline(font, p, ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, 4, new Color(0f, 0f, 0f, 0.85f));
+        c.DrawString(font, p, ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, m.Downed ? m.Color.Darkened(0.3f) : m.Color);
     }
 
     /// <summary>A point kept inside <paramref name="area"/> (an ally beyond the edge of a map

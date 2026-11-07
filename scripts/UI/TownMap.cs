@@ -117,8 +117,8 @@ public partial class TownMap : Control
     private void Label(Font font, string text, Vector2 centre, int size, Color color)
     {
         Vector2 at = centre - new Vector2(font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X / 2f, 0f);
-        DrawString(font, at + Vector2.One, text, HorizontalAlignment.Left, -1, size, Colors.Black with { A = 0.85f });
-        DrawString(font, at, text, HorizontalAlignment.Left, -1, size, color);
+        DrawString(font, at + Vector2.One, ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, Colors.Black with { A = 0.85f });
+        DrawString(font, at, ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, color);
     }
 
     /// <summary>The party members this map shows (none offline; tests read it too).</summary>
@@ -269,7 +269,7 @@ public partial class TownMap : Control
                 string questTitle = quest != QuestMarker.None && QuestService.FirstAt(Hideout, prop.Uid) is { } q ? $"  ·  Quest: {q.Title}" : "";
                 string info = $"{def.Name} — {def.Verb}{questTitle}  ·  click to walk there";
                 float w = font.GetStringSize(info, HorizontalAlignment.Left, -1, 15).X;
-                DrawString(font, new Vector2(_area.End.X - w, _area.Position.Y - 29f), info, HorizontalAlignment.Left, -1, 15, def.Accent);
+                DrawString(font, new Vector2(_area.End.X - w, _area.Position.Y - 29f), ArpgGame.Core.Loc.T(info), HorizontalAlignment.Left, -1, 15, def.Accent);
             }
         }
 
@@ -298,10 +298,10 @@ public partial class TownMap : Control
 
         if (Big)
         {
-            DrawString(font, new Vector2(_area.Position.X, _area.Position.Y - 26f), "TOWN MAP", HorizontalAlignment.Left, -1, 22, UiTheme.Gold);
+            DrawString(font, new Vector2(_area.Position.X, _area.Position.Y - 26f), ArpgGame.Core.Loc.T("TOWN MAP"), HorizontalAlignment.Left, -1, 22, UiTheme.Gold);
             if (_hovered is null)
             {
-                DrawString(font, new Vector2(_area.Position.X + 130f, _area.Position.Y - 29f), "click a station to walk there  ·  M or Esc to close",
+                DrawString(font, new Vector2(_area.Position.X + 130f, _area.Position.Y - 29f), ArpgGame.Core.Loc.T("click a station to walk there  ·  M or Esc to close"),
                     HorizontalAlignment.Left, -1, 14, UiTheme.TextDim);
             }
         }

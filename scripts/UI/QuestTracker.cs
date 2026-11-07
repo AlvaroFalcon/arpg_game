@@ -179,8 +179,8 @@ public partial class QuestTracker : PanelContainer
             string station = HideoutCatalog.Prop(Quest.Station)?.Name ?? "";
             float stationWidth = font.GetStringSize(station, HorizontalAlignment.Left, -1, 11).X;
             float titleRoom = Size.X - 26f - stationWidth - 6f;
-            DrawString(font, new Vector2(26f, 17f), Quest.Title, HorizontalAlignment.Left, titleRoom, 13, _hover ? Colors.White : UiTheme.Text);
-            DrawString(font, new Vector2(Size.X - stationWidth, 17f), station, HorizontalAlignment.Left, -1, 11, UiTheme.TextDim);
+            DrawString(font, new Vector2(26f, 17f), ArpgGame.Core.Loc.T(Quest.Title), HorizontalAlignment.Left, titleRoom, 13, _hover ? Colors.White : UiTheme.Text);
+            DrawString(font, new Vector2(Size.X - stationWidth, 17f), ArpgGame.Core.Loc.T(station), HorizontalAlignment.Left, -1, 11, UiTheme.TextDim);
         }
     }
 }

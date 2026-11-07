@@ -124,7 +124,7 @@ public partial class Shrine : Node2D
         DrawRect(new Rect2(-3f, -140f, 6f, 106f), c with { A = 0.1f + 0.06f * pulse });
         Font font = ThemeDB.FallbackFont;
         string label = Used ? "" : NameOf(Kind);
-        DrawStringOutline(font, new Vector2(-60f, -44f), label, HorizontalAlignment.Center, 120f, 13, 3, new Color(0f, 0f, 0f, 0.9f));
-        DrawString(font, new Vector2(-60f, -44f), label, HorizontalAlignment.Center, 120f, 13, c);
+        DrawStringOutline(font, new Vector2(-60f, -44f), ArpgGame.Core.Loc.T(label), HorizontalAlignment.Center, 120f, 13, 3, new Color(0f, 0f, 0f, 0.9f));
+        DrawString(font, new Vector2(-60f, -44f), ArpgGame.Core.Loc.T(label), HorizontalAlignment.Center, 120f, 13, c);
     }
 }

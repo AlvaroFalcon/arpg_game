@@ -144,8 +144,8 @@ public partial class MapOverlay : Control
         Font font = ThemeDB.FallbackFont;
         string title = $"{Reality.Layout.Name}  ·  Tab to close";
         float w = font.GetStringSize(title, HorizontalAlignment.Left, -1, 15).X;
-        DrawStringOutline(font, new Vector2((Size.X - w) / 2f, 88f), title, HorizontalAlignment.Left, -1, 15, 4, new Color(0f, 0f, 0f, 0.8f));
-        DrawString(font, new Vector2((Size.X - w) / 2f, 88f), title, HorizontalAlignment.Left, -1, 15, new Color(0.8f, 0.85f, 1f, 0.9f));
+        DrawStringOutline(font, new Vector2((Size.X - w) / 2f, 88f), ArpgGame.Core.Loc.T(title), HorizontalAlignment.Left, -1, 15, 4, new Color(0f, 0f, 0f, 0.8f));
+        DrawString(font, new Vector2((Size.X - w) / 2f, 88f), ArpgGame.Core.Loc.T(title), HorizontalAlignment.Left, -1, 15, new Color(0.8f, 0.85f, 1f, 0.9f));
     }
 
     private void Edge(Vector2I c, Vector2I dir, Vector2 a, Vector2 b)

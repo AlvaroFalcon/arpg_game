@@ -481,7 +481,7 @@ public partial class PlayerHudBar : Control
         float w = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
         float x = align switch { HorizontalAlignment.Right => at.X - w, HorizontalAlignment.Center => at.X - w / 2f, _ => at.X };
         var p = new Vector2(x, at.Y);
-        DrawStringOutline(font, p, text, HorizontalAlignment.Left, -1, size, 4, new Color(0f, 0f, 0f, 0.85f));
-        DrawString(font, p, text, HorizontalAlignment.Left, -1, size, color);
+        DrawStringOutline(font, p, ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, 4, new Color(0f, 0f, 0f, 0.85f));
+        DrawString(font, p, ArpgGame.Core.Loc.T(text), HorizontalAlignment.Left, -1, size, color);
     }
 }

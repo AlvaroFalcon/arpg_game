@@ -32,8 +32,8 @@ public partial class Portal : Node2D
         if (Caption.Length > 0)
         {
             Font font = ThemeDB.FallbackFont;
-            DrawString(font, new Vector2(-219f, -61f), Caption, HorizontalAlignment.Center, 440f, 15, new Color(0f, 0f, 0f, 0.85f));
-            DrawString(font, new Vector2(-220f, -62f), Caption, HorizontalAlignment.Center, 440f, 15, new Color(1f, 0.92f, 0.7f));
+            DrawString(font, new Vector2(-219f, -61f), ArpgGame.Core.Loc.T(Caption), HorizontalAlignment.Center, 440f, 15, new Color(0f, 0f, 0f, 0.85f));
+            DrawString(font, new Vector2(-220f, -62f), ArpgGame.Core.Loc.T(Caption), HorizontalAlignment.Center, 440f, 15, new Color(1f, 0.92f, 0.7f));
         }
     }
 }

@@ -44,8 +44,8 @@ public static class QuestGlyphs
         float width = font.GetStringSize(glyph, HorizontalAlignment.Left, -1, px).X;
         float baseline = center.Y + (font.GetAscent(px) - font.GetDescent(px)) / 2f;
         var at = new Vector2(center.X - width / 2f, baseline);
-        canvas.DrawStringOutline(font, at, glyph, HorizontalAlignment.Left, -1, px, Mathf.Max(2, px / 6), Colors.Black);
-        canvas.DrawString(font, at, glyph, HorizontalAlignment.Left, -1, px, color);
+        canvas.DrawStringOutline(font, at, ArpgGame.Core.Loc.T(glyph), HorizontalAlignment.Left, -1, px, Mathf.Max(2, px / 6), Colors.Black);
+        canvas.DrawString(font, at, ArpgGame.Core.Loc.T(glyph), HorizontalAlignment.Left, -1, px, color);
     }
 
     /// <summary>A check mark inside <paramref name="box"/>.</summary>

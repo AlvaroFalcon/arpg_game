@@ -223,7 +223,7 @@ public partial class EquipmentStripControl : Control
 
             if (equipped is null)
             {
-                DrawString(font, new Vector2(rect.Position.X, rect.GetCenter().Y + 5f), Label(slot),
+                DrawString(font, new Vector2(rect.Position.X, rect.GetCenter().Y + 5f), ArpgGame.Core.Loc.T(Label(slot)),
                     HorizontalAlignment.Center, rect.Size.X, 12, new Color(0.45f, 0.43f, 0.55f));
                 continue;
             }
@@ -253,7 +253,7 @@ public partial class EquipmentStripControl : Control
                 string attempt = line.Length == 0 ? w : line + " " + w;
                 if (font.GetStringSize(attempt, HorizontalAlignment.Left, -1, 11).X > rect.Size.X - 6f && line.Length > 0)
                 {
-                    DrawString(font, new Vector2(rect.Position.X + 3f, y), line, HorizontalAlignment.Left, rect.Size.X - 6f, 11, rarity);
+                    DrawString(font, new Vector2(rect.Position.X + 3f, y), ArpgGame.Core.Loc.T(line), HorizontalAlignment.Left, rect.Size.X - 6f, 11, rarity);
                     y += 12f;
                     line = w;
                 }
@@ -270,7 +270,7 @@ public partial class EquipmentStripControl : Control
 
             if (line.Length > 0 && y <= rect.End.Y - 4f)
             {
-                DrawString(font, new Vector2(rect.Position.X + 3f, y), line, HorizontalAlignment.Left, rect.Size.X - 6f, 11, rarity);
+                DrawString(font, new Vector2(rect.Position.X + 3f, y), ArpgGame.Core.Loc.T(line), HorizontalAlignment.Left, rect.Size.X - 6f, 11, rarity);
             }
         }
     }

@@ -110,17 +110,17 @@ public sealed class RiftDifficulty
         var parts = new List<string>();
         if (Tier > 1)
         {
-            parts.Add($"Tier {Tier}");
+            parts.Add(Core.Loc.F("Tier {0}", Tier));
         }
 
         if (Fears.Count > 0)
         {
-            parts.Add(string.Join(", ", Fears.Select(f => f.Name)));
+            parts.Add(string.Join(", ", Fears.Select(f => Core.Loc.T(f.Name))));
         }
 
         if (Greed > 0)
         {
-            parts.Add($"Greed ×{Greed}");
+            parts.Add(Core.Loc.F("Greed ×{0}", Greed));
         }
 
         return string.Join(" · ", parts);

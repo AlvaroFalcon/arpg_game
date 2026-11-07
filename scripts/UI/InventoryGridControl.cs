@@ -308,7 +308,7 @@ public partial class InventoryGridControl : Control
             }
 
             DrawRect(rect, new Color(0, 0, 0, 0.6f), filled: false);
-            DrawString(font, rect.Position + new Vector2(4, 16), item.Base.DisplayName,
+            DrawString(font, rect.Position + new Vector2(4, 16), ArpgGame.Core.Loc.T(item.Base.DisplayName),
                 HorizontalAlignment.Left, rect.Size.X - 8, fontSize);
         }
     }

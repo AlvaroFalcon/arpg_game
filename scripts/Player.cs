@@ -282,8 +282,8 @@ public partial class Player : CharacterBody2D
             const string down = "DOWN";
             float w = font.GetStringSize(down, HorizontalAlignment.Left, -1, 12).X;
             var at = new Vector2(-w / 2f, -32f);
-            DrawStringOutline(font, at, down, HorizontalAlignment.Left, -1, 12, 4, new Color(0f, 0f, 0f, 0.85f));
-            DrawString(font, at, down, HorizontalAlignment.Left, -1, 12, new Color(1f, 0.5f, 0.45f));
+            DrawStringOutline(font, at, ArpgGame.Core.Loc.T(down), HorizontalAlignment.Left, -1, 12, 4, new Color(0f, 0f, 0f, 0.85f));
+            DrawString(font, at, ArpgGame.Core.Loc.T(down), HorizontalAlignment.Left, -1, 12, new Color(1f, 0.5f, 0.45f));
         }
         else if (RevivingTarget is { } target && IsInstanceValid(target))
         {

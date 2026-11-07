@@ -70,6 +70,10 @@ public partial class GameSettings : Node
     /// <summary>Frame-rate readout in the corner (<see cref="UI.FpsOverlay"/>); F3 toggles it.</summary>
     public bool ShowFps { get; private set; }
 
+    /// <summary>The game's language: "auto" (the system's, if the game has it), "en" or "es"
+    /// (docs/design/localization.md).</summary>
+    public string Language { get; private set; } = Loc.Auto;
+
     /// <summary>Testing tools (docs/design/menus.md -> "Admin mode"): a "test character" button on character creation.</summary>
     public bool AdminMode { get; private set; }
 
@@ -86,6 +90,16 @@ public partial class GameSettings : Node
         EnsureBus(MusicBus);
         EnsureBus(SfxBus);
         Load();
+        Loc.Apply(Language);
+        // `-- --lang=es`: play (or capture) in a language without changing the saved setting.
+        foreach (string arg in OS.GetCmdlineUserArgs())
+        {
+            if (arg.StartsWith("--lang="))
+            {
+                Loc.Apply(arg[7..]);
+            }
+        }
+
         ApplyAll();
         AddChild(new UI.GameCursor { Name = "GameCursor" });
     }
@@ -119,6 +133,7 @@ public partial class GameSettings : Node
     public void SetAutoAim(bool v) { AutoAim = v; NotifyChanged(); }
     public void SetShowFps(bool v) { ShowFps = v; ApplyFps(); NotifyChanged(); }
     public void SetAdminMode(bool v) { AdminMode = v; NotifyChanged(); }
+    public void SetLanguage(string v) { Language = v; Loc.Apply(v); NotifyChanged(); }
 
     private void ApplyFps()
     {
@@ -242,6 +257,7 @@ public partial class GameSettings : Node
         AutoAim = (bool)config.GetValue("gameplay", "auto_aim", AutoAim);
         ShowFps = (bool)config.GetValue("display", "show_fps", ShowFps);
         AdminMode = (bool)config.GetValue("gameplay", "admin_mode", AdminMode);
+        Language = (string)config.GetValue("general", "language", Language);
     }
 
     public void Save()
@@ -262,6 +278,7 @@ public partial class GameSettings : Node
         config.SetValue("gameplay", "auto_aim", AutoAim);
         config.SetValue("display", "show_fps", ShowFps);
         config.SetValue("gameplay", "admin_mode", AdminMode);
+        config.SetValue("general", "language", Language);
         config.Save(SavePath);
     }
 }

@@ -266,14 +266,14 @@ public partial class LootFeedView : Control
 
             float x = frame.End.X + 10f;
             float baseline = Size.Y / 2f + 6f;
-            DrawStringOutline(font, new Vector2(x, baseline), Entry.Name, HorizontalAlignment.Left, -1, 16, 4, new Color(0f, 0f, 0f, 0.8f));
-            DrawString(font, new Vector2(x, baseline), Entry.Name, HorizontalAlignment.Left, -1, 16, Entry.Color.Lightened(0.15f));
+            DrawStringOutline(font, new Vector2(x, baseline), ArpgGame.Core.Loc.T(Entry.Name), HorizontalAlignment.Left, -1, 16, 4, new Color(0f, 0f, 0f, 0.8f));
+            DrawString(font, new Vector2(x, baseline), ArpgGame.Core.Loc.T(Entry.Name), HorizontalAlignment.Left, -1, 16, Entry.Color.Lightened(0.15f));
             if (Entry.Count > 1 || Entry.Key == "gold")
             {
                 float w = font.GetStringSize(Entry.Name, HorizontalAlignment.Left, -1, 16).X;
                 Color c = _pulse > 0f ? UiTheme.Text.Lerp(Colors.White, _pulse) : UiTheme.Text;
-                DrawStringOutline(font, new Vector2(x + w + 8f, baseline), CountText, HorizontalAlignment.Left, -1, 15, 4, new Color(0f, 0f, 0f, 0.8f));
-                DrawString(font, new Vector2(x + w + 8f, baseline), CountText, HorizontalAlignment.Left, -1, 15, c);
+                DrawStringOutline(font, new Vector2(x + w + 8f, baseline), ArpgGame.Core.Loc.T(CountText), HorizontalAlignment.Left, -1, 15, 4, new Color(0f, 0f, 0f, 0.8f));
+                DrawString(font, new Vector2(x + w + 8f, baseline), ArpgGame.Core.Loc.T(CountText), HorizontalAlignment.Left, -1, 15, c);
             }
         }
     }
