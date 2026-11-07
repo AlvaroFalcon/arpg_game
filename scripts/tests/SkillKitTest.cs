@@ -99,7 +99,6 @@ public partial class SkillKitTest : Node2D
         await TotemChecks();
         await MovementChecks();
         await VolleyChecks();
-        await RiftAutoCastChecks();
 
         string verdict = _failed ? "[SKILLKIT] === RESULT: FAIL ===" : "[SKILLKIT] === RESULT: PASS ===";
         _lines.Add(verdict);
@@ -534,109 +533,5 @@ public partial class SkillKitTest : Node2D
         Check("SPACE-EMPTY-ROLLS", dodge.IsDashing && dodge.Charges == charges - 1, $"with Space empty, Space rolls (charges {charges} → {dodge.Charges})");
         dummy.QueueFree();
         await Seconds(0.3f);
-    }
-
-    // --- the Survival Rift's auto-cast -----------------------------------------------------
-
-    /// <summary>
-    /// Every skill a character can bring into the Survival Rift (its loadout carries over,
-    /// auras and totems included) fires on its own there. Each one, alone in a slot under
-    /// survival casting for a few seconds next to dummies: it must cast, a skill that hits
-    /// must hurt them, and a toggle (Immolation) must switch on once and stay on — the
-    /// auto-cast used to switch it off again on every timer.
-    /// </summary>
-    private async Task RiftAutoCastChecks()
-    {
-        var input = _player.GetNode<PlayerSkillInput>("PlayerSkillInput");
-        bool ignored = _player.Stats.IgnoresResourceCosts;
-        _player.Stats.IgnoresResourceCosts = true;
-        Vector2 at = new(14000f, 0f);
-        var broken = new List<string>();
-        var report = new List<string>();
-        // Alone in the bar: the test player's default skills would auto-cast too.
-        foreach (SkillSlotId other in new[] { SkillSlotId.Lmb, SkillSlotId.Rmb, SkillSlotId.Slot1, SkillSlotId.Slot2, SkillSlotId.Slot3, SkillSlotId.Slot4 })
-        {
-            _skills.ClearSlot(other);
-        }
-
-        int slotFired = 0;
-        void OnFired(int slot) => slotFired += slot == (int)SkillSlotId.Slot1 ? 1 : 0;
-        _skills.CastFired += OnFired;
-        foreach (SkillEntry entry in UpgradeCatalog.Skills)
-        {
-            SkillDefinition d = entry.Definition;
-            if (SkillRules.FitsSpace(d))
-            {
-                continue; // the Space slot is never auto-cast
-            }
-
-            _player.GlobalPosition = at;
-            Node2D a = Dummy(at + new Vector2(70f, 0f));
-            Node2D b = Dummy(at + new Vector2(0f, 90f));
-            await Seconds(0.1f);
-            SkillInstance skill = Equip(entry.Id);
-            if (d is TotemSkillDefinition)
-            {
-                skill.Socketed = new SkillInstance(UpgradeCatalog.FindSkill("fireball")!.Definition);
-            }
-
-            slotFired = 0;
-            input.Mode = PlayerSkillInput.CastMode.Survival;
-            int flips = 0;
-            bool was = false;
-            bool toggle = d is AuraSkillDefinition { IsToggle: true };
-            bool hits = toggle || d is ProjectileSkillDefinition or AreaSkillDefinition or OrbitSkillDefinition or MeleeSkillDefinition or TotemSkillDefinition;
-            // Long cooldowns (Vitality, Elemental Storm) wait a quarter of their interval first.
-            float window = toggle ? 5f : 0.3f * input.AutoCastInterval(skill) + 2f;
-            float sinceFirst = 0f;
-            for (float t = 0f; t < window; t += 0.1f)
-            {
-                await Seconds(0.1f);
-                bool now = _skills.Auras.IsActive(skill);
-                flips += now != was ? 1 : 0;
-                was = now;
-                sinceFirst += slotFired > 0 ? 0.1f : 0f;
-                if (!toggle && slotFired > 0 && sinceFirst >= 1.2f && (!hits || Missing(a) + Missing(b) > 0f))
-                {
-                    break;
-                }
-            }
-
-            input.Mode = PlayerSkillInput.CastMode.Hold;
-            float dealt = Missing(a) + Missing(b);
-            bool ok = slotFired > 0 && (!hits || dealt > 0f);
-            string note = $"{entry.Id}: {slotFired} casts, {dealt:0} dmg";
-            if (toggle)
-            {
-                ok &= flips == 1 && was;
-                note += $", switched {flips}× (on at the end={was})";
-            }
-
-            report.Add(note);
-            if (!ok)
-            {
-                broken.Add(note);
-            }
-
-            _skills.ClearSlot(SkillSlotId.Slot1);
-            _skills.Auras.EndAll();
-            foreach (Totem t in _skills.Totems.ToList())
-            {
-                if (IsInstanceValid(t))
-                {
-                    t.Expire();
-                }
-            }
-
-            a.QueueFree();
-            b.QueueFree();
-            at += new Vector2(0f, 1500f);
-        }
-
-        _skills.CastFired -= OnFired;
-        _player.Stats.IgnoresResourceCosts = ignored;
-        GD.Print("[SKILLKIT] rift auto-cast: " + string.Join("; ", report));
-        Check("RIFT-AUTOCAST", broken.Count == 0,
-            broken.Count == 0 ? $"{report.Count} skills fire on their own and Immolation stays on" : "broken: " + string.Join("; ", broken));
     }
 }

@@ -489,7 +489,7 @@ flickered (owner report). Survival casting now leaves a toggle alone while it is
 switched on at the start, it stays on and is only cast again once something switched
 it off (death, a revive). The timer also belongs to the skill now, not the slot: a
 skill new to a slot starts its own staggered wait instead of the previous one's.
-`SkillKitTest` -> `RIFT-AUTOCAST` runs every skill alone under survival casting
+`scenes/tests/RiftAutoCastTest.tscn` runs every skill alone under survival casting
 (it must fire, hitting skills must hurt, Immolation must switch on exactly once).
 
 **Life-only HUD.** With no mana the right half of the cluster was empty and the
