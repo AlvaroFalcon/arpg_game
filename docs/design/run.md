@@ -524,5 +524,5 @@ reaches the Colossus, sometimes beats it.*
 - A second biome/arena with its own enemy roster and boss.
 - Meta-progression beyond gear (gold has no sink yet — a vendor or crafting bench
   in the hideout is the obvious first one).
-- Should difficulty tiers exist (higher tiers: denser, tougher, better item levels)?
+- Should difficulty tiers exist (higher tiers: denser, tougher, better item levels)? Research on how Vampire Survivors, Megabonk and Hell Clock do it, and ranked proposals: [survival-research.md](survival-research.md).
   The director's numbers are all in one place to make that cheap.
