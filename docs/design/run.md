@@ -482,6 +482,16 @@ speed (attacks). The skill bar's sweep shows the timer. Level-up cards improve i
 existing cast/attack speed cards now count too. Skills start staggered so a fresh
 build doesn't fire everything on the same frame.
 
+**Toggles and the timers (2026-11-07).** The character's loadout comes into the Rift,
+so auras and Spell Totem fire on their timers too. Immolation is a switch, and the
+timer used to press it every ~1.2 s — on, off, on — so it burned half the time and
+flickered (owner report). Survival casting now leaves a toggle alone while it is on:
+switched on at the start, it stays on and is only cast again once something switched
+it off (death, a revive). The timer also belongs to the skill now, not the slot: a
+skill new to a slot starts its own staggered wait instead of the previous one's.
+`SkillKitTest` -> `RIFT-AUTOCAST` runs every skill alone under survival casting
+(it must fire, hitting skills must hurt, Immolation must switch on exactly once).
+
 **Life-only HUD.** With no mana the right half of the cluster was empty and the
 controls hint sat across the life bar. The right-hand bar is now the **danger
 gauge** — the level, filling towards the next one, and what is coming ("Bone Herald

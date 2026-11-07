@@ -216,6 +216,7 @@ public partial class PlayerSkillInput : Node
 
     private readonly Dictionary<SkillSlotId, float> _autoTimers = new();
     private readonly Dictionary<SkillSlotId, float> _autoIntervals = new();
+    private readonly Dictionary<SkillSlotId, SkillInstance> _autoSkills = new();
 
     /// <summary>
     /// Seconds between two automatic casts of a skill in the Survival Rift
@@ -284,6 +285,26 @@ public partial class PlayerSkillInput : Node
 
             float interval = AutoCastInterval(skill);
             _autoIntervals[slot] = interval;
+
+            // A toggle (Immolation) is switched on once and left on: casting it again
+            // switches it off, so the timer used to flick it off and on every cycle. It
+            // only fires again once something switched it off (death, a revive).
+            if (skill.Definition is Skills.AuraSkillDefinition { IsToggle: true } && _skillUser.Auras.IsActive(skill))
+            {
+                _autoTimers[slot] = 0f;
+                _autoSkills[slot] = skill;
+                index++;
+                continue;
+            }
+
+            // The timer belongs to the skill, not the slot: a skill new to the slot starts
+            // its own staggered wait instead of inheriting the last one's.
+            if (_autoSkills.TryGetValue(slot, out SkillInstance? previous) && previous != skill)
+            {
+                _autoTimers.Remove(slot);
+            }
+
+            _autoSkills[slot] = skill;
             if (!_autoTimers.TryGetValue(slot, out float left))
             {
                 // Staggered start: skills take turns instead of firing together.
