@@ -25,6 +25,16 @@ skills for a skill-less character, otherwise a new class skill or a level for on
 it brought — progression.md -> "The start pick") → survive → boss → results
 (choose one of three items, if the run earned one) → Hideout.
 
+## The 2026-11 loop (summary)
+
+Since 2026-11-07 the Rift also has: Skip, Banish and gold rerolls on the level-up screen, Luck
+and its 4th card; **chests** from elites and bosses (1, 3 or 5 upgrades, no pause); **shrines**
+in the arena (Greed, Challenge, Charge, Magnet); **Rift tiers 1–10 and Fear cards**, chosen
+in an entry panel at the portal; **skill evolutions**; **the Onslaught** (the 30 s before the
+Colossus) and **endless milestones** (a golden chest at 5, 10, 20 and 30 minutes); and **Rift
+challenges** that unlock content. Design, numbers and what was built:
+[survival-roadmap.md](survival-roadmap.md) (research: [survival-research.md](survival-research.md)).
+
 ## The arena
 
 - 80×60 tiles of 32 px (2560×1920 world px), built at runtime from the EasyPixel

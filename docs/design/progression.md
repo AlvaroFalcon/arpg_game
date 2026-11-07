@@ -20,6 +20,16 @@ rerolls** last the whole run. The build is wiped at the end of the run; it is a 
 build, not the character — but the character's passive tree and ascendancy count
 too ("The character in the Rift").
 
+## Pick control, chests and evolutions (2026-11-07)
+
+The level-up screen gained **Skip** (3 a run, 30 % of the level's experience back, never on a
+keystone row), **Banish** (2 a run, Ctrl + number) and **gold rerolls** once the two free ones
+are spent (25 × 1.6ⁿ gold). **Luck** (the Fortune power-up, the Treasure Hunter keystone) gives
+a 4th card on ordinary rows, rarer power-ups and bigger chests. **Chests** raise what the build
+already owns; a skill at level 6 with its partner power-up **evolves** from the next chest of 3
+or more. All the numbers: `OfferRules`, `ChestRules`, `EvolutionCatalog`, and
+[survival-roadmap.md](survival-roadmap.md) -> M1, M2, M5.
+
 ## Offer composition (2026-10-17)
 
 Owner feedback: the cards offered far too many passive-tree keystones, and the

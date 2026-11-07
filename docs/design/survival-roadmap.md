@@ -1,6 +1,7 @@
 # Survival Rift — implementation plan by milestone
 
-Status: **plan, nothing built** (2026-11-07). It turns the proposals in
+Status: **M0–M7 implemented (2026-11-07)**, M8 (a second arena) not started — see "As built"
+at the end for what changed from this plan. It turns the proposals in
 [survival-research.md](survival-research.md) into milestones. Each milestone is meant to
 be one branch and one PR, buildable and playable on its own. Owner request (translated):
 *"make an implementation plan for each proposal, split by milestone and explained
@@ -492,3 +493,50 @@ bot clears both at similar rates on the same tier.
 4. M5: which six skills evolve first, with what names and effects.
 5. M6: should endless milestones give a breather or only rewards?
 6. M7: is gating keystones and recipes behind challenges wanted?
+
+## As built (2026-11-07)
+
+M0–M7 are in the game behind their `Features.Rift*` flags (all on). M8 needs art and its own
+design pass and is not started. Where the build differs from the plan above:
+
+- **Open questions, the defaults taken (owner to confirm):** gold rerolls come from the wallet
+  (the character's gold); Greed is capped at ×10 (`RiftDifficulty.MaxGreed`); Rift tiers have
+  their own ladder (they do not match the Mirror's item levels); in co-op the tier and Fear cards
+  are the proposer's; the endless milestones only reward; the starting evolutions are the eight
+  below; and the challenges gate only **new** content (two evolutions, one keystone, an extra
+  Skip and an extra Banish), so nothing a player already had is locked away.
+- **M0:** the difficulty also carries the Fear cards' special rules (Famine, Volatile) and the
+  tier's magic monsters (10 % from tier 4, 20 % from tier 7) instead of monster affixes. Net id 32
+  is unused: chests travel in the existing "collected" record, whose key now holds the chest's
+  reward keys. The Rift snapshot gained two bytes (tier, Greed).
+- **M1:** Banish is Ctrl + number (Shift + number stays the reroll). In co-op a skip refunds no
+  experience: the party shares one bar, and one player's skip should not feed everyone. Banish
+  and gold rerolls are local to the client, whose machine rolls its own row.
+- **M2:** chests are drawn in code (no sprite yet): bronze, silver, gold. The results screen
+  counts them.
+- **M3:** the Charge shrine heals 30 % and drops a 1-chest for every player (a chest replicates
+  for free in co-op, a power-up would have needed its own message). The Rift minimap is now
+  shown solo too: it marks shrines and chests.
+- **M4:** the entry panel (`UI/RiftEntryPanel`) opens from the hideout portal and from the
+  Mirror's "Enter the Survival Rift". The Survival Rift's `RiftSpec` now carries the tier and
+  the Fear ids (sanitised: unknown ids are dropped). The bot takes `--rift-tier=N --fear=a,b`.
+- **M5:** eight evolutions (`EvolutionCatalog`): Firestorm (Fireball + Expanse), Storm Lattice
+  (Spark + Static), Permafrost (Frost Nova + Persistence), Reaper's Arc (Cleave + Ferocity), Fan
+  of Blades (Throwing Knives + Volley), Whirling Wall (Blades + Momentum), Starfall (Meteor +
+  Kindling, unlocked by a challenge) and Hailstorm (Frost Shards + Velocity, unlocked by a
+  challenge). Each is ×1.5 damage plus a change built from existing cast fields. The skill bar
+  marks a ready evolution ("EVO") and frames an evolved one in gold; the partner's level-up
+  card says what it evolves.
+- **M6:** the climax is called **the Onslaught** (the director already had a "surge" for its
+  wave noise). Elites and the swarm timer pause during it; two swarm rings come instead.
+- **M7:** the challenges are their own small system (`Run/RiftChallenges`), not quest-log
+  quests: the quest log is built around stations, markers and turn-ins for the tutorial, and
+  fourteen Rift goals would have crowded it. They complete on the spot with a toast, and the list
+  with progress is in the Rift's entry panel. Progress and unlocks are saved in the profile
+  (`RiftChallenges`, `Unlocks`). In co-op a client counts its own clears, chests, evolutions and
+  levels; shrines and endless milestones count on the host only.
+- **Tests:** `RiftLoopTest` (difficulty, pick control, chests, evolutions, unlocks) and
+  `RiftShrineTest` (shrines, tiers at launch, the Onslaught, milestones, challenges, the entry
+  panel), both under the runner's frame limit.
+- **Measuring:** not done yet. The bot runs in "Measuring" are the next step, before tuning any
+  number in this doc.
