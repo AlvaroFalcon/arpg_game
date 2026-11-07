@@ -770,7 +770,7 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
     {
         who.ChestsOpened++;
         bool local = player.IsLocal;
-        var lines = new List<string>();
+        var lines = new List<(string Text, Texture2D? Icon)>();
         foreach (string key in keys)
         {
             if (key.StartsWith(ChestRules.GoldPrefix))
@@ -792,7 +792,9 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
 
             if (who.Build is { } build && build.ApplyKey(key))
             {
-                lines.Add(build.DescribeKey(key));
+                string[] k = key.Split(':');
+                Texture2D? icon = k[0] is "l" or "e" ? build.FindSkill(k[1])?.Definition.Icon : RunBuild.LoadIcon("icon_passive");
+                lines.Add((build.DescribeKey(key), icon));
             }
         }
 
@@ -800,9 +802,9 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
         {
             Core.Sfx.Play(this, size >= 5 ? "victory" : "levelup", size >= 5 ? -6f : -4f);
             Color c = size >= 5 ? new Color(1f, 0.8f, 0.3f) : size >= 3 ? new Color(0.8f, 0.86f, 0.95f) : new Color(0.85f, 0.6f, 0.35f);
-            foreach (string line in lines)
+            foreach ((string line, Texture2D? icon) in lines)
             {
-                UI.LootFeed.Report(new UI.LootEntry($"chest:{line}:{Time.GetTicksMsec()}", null, "Chest · " + line, c, 1));
+                UI.LootFeed.Report(new UI.LootEntry($"chest:{line}:{Time.GetTicksMsec()}", icon, "Chest · " + line, c, 1));
             }
 
             if (size >= 5)
