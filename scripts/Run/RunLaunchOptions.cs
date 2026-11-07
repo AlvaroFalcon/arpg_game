@@ -24,6 +24,27 @@ public static class RunLaunchOptions
     /// autoplay bot sets it so balance numbers stay comparable with earlier passes.</summary>
     public static bool AutoCashOut;
 
+    /// <summary>The Rift tier (docs/design/survival-roadmap.md -> M4), 1..10.</summary>
+    public static int RiftTier = 1;
+
+    /// <summary>The Fear cards taken with it (ids, up to three).</summary>
+    public static System.Collections.Generic.List<string> Fears = new();
+
+    /// <summary>The difficulty these options describe.</summary>
+    public static RiftDifficulty Difficulty()
+    {
+        var d = new RiftDifficulty { Tier = Mathf.Clamp(RiftTier, 1, RiftDifficulty.MaxTier) };
+        foreach (string id in Fears)
+        {
+            if (RiftDifficulty.FindFear(id) is { } fear && !d.Fears.Contains(fear) && d.Fears.Count < RiftDifficulty.MaxFears)
+            {
+                d.Fears.Add(fear);
+            }
+        }
+
+        return d;
+    }
+
     public static void ReadCommandLine()
     {
         foreach (string arg in OS.GetCmdlineUserArgs())
@@ -48,6 +69,12 @@ public static class RunLaunchOptions
                 case "auto-cash-out":
                     AutoCashOut = kv[1] != "0";
                     break;
+                case "rift-tier":
+                    RiftTier = kv[1].ToInt();
+                    break;
+                case "fear":
+                    Fears = new System.Collections.Generic.List<string>(kv[1].Split(',', System.StringSplitOptions.RemoveEmptyEntries));
+                    break;
             }
         }
     }
@@ -58,5 +85,7 @@ public static class RunLaunchOptions
         StartSkill = null;
         AutoLevels = 0;
         AutoCashOut = false;
+        RiftTier = 1;
+        Fears = new System.Collections.Generic.List<string>();
     }
 }

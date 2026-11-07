@@ -30,6 +30,9 @@ public partial class MirrorPanel : ModalPanel
     /// <summary>Whether this machine is in a party right now.</summary>
     public Func<bool>? InParty { get; set; }
 
+    /// <summary>Opens the Survival Rift's entry panel (tier, Fear cards); null keeps the old direct entry.</summary>
+    public Action? OpenRift { get; set; }
+
     private bool Party => InParty?.Invoke() == true && Propose is not null;
 
     protected override string Title => "Mirror of Realities";
@@ -293,6 +296,13 @@ public partial class MirrorPanel : ModalPanel
 
     private void EnterRift()
     {
+        if (Features.RiftTiers && OpenRift is not null)
+        {
+            Close();
+            OpenRift();
+            return;
+        }
+
         if (Party)
         {
             Close();

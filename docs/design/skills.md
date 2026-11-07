@@ -2166,7 +2166,7 @@ level (`AuraCatalog.EffectPerLevel`). The slot glows green while an active runs.
 
 | Aura (level) | Passive | Active (duration / cooldown) |
 |---|---|---|
-| Immolation (6) | — (a toggle) | Switched on: 14 fire damage per second to everything within 110 px (can ignite), costing **2% of max life per second** (never below 1). Press again to switch off. |
+| Immolation (6) | — (a toggle) | Switched on: 14 fire damage per second to everything within 110 px (can ignite), costing **2% of max life per second** (never below 1). Press again to switch off. In the Survival Rift it switches on once and stays on (run.md -> "Toggles and the timers"). |
 | Elemental Ward (8) | +10 fire, cold, lightning resistance | +40 more to all three (6 s / 20 s) |
 | Elemental Storm (12) | 15% increased fire, cold and lightning damage | 30% more elemental damage (6 s / 18 s) |
 | Precision (10) | +3% crit chance, +20% crit multiplier | +10% chance, +60% multiplier (5 s / 18 s) |

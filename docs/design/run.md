@@ -25,6 +25,16 @@ skills for a skill-less character, otherwise a new class skill or a level for on
 it brought — progression.md -> "The start pick") → survive → boss → results
 (choose one of three items, if the run earned one) → Hideout.
 
+## The 2026-11 loop (summary)
+
+Since 2026-11-07 the Rift also has: Skip, Banish and gold rerolls on the level-up screen, Luck
+and its 4th card; **chests** from elites and bosses (1, 3 or 5 upgrades, no pause); **shrines**
+in the arena (Greed, Challenge, Charge, Magnet); **Rift tiers 1–10 and Fear cards**, chosen
+in an entry panel at the portal; **skill evolutions**; **the Onslaught** (the 30 s before the
+Colossus) and **endless milestones** (a golden chest at 5, 10, 20 and 30 minutes); and **Rift
+challenges** that unlock content. Design, numbers and what was built:
+[survival-roadmap.md](survival-roadmap.md) (research: [survival-research.md](survival-research.md)).
+
 ## The arena
 
 - 80×60 tiles of 32 px (2560×1920 world px), built at runtime from the EasyPixel
@@ -482,6 +492,16 @@ speed (attacks). The skill bar's sweep shows the timer. Level-up cards improve i
 existing cast/attack speed cards now count too. Skills start staggered so a fresh
 build doesn't fire everything on the same frame.
 
+**Toggles and the timers (2026-11-07).** The character's loadout comes into the Rift,
+so auras and Spell Totem fire on their timers too. Immolation is a switch, and the
+timer used to press it every ~1.2 s — on, off, on — so it burned half the time and
+flickered (owner report). Survival casting now leaves a toggle alone while it is on:
+switched on at the start, it stays on and is only cast again once something switched
+it off (death, a revive). The timer also belongs to the skill now, not the slot: a
+skill new to a slot starts its own staggered wait instead of the previous one's.
+`scenes/tests/RiftAutoCastTest.tscn` runs every skill alone under survival casting
+(it must fire, hitting skills must hurt, Immolation must switch on exactly once).
+
 **Life-only HUD.** With no mana the right half of the cluster was empty and the
 controls hint sat across the life bar. The right-hand bar is now the **danger
 gauge** — the level, filling towards the next one, and what is coming ("Bone Herald
@@ -514,5 +534,5 @@ reaches the Colossus, sometimes beats it.*
 - A second biome/arena with its own enemy roster and boss.
 - Meta-progression beyond gear (gold has no sink yet — a vendor or crafting bench
   in the hideout is the obvious first one).
-- Should difficulty tiers exist (higher tiers: denser, tougher, better item levels)?
+- Should difficulty tiers exist (higher tiers: denser, tougher, better item levels)? Research on how Vampire Survivors, Megabonk and Hell Clock do it, and ranked proposals: [survival-research.md](survival-research.md).
   The director's numbers are all in one place to make that cheap.

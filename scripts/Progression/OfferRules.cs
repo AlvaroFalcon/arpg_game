@@ -39,6 +39,27 @@ public static class OfferRules
     /// <summary>Per-card rerolls for the whole run.</summary>
     public const int RerollsPerRun = 2;
 
+    // --- pick control (docs/design/survival-roadmap.md -> M1) ---------------------------
+
+    /// <summary>Skips per run: close a row without a card, for part of its experience back.</summary>
+    public const int SkipsPerRun = 3;
+
+    /// <summary>Fraction of the skipped level's experience given back.</summary>
+    public const float SkipRefund = 0.3f;
+
+    /// <summary>Banishes per run: a card's subject leaves the pool for the rest of the run.</summary>
+    public const int BanishesPerRun = 2;
+
+    /// <summary>Once the free rerolls are spent, a reroll costs gold: base × growthⁿ
+    /// (n = gold rerolls already bought this run): 25, 40, 64, 102…</summary>
+    public const int GoldRerollBase = 25;
+    public const float GoldRerollGrowth = 1.6f;
+
+    public static long GoldRerollPrice(int bought) => (long)Godot.Mathf.Round(GoldRerollBase * Godot.Mathf.Pow(GoldRerollGrowth, bought));
+
+    /// <summary>Chance of a 4th card on an ordinary row: Luck above 1 (VS's rule: 3 cards, 4 with luck).</summary>
+    public static float FourthCardChance(float luck) => Godot.Mathf.Clamp(luck - 1f, 0f, 1f);
+
     // --- keystone cadence: lesser at 5, 15, 25…; great at 10, 20, 30… -----------------
 
     public const int KeystoneInterval = 10;

@@ -60,6 +60,11 @@ public sealed class RiftSpec
 
     public static RiftSpec SurvivalRift() => new() { Kind = RiftKind.SurvivalRift };
 
+    /// <summary>The Survival Rift on a tier with Fear cards (docs/design/survival-roadmap.md -> M4):
+    /// <see cref="Tier"/> is the Rift tier, <see cref="Modifiers"/> the Fear card ids.</summary>
+    public static RiftSpec SurvivalRift(int tier, IEnumerable<string>? fears = null) =>
+        new() { Kind = RiftKind.SurvivalRift, Tier = tier, Modifiers = fears?.ToList() ?? new List<string>() };
+
     public static RiftSpec Reality(int tier, IEnumerable<string>? modifiers = null) =>
         new() { Kind = RiftKind.Reality, Tier = tier, Modifiers = modifiers?.ToList() ?? new List<string>() };
 
@@ -115,9 +120,15 @@ public sealed class RiftSpec
         switch (Kind)
         {
             case RiftKind.SurvivalRift:
-                Tier = 0;
+                // Tier 0 (older peers) or 1..10, and up to three known, distinct Fear cards.
+                Tier = Math.Clamp(Tier, 0, Run.RiftDifficulty.MaxTier);
                 LayoutId = "";
-                Modifiers.Clear();
+                if (Modifiers.Count > Run.RiftDifficulty.MaxFears || Modifiers.Any(m => m.Length > NetLimits.IdChars || Run.RiftDifficulty.FindFear(m) is null)
+                    || Modifiers.Distinct().Count() != Modifiers.Count)
+                {
+                    Modifiers.Clear();
+                }
+
                 return true;
             case RiftKind.Reality:
                 if (Tier < 1 || Tier > RealityTiers.MaxTier || Modifiers.Count > MaxModifiers)
@@ -137,7 +148,8 @@ public sealed class RiftSpec
     }
 
     /// <summary>"the Survival Rift" / "an Altered Reality — Tier 20".</summary>
-    public string Describe() => Kind == RiftKind.Reality ? $"an Altered Reality — Tier {Tier}" : "the Survival Rift";
+    public string Describe() => Kind == RiftKind.Reality ? $"an Altered Reality — Tier {Tier}"
+        : Tier > 1 || Modifiers.Count > 0 ? $"the Survival Rift — Tier {Math.Max(1, Tier)}{(Modifiers.Count > 0 ? $", {Modifiers.Count} Fear card{(Modifiers.Count == 1 ? "" : "s")}" : "")}" : "the Survival Rift";
 
     /// <summary>"Survival Rift" / "Tier 20 reality" (banners).</summary>
     public string Short() => Kind == RiftKind.Reality ? $"Tier {Tier} reality" : "Survival Rift";

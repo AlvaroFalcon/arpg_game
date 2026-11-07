@@ -100,4 +100,8 @@ public enum StatId
     BleedStacksPerHit = 48,     // Flat: extra bleed stacks a successful bleed roll adds (base 0)
     IgniteDuration = 49,        // Multiplier on how long each ignite stack lasts (base 1)
     KnockbackImmunity = 50,     // Flat: 1 or more = big hits never push the actor
+
+    // Survival Rift (docs/design/survival-roadmap.md -> M1, M2): multiplies the 4th level-up
+    // card's chance, power-up rarity and chest sizes. 1 = no bonus.
+    Luck = 51,
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using ArpgGame.Combat;
 using ArpgGame.Enemies;
+using ArpgGame.Stats;
 
 namespace ArpgGame.Run;
 
@@ -202,14 +203,20 @@ public partial class RunDirector : Node
             _herald = SpawnBoss(Herald, "The Bone Herald returns", "Stronger for its rest");
         }
 
+        StepShrines(t, dt);
+
+        StepOnslaught(t);
+        StepEndlessMilestones(t);
+
         // The director (docs/design/run.md -> "The director"): the budget fills at the
         // danger curve's rate times the current intensity — waves from 1D noise, eased
         // off while the player is in trouble — and is spent on enemies by cost.
         UpdateIntensity(t);
         int party = State.PartySize;
-        float rate = SpawnRate(t) * Net.PartyRules.SpawnRate(party) * AverageCost * CurrentIntensity * (HeraldAlive ? 0.15f : 1f);
+        RiftDifficulty d = State.Difficulty;
+        float rate = SpawnRate(t) * d.Spawn * (InOnslaught ? OnslaughtSpawn : 1f) * Net.PartyRules.SpawnRate(party) * AverageCost * CurrentIntensity * (HeraldAlive ? 0.15f : 1f);
         _budget += rate * dt;
-        int cap = Mathf.RoundToInt(EnemyCap(t) * Net.PartyRules.EnemyCap(party));
+        int cap = Mathf.Min(EnemyCapMax, Mathf.RoundToInt(EnemyCap(t) * d.Cap * (InOnslaught ? OnslaughtCap : 1f) * Net.PartyRules.EnemyCap(party)));
         _leashIn -= dt;
         if (_leashIn <= 0f)
         {
@@ -257,16 +264,20 @@ public partial class RunDirector : Node
             alive++;
         }
 
-        if (t >= _nextElite && !HeraldAlive)
+        if (t >= _nextElite && !HeraldAlive && !InOnslaught)
         {
             _nextElite = t + EliteIntervalAt(t);
-            SpawnAtEdge(PickEnemy(t), elite: true);
+            if (SpawnAtEdge(PickEnemy(t), elite: true) is { } announced)
+            {
+                announced.Announced = true;
+            }
+
             EmitSignal(SignalName.Announced, "An elite approaches", "", new Color(1f, 0.85f, 0.4f));
         }
 
-        if (t >= _nextSwarm && !HeraldAlive)
+        if (t >= _nextSwarm && !HeraldAlive && !InOnslaught)
         {
-            _nextSwarm = t + SwarmIntervalAt(t);
+            _nextSwarm = t + SwarmIntervalAt(t) * d.SwarmInterval;
             SpawnSwarm(t);
         }
     }
@@ -595,6 +606,16 @@ public partial class RunDirector : Node
         enemy.GlobalPosition = position;
         (float life, float damage) = Scaling(State.Elapsed);
         enemy.ApplyScaling(life, damage);
+        RiftDifficulty d = State.Difficulty;
+        if (!d.IsDefault)
+        {
+            // Tier, Fear cards and Greed (docs/design/survival-roadmap.md -> M0): raw, on top of the clock.
+            enemy.ApplyTierScaling(d.Life, d.Damage);
+            if (!Mathf.IsEqualApprox(d.Speed, 1f))
+            {
+                enemy.Stats.MovementSpeed.AddModifier(new StatModifier(ModifierType.More, (d.Speed - 1f) * 100f, d));
+            }
+        }
         int party = State.PartySize;
         if (party > 1)
         {
@@ -606,6 +627,10 @@ public partial class RunDirector : Node
         if (elite)
         {
             enemy.MakeElite();
+        }
+        else if (!enemy.IsBoss && d.MagicChance > 0f && _rng.Randf() < d.MagicChance)
+        {
+            enemy.ApplyRarity(MonsterRarity.Magic);
         }
 
         State.RegisterEnemy(enemy);
@@ -759,6 +784,7 @@ public partial class RunDirector : Node
 
         EndlessStarted = true;
         EndlessSince = State.Elapsed;
+        State.EndlessPhase = true;
         _nextEndlessBoss = State.Elapsed + EndlessBossInterval;
         _nextElite = State.Elapsed + EliteIntervalAt(State.Elapsed);
         _nextSwarm = State.Elapsed + SwarmInterval / 2f;

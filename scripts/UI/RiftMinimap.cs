@@ -31,7 +31,8 @@ public partial class RiftMinimap : Control
 
     public override void _Process(double delta)
     {
-        Visible = Party || HudEditing;
+        // Solo too since the shrines (docs/design/survival-roadmap.md -> M3): where to go next.
+        Visible = Party || HudEditing || Core.Features.RiftShrines;
         if (Visible)
         {
             QueueRedraw();
@@ -66,6 +67,27 @@ public partial class RiftMinimap : Control
             Vector2 at = ToMap(portal.GlobalPosition);
             DrawArc(at, 5f, 0f, Mathf.Tau, 20, new Color(0.75f, 0.55f, 1f), 2f, true);
             DrawCircle(at, 2f, new Color(0.75f, 0.55f, 1f));
+        }
+
+        foreach (Run.Shrine shrine in Director.Shrines)
+        {
+            if (!shrine.Used)
+            {
+                Vector2 at = ToMap(shrine.GlobalPosition);
+                Color c = Run.Shrine.ColorOf(shrine.Kind);
+                DrawRect(new Rect2(at - Vector2.One * 3.5f, Vector2.One * 7f), c);
+                DrawRect(new Rect2(at - Vector2.One * 3.5f, Vector2.One * 7f), Colors.Black with { A = 0.8f }, false, 1f);
+            }
+        }
+
+        foreach (Node node in GetTree().GetNodesInGroup(Run.RunState.PickupGroup))
+        {
+            if (node is Run.Pickup { Kind: Run.PickupKind.Chest } chest && chest.Visible && (chest.OwnerPlayer is null || chest.OwnerPlayer == Player))
+            {
+                Vector2 at = ToMap(chest.GlobalPosition);
+                DrawCircle(at, 3f, new Color(1f, 0.8f, 0.3f));
+                DrawArc(at, 4f, 0f, Mathf.Tau, 12, Colors.Black with { A = 0.8f }, 1f, true);
+            }
         }
 
         foreach (Node node in GetTree().GetNodesInGroup(Combat.CombatQuery.EnemyGroup))

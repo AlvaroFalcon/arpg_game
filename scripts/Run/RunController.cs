@@ -68,6 +68,7 @@ public partial class RunController : Node2D
         string? startSkill = RunLaunchOptions.StartSkill;
         int autoLevels = RunLaunchOptions.AutoLevels;
         bool autoCashOut = RunLaunchOptions.AutoCashOut;
+        RiftDifficulty difficulty = Features.RiftTiers ? RunLaunchOptions.Difficulty() : new RiftDifficulty();
         RunLaunchOptions.Reset();
 
         Arena = GetNode<Arena>("Arena");
@@ -75,6 +76,7 @@ public partial class RunController : Node2D
         Director = GetNode<RunDirector>("RunDirector");
         Player = GetNode<Player>("Player");
 
+        State.Difficulty = difficulty;
         Director.State = State;
         Director.Arena = Arena;
         Director.Spawning = false;
@@ -572,7 +574,7 @@ public partial class RunController : Node2D
 
         var rng = new RandomNumberGenerator();
         rng.Randomize();
-        RunRewards rewards = RunRewards.For(State.Elapsed, State.BossesKilled, State.Kills, victory, rng);
+        RunRewards rewards = RunRewards.For(State.Elapsed, State.BossesKilled, State.Kills, victory, rng, State.Difficulty);
         Profile? profile = Profile.Get(this);
         if (profile is not null)
         {
@@ -582,6 +584,13 @@ public partial class RunController : Node2D
             Player.Stats.RemoveModifiersFromSource(Build.Source);
             Player.Stats.RemoveModifiersFromSource(RunBaselineSource);
             profile.CaptureFrom(Player);
+            if (victory && Director.ColossusDefeated)
+            {
+                // docs/design/survival-roadmap.md -> M4: the next tier opens (saved by RecordRun).
+                profile.RecordRiftClear(State.Difficulty.Tier);
+                GameEvents.Raise(GameEvents.RiftCleared, State.Difficulty.Tier, State.Context);
+            }
+
             profile.RecordRun(State.Elapsed, State.Level, State.Kills, victory);
         }
 

@@ -65,6 +65,13 @@ public static class RiftProtocol
     /// <summary>The card the host applied for the receiver in a round (its own pick, or the timer's).</summary>
     public const byte PickApplied = 31;
 
+    // docs/design/survival-roadmap.md: 32 is reserved (chests travel in the Collected record's
+    // key), 35 for a future difficulty event (tier and Greed ride in the snapshot today).
+
+    /// <summary>A shrine placed or changed (M3): u16 id, u8 kind, pos, f32 progress, bool used.
+    /// A full state, so a repeated or late one is harmless.</summary>
+    public const byte ShrineState = 34;
+
     // party round kinds
     public const byte RoundNone = 0;
     public const byte RoundStart = 1;

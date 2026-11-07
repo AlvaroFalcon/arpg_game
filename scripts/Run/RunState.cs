@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using ArpgGame.Combat;
 using ArpgGame.Enemies;
@@ -36,6 +37,9 @@ public sealed class RunPlayer
 
     public long GoldCollected { get; set; }
     public int OrbsCollected { get; set; }
+
+    /// <summary>Chests this player opened (docs/design/survival-roadmap.md -> M2).</summary>
+    public int ChestsOpened { get; set; }
 
     /// <summary>What this player's camera shows, in pixels (a remote player's is
     /// reported by their client; edge spawns and the Cataclysm use it).</summary>
@@ -269,6 +273,10 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
     /// Power-ups (Cataclysm, Lodestone) still spawn on the kill frame.</summary>
     public Items.LootQueue Loot { get; } = new();
 
+    /// <summary>Tier, Fear cards and Greed (docs/design/survival-roadmap.md -> M0): multiplies
+    /// the director's curves and the rewards. Default = the Rift as it always was.</summary>
+    public RiftDifficulty Difficulty { get; set; } = new();
+
     public override void _PhysicsProcess(double delta)
     {
         Loot.Pump();
@@ -314,7 +322,7 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
             return;
         }
 
-        float gain = who.Player?.Stats.Get(StatId.ExperienceGain).Value ?? 1f;
+        float gain = (who.Player?.Stats.Get(StatId.ExperienceGain).Value ?? 1f) * Difficulty.Experience;
         if (Coop)
         {
             // Whoever collects a gem fills the party's bar (with their own experience gain).
@@ -340,6 +348,10 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
         if (gained > 0)
         {
             Levelled?.Invoke(who, gained);
+            if (who.IsLocal)
+            {
+                Core.GameEvents.Raise(Core.GameEvents.RiftLevelReached, who.Level, "");
+            }
         }
 
         if (who.IsLocal && who.PendingLevelUps > 0)
@@ -376,6 +388,7 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
         }
 
         Core.Sfx.Play(this, "levelup");
+        Core.GameEvents.Raise(Core.GameEvents.RiftLevelReached, PartyLevel, "");
         foreach (RunPlayer rp in _players.ToArray())
         {
             Levelled?.Invoke(rp, gained);
@@ -439,6 +452,11 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
     public void ApplyLocalProgress(int level, float experience, int newLevelUps)
     {
         RunPlayer me = Local;
+        if (newLevelUps > 0)
+        {
+            Core.GameEvents.Raise(Core.GameEvents.RiftLevelReached, level, "");
+        }
+
         me.Level = level;
         me.Experience = experience;
         if (newLevelUps > 0 && Coop)
@@ -530,6 +548,20 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
             }
         }
 
+        if (enemy.IsElite && !enemy.IsBoss && Difficulty.VolatileElites)
+        {
+            // Volatile (a Fear card): the elite bursts a moment after it dies.
+            var burst = new HitProfile
+            {
+                Damage = 18f * RunDirector.Scaling(Elapsed).Damage * Difficulty.Damage,
+                Type = DamageType.Fire,
+                Source = null,
+                Faction = Faction.Enemy,
+                Tags = SkillTags.Fire | SkillTags.Area,
+            };
+            AreaBurst.Spawn(GetTree().CurrentScene, at, 95f, 0.7f, new Color(1f, 0.35f, 0.2f), burst);
+        }
+
         // Power-ups (docs/design/run.md -> "Pickups"). A Cataclysm's own
         // victims never drop another one. Co-op: rolled once per kill, for the killer.
         if (!_nuking)
@@ -615,7 +647,14 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
             Loot.Add(Items.LootQueue.PickupCost, () => SpawnExperience(at, value, owner));
         }
 
-        (float lifeChance, float goldChance, float orbChance, float gearChance) = DropChances(enemy.IsElite, share, LootQuantity);
+        (float lifeChance, float goldChance, float orbChance, float gearChance) = DropChances(enemy.IsElite, share, LootQuantity * Difficulty.Gold);
+        if (Difficulty.NoLifeOrbs)
+        {
+            // Famine (a Fear card): the life orb's share of the roll pays nothing.
+            goldChance -= lifeChance;
+            lifeChance = 0f;
+        }
+
         float roll = _rng.Randf();
         if (roll < lifeChance)
         {
@@ -636,6 +675,17 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
             Loot.Add(Items.LootQueue.PickupCost, () => DropOrb(p, owner));
         }
 
+        // Chests (docs/design/survival-roadmap.md -> M2): bosses always, elites sometimes. Per player.
+        if (Core.Features.RiftChests && !Mirror)
+        {
+            int size = ChestSizeFor(enemy, who?.Player);
+            if (size > 0)
+            {
+                Vector2 p = at + RandomOffset(20f);
+                Loot.Add(Items.LootQueue.PickupCost, () => DropChest(p, size, owner));
+            }
+        }
+
         // Gear drops (docs/design/run.md -> "Rewards"): elites sometimes, bosses always.
         int drops = enemy.IsBoss ? 2 : enemy.IsElite && _rng.Randf() < gearChance ? 1 : 0;
         for (int i = 0; i < drops; i++)
@@ -643,6 +693,143 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
             Vector2 p = at + RandomOffset(30f);
             Items.DropSource source = enemy.IsBoss ? Items.DropSource.RiftBoss : Items.DropSource.RiftElite;
             Loot.Add(Items.LootQueue.ItemCost, () => DropItem(p, source, owner));
+        }
+    }
+
+    /// <summary>The size of the chest a kill drops for one player (0 = none):
+    /// <see cref="ChestRules"/>. Bosses always (Herald 3, Colossus and endless bosses 5),
+    /// a monster with <see cref="Enemy.GuaranteedChest"/> always, elites by chance (rolled with Luck).</summary>
+    public int ChestSizeFor(Enemy enemy, Player? player)
+    {
+        if (enemy.GuaranteedChest > 0)
+        {
+            return enemy.GuaranteedChest;
+        }
+
+        if (enemy.IsBoss)
+        {
+            return ChestRules.BossSize(enemy is EmberColossus, EndlessPhase);
+        }
+
+        if (!enemy.IsElite)
+        {
+            return 0;
+        }
+
+        float luck = player?.Stats.Get(StatId.Luck).Value ?? 1f;
+        float chance = enemy.Announced ? ChestRules.AnnouncedEliteChance : ChestRules.EliteChance;
+        return _rng.Randf() < chance ? ChestRules.RollSize(luck, _rng) : 0;
+    }
+
+    /// <summary>Set by the director when the endless phase starts (every boss then drops a 5-chest).</summary>
+    public bool EndlessPhase { get; set; }
+
+    /// <summary>Chests opened by the local player this run (the results screen).</summary>
+    public int ChestsOpened => Local.ChestsOpened;
+
+    /// <summary>Puts a chest of <paramref name="size"/> on the floor for <paramref name="owner"/>
+    /// (null = the local player). Beyond <see cref="ChestRules.MaxOnFloor"/> waiting, the oldest opens itself.</summary>
+    public Pickup DropChest(Vector2 at, int size, Player? owner = null)
+    {
+        var waiting = new List<Pickup>();
+        foreach (Node n in GetTree().GetNodesInGroup(PickupGroup))
+        {
+            if (n is Pickup { Kind: PickupKind.Chest } c && !c.IsQueuedForDeletion() && c.OwnerPlayer == owner)
+            {
+                waiting.Add(c);
+            }
+        }
+
+        if (waiting.Count >= ChestRules.MaxOnFloor && (owner ?? Local.Player) is { } who)
+        {
+            waiting[0].Attract();
+            OnPickup(waiting[0], who);
+            waiting[0].QueueFree();
+        }
+
+        return Spawned(Pickup.Spawn(GetTree().CurrentScene, PickupKind.Chest, size, at), owner);
+    }
+
+    /// <summary>
+    /// Opens a chest for <paramref name="who"/>: rolls its keys on their build (the host's copy in
+    /// co-op), applies them, and stores them in the pickup's key so the co-op "collected" record
+    /// tells the client what to apply. Returns the keys.
+    /// </summary>
+    public List<string> OpenChest(Pickup chest, RunPlayer who, Player player)
+    {
+        int size = Mathf.Clamp(Mathf.RoundToInt(chest.Value), 1, 5);
+        List<string> keys = who.Build?.ChestRewards(size, _rng, Elapsed) ?? new List<string>();
+        ApplyChestKeys(who, player, keys, size);
+        chest.CurrencyKey = string.Join("|", keys);
+        return keys;
+    }
+
+    /// <summary>Applies chest keys to a build (the host's opening, or a co-op client replaying the
+    /// host's record): levels and power-ups through the build, gold to the wallet.</summary>
+    public void ApplyChestKeys(RunPlayer who, Player player, IReadOnlyList<string> keys, int size)
+    {
+        who.ChestsOpened++;
+        bool local = player.IsLocal;
+        var lines = new List<(string Text, Texture2D? Icon)>();
+        foreach (string key in keys)
+        {
+            if (key.StartsWith(ChestRules.GoldPrefix))
+            {
+                long gold = long.TryParse(key[ChestRules.GoldPrefix.Length..], out long g) ? System.Math.Clamp(g, 0, 100_000) : 0;
+                if (!Mirror)
+                {
+                    who.GoldCollected += gold;
+                }
+
+                if (local)
+                {
+                    player.Wallet.Add(Core.Profile.GoldId, gold);
+                    UI.LootFeed.Gold(this, gold);
+                }
+
+                continue;
+            }
+
+            if (who.Build is { } build && build.ApplyKey(key))
+            {
+                string[] k = key.Split(':');
+                Texture2D? icon = k[0] is "l" or "e" ? build.FindSkill(k[1])?.Definition.Icon : RunBuild.LoadIcon("icon_passive");
+                lines.Add((build.DescribeKey(key), icon));
+            }
+        }
+
+        if (local)
+        {
+            Core.Sfx.Play(this, size >= 5 ? "victory" : "levelup", size >= 5 ? -6f : -4f);
+            Color c = size >= 5 ? new Color(1f, 0.8f, 0.3f) : size >= 3 ? new Color(0.8f, 0.86f, 0.95f) : new Color(0.85f, 0.6f, 0.35f);
+            foreach ((string line, Texture2D? icon) in lines)
+            {
+                UI.LootFeed.Report(new UI.LootEntry($"chest:{line}:{Time.GetTicksMsec()}", icon, "Chest · " + line, c, 1));
+            }
+
+            if (size >= 5)
+            {
+                ScreenFlash.Spawn(this, new Color(1f, 0.8f, 0.3f), 0.3f);
+                EmitSignal(SignalName.Toast, "A golden chest!", c);
+            }
+
+            Core.GameEvents.Raise(Core.GameEvents.RiftChestOpened, size, Context);
+        }
+
+        ChestOpened?.Invoke(who, keys);
+    }
+
+    /// <summary>A chest was opened (tests, the HUD).</summary>
+    public event System.Action<RunPlayer, IReadOnlyList<string>>? ChestOpened;
+
+    /// <summary>The run's context for quest events (docs/design/survival-roadmap.md -> M7).</summary>
+    public string Context
+    {
+        get
+        {
+            string cls = Characters.CharacterBuild.Of(Local.Player)?.Data?.Class.Id ?? "";
+            bool melee = Build is { } b && b.Skills.Any() && b.Skills.All(s => s.Definition.Tags.HasFlag(SkillTags.Melee));
+            return $"{Difficulty.Context};coop={(Coop ? 1 : 0)};class={cls};melee={(melee ? 1 : 0)}";
         }
     }
 
@@ -659,7 +846,7 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
     /// to their client instead (it lands in their own game, never in the host's).</summary>
     public void DropItem(Vector2 at, Items.DropSource source, Player? owner = null)
     {
-        int itemLevel = Mathf.Clamp(3 + Mathf.RoundToInt(Elapsed / 60f * 5f) + BossesKilled * 8, 1, 100);
+        int itemLevel = Mathf.Clamp(3 + Mathf.RoundToInt(Elapsed / 60f * 5f) + BossesKilled * 8 + Difficulty.ItemLevelBonus, 1, 100);
         var bases = Items.ItemFactory.Bases;
         if (bases.Count == 0)
         {
@@ -877,6 +1064,13 @@ public partial class RunState : Node, IPickupHandler, Net.ICoopWorld
                     Core.Sfx.Play(this, "boss_warn");
                     ScreenFlash.Spawn(this, new Color(1f, 0.55f, 0.3f));
                     EmitSignal(SignalName.Toast, $"Cataclysm — {killed} slain", new Color(1f, 0.45f, 0.3f));
+                }
+
+                break;
+            case PickupKind.Chest:
+                if (!pickup.Cosmetic)
+                {
+                    OpenChest(pickup, who, player);
                 }
 
                 break;

@@ -84,6 +84,17 @@ public sealed class SkillInstance
     /// totem casts, with its own level and tree. Null for every other skill.</summary>
     public SkillInstance? Socketed { get; set; }
 
+    /// <summary>Survival Rift: the evolved form's name once the skill evolved
+    /// (docs/design/survival-roadmap.md -> M5), else null.</summary>
+#nullable enable
+    public string? EvolvedName { get; set; }
+#nullable restore
+
+    public bool IsEvolved => EvolvedName is not null;
+
+    /// <summary>The name to show: the evolved form's, or the definition's.</summary>
+    public string DisplayName => EvolvedName ?? Definition.DisplayName;
+
     public SkillInstance(SkillDefinition definition)
     {
         Definition = definition;

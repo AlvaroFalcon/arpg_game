@@ -47,6 +47,27 @@ public static class GameEvents
     /// <summary>The hideout finished loading (every visit).</summary>
     public const string HideoutEntered = "hideout_entered";
 
+    // --- Survival Rift (docs/design/survival-roadmap.md -> M0, M7) -----------------------
+    // key carries the run's context as "tier=3;fears=2;coop=1;class=warrior;melee=1".
+
+    /// <summary>A Rift chest was opened. value = its size (1, 3 or 5).</summary>
+    public const string RiftChestOpened = "rift_chest";
+
+    /// <summary>A Rift shrine was used. key = its kind ("greed", "challenge", "charge", "magnet") then the context.</summary>
+    public const string RiftShrineUsed = "rift_shrine";
+
+    /// <summary>A Rift skill evolved. key = the evolution id then the context.</summary>
+    public const string RiftEvolved = "rift_evolved";
+
+    /// <summary>An endless-phase milestone was reached. value = its minutes (5, 10, 20, 30).</summary>
+    public const string RiftEndlessMinute = "rift_endless";
+
+    /// <summary>The Colossus fell. value = the Rift tier.</summary>
+    public const string RiftCleared = "rift_cleared";
+
+    /// <summary>The run level went up. value = the new level.</summary>
+    public const string RiftLevelReached = "rift_level";
+
     /// <summary>(eventId, value, key) — see the constants above for what each carries.</summary>
     public static event Action<string, int, string>? Raised;
 

@@ -78,6 +78,10 @@ public partial class RiftProgressionTest : Node2D
             real.Persist = false;
         }
 
+        // Rift challenges pay orbs on a win (docs/design/survival-roadmap.md -> M7): off here, so the
+        // reward checks compare the wallet with the panel alone. RiftShrineTest covers them.
+        bool challenges = Features.RiftChallenges;
+        Features.RiftChallenges = false;
         try
         {
             await CadenceChecks();
@@ -98,6 +102,7 @@ public partial class RiftProgressionTest : Node2D
             Check("EXCEPTION", false, e.ToString());
         }
 
+        Features.RiftChallenges = challenges;
         GetTree().Paused = false;
         if (real is not null && snapshot is not null)
         {

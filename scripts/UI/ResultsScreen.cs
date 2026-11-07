@@ -62,7 +62,7 @@ public partial class ResultsScreen : CanvasLayer
     {
         var rng = new RandomNumberGenerator();
         rng.Randomize();
-        rewards ??= RunRewards.For(state.Elapsed, state.BossesKilled, state.Kills, state.Victory, rng);
+        rewards ??= RunRewards.For(state.Elapsed, state.BossesKilled, state.Kills, state.Victory, rng, state.Difficulty);
         _keep = rewards.Keep;
         GetTree().Paused = true;
         _root.Visible = true;
@@ -81,8 +81,13 @@ public partial class ResultsScreen : CanvasLayer
             _box.AddChild(fell);
         }
         _box.AddChild(UiTheme.Label(
-            $"Survived {UiTheme.FormatTime(state.Elapsed)}   ·   Level {state.Level}   ·   {state.Kills} kills   ·   {state.ElitesKilled} elites   ·   {state.BossesKilled} bosses   ·   +{state.GoldCollected} gold",
+            $"Survived {UiTheme.FormatTime(state.Elapsed)}   ·   Level {state.Level}   ·   {state.Kills} kills   ·   {state.ElitesKilled} elites   ·   {state.BossesKilled} bosses   ·   {state.ChestsOpened} chests   ·   +{state.GoldCollected} gold",
             18, UiTheme.Text, HorizontalAlignment.Center));
+        if (state.Difficulty.Describe() is { Length: > 0 } difficulty)
+        {
+            // docs/design/survival-roadmap.md -> M4: the tier and Fear cards it was played on.
+            _box.AddChild(UiTheme.Label(difficulty, 16, UiTheme.Ember, HorizontalAlignment.Center));
+        }
         Label summary = UiTheme.Label(LevelUpScreen.BuildSummary(build), 15, UiTheme.TextDim, HorizontalAlignment.Center);
         summary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         summary.CustomMinimumSize = new Vector2(900f, 0f);

@@ -86,7 +86,8 @@ public partial class SkillBar : Control
         var sb = new System.Text.StringBuilder();
         foreach ((string key, SkillInstance? skill) in slots)
         {
-            sb.Append(key).Append(skill?.Definition.DisplayName).Append(skill?.Level).Append(skill?.Attached.Count).Append('|');
+            sb.Append(key).Append(skill?.DisplayName).Append(skill?.Level).Append(skill?.Attached.Count)
+                .Append(skill is not null && SkillSlotView.EvolutionReady?.Invoke(skill) == true ? "*" : "").Append('|');
         }
 
         string signature = sb.ToString();
@@ -179,6 +180,10 @@ public partial class SkillSlotView : Control
     /// <summary>The skill in the slot; null for an empty one (it still shows its key).</summary>
     public SkillInstance? Skill { get; }
     private readonly string _key;
+
+    /// <summary>Survival Rift (docs/design/survival-roadmap.md -> M5): set by the Rift HUD; true
+    /// draws the "evolution ready" mark on a slot. Null elsewhere.</summary>
+    public static System.Func<SkillInstance, bool>? EvolutionReady;
     private float _cooldown;
     private float _active;
 
@@ -267,9 +272,25 @@ public partial class SkillSlotView : Control
 
         DrawStringOutline(font, new Vector2(0f, Size.Y - 4f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 3f, 10, 3, new Color(0f, 0f, 0f, 0.85f));
         DrawString(font, new Vector2(0f, Size.Y - 4f), $"Lv{Skill.Level}", HorizontalAlignment.Right, Size.X - 3f, 10, UiTheme.Gold);
-        for (int i = 0; i < Skill.Attached.Count; i++)
+        int dots = 0;
+        foreach (ISkillUpgrade upgrade in Skill.Attached)
         {
-            DrawCircle(new Vector2(6f + i * 7f, Size.Y - 6f), 2.5f, new Color(0.3f, 0.9f, 0.45f));
+            if (upgrade is not Progression.EvolutionUpgrade)
+            {
+                DrawCircle(new Vector2(6f + dots++ * 7f, Size.Y - 6f), 2.5f, new Color(0.3f, 0.9f, 0.45f));
+            }
+        }
+
+        if (Skill.IsEvolved)
+        {
+            // An evolved skill: a gold frame.
+            DrawRect(new Rect2(Vector2.One, Size - Vector2.One * 2f), UiTheme.Gold, false, 2f);
+        }
+        else if (EvolutionReady?.Invoke(Skill) == true)
+        {
+            DrawRect(new Rect2(Vector2.One, Size - Vector2.One * 2f), new Color(1f, 0.6f, 0.2f), false, 2f);
+            DrawStringOutline(font, new Vector2(0f, 12f), "EVO", HorizontalAlignment.Right, Size.X - 3f, 9, 3, new Color(0f, 0f, 0f, 0.9f));
+            DrawString(font, new Vector2(0f, 12f), "EVO", HorizontalAlignment.Right, Size.X - 3f, 9, new Color(1f, 0.7f, 0.3f));
         }
     }
 }

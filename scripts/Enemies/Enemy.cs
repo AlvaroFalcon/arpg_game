@@ -69,6 +69,13 @@ public partial class Enemy : CharacterBody2D
 
     /// <summary>Rare or unique-rare (the survivor run called rares "elites").</summary>
     public bool IsElite => Rarity >= MonsterRarity.Rare;
+
+    /// <summary>Survival Rift: an announced elite ("An elite approaches") or a shrine's
+    /// challenger — likelier to drop a chest (docs/design/survival-roadmap.md -> M2).</summary>
+    public bool Announced { get; set; }
+
+    /// <summary>Survival Rift: the chest size this monster always drops (0 = rolled as usual).</summary>
+    public int GuaranteedChest { get; set; }
     public virtual bool IsBoss => false;
 
     /// <summary>docs/design/endgame.md -> "Monster rarity".</summary>

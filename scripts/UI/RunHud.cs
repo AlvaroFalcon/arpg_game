@@ -170,7 +170,22 @@ public partial class RunHud : CanvasLayer
 
         Director.Announced += ShowBanner;
         Director.BossSpawned += OnBossSpawned;
+
+        // Evolutions (docs/design/survival-roadmap.md -> M5): the slot's mark, and a banner.
+        SkillSlotView.EvolutionReady = skill => IsInstanceValid(Build) && Build.EvolutionReady(skill);
+        Build.Evolved += (skill, evo) => ShowBanner($"{skill.Definition.DisplayName} evolves", $"{evo.Name}: {evo.Description}", new Color(1f, 0.7f, 0.3f));
     }
+
+    public override void _EnterTree() => RiftChallenges.Completed += OnChallenge;
+
+    public override void _ExitTree()
+    {
+        SkillSlotView.EvolutionReady = null;
+        RiftChallenges.Completed -= OnChallenge;
+    }
+
+    /// <summary>A Rift challenge completed (docs/design/survival-roadmap.md -> M7).</summary>
+    private void OnChallenge(ChallengeDef c) => ShowToast($"Challenge complete: {c.Title} — {c.RewardText}", new Color(0.55f, 1f, 0.6f));
 
 
     private void BuildRewardPanel(Control root)
@@ -220,7 +235,7 @@ public partial class RunHud : CanvasLayer
         return $"Reward tier {RunRewards.Roman(Mathf.Max(1, r.Tier))} · next at {UiTheme.FormatTime(r.NextTierAt)}";
     }
 
-    private RunRewards CurrentReward() => RunRewards.Preview(State.Elapsed, State.BossesKilled, State.Kills, Director.ColossusDefeated);
+    private RunRewards CurrentReward() => RunRewards.Preview(State.Elapsed, State.BossesKilled, State.Kills, Director.ColossusDefeated, State.Difficulty);
 
     /// <summary>Four times a second: the reward as it stands, the bar to the next tier, a toast and a flash on a new tier.</summary>
     private void UpdateReward(float dt)
@@ -280,14 +295,18 @@ public partial class RunHud : CanvasLayer
         int danger = RunDirector.Danger(t);
         float frac = t / 60f - Mathf.Floor(t / 60f);
         string next = Director.Surging ? "Surge! The horde presses in"
-            : Director.ColossusDefeated ? GaugeRewardLine()
+            : Director.InOnslaught ? "The Onslaught! Hold until the Colossus wakes"
+            : Director.ColossusDefeated ? GaugeRewardLine() + (Director.EndlessStarted && Director.NextMilestone > 0 ? $" · chest at {Director.NextMilestone} min deep" : "")
             : t < Director.HeraldTime ? $"Bone Herald in {UiTheme.FormatTime(Director.HeraldTime - t)}"
             : t < Director.ColossusTime ? $"Ember Colossus in {UiTheme.FormatTime(Director.ColossusTime - t)}"
             : "The Ember Colossus";
         // Amber early, blood red as it climbs.
         float heat = Mathf.Clamp((danger - 1) / 10f, 0f, 1f);
         Color top = new Color(1f, 0.75f, 0.25f).Lerp(new Color(0.85f, 0.15f, 0.35f), heat);
-        return new PlayerHudBar.SideGauge($"Danger {danger}", next, frac, top, top.Darkened(0.55f));
+        // Tier, Fear cards and Greed (docs/design/survival-roadmap.md -> M3, M4): the gauge says why it is harder.
+        string extra = State.Difficulty.Describe();
+        string title = extra.Length > 0 ? $"Danger {danger} · {extra}" : $"Danger {danger}";
+        return new PlayerHudBar.SideGauge(title, next, frac, top, top.Darkened(0.55f));
     }
 
     private void OnBossSpawned(Node2D boss)
