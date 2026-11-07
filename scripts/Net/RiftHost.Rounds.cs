@@ -303,7 +303,7 @@ public partial class RiftHost
         }
 
         string? why = !WellFormedKey(key, r.Start) ? $"malformed key '{key}'"
-            : !r.Offers.TryGetValue(peer, out List<string>? row) || !row.Contains(key) ? $"'{key}' is not on their row"
+            : key != SkipKey && (!r.Offers.TryGetValue(peer, out List<string>? row) || !row.Contains(key)) ? $"'{key}' is not on their row"
             : link.Player.Build?.ApplyKey(key) != true ? $"'{key}' does not apply to their build"
             : null;
         if (why is not null)
@@ -339,8 +339,16 @@ public partial class RiftHost
                 || (parts.Length is 3 or 4 && parts[2] is "0" or "1" or "2" && (parts.Length == 3 || parts[3] is "0" or "1"));
         }
 
+        if (key[0] == 'x')
+        {
+            return key == SkipKey; // a skipped row (docs/design/survival-roadmap.md -> M1)
+        }
+
         return key[0] is 's' or 'l' or 'g' or 'k';
     }
+
+    /// <summary>The pick that skips a row: allowed whatever the row, if the build has a skip left.</summary>
+    public const string SkipKey = "x:skip";
 
     /// <summary>The host's deadline: the first card of the row for everyone who hasn't chosen.</summary>
     private void TimeOut(Round r)

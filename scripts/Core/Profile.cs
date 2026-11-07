@@ -56,6 +56,50 @@ public partial class Profile : Node
     /// <summary>The Mirror's jewels, account-wide (docs/design/endgame.md -> "Mirror jewels").</summary>
     public World.JewelData Jewels { get; set; } = new();
 
+    /// <summary>Highest Survival Rift tier cleared, account-wide (docs/design/survival-roadmap.md -> M4):
+    /// the Rift panel offers tiers up to one above it.</summary>
+    public int RiftTierCleared { get; set; }
+
+    /// <summary>Rift challenge unlocks of this account (M7). The live profile mirrors them into
+    /// <see cref="Core.Unlocks"/>, which pure code asks.</summary>
+    public HashSet<string> UnlockIds { get; } = new();
+
+    /// <summary>Grants an unlock to this account (and to the live mirror when this is the game's profile).</summary>
+    public bool GrantUnlock(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || !UnlockIds.Add(id))
+        {
+            return false;
+        }
+
+        if (IsInsideTree() && Get(this) == this)
+        {
+            Core.Unlocks.Grant(id);
+        }
+
+        return true;
+    }
+
+    private void SyncUnlocks()
+    {
+        if (IsInsideTree() && Get(this) == this)
+        {
+            Core.Unlocks.Load(UnlockIds);
+        }
+    }
+
+    /// <summary>Rift challenge progress, id → count (docs/design/survival-roadmap.md -> M7).</summary>
+    public Dictionary<string, int> RiftChallenges { get; } = new();
+
+    /// <summary>The highest Rift tier this account may enter.</summary>
+    public int RiftTierUnlocked => Mathf.Clamp(RiftTierCleared + 1, 1, Run.RiftDifficulty.MaxTier);
+
+    /// <summary>Records a Colossus kill on a Rift tier (never lowers it).</summary>
+    public void RecordRiftClear(int tier)
+    {
+        RiftTierCleared = Mathf.Clamp(Mathf.Max(RiftTierCleared, tier), 0, Run.RiftDifficulty.MaxTier);
+    }
+
     /// <summary>Progress of the account-scope quests (docs/design/quests.md); a character's own live in
     /// <see cref="CharacterData.Quests"/>.</summary>
     public Dictionary<string, QuestProgress> Quests { get; } = new();
@@ -76,6 +120,7 @@ public partial class Profile : Node
         if (Get(this) == this)
         {
             QuestService.Raise(this, eventId, value, key);
+            Run.RiftChallenges.Handle(this, eventId, value, key);
         }
     }
 
@@ -577,6 +622,15 @@ public partial class Profile : Node
         /// <summary>Pending items (reward overflow), oldest first.</summary>
         public List<SaveItem>? Overflow { get; set; }
 
+        /// <summary>Highest Survival Rift tier whose Colossus fell (docs/design/survival-roadmap.md -> M4).</summary>
+        public int RiftTierCleared { get; set; }
+
+        /// <summary>Rift challenge unlocks (M7); absent in older saves.</summary>
+        public List<string>? Unlocks { get; set; }
+
+        /// <summary>Rift challenge progress (M7); absent in older saves.</summary>
+        public Dictionary<string, int>? RiftChallenges { get; set; }
+
         // Version 1 fields (single character), read for migration only.
         public long Gold { get; set; }
         public List<SaveItem>? Items { get; set; }
@@ -836,6 +890,9 @@ public partial class Profile : Node
             Jewels = Jewels,
             Quests = SaveQuests(Quests),
             Overflow = Overflow.Select(e => { SaveItem si = ToSave(e.Item); si.X = e.Cell.X; si.Y = e.Cell.Y; return si; }).ToList(),
+            RiftTierCleared = RiftTierCleared,
+            Unlocks = UnlockIds.OrderBy(x => x).ToList(),
+            RiftChallenges = new Dictionary<string, int>(RiftChallenges),
         };
         return JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true });
     }
@@ -909,6 +966,25 @@ public partial class Profile : Node
 
         Hideout = file.Hideout ?? new World.HideoutData();
         Jewels = file.Jewels ?? new World.JewelData();
+        RiftTierCleared = Mathf.Clamp(file.RiftTierCleared, 0, Run.RiftDifficulty.MaxTier);
+        UnlockIds.Clear();
+        foreach (string id in file.Unlocks ?? new List<string>())
+        {
+            if (!string.IsNullOrWhiteSpace(id) && id.Length <= 64)
+            {
+                UnlockIds.Add(id);
+            }
+        }
+
+        SyncUnlocks();
+        RiftChallenges.Clear();
+        foreach ((string id, int n) in file.RiftChallenges ?? new Dictionary<string, int>())
+        {
+            if (Run.RiftChallenges.Get(id) is { } c)
+            {
+                RiftChallenges[id] = Mathf.Clamp(n, 0, c.Count);
+            }
+        }
         // Sockets that no longer exist (a reshaped tree) give their jewel back.
         Jewels.Socketed.RemoveWhere(id => World.JewelTree.Get(id) is null);
         Quests.Clear();
@@ -953,6 +1029,10 @@ public partial class Profile : Node
         Currency.Clear();
         Hideout = new World.HideoutData();
         Jewels = new World.JewelData();
+        RiftTierCleared = 0;
+        UnlockIds.Clear();
+        SyncUnlocks();
+        RiftChallenges.Clear();
         Quests.Clear();
         StashTabs.Clear();
         StashTabs.Add(new List<(EquipmentItem, Vector2I)>());

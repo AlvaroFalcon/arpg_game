@@ -111,6 +111,7 @@ public partial class LevelUpScreen : CanvasLayer
     private Label _hint = null!;
     private UpgradeCards _cards = null!;
     private Label _rerollInfo = null!;
+    private Button _skip = null!;
     private Label _buildSummary = null!;
     private readonly RandomNumberGenerator _rng = new();
     private int _offeringLevel;
@@ -135,6 +136,7 @@ public partial class LevelUpScreen : CanvasLayer
         box.AddChild(_cards);
         _cards.Chosen += OnChosen;
         _cards.RerollRequested += Reroll;
+        _cards.BanishRequested += i => BanishCard(i);
         _waiting = UiTheme.Label("", 22, UiTheme.Text, HorizontalAlignment.Center);
         _waiting.CustomMinimumSize = new Vector2(820f, 120f);
         _waiting.VerticalAlignment = VerticalAlignment.Center;
@@ -143,6 +145,18 @@ public partial class LevelUpScreen : CanvasLayer
         box.AddChild(_waiting);
         _rerollInfo = UiTheme.Label("", 15, UiTheme.TextDim, HorizontalAlignment.Center);
         box.AddChild(_rerollInfo);
+        // Skip (docs/design/survival-roadmap.md -> M1): close the row for part of its experience.
+        _skip = new Button { Text = "Skip  [S]", FocusMode = Control.FocusModeEnum.None, Name = "Skip", SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter, CustomMinimumSize = new Vector2(160f, 32f) };
+        _skip.AddThemeFontSizeOverride("font_size", 15);
+        UiTheme.InstantTooltip(_skip, () => SkipTip);
+        _skip.Pressed += () =>
+        {
+            if (_cards.Armed)
+            {
+                SkipRow();
+            }
+        };
+        box.AddChild(_skip);
         _buildSummary = UiTheme.Label("", 15, UiTheme.TextDim, HorizontalAlignment.Center);
         _buildSummary.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _buildSummary.CustomMinimumSize = new Vector2(820f, 0f);
@@ -223,7 +237,7 @@ public partial class LevelUpScreen : CanvasLayer
     private void ShowLevel(int level)
     {
         _offeringLevel = level;
-        List<UpgradeOffer> offers = Build.RollOffers(_offeringLevel, _rng);
+        List<UpgradeOffer> offers = Build.RollLevelOffers(_offeringLevel, _rng);
         KeystoneTier? tier = offers.Count > 0 && offers.All(o => o.Kind == UpgradeKind.Keystone) ? OfferRules.KeystoneTierAt(_offeringLevel) : null;
         _title.Text = tier switch
         {
@@ -235,7 +249,7 @@ public partial class LevelUpScreen : CanvasLayer
         {
             KeystoneTier.Great => "Great keystones change how your whole build works. Choose carefully.",
             KeystoneTier.Lesser => "A lesser keystone: a smaller trade that bends one part of your build.",
-            _ => "Choose an upgrade  (1 / 2 / 3)",
+            _ => offers.Count > 3 ? "Choose an upgrade  (1 / 2 / 3 / 4) — Luck gave you a fourth card" : "Choose an upgrade  (1 / 2 / 3)",
         });
         _buildSummary.Text = BuildSummary(Build);
         ShowRow(true);
@@ -252,10 +266,85 @@ public partial class LevelUpScreen : CanvasLayer
     private void RefreshReroll()
     {
         int left = Build.RerollsLeft;
-        _rerollInfo.Text = left > 0
-            ? $"Rerolls: {left} left this run — replaces one card  (Shift + its number, or the button under it)"
-            : "No rerolls left this run";
-        _cards.SetRerollState(left > 0, left > 0 ? "Replace this card only" : "No rerolls left this run");
+        bool pick = Features.RiftPickControl;
+        long price = Build.RerollPrice;
+        bool can = Build.CanReroll;
+        string rerolls = left > 0
+            ? $"Rerolls: {left} free left"
+            : pick ? $"Rerolls: {price} gold each now (you have {Build.Gold})" : "No rerolls left this run";
+        string extra = pick
+            ? $"   ·   Banish: {Build.BanishesLeft} left (Ctrl + number)   ·   Skip: {Build.SkipsLeft} left (S)"
+            : "";
+        _rerollInfo.Text = rerolls + (can ? "  (Shift + number)" : "") + extra;
+        _cards.SetRerollState(can,
+            left > 0 ? "Replace this card only" : can ? $"Replace this card only, for {price} gold" : pick ? $"A reroll costs {price} gold now" : "No rerolls left this run",
+            left > 0 || !pick ? "Reroll" : $"Reroll {price}g");
+        _cards.ShowBanish = pick;
+        _cards.SetBanishState(pick && Build.BanishesLeft > 0,
+            Build.BanishesLeft > 0 ? "Never offer this again this run (the card is replaced)" : "No banishes left this run");
+        bool skippable = !_startPick && Build.CanSkip(_offeringLevel);
+        _skip.Visible = pick && !_startPick && _offeringLevel > 0;
+        _skip.Disabled = !skippable;
+        _skip.Text = $"Skip  [S]  ({Build.SkipsLeft} left)";
+    }
+
+    private string SkipTip => Build.CanSkip(_offeringLevel)
+        ? (Coop ? "Take nothing this level" : $"Take nothing, get {Mathf.RoundToInt(OfferRules.SkipRefund * 100)}% of this level's experience back")
+        : Build.SkipsLeft <= 0 ? "No skips left this run" : "Keystone rows cannot be skipped";
+
+    /// <summary>Skips the row (docs/design/survival-roadmap.md -> M1). Public for tools and tests.</summary>
+    public bool SkipRow()
+    {
+        if (!IsOpen || _startPick || !Build.CanSkip(_offeringLevel))
+        {
+            return false;
+        }
+
+        if (_partyRound != 0)
+        {
+            var skip = new UpgradeOffer { Key = Net.RiftHost.SkipKey, Title = "Skip", Apply = () => Build.ApplyKey(Net.RiftHost.SkipKey) };
+            OnChosen(skip);
+            return true;
+        }
+
+        Build.TrySkip(_offeringLevel);
+        float refund = RunState.ExperienceToNext(_offeringLevel - 1) * OfferRules.SkipRefund;
+        State.ConsumeLevelUp();
+        State.AddExperience(refund);
+        Core.Sfx.Play(this, "pickup");
+        if (State.PendingLevelUps > 0)
+        {
+            ShowNext();
+            return true;
+        }
+
+        Close();
+        return true;
+    }
+
+    /// <summary>Banishes one card's subject for the run and replaces it. Public for tools and tests.</summary>
+    public bool BanishCard(int index)
+    {
+        if (!IsOpen || index < 0 || index >= _cards.OfferCount)
+        {
+            return false;
+        }
+
+        if (Build.TryBanish(_offeringLevel, _cards.Offers, index, _rng) is not { } offer)
+        {
+            RefreshReroll();
+            return false;
+        }
+
+        _cards.ReplaceOffer(index, offer);
+        RefreshReroll();
+        Arm();
+        if (_partyRound != 0)
+        {
+            PartyOffersChanged?.Invoke(_partyRound, _cards.Offers);
+        }
+
+        return true;
     }
 
     /// <summary>Rerolls one card (docs/design/progression.md -> "Rerolls"). Public for
@@ -269,7 +358,7 @@ public partial class LevelUpScreen : CanvasLayer
 
         if (Build.TryReroll(_offeringLevel, _cards.Offers, index, _rng) is not { } offer)
         {
-            if (Build.RerollsLeft > 0)
+            if (Build.CanReroll)
             {
                 _rerollInfo.Text = "Nothing else to offer for that card.";
             }
@@ -311,7 +400,11 @@ public partial class LevelUpScreen : CanvasLayer
             return;
         }
 
-        if (key.PhysicalKeycode == Key.R)
+        if (key.PhysicalKeycode == Key.S && !key.ShiftPressed && !key.CtrlPressed)
+        {
+            SkipRow();
+        }
+        else if (key.PhysicalKeycode == Key.R)
         {
             // The old "reroll everything" key: rerolls are per card now.
             _rerollInfo.Text = Build.RerollsLeft > 0 ? "To reroll one card, press Shift + its number (or the button under it)." : "No rerolls left this run";
@@ -327,6 +420,10 @@ public partial class LevelUpScreen : CanvasLayer
             if (key.ShiftPressed)
             {
                 RerollCard(index);
+            }
+            else if (key.CtrlPressed)
+            {
+                BanishCard(index);
             }
             else
             {
@@ -523,6 +620,10 @@ public partial class LevelUpScreen : CanvasLayer
     {
         _cards.Visible = cards;
         _rerollInfo.Visible = cards;
+        if (!cards)
+        {
+            _skip.Visible = false;
+        }
         _waiting.Visible = !cards;
         if (cards)
         {
@@ -564,7 +665,7 @@ public partial class LevelUpScreen : CanvasLayer
         foreach (Skills.SkillInstance skill in build.Skills)
         {
             string supports = string.Join(", ", skill.Attached.OfType<SupportGem>().Select(g => g.Definition.Name));
-            parts.Add(supports.Length > 0 ? $"{skill.Definition.DisplayName} Lv{skill.Level} [{supports}]" : $"{skill.Definition.DisplayName} Lv{skill.Level}");
+            parts.Add(supports.Length > 0 ? $"{skill.DisplayName} Lv{skill.Level} [{supports}]" : $"{skill.DisplayName} Lv{skill.Level}");
         }
 
         string text = string.Join("   ·   ", parts);

@@ -243,6 +243,8 @@ public partial class NetSession
             return;
         }
 
+        ArpgGame.Run.RunLaunchOptions.RiftTier = Math.Max(1, spec.Tier);
+        ArpgGame.Run.RunLaunchOptions.Fears = new List<string>(spec.Modifiers);
         Core.Scenes.Go(this, Core.Scenes.Run);
     }
 

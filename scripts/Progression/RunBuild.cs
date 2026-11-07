@@ -98,6 +98,28 @@ public partial class RunBuild : Node, IBuildContext
 
     public int RerollsLeft { get; set; } = OfferRules.RerollsPerRun;
 
+    // --- pick control (docs/design/survival-roadmap.md -> M1) ----------------------------
+
+    public int SkipsLeft { get; set; } = OfferRules.SkipsPerRun + (Unlocks.Has(Run.RiftChallenges.ExtraSkip) && Features.RiftChallenges ? 1 : 0);
+    public int BanishesLeft { get; set; } = OfferRules.BanishesPerRun + (Unlocks.Has(Run.RiftChallenges.ExtraBanish) && Features.RiftChallenges ? 1 : 0);
+
+    /// <summary>Rerolls bought with gold this run (the next one costs <see cref="RerollPrice"/>).</summary>
+    public int GoldRerolls { get; private set; }
+
+    private readonly HashSet<string> _banished = new();
+
+    /// <summary>Card subjects banished this run ("p:damage", "s:spark"): never offered again.</summary>
+    public IReadOnlyCollection<string> Banished => _banished;
+
+    /// <summary>What the next reroll costs: free while charges remain, then gold.</summary>
+    public long RerollPrice => RerollsLeft > 0 ? 0 : OfferRules.GoldRerollPrice(GoldRerolls);
+
+    /// <summary>Gold this build can spend on rerolls (the player's wallet).</summary>
+    public long Gold => IsInsideTree() && Player?.Wallet is { } w ? w.GetBalance(Core.Profile.GoldId) : 0;
+
+    /// <summary>True when a reroll is possible now (a free charge, or gold for one).</summary>
+    public bool CanReroll => RerollsLeft > 0 || (Features.RiftPickControl && Gold >= RerollPrice);
+
     public override void _Ready()
     {
         Player = GetParent<Player>();
@@ -182,7 +204,7 @@ public partial class RunBuild : Node, IBuildContext
 
     public bool AddSupport(SkillInstance skill, SupportDefinition support)
     {
-        if (skill.Attached.Count >= MaxSupportsPerSkill || skill.Attached.OfType<SupportGem>().Any(g => g.Definition.Id == support.Id))
+        if (skill.Attached.OfType<SupportGem>().Count() >= MaxSupportsPerSkill || skill.Attached.OfType<SupportGem>().Any(g => g.Definition.Id == support.Id))
         {
             return false;
         }
@@ -229,6 +251,57 @@ public partial class RunBuild : Node, IBuildContext
     public List<UpgradeOffer> RollOffers(int level, RandomNumberGenerator rng, int count = OfferRules.CardsPerOffer) =>
         Roll(level, rng, count, new HashSet<string>());
 
+    /// <summary>The level-up screen's row: <see cref="OfferRules.CardsPerOffer"/> cards, or one more
+    /// with Luck on an ordinary level (<see cref="OfferRules.FourthCardChance"/>).</summary>
+    public List<UpgradeOffer> RollLevelOffers(int level, RandomNumberGenerator rng)
+    {
+        int count = OfferRules.CardsPerOffer;
+        if (Features.RiftPickControl && OfferRules.KeystoneTierAt(level) is null
+            && rng.Randf() < OfferRules.FourthCardChance(Stats.Get(StatId.Luck).Value))
+        {
+            count++;
+        }
+
+        return Roll(level, rng, count, new HashSet<string>());
+    }
+
+    /// <summary>Banishes card <paramref name="index"/>'s subject for the run and returns its
+    /// replacement (null when nothing else exists: the card stays, nothing is spent).
+    /// Keystone rows can be banished from too.</summary>
+    public UpgradeOffer? TryBanish(int level, IReadOnlyList<UpgradeOffer> onScreen, int index, RandomNumberGenerator rng)
+    {
+        if (!Features.RiftPickControl || BanishesLeft <= 0 || index < 0 || index >= onScreen.Count || string.IsNullOrEmpty(onScreen[index].Identity))
+        {
+            return null;
+        }
+
+        var exclude = new HashSet<string>(onScreen.Select(o => o.Identity));
+        _banished.Add(onScreen[index].Identity);
+        List<UpgradeOffer> one = Roll(level, rng, 1, exclude, guarantee: false);
+        BanishesLeft--;
+        Log($"Banished: {onScreen[index].Title}");
+        return one.Count > 0 ? one[0] : null;
+    }
+
+    /// <summary>Banishes a subject directly (co-op replay, tests).</summary>
+    public void Banish(string identity) => _banished.Add(identity);
+
+    /// <summary>Whether a row may be skipped: never a keystone row (keystones are offered alone, on purpose).</summary>
+    public bool CanSkip(int level) => Features.RiftPickControl && SkipsLeft > 0 && level > 0 && OfferRules.KeystoneTierAt(level) is null;
+
+    /// <summary>Spends a skip (the caller gives the experience back).</summary>
+    public bool TrySkip(int level)
+    {
+        if (!CanSkip(level))
+        {
+            return false;
+        }
+
+        SkipsLeft--;
+        Log($"Skipped level {level}");
+        return true;
+    }
+
     /// <summary>
     /// The run-start pick (docs/design/progression.md -> "Starting skills"). A
     /// character with no skills is offered skills of its class only, its starting
@@ -247,7 +320,7 @@ public partial class RunBuild : Node, IBuildContext
     /// </summary>
     public UpgradeOffer? TryReroll(int level, IReadOnlyList<UpgradeOffer> onScreen, int index, RandomNumberGenerator rng)
     {
-        if (RerollsLeft <= 0 || index < 0 || index >= onScreen.Count)
+        if (!CanReroll || index < 0 || index >= onScreen.Count)
         {
             return null;
         }
@@ -259,7 +332,22 @@ public partial class RunBuild : Node, IBuildContext
             return null;
         }
 
-        RerollsLeft--;
+        if (RerollsLeft > 0)
+        {
+            RerollsLeft--;
+        }
+        else
+        {
+            // Bought with gold (docs/design/survival-roadmap.md -> M1).
+            long price = RerollPrice;
+            if (Player?.Wallet is not { } wallet || !wallet.TrySpend(Core.Profile.GoldId, price))
+            {
+                return null;
+            }
+
+            GoldRerolls++;
+        }
+
         return one[0];
     }
 
@@ -271,7 +359,7 @@ public partial class RunBuild : Node, IBuildContext
         {
             candidates = StartCandidates();
         }
-        else if (OfferRules.KeystoneTierAt(level) is { } tier && KeystoneCandidates(tier).Count > 0)
+        else if (OfferRules.KeystoneTierAt(level) is { } tier && KeystoneCandidates(tier).Count(c => !_banished.Contains(c.Key)) > 0)
         {
             candidates = KeystoneCandidates(tier);
         }
@@ -280,7 +368,7 @@ public partial class RunBuild : Node, IBuildContext
             candidates = RegularCandidates();
         }
 
-        candidates.RemoveAll(c => exclude.Contains(c.Key));
+        candidates.RemoveAll(c => exclude.Contains(c.Key) || _banished.Contains(c.Key));
         var offers = new List<UpgradeOffer>();
 
         // A skill-less character's start pick: the class's starting skill is always there.
@@ -378,7 +466,7 @@ public partial class RunBuild : Node, IBuildContext
 
     private List<Candidate> KeystoneCandidates(KeystoneTier tier) =>
         UpgradeCatalog.Keystones
-            .Where(k => k.InRift && k.Tier == tier && !HasKeystone(k.Id))
+            .Where(k => k.InRift && k.Tier == tier && !HasKeystone(k.Id) && (k.RequiresUnlock is null || Unlocks.Has(k.RequiresUnlock)))
             .Select(k => new Candidate
             {
                 Category = OfferCategory.Keystone,
@@ -456,7 +544,7 @@ public partial class RunBuild : Node, IBuildContext
                     Id = id,
                     Title = $"{s.Definition.DisplayName}  Lv {s.Level + 1}",
                     Subtitle = $"Skill level ({s.Level + 1}/{MaxSkillLevel})",
-                    Description = $"+{Mathf.RoundToInt(SkillInstance.DamagePerLevel * 100)}% more damage than the previous level.",
+                    Description = $"+{Mathf.RoundToInt(SkillInstance.DamagePerLevel * 100)}% more damage than the previous level." + SkillEvolutionHint(id, s.Level + 1),
                     Icon = s.Definition.Icon,
                     Key = "l:" + id,
                     Apply = () => { s.Level++; Log($"{s.Definition.DisplayName} → Lv {s.Level}"); },
@@ -472,7 +560,7 @@ public partial class RunBuild : Node, IBuildContext
         List<Candidate> list = SkillCandidates(classOnly: false);
         foreach (SkillInstance skill in Skills)
         {
-            if (!Features.SupportGems || skill.Attached.Count >= MaxSupportsPerSkill)
+            if (!Features.SupportGems || skill.Attached.OfType<SupportGem>().Count() >= MaxSupportsPerSkill)
             {
                 continue;
             }
@@ -533,7 +621,7 @@ public partial class RunBuild : Node, IBuildContext
                 Key = "p:" + passive.Id,
                 Make = rng =>
                 {
-                    UpgradeRarity rarity = p.Scales ? RollRarity(rng) : UpgradeRarity.Rare;
+                    UpgradeRarity rarity = p.Scales ? RollRarity(rng, Stats.Get(StatId.Luck).Value) : UpgradeRarity.Rare;
                     float mult = p.Scales ? RarityMultiplier(rarity) : 1f;
                     return new UpgradeOffer
                     {
@@ -542,7 +630,7 @@ public partial class RunBuild : Node, IBuildContext
                         Id = p.Id,
                         Title = p.Name,
                         Subtitle = p.Scales ? $"{rarity} power-up" : "Notable power-up",
-                        Description = p.Describe(mult),
+                        Description = p.Describe(mult) + EvolutionHint(p.Id),
                         Icon = LoadIcon("icon_passive"),
                         Key = $"p:{p.Id}:{(int)rarity}:{(p.Scales ? 1 : 0)}",
                         Apply = () => { AddPassive(p, mult); Log($"{p.Name}: {p.Describe(mult).Replace('\n', ' ')}"); },
@@ -612,6 +700,18 @@ public partial class RunBuild : Node, IBuildContext
                 AddPassive(passive, mult);
                 Log($"{passive.Name}: {passive.Describe(mult).Replace('\n', ' ')}");
                 return true;
+            case "e":
+                return Evolve(k[1]);
+            case "x":
+                // A skipped row (docs/design/survival-roadmap.md -> M1): nothing applies.
+                if (SkipsLeft <= 0)
+                {
+                    return false;
+                }
+
+                SkipsLeft--;
+                Log("Skipped a level");
+                return true;
             case "k" when UpgradeCatalog.Keystones.FirstOrDefault(x => x.Id == k[1]) is { } keystone && !HasKeystone(keystone.Id):
                 AddKeystone(keystone);
                 Log($"Keystone: {keystone.Name}");
@@ -619,6 +719,189 @@ public partial class RunBuild : Node, IBuildContext
         }
 
         return false;
+    }
+
+    // --- evolutions (docs/design/survival-roadmap.md -> M5) ------------------------------
+
+    /// <summary>Evolutions whose conditions hold now: the skill at <see cref="MaxSkillLevel"/>,
+    /// not evolved yet, and its partner power-up owned.</summary>
+    public IEnumerable<EvolutionDefinition> ReadyEvolutions()
+    {
+        if (!Features.RiftEvolutions)
+        {
+            yield break;
+        }
+
+        foreach (SkillInstance skill in Skills)
+        {
+            if (skill.IsEvolved || skill.Level < MaxSkillLevel)
+            {
+                continue;
+            }
+
+            if (EvolutionCatalog.ForSkill(UpgradeCatalog.SkillIdOf(skill.Definition)) is { } evo
+                && EvolutionCatalog.Known(evo) && _passiveRanks.GetValueOrDefault(evo.PartnerId) > 0)
+            {
+                yield return evo;
+            }
+        }
+    }
+
+    /// <summary>"\nEvolves Fireball at Lv 6" on a partner power-up's card, for an owned skill not yet evolved.</summary>
+    private string EvolutionHint(string passiveId)
+    {
+        if (!Features.RiftEvolutions)
+        {
+            return "";
+        }
+
+        foreach (EvolutionDefinition evo in EvolutionCatalog.ForPartner(passiveId))
+        {
+            if (EvolutionCatalog.Known(evo) && FindSkill(evo.SkillId) is { IsEvolved: false } skill)
+            {
+                return $"\nEvolves {skill.Definition.DisplayName} into {evo.Name} at Lv {MaxSkillLevel}.";
+            }
+        }
+
+        return "";
+    }
+
+    /// <summary>On a skill-level card: what its evolution needs, once it would reach the cap.</summary>
+    private string SkillEvolutionHint(string skillId, int newLevel)
+    {
+        if (!Features.RiftEvolutions || newLevel < MaxSkillLevel || EvolutionCatalog.ForSkill(skillId) is not { } evo || !EvolutionCatalog.Known(evo))
+        {
+            return "";
+        }
+
+        string partner = UpgradeCatalog.Passives.FirstOrDefault(x => x.Id == evo.PartnerId)?.Name ?? evo.PartnerId;
+        return _passiveRanks.GetValueOrDefault(evo.PartnerId) > 0
+            ? $"\nReady to evolve into {evo.Name}: the next big chest does it."
+            : $"\nAt Lv {MaxSkillLevel} it evolves into {evo.Name} with {partner}.";
+    }
+
+    /// <summary>Whether <paramref name="skill"/>'s evolution is ready (the HUD's mark).</summary>
+    public bool EvolutionReady(SkillInstance skill) => ReadyEvolutions().Any(e => e.SkillId == UpgradeCatalog.SkillIdOf(skill.Definition));
+
+    /// <summary>Evolves an owned skill into its evolved form. False when its conditions don't hold.</summary>
+    public bool Evolve(string skillId)
+    {
+        if (FindSkill(skillId) is not { } skill || ReadyEvolutions().FirstOrDefault(e => e.SkillId == skillId) is not { } evo)
+        {
+            return false;
+        }
+
+        skill.Attached.Add(new EvolutionUpgrade(evo));
+        skill.EvolvedName = evo.Name;
+        Log($"Evolved: {skill.Definition.DisplayName} → {evo.Name}");
+        Evolved?.Invoke(skill, evo);
+        if (Player is { IsLocal: true })
+        {
+            GameEvents.Raise(GameEvents.RiftEvolved, 1, evo.SkillId);
+        }
+        return true;
+    }
+
+    /// <summary>A skill evolved (the HUD's banner, quests).</summary>
+    public event System.Action<SkillInstance, EvolutionDefinition>? Evolved;
+
+    // --- chests (docs/design/survival-roadmap.md -> M2) ---------------------------------
+
+    /// <summary>
+    /// What a chest of <paramref name="size"/> gives this build, as keys for <see cref="ApplyKey"/>
+    /// (co-op: the host rolls them on its copy and the client replays the same keys). Each
+    /// slot is, in order of preference: a ready evolution (M5, one per chest of 3 or more), a
+    /// level for an owned skill below the cap, or a rank for an owned power-up (rarity rolled
+    /// with Luck). Never a new skill, support or keystone. A slot with nothing to raise pays
+    /// gold ("gold:N", <see cref="Run.ChestRules.FallbackGold"/>). Pure apart from the RNG: the
+    /// build changes only when the keys are applied.
+    /// </summary>
+    public List<string> ChestRewards(int size, RandomNumberGenerator rng, float elapsed, bool evolutionAllowed = true)
+    {
+        var keys = new List<string>();
+        var levels = Skills.ToDictionary(sk => UpgradeCatalog.SkillIdOf(sk.Definition), sk => sk.Level);
+        var ranks = new Dictionary<string, int>(_passiveRanks);
+        float luck = Stats.Get(StatId.Luck).Value;
+        if (evolutionAllowed && size >= 3 && Features.RiftEvolutions && ReadyEvolutions().FirstOrDefault() is { } evo)
+        {
+            keys.Add("e:" + evo.SkillId);
+        }
+
+        while (keys.Count < size)
+        {
+            var pool = new List<(string Key, float Weight)>();
+            foreach ((string id, int level) in levels)
+            {
+                if (level < MaxSkillLevel)
+                {
+                    pool.Add(("l:" + id, Run.ChestRules.SkillLevelWeight));
+                }
+            }
+
+            foreach ((string id, int rank) in ranks)
+            {
+                if (rank > 0 && UpgradeCatalog.Passives.FirstOrDefault(p => p.Id == id) is { } passive && rank < passive.MaxRank
+                    && (passive.Requires is null || passive.Requires(this)))
+                {
+                    UpgradeRarity rarity = passive.Scales ? RollRarity(rng, luck) : UpgradeRarity.Rare;
+                    pool.Add(($"p:{id}:{(int)rarity}:{(passive.Scales ? 1 : 0)}", Run.ChestRules.PowerUpWeight));
+                }
+            }
+
+            if (pool.Count == 0)
+            {
+                keys.Add(Run.ChestRules.GoldPrefix + Run.ChestRules.FallbackGold(elapsed));
+                continue;
+            }
+
+            float total = pool.Sum(x => x.Weight);
+            float roll = rng.Randf() * total;
+            string chosen = pool[^1].Key;
+            foreach ((string key, float weight) in pool)
+            {
+                roll -= weight;
+                if (roll <= 0f)
+                {
+                    chosen = key;
+                    break;
+                }
+            }
+
+            keys.Add(chosen);
+            string[] k = chosen.Split(':');
+            if (k[0] == "l")
+            {
+                levels[k[1]]++;
+            }
+            else
+            {
+                ranks[k[1]] = ranks.GetValueOrDefault(k[1]) + 1;
+            }
+        }
+
+        return keys;
+    }
+
+    /// <summary>What a chest key reads as in the loot feed ("Spark → Lv 4", "Might (Magic)").</summary>
+    public string DescribeKey(string key)
+    {
+        string[] k = key.Split(':');
+        return k[0] switch
+        {
+            "l" when FindSkill(k[1]) is { } sk => $"{sk.DisplayName} → Lv {sk.Level}",
+            "p" when UpgradeCatalog.Passives.FirstOrDefault(p => p.Id == k[1]) is { } p => k.Length >= 3 && p.Scales ? $"{p.Name} ({(UpgradeRarity)k[2].ToInt()})" : p.Name,
+            "e" when FindSkill(k[1]) is { } sk => $"Evolved: {sk.DisplayName}",
+            _ when key.StartsWith(Run.ChestRules.GoldPrefix) => $"{key[Run.ChestRules.GoldPrefix.Length..]} gold",
+            _ => key,
+        };
+    }
+
+    public static UpgradeRarity RollRarity(RandomNumberGenerator rng, float luck)
+    {
+        luck = Mathf.Clamp(luck, 0f, 4f);
+        float r = rng.Randf();
+        float rare = OfferRules.RareChance * luck;
+        return r < rare ? UpgradeRarity.Rare : r < rare + OfferRules.MagicChance * luck ? UpgradeRarity.Magic : UpgradeRarity.Common;
     }
 
     public static UpgradeRarity RollRarity(RandomNumberGenerator rng)

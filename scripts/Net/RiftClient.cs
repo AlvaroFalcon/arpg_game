@@ -158,8 +158,12 @@ public partial class RiftClient : CoopClient
         int elites = r.U16();
         int bosses = r.U16();
         byte flags = r.U8();
+        int tier = Math.Clamp((int)r.U8(), 1, RiftDifficulty.MaxTier);
+        int greed = Math.Clamp((int)r.U8(), 0, RiftDifficulty.MaxGreed);
         State.ApplyShared(elapsed, kills, elites, bosses);
         Director.ApplyRemoteFlags((flags & 1) != 0, (flags & 2) != 0);
+        State.Difficulty.Tier = tier;
+        State.Difficulty.Greed = greed;
     }
 
     protected override void Announce(string title, string subtitle, Color color) => Director.Announce(title, subtitle, color);
@@ -199,6 +203,21 @@ public partial class RiftClient : CoopClient
                 float deadline = r.F32();
                 bool mine = r.Bool();
                 ApplyRound(id, kind, level, remaining, picked, total, float.IsFinite(deadline) ? deadline : 0.0, mine);
+                return true;
+            }
+
+            case RiftProtocol.ShrineState:
+            {
+                ushort id = r.U16();
+                byte kind = r.U8();
+                Vector2 at = r.Pos();
+                float progress = Math.Clamp(Sane(r.F32(), 0f, 1f), 0f, 1f);
+                bool used = r.Bool();
+                if (kind <= (byte)ShrineKind.Magnet)
+                {
+                    Director.ShowRemoteShrine(id, (ShrineKind)kind, at, progress, used);
+                }
+
                 return true;
             }
 
@@ -245,6 +264,22 @@ public partial class RiftClient : CoopClient
                 State.ApplyLocalCollected(kind, 1);
                 State.ShowToast($"Cataclysm — {detail} slain", new Color(1f, 0.45f, 0.3f));
                 break;
+            case PickupKind.Chest:
+            {
+                // The host opened this player's chest on its copy of the build: the same keys here.
+                var keys = new List<string>();
+                foreach (string k in key.Split('|'))
+                {
+                    if (k.Length is > 2 and <= PartyRules.MaxOfferKeyChars && keys.Count < 5)
+                    {
+                        keys.Add(k);
+                    }
+                }
+
+                State.ApplyChestKeys(State.Local, Local, keys, Math.Clamp((int)value, 1, 5));
+                break;
+            }
+
             case PickupKind.Magnet:
                 Core.Sfx.Play(this, "levelup", -6f);
                 ScreenFlash.Spawn(this, new Color(0.45f, 0.75f, 1f), 0.25f);

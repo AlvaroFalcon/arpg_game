@@ -53,6 +53,7 @@ public partial class Hideout : Node2D
     private Node2D _portal = null!;
     private bool _leaving;
     private MirrorPanel _mirror = null!;
+    private RiftEntryPanel _riftEntry = null!;
     private AscendancyPanel _altar = null!;
     private StashPanel _stash = null!;
     private MerchantPanel _merchant = null!;
@@ -120,6 +121,8 @@ public partial class Hideout : Node2D
         AddChild(Pause);
         AddChild(new CharacterPanels { Player = _player, Name = "CharacterPanels" });
         _mirror = new MirrorPanel { Player = _player, Travel = Travel, Propose = ProposeRift, InParty = () => _session is { Active: true }, Name = "MirrorPanel" };
+        _riftEntry = new RiftEntryPanel { Name = "RiftEntryPanel", Enter = EnterRift };
+        _mirror.OpenRift = OpenRiftEntry;
         _altar = new AscendancyPanel { Player = _player, Name = "AscendancyPanel" };
         _stash = new StashPanel { Player = _player, Name = "StashPanel" };
         _merchant = new MerchantPanel { Player = _player, Name = "MerchantPanel" };
@@ -130,7 +133,7 @@ public partial class Hideout : Node2D
         _dealer = new ShardVendorPanel { Player = _player, Name = "ShardVendorPanel" };
         _escaldon = new SkillTreePanel { Player = _player, Name = "SkillTreePanel" };
         _questDialog = new QuestDialog { Name = "QuestDialog" };
-        foreach (Node panel in new Node[] { _mirror, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer, _escaldon, _questDialog })
+        foreach (Node panel in new Node[] { _mirror, _riftEntry, _altar, _stash, _merchant, _artificer, _shop, _guide, _dealer, _escaldon, _questDialog })
         {
             AddChild(panel);
         }
@@ -1249,7 +1252,11 @@ public partial class Hideout : Node2D
         bool inPortal = !_leaving && !Editing && _player.GlobalPosition.DistanceTo(_portal.GlobalPosition) < PortalRadius;
         if (inPortal && !_inPortal)
         {
-            if (_session is { Active: true })
+            if (Features.RiftTiers)
+            {
+                OpenRiftEntry();
+            }
+            else if (_session is { Active: true })
             {
                 Party.Popup.Confirm("Open the Survival Rift for the party?",
                     $"Everyone in the hideout is asked to join; you set off with whoever does, within {PartyRules.ProposalSeconds:0} s.",
@@ -1262,6 +1269,29 @@ public partial class Hideout : Node2D
         }
 
         _inPortal = inPortal;
+    }
+
+    /// <summary>The Survival Rift's entry panel (tier, Fear cards — docs/design/survival-roadmap.md -> M4).</summary>
+    private void OpenRiftEntry()
+    {
+        if (!_riftEntry.IsOpen && !_leaving)
+        {
+            _riftEntry.Open();
+        }
+    }
+
+    /// <summary>"Enter the Rift": straight in solo, a proposal in a party.</summary>
+    private void EnterRift(RiftSpec spec)
+    {
+        if (_session is { Active: true })
+        {
+            ProposeRift(spec);
+            return;
+        }
+
+        ArpgGame.Run.RunLaunchOptions.RiftTier = Math.Max(1, spec.Tier);
+        ArpgGame.Run.RunLaunchOptions.Fears = new List<string>(spec.Modifiers);
+        Leave(Scenes.Run);
     }
 
     private void Leave(string scene, Action? before = null)

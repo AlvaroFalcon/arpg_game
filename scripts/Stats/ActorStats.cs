@@ -198,6 +198,7 @@ public partial class ActorStats : Node
         StatId.BleedStacksPerHit => 0f,
         StatId.IgniteDuration => 1f,
         StatId.KnockbackImmunity => 0f,
+        StatId.Luck => 1f,
         _ => throw new ArgumentOutOfRangeException(nameof(id), id, null),
     };
 

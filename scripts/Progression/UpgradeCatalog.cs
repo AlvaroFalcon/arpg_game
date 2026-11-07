@@ -54,6 +54,9 @@ public sealed class KeystoneDefinition
     /// <summary>False for a keystone whose trade means nothing in the Survival Rift
     /// (Blood Magic: skills cost nothing there). It stays a passive-tree keystone.</summary>
     public bool InRift { get; init; } = true;
+
+    /// <summary>Locked until a Rift challenge unlocks it (docs/design/survival-roadmap.md -> M7); null = always offered.</summary>
+    public string? RequiresUnlock { get; init; }
 }
 
 /// <summary>
@@ -345,6 +348,8 @@ public static class UpgradeCatalog
                     s.Get(r).AddModifier(new StatModifier(ModifierType.Flat, 15f * m, src));
             },
         },
+        // docs/design/survival-roadmap.md -> M1, M2: a 4th level-up card, rarer power-ups, bigger chests.
+        StatPassive("luck", "Fortune", StatId.Luck, ModifierType.Flat, 0.1f, m => $"+{Pct(10 * m)} Luck\n(a 4th card, rarer power-ups, bigger chests)", 0.8f, 5),
         StatPassive("dodge_recovery", "Light Step", StatId.DodgeRecovery, ModifierType.Increased, 15f, m => $"{Pct(15 * m)} faster Dodge recharge"),
         new PassiveDefinition
         {
@@ -402,6 +407,17 @@ public static class UpgradeCatalog
                 b.SkillUser.GlobalModifiers.Add(new GlobalCastModifier(30, c => c.DamageMultiplier *= 1.25f));
                 b.Stats.Get(StatId.FreezeChance).AddModifier(new StatModifier(ModifierType.Flat, 0.15f, b.Source));
                 b.ForcedElement = SkillTags.Cold;
+            },
+        },
+        new KeystoneDefinition
+        {
+            // docs/design/survival-roadmap.md -> M7: unlocked by the "Fearless" Rift challenge.
+            Id = "treasure_hunter", Tier = KeystoneTier.Lesser, Name = "Treasure Hunter", RequiresUnlock = Run.RiftChallenges.TreasureHunter,
+            Description = "+50% Luck: more 4th cards, rarer power-ups, bigger chests.\n10% less damage.",
+            Apply = b =>
+            {
+                b.Stats.Get(StatId.Luck).AddModifier(new StatModifier(ModifierType.Flat, 0.5f, b.Source));
+                b.Stats.Damage.AddModifier(new StatModifier(ModifierType.More, -10f, b.Source));
             },
         },
         new KeystoneDefinition

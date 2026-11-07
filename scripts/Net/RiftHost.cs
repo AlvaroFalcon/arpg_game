@@ -38,6 +38,7 @@ public partial class RiftHost : CoopHost
         Director.Announced += OnAnnounced;
         Director.BossSpawned += AdoptBoss;
         Director.PortalOpened += OnPortalOpened;
+        Director.ShrineChanged += OnShrineChanged;
         HookRounds();
     }
 
@@ -48,6 +49,7 @@ public partial class RiftHost : CoopHost
         Director.Announced -= OnAnnounced;
         Director.BossSpawned -= AdoptBoss;
         Director.PortalOpened -= OnPortalOpened;
+        Director.ShrineChanged -= OnShrineChanged;
         UnhookRounds();
     }
 
@@ -131,6 +133,21 @@ public partial class RiftHost : CoopHost
         w.U16((ushort)Mathf.Min(State.ElitesKilled, ushort.MaxValue));
         w.U16((ushort)Mathf.Min(State.BossesKilled, ushort.MaxValue));
         w.U8((byte)((Director.Surging ? 1 : 0) | (Director.ColossusDefeated ? 2 : 0)));
+        // docs/design/survival-roadmap.md -> M3, M4: the HUD's "Tier 3 · Greed ×2".
+        w.U8((byte)Mathf.Clamp(State.Difficulty.Tier, 1, 255));
+        w.U8((byte)Mathf.Clamp(State.Difficulty.Greed, 0, 255));
+    }
+
+    private void OnShrineChanged(Shrine shrine) => Broadcast(w => WriteShrine(w, shrine));
+
+    private static void WriteShrine(NetWriter w, Shrine shrine)
+    {
+        w.U8(RiftProtocol.ShrineState);
+        w.U16(shrine.Id);
+        w.U8((byte)shrine.Kind);
+        w.Pos(shrine.GlobalPosition);
+        w.F32(shrine.Progress);
+        w.Bool(shrine.Used);
     }
 
     // --- run events ------------------------------------------------------------------
@@ -235,6 +252,11 @@ public partial class RiftHost : CoopHost
         if (_round is not null)
         {
             WriteRound(link); // a round already open (the load timeout passed): it picks too
+        }
+
+        foreach (Shrine shrine in Director.Shrines)
+        {
+            WriteShrine(link.Events, shrine);
         }
     }
 

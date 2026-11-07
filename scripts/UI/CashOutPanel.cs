@@ -248,7 +248,7 @@ public partial class CashOutPanel : CanvasLayer
     /// <summary>The cards' contents from the reward as it stands.</summary>
     private void Rebuild()
     {
-        RunRewards r = RunRewards.Preview(State.Elapsed, State.BossesKilled, State.Kills, true);
+        RunRewards r = RunRewards.Preview(State.Elapsed, State.BossesKilled, State.Kills, true, State.Difficulty);
         Shown = r;
         ShownInputs = $"t={State.Elapsed:0.000} bosses={State.BossesKilled} kills={State.Kills}";
         foreach (VBoxContainer lines in new[] { _takeBody, _stayBody })

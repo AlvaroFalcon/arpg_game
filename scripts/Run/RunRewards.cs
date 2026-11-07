@@ -143,16 +143,19 @@ public sealed class RunRewards
     /// four times a second): the same gold, orb count, cards, keep, item level and rarity
     /// as <see cref="For"/> at the same moment, with no orb kinds.
     /// </summary>
-    public static RunRewards Preview(float elapsed, int bosses, int kills, bool victory) => Build(elapsed, bosses, kills, victory, null);
+    public static RunRewards Preview(float elapsed, int bosses, int kills, bool victory, RiftDifficulty? difficulty = null) => Build(elapsed, bosses, kills, victory, null, difficulty);
 
-    public static RunRewards For(float elapsed, int bosses, int kills, bool victory, RandomNumberGenerator rng) => Build(elapsed, bosses, kills, victory, rng);
+    public static RunRewards For(float elapsed, int bosses, int kills, bool victory, RandomNumberGenerator rng, RiftDifficulty? difficulty = null) => Build(elapsed, bosses, kills, victory, rng, difficulty);
 
-    private static RunRewards Build(float elapsed, int bosses, int kills, bool victory, RandomNumberGenerator? rng)
+    private static RunRewards Build(float elapsed, int bosses, int kills, bool victory, RandomNumberGenerator? rng, RiftDifficulty? difficulty)
     {
+        // A harder Rift (tier, Fear cards, Greed: docs/design/survival-roadmap.md -> M4) pays more gold
+        // and orbs, rarer items and higher item levels. A default difficulty changes nothing.
+        RiftDifficulty d = difficulty ?? Default;
         float m = elapsed / 60f;
         int tier = TierAt(elapsed, victory);
         int bonusAscendant = BonusAscendantAt(tier);
-        int baseOrbs = Mathf.FloorToInt(m / 1.5f) + bosses + (victory ? 2 : 0);
+        int baseOrbs = Mathf.FloorToInt((Mathf.FloorToInt(m / 1.5f) + bosses + (victory ? 2 : 0)) * d.Gold);
         var orbs = new List<string>();
         if (rng is not null)
         {
@@ -179,16 +182,18 @@ public sealed class RunRewards
             NextTierText = tier == 0 ? "" : $"Tier {Roman(nextTier)} at {UI.UiTheme.FormatTime(TierStart(nextTier))}: {TierAdd(nextTier)}",
             ItemsEarned = earned,
             NoItemReason = earned ? "" : $"No item this time: a Rift pays an item after {Mathf.RoundToInt(MinItemSeconds)} s or {MinItemKills} kills (this one: {Mathf.FloorToInt(elapsed)} s, {kills} kills).",
-            Gold = Mathf.RoundToInt(15f * Mathf.Pow(m, 1.6f) + kills * 0.05f + (victory ? 150f : 0f)),
+            Gold = Mathf.RoundToInt((15f * Mathf.Pow(m, 1.6f) + kills * 0.05f + (victory ? 150f : 0f)) * d.Gold),
             Orbs = orbs,
             Choices = earned ? 3 + (m >= 7f ? 1 : 0) + (m >= 12f ? 1 : 0) : 0,
             Keep = earned ? 1 + (m >= 10f ? 1 : 0) + (m >= 15f ? 1 : 0) : 0,
             // +12 % per minute, +15 % per boss, +30 % for the win: a 7:30 win with three
             // bosses ×2.65 (Rare 40 %), sixteen endless minutes ×4.2 (Rare 63 %).
-            RarityMultiplier = 1f + 0.12f * m + 0.15f * bosses + (victory ? 0.3f : 0f),
-            ItemLevel = Mathf.Clamp(3 + Mathf.RoundToInt(m * 5f) + bosses * 8, 1, 100),
+            RarityMultiplier = 1f + 0.12f * m + 0.15f * bosses + (victory ? 0.3f : 0f) + d.RarityBonus,
+            ItemLevel = Mathf.Clamp(3 + Mathf.RoundToInt(m * 5f) + bosses * 8 + d.ItemLevelBonus, 1, 100),
         };
     }
+
+    private static readonly RiftDifficulty Default = new();
 
     /// <summary>Puts the gold and orbs in the player's wallet (captured into the
     /// profile right after).</summary>

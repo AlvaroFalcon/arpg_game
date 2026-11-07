@@ -25,6 +25,17 @@ public partial class UpgradeCards : HBoxContainer
     /// <summary>The reroll button under card <c>index</c> was pressed (only once armed).</summary>
     public event Action<int>? RerollRequested;
 
+    /// <summary>The banish button under card <c>index</c> was pressed (docs/design/survival-roadmap.md -> M1).</summary>
+    public event Action<int>? BanishRequested;
+
+    private readonly List<Button> _banishButtons = new();
+    private string _banishTip = "";
+
+    /// <summary>Show a banish button next to each reroll button.</summary>
+    public bool ShowBanish { get; set; }
+
+    private string _rerollLabel = "Reroll";
+
     private readonly List<UpgradeOffer> _offers = new();
     private readonly List<Button> _rerollButtons = new();
     private string _rerollTip = "";
@@ -50,9 +61,10 @@ public partial class UpgradeCards : HBoxContainer
         _offers.Clear();
         _offers.AddRange(offers);
         _rerollButtons.Clear();
+        _banishButtons.Clear();
         AddThemeConstantOverride("separation", 18);
         Alignment = AlignmentMode.Center;
-        _cardWidth = offers.Count > 4 ? 214f : 250f;
+        _cardWidth = offers.Count > 4 ? 214f : offers.Count == 4 ? 236f : 250f;
         for (int i = 0; i < offers.Count; i++)
         {
             AddChild(BuildColumn(offers[i], i));
@@ -77,16 +89,52 @@ public partial class UpgradeCards : HBoxContainer
     }
 
     /// <summary>Enables or disables every reroll button (no charges left), with its label.</summary>
-    public void SetRerollState(bool enabled, string tooltip = "")
+    public void SetRerollState(bool enabled, string tooltip = "", string label = "Reroll")
     {
-        foreach (Button b in _rerollButtons)
+        _rerollTip = tooltip;
+        _rerollLabel = label;
+        for (int i = 0; i < _rerollButtons.Count; i++)
+        {
+            Button b = _rerollButtons[i];
+            if (IsInstanceValid(b))
+            {
+                b.Disabled = !enabled;
+                b.Text = $"{label}  [Shift+{i + 1}]";
+            }
+        }
+    }
+
+    /// <summary>Enables or disables every banish button, with its tooltip.</summary>
+    public void SetBanishState(bool enabled, string tooltip = "")
+    {
+        _banishTip = tooltip;
+        foreach (Button b in _banishButtons)
         {
             if (IsInstanceValid(b))
             {
                 b.Disabled = !enabled;
-                _rerollTip = tooltip;
+                b.Visible = ShowBanish;
             }
         }
+    }
+
+    private static Button SmallButton(string text, string name)
+    {
+        var b = new Button
+        {
+            Text = text,
+            FocusMode = FocusModeEnum.None,
+            CustomMinimumSize = new Vector2(0f, 30f),
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            Name = name,
+        };
+        b.AddThemeFontSizeOverride("font_size", 14);
+        b.AddThemeColorOverride("font_color", UiTheme.TextDim);
+        b.AddThemeStyleboxOverride("normal", UiTheme.Box(UiTheme.Panel, UiTheme.TextDim with { A = 0.4f }, 1, 6, 6));
+        b.AddThemeStyleboxOverride("hover", UiTheme.Box(new Color(0.16f, 0.13f, 0.22f), UiTheme.Gold, 1, 6, 6));
+        b.AddThemeStyleboxOverride("pressed", UiTheme.Box(new Color(0.22f, 0.18f, 0.3f), UiTheme.Gold, 1, 6, 6));
+        b.AddThemeStyleboxOverride("disabled", UiTheme.Box(UiTheme.Panel with { A = 0.5f }, UiTheme.TextDim with { A = 0.15f }, 1, 6, 6));
+        return b;
     }
 
     private Control BuildColumn(UpgradeOffer offer, int index)
@@ -94,21 +142,8 @@ public partial class UpgradeCards : HBoxContainer
         var column = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         column.AddThemeConstantOverride("separation", 6);
         column.AddChild(BuildCard(offer, index + 1, _cardWidth));
-        var reroll = new Button
-        {
-            Text = $"Reroll  [Shift+{index + 1}]",
-            FocusMode = FocusModeEnum.None,
-            CustomMinimumSize = new Vector2(0f, 30f),
-            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-            Visible = ShowRerolls,
-            Name = $"Reroll{index + 1}",
-        };
-        reroll.AddThemeFontSizeOverride("font_size", 14);
-        reroll.AddThemeColorOverride("font_color", UiTheme.TextDim);
-        reroll.AddThemeStyleboxOverride("normal", UiTheme.Box(UiTheme.Panel, UiTheme.TextDim with { A = 0.4f }, 1, 6, 6));
-        reroll.AddThemeStyleboxOverride("hover", UiTheme.Box(new Color(0.16f, 0.13f, 0.22f), UiTheme.Gold, 1, 6, 6));
-        reroll.AddThemeStyleboxOverride("pressed", UiTheme.Box(new Color(0.22f, 0.18f, 0.3f), UiTheme.Gold, 1, 6, 6));
-        reroll.AddThemeStyleboxOverride("disabled", UiTheme.Box(UiTheme.Panel with { A = 0.5f }, UiTheme.TextDim with { A = 0.15f }, 1, 6, 6));
+        Button reroll = SmallButton($"{_rerollLabel}  [Shift+{index + 1}]", $"Reroll{index + 1}");
+        reroll.Visible = ShowRerolls;
         UiTheme.InstantTooltip(reroll, () => _rerollTip);
         reroll.Pressed += () =>
         {
@@ -127,7 +162,31 @@ public partial class UpgradeCards : HBoxContainer
             _rerollButtons.Add(reroll);
         }
 
-        column.AddChild(reroll);
+        Button banish = SmallButton($"Banish  [Ctrl+{index + 1}]", $"Banish{index + 1}");
+        banish.Visible = ShowBanish;
+        UiTheme.InstantTooltip(banish, () => _banishTip);
+        banish.Pressed += () =>
+        {
+            int at = _banishButtons.IndexOf(banish);
+            if (Armed && at >= 0)
+            {
+                BanishRequested?.Invoke(at);
+            }
+        };
+        if (index < _banishButtons.Count)
+        {
+            _banishButtons[index] = banish;
+        }
+        else
+        {
+            _banishButtons.Add(banish);
+        }
+
+        var buttons = new HBoxContainer { Alignment = AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
+        buttons.AddThemeConstantOverride("separation", 6);
+        buttons.AddChild(reroll);
+        buttons.AddChild(banish);
+        column.AddChild(buttons);
         return column;
     }
 

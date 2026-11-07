@@ -29,6 +29,11 @@ public enum PickupKind
 
     /// <summary>A Mirror Jewel (realities: bosses), socketed in the Mirror's jewel tree.</summary>
     Jewel,
+
+    /// <summary>Survival Rift: a chest (docs/design/survival-roadmap.md -> M2); <see cref="Pickup.Value"/>
+    /// is its size (1, 3, 5). Opened by touch; <see cref="Pickup.CurrencyKey"/> carries what it gave
+    /// (the host fills it on opening, so a co-op client's "collected" record says what to apply).</summary>
+    Chest,
 }
 
 /// <summary>Whoever runs the current activity (survival run, reality) and
@@ -142,7 +147,7 @@ public partial class Pickup : Node2D
             PickupKind.Gold => null,
             PickupKind.Gem => null,
             PickupKind.Currency => null,
-            PickupKind.Nuke or PickupKind.Magnet or PickupKind.Jewel => null,
+            PickupKind.Nuke or PickupKind.Magnet or PickupKind.Jewel or PickupKind.Chest => null,
             PickupKind.Shard => ShardFramesFor(Mathf.RoundToInt(Value)),
             _ => Value >= 20f ? LargeFrames : Value >= 4f ? MediumFrames : SmallFrames,
         };
@@ -177,6 +182,12 @@ public partial class Pickup : Node2D
         if (Kind == PickupKind.Jewel)
         {
             DrawJewel(this, Vector2.Zero, 1f, _bob, beam: true);
+            return;
+        }
+
+        if (Kind == PickupKind.Chest)
+        {
+            DrawChest(this, Vector2.Zero, Mathf.RoundToInt(Value), _bob);
             return;
         }
 
@@ -262,6 +273,26 @@ public partial class Pickup : Node2D
         DrawRect(new Rect2(3.5f, -8f, 4f, 3f), new Color(0.85f, 0.9f, 0.95f));
     }
 
+    /// <summary>A Rift chest: bronze (1), silver (3) or gold (5), a lid, a lock, a beam (also drawn by the HUD).</summary>
+    public static void DrawChest(CanvasItem c, Vector2 at, int size, float phase)
+    {
+        Color body = size >= 5 ? new Color(1f, 0.78f, 0.25f) : size >= 3 ? new Color(0.78f, 0.84f, 0.92f) : new Color(0.78f, 0.5f, 0.28f);
+        float pulse = 0.5f + 0.5f * Mathf.Sin(phase * 2f);
+        c.DrawRect(new Rect2(at + new Vector2(-3f, -110f), new Vector2(6f, 110f)), body with { A = 0.14f + 0.08f * pulse });
+        c.DrawRect(new Rect2(at + new Vector2(-1f, -110f), new Vector2(2f, 110f)), body with { A = 0.4f });
+        c.DrawCircle(at + new Vector2(0f, 10f), 13f, new Color(0f, 0f, 0f, 0.3f));
+        var wood = new Color(0.32f, 0.18f, 0.1f);
+        c.DrawRect(new Rect2(at + new Vector2(-13f, -4f), new Vector2(26f, 14f)), wood);
+        c.DrawRect(new Rect2(at + new Vector2(-13f, -12f), new Vector2(26f, 9f)), wood.Lightened(0.15f));
+        c.DrawRect(new Rect2(at + new Vector2(-13f, -12f), new Vector2(26f, 22f)), body, false, 2f);
+        c.DrawRect(new Rect2(at + new Vector2(-13f, -4f), new Vector2(26f, 2f)), body);
+        c.DrawRect(new Rect2(at + new Vector2(-6f, -12f), new Vector2(2f, 22f)), body with { A = 0.8f });
+        c.DrawRect(new Rect2(at + new Vector2(4f, -12f), new Vector2(2f, 22f)), body with { A = 0.8f });
+        c.DrawRect(new Rect2(at + new Vector2(-3f, -6f), new Vector2(6f, 7f)), body.Lightened(0.3f));
+        c.DrawCircle(at + new Vector2(0f, -2f), 1.2f, wood);
+        c.DrawArc(at + new Vector2(0f, -1f), 19f + pulse * 3f, 0f, Mathf.Tau, 28, body with { A = 0.25f + 0.25f * pulse }, 1.5f, true);
+    }
+
     /// <summary>A Mirror Jewel: a violet hexagonal cut stone with a prismatic glint
     /// (also drawn by the jewel tree, so it lives here as a static).</summary>
     public static void DrawJewel(CanvasItem c, Vector2 at, float scale, float phase, bool beam = false)
@@ -293,7 +324,7 @@ public partial class Pickup : Node2D
 
     public override void _Process(double delta)
     {
-        if (Kind is PickupKind.Nuke or PickupKind.Magnet or PickupKind.Jewel)
+        if (Kind is PickupKind.Nuke or PickupKind.Magnet or PickupKind.Jewel or PickupKind.Chest)
         {
             QueueRedraw();
         }
@@ -327,6 +358,18 @@ public partial class Pickup : Node2D
         if (Kind == PickupKind.Life && Items.Flasks.Of(player) is { AllFull: true })
         {
             _attracted = false;
+        }
+
+        if (!_attracted && Kind == PickupKind.Chest)
+        {
+            // Opened by walking over it, never pulled in by the pickup radius.
+            _bob += dt * 3f;
+            if (distance <= ChestRules.OpenDistance)
+            {
+                Collect(player);
+            }
+
+            return;
         }
 
         if (!_attracted)
