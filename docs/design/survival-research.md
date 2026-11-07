@@ -196,6 +196,8 @@ before anything is built.
 | 8 | **Luck as a stat** (cards: a 4th level-up card, card rarity, chest size). | VS, Megabonk | Hooks proposals 1, 3 and 5 together. | S, with proposal 1 |
 | 9 | **A second arena/biome** with its own enemies and boss, chosen in the Rift portal. | Megabonk maps, VS stages; Hell Clock repetition complaint | Variety. The biggest content cost on this list. | L |
 
+Implementation plan, split by milestone: [survival-roadmap.md](survival-roadmap.md).
+
 **Suggested first slice:** proposals 1 + 8 + 5 (chests with luck, skip/banish, gold
 rerolls), then 3 (shrines), then 4 (tiers). Each step can be measured with the autoplay
 bot (`scripts/autoplay.sh`): time to kill, levels at 7:30, deaths.
