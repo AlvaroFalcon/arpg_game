@@ -201,7 +201,9 @@ public partial class CoopTestHost : CoopTestDriver
         await Seconds(0.5f);
 
         // --- into the run: the start pick, for everyone, before anything acts ----------
-        session.StartRun();
+        // The Rift on tier 2 with one Fear card (Thick: monster life only, harmless to the checks
+        // below): RiftLoopCoopChecks verifies every machine plays the proposer's choice.
+        session.StartRift(new RiftSpec { Kind = RiftKind.SurvivalRift, Tier = CoopRiftTier, Modifiers = { CoopRiftFear } }, session.Members.Select(m => m.PeerId));
         bool created = await WaitFor(() => Run?.NetHost is not null, 30f);
         if (created)
         {
@@ -500,6 +502,7 @@ public partial class CoopTestHost : CoopTestDriver
         await ClientDownedChecks(run, alpha, beta);
         await ReviveChecks(run, host, alpha, beta);
         await VitalityPactClientChecks(run, host, alpha, beta);
+        await RiftLoopCoopChecks(run, host, alpha, beta);
 
         // A burst of two levels: two rounds back to back, never unpaused between them.
         level = run.State.PartyLevel;
@@ -1179,6 +1182,12 @@ public partial class CoopTestClient : CoopTestDriver
             case "pick_key":
             case "life":
                 return await VitalityAnswer(run, question);
+            case "difficulty":
+            case "skip":
+            case "pick_control":
+            case "banish":
+            case "chests":
+                return await RiftLoopAnswer(run, question);
             case "history":
                 return string.Join(" ", run.Build.History);
             case "leave":
