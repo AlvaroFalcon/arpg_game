@@ -104,7 +104,7 @@ power or difficulty.
      multiplied, then clamped to `EnemyCapMax` 400, the frame budget).
    - `Scaling(t, d)` multiplies life and damage. `Danger(t)` stays the displayed level.
    - All of it multiplies 1.0 in M0. A unit check proves the default changes nothing.
-2. **`StatId.Luck` (40)**, base value 1.0, like `AutoCastSpeed`. Nothing reads it yet.
+2. **`StatId.Luck`** (built as id 51; the plan said 40), base value 1.0, like `AutoCastSpeed`. Nothing reads it yet.
 3. **Rift `GameEvents` ids**: `RiftChestOpened`, `RiftShrineUsed`, `RiftEvolved`,
    `RiftEndlessMinute`, `RiftCleared` (value = tier), `RiftLevelReached`. Raised from
    `RunState` / `RunDirector`, for M7's challenges.
@@ -238,7 +238,8 @@ genre's "I just stand still" complaint.
   gold and orb drops**. The HUD's danger gauge shows "Greed ×N".
 - **Challenge:** touch to summon an announced elite plus 2 champions at the shrine. When
   all three die they drop **one chest of size ≥ 3** (for every player in co-op).
-- **Charge:** stand inside for 3 s; leaving resets it, and a ring fills on screen. The
+- **Charge** (*as built: heals 30 % and drops a 1-chest for every player instead of the
+  power-up below — see "As built" -> M3*): stand inside for 3 s; leaving resets it, and a ring fills on screen. The
   reward is a random **Rare power-up** among the owned ones (no pause), or a new Magic
   one if none is owned.
 - **Magnet:** touch for the Lodestone effect (every gem flies in). The VS/Megabonk trick
@@ -434,7 +435,8 @@ every milestone is announced and paid.
 - **Rewards (new kinds):**
   - **Unlock:** a skill joins the Rift start pick, a new keystone joins the pool, or an
     evolution recipe becomes known. Before that, its partner card does not hint at it.
-  - **Cosmetic:** a portal tint or a hideout decoration from Ysolde's list.
+  - **Cosmetic:** a portal tint or a hideout decoration from Ysolde's list. *(Not built: the
+    challenges pay orbs, unlocks and +Skip/+Banish only — see "As built" -> M7.)*
   - **Currency:** orbs.
 - Locked keystones and recipes are simply not in the pool until unlocked. **Owner:**
   confirm that gating content behind challenges is wanted (Megabonk does it and gets
@@ -535,6 +537,17 @@ design pass and is not started. Where the build differs from the plan above:
   with progress is in the Rift's entry panel. Progress and unlocks are saved in the profile
   (`RiftChallenges`, `Unlocks`). In co-op a client counts its own clears, chests, evolutions and
   levels; shrines and endless milestones count on the host only.
+- **M7 (cont.):** the cosmetic rewards of the plan (portal tint, a decoration) were **not
+  built**; the fourteen challenges pay orbs, unlocks (Starfall, Hailstorm, Treasure Hunter) and
+  +1 Skip / +1 Banish. Two challenges are smaller than the plan's examples: "use 5 Greed shrines"
+  (plan: 10) and "evolve 5 skills" (plan: all six); "open a 5-chest" is "open a golden chest".
+- **Test names differ from the plan's:** e.g. `SKIP-LIMITS` (plan: `SKIP-REFUNDS-XP` and
+  `SKIP-NOT-ON-KEYSTONE-ROW`), `CHEST-KEYS-REPLAY` (`CHEST-COOP-KEYS`), `SHRINES-PLACED`
+  (`SHRINE-PLACEMENT`), `TIER-SAVED` (`TIER-SAVE-COMPAT`), `ONSLAUGHT-*` (`SURGE-*`); there is no
+  `RiftChestTest` or `RiftEvolutionTest` suite — both live in `RiftLoopTest`. Not covered yet
+  (content audit, 2026-11-09): co-op checks of skip/banish/chests/shrines/tier, `CHEST-NO-PAUSE`,
+  an effect check per evolution beyond Firestorm, `EVOLVED-SURVIVES-SUPPORT`, and the bot's
+  "walk to a shrine" behaviour from M3.
 - **Tests:** `RiftLoopTest` (difficulty, pick control, chests, evolutions, unlocks) and
   `RiftShrineTest` (shrines, tiers at launch, the Onslaught, milestones, challenges, the entry
   panel), both under the runner's frame limit.
