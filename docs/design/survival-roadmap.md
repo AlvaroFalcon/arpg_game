@@ -544,9 +544,11 @@ design pass and is not started. Where the build differs from the plan above:
 - **Test names differ from the plan's:** e.g. `SKIP-LIMITS` (plan: `SKIP-REFUNDS-XP` and
   `SKIP-NOT-ON-KEYSTONE-ROW`), `CHEST-KEYS-REPLAY` (`CHEST-COOP-KEYS`), `SHRINES-PLACED`
   (`SHRINE-PLACEMENT`), `TIER-SAVED` (`TIER-SAVE-COMPAT`), `ONSLAUGHT-*` (`SURGE-*`); there is no
-  `RiftChestTest` or `RiftEvolutionTest` suite — both live in `RiftLoopTest`. Not covered yet
-  (content audit, 2026-11-09): co-op checks of skip/banish/chests/shrines/tier, `CHEST-NO-PAUSE`,
-  an effect check per evolution beyond Firestorm, `EVOLVED-SURVIVES-SUPPORT`, and the bot's
+  `RiftChestTest` or `RiftEvolutionTest` suite — both live in `RiftLoopTest`. Co-op is covered since 2026-11-09 by **`CoopRiftLoopTest`**
+  (`COOP-RIFT-TIER-AND-FEARS`, `COOP-SKIP-THROUGH-THE-HOST`, `COOP-BANISH-ROW-REACHES-HOST`,
+  `COOP-CHEST-OPENS-FOR-ITS-OWNER`, `COOP-CHEST-NO-PAUSE`, `COOP-SHRINE-USED-ONCE`,
+  `COOP-GREED-ON-EVERY-SCREEN`, plus same-build checks after each). Not covered yet (content audit,
+  2026-11-09): an effect check per evolution beyond Firestorm, `EVOLVED-SURVIVES-SUPPORT`, and the bot's
   "walk to a shrine" behaviour from M3.
 - **Tests:** `RiftLoopTest` (difficulty, pick control, chests, evolutions, unlocks) and
   `RiftShrineTest` (shrines, tiers at launch, the Onslaught, milestones, challenges, the entry

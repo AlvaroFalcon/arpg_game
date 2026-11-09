@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using ArpgGame.Net;
+using ArpgGame.Progression;
 using ArpgGame.Run;
 
 namespace ArpgGame.Tests;
@@ -22,6 +23,23 @@ public partial class CoopTestHost
     private const int CoopRiftTier = 2;
     private const string CoopRiftFear = "thick";
 
+    /// <summary>A level-up round where everyone takes their first card.</summary>
+    private async Task PlainRound(RunController run, RiftHost host, RunPlayer by, LobbyMember alpha, LobbyMember beta)
+    {
+        float missing = run.State.ExperienceNeeded(run.State.PartyLevel) - run.State.PartyExperience;
+        run.State.AddExperience(by, missing + 0.1f);
+        if (!await WaitFor(() => host.RoundOpen, 3f))
+        {
+            return;
+        }
+
+        run.LevelUp.ChooseIndex(0);
+        await Ask(alpha.PeerId, "pick");
+        await Ask(beta.PeerId, "pick");
+        await WaitFor(() => !host.RoundOpen && !GetTree().Paused, 12f);
+        await Seconds(1.2f);
+    }
+
     private async Task RiftLoopCoopChecks(RunController run, RiftHost host, LobbyMember alpha, LobbyMember beta)
     {
         RunPlayer alphaRp = run.State.PlayerByPeer(alpha.PeerId)!;
@@ -39,6 +57,12 @@ public partial class CoopTestHost
             $"host: tier {d.Tier}, fears '{hostFears}'; alpha: {L(da)}; beta: {L(db)}");
 
         // --- M1: alpha skips its row; the host takes it from alpha's own skips -------------------
+        // Keystone rows can't be skipped (OfferRules): play plain rounds until the next row isn't one.
+        for (int i = 0; i < 3 && OfferRules.KeystoneTierAt(run.State.PartyLevel + 1) is not null; i++)
+        {
+            await PlainRound(run, host, alphaRp, alpha, beta);
+        }
+
         int hostSkips = alphaRp.Build!.SkipsLeft;
         int alphaHistory = alphaRp.Build.History.Count;
         float missing = run.State.ExperienceNeeded(run.State.PartyLevel) - run.State.PartyExperience;
