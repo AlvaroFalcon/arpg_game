@@ -46,6 +46,9 @@ public partial class RealityHud : CanvasLayer
     private float _calloutTime;
     private BossEnemy? _boss;
     private TargetFrame _target = null!;
+
+    /// <summary>Points at the boss while its fight is on and it is off screen (tests).</summary>
+    public OffscreenIndicator BossIndicator { get; private set; } = null!;
     private CharacterBuild? _build;
 
     public override void _Ready()
@@ -92,6 +95,10 @@ public partial class RealityHud : CanvasLayer
         root.AddChild(_infoHost);
         root.AddChild(_corner);
         _corner.Dock();
+
+        // --- an arrow at the screen's edge while the boss is off screen (docs/design/bosses.md -> "Off-screen indicator") ---
+        BossIndicator = new OffscreenIndicator { Name = "BossIndicator", Target = () => Reality.BossFightActive ? _boss : null, Suppressed = () => overlay.Visible };
+        root.AddChild(BossIndicator);
 
         // --- bottom centre: life, mana, level badge, flasks, skills ---
         _bar = new PlayerHudBar

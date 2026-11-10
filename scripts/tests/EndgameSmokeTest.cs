@@ -1107,6 +1107,44 @@ public partial class EndgameSmokeTest : Node2D
         Check("REALITY-BOSS-GATE", reality.BossFightActive && !reality.Boss!.Dormant && gateBlocked,
             $"fight active={reality.BossFightActive}, boss dormant={reality.Boss?.Dormant}, gate blocked in flow field={gateBlocked}");
 
+        // The off-screen indicator (docs/design/bosses.md -> "Off-screen indicator"): an arrow on
+        // the right edge while the boss is far to the right, nothing while it is on screen.
+        if (reality.GetNodeOrNull("Hud") is UI.RealityHud hud)
+        {
+            UI.OffscreenIndicator arrow = hud.BossIndicator;
+            Vector2 view = GetViewport().GetVisibleRect().Size;
+            Vector2 Centre() => GetViewport().CanvasTransform.AffineInverse() * (view / 2f);
+            // The camera may still be gliding after the teleport into the arena: settle it.
+            GetViewport().GetCamera2D()?.ResetSmoothing();
+            await Frames(2);
+            for (int i = 0; i < 3; i++)
+            {
+                reality.Boss!.GlobalPosition = Centre() + new Vector2(5000f, 0f);
+                await Frames(1);
+            }
+
+            bool right = arrow.Showing && arrow.Pointing.X > 0.9f && arrow.BadgeAt.X > view.X * 0.75f && arrow.BadgeAt.X < view.X;
+            Vector2 badge = arrow.BadgeAt;
+            for (int i = 0; i < 3; i++)
+            {
+                reality.Boss!.GlobalPosition = Centre();
+                await Frames(1);
+            }
+
+            bool hidden = !arrow.Showing;
+            var area = new Rect2(0f, 0f, 200f, 100f);
+            Vector2 e1 = UI.OffscreenIndicator.EdgePoint(area, new Vector2(500f, 50f));
+            Vector2 e2 = UI.OffscreenIndicator.EdgePoint(area, new Vector2(100f, -300f));
+            Vector2 e3 = UI.OffscreenIndicator.EdgePoint(area, new Vector2(50f, 50f));
+            bool edge = e1.DistanceTo(new Vector2(200f, 50f)) < 0.01f && e2.DistanceTo(new Vector2(100f, 0f)) < 0.01f && e3.DistanceTo(new Vector2(50f, 50f)) < 0.01f;
+            Check("BOSS-OFFSCREEN-ARROW", right && hidden && edge,
+                $"boss far right: showing={right} (badge at {badge}, screen {view}); boss on screen: hidden={hidden} (boss at {arrow.ScreenPoint} on screen); edge maths={edge} ({e1}, {e2}, {e3})");
+        }
+        else
+        {
+            Check("BOSS-OFFSCREEN-ARROW", false, "the reality has no Hud");
+        }
+
         // Step back first: the exit portal spawns under the boss and touching it
         // leaves the reality (a scene change would free this test).
         reality.Player.GlobalPosition = RasterLayout.World(reality.Raster.Entrance);
