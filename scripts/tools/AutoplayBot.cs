@@ -138,6 +138,14 @@ public partial class AutoplayBot : Node
 
     private async Task Loop()
     {
+        // Balance runs never write the real save: a preset --skill run used to keep its wins,
+        // Rift challenges, unlocks (+1 Banish…) and cleared tier in user://profile.json, which
+        // then changed later runs and RiftLoopTest's pick-control checks on that machine.
+        if (Core.Profile.Get(this) is { } profile)
+        {
+            profile.Persist = false;
+        }
+
         if (_riftCharacter)
         {
             PrepareRiftCharacter();

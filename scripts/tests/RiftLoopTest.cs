@@ -146,6 +146,9 @@ public partial class RiftLoopTest : Node2D
 
     private async Task PickControlChecks()
     {
+        // Skips and Banishes per run count the account's Rift unlocks (+1 each from challenges):
+        // start from none, or a machine whose real profile holds them fails these checks.
+        Unlocks.ClearForTest();
         (Player player, RunBuild build) = await RunPlayer("fireball", "spark");
         bool skipKeystone = !build.CanSkip(5) && !build.CanSkip(10) && build.CanSkip(6);
         bool skipped = build.TrySkip(6) && build.TrySkip(7) && build.TrySkip(8) && !build.TrySkip(9) && build.SkipsLeft == 0;
