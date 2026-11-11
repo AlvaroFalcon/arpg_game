@@ -104,7 +104,7 @@ power or difficulty.
      multiplied, then clamped to `EnemyCapMax` 400, the frame budget).
    - `Scaling(t, d)` multiplies life and damage. `Danger(t)` stays the displayed level.
    - All of it multiplies 1.0 in M0. A unit check proves the default changes nothing.
-2. **`StatId.Luck` (40)**, base value 1.0, like `AutoCastSpeed`. Nothing reads it yet.
+2. **`StatId.Luck`** (built as id 51; the plan said 40), base value 1.0, like `AutoCastSpeed`. Nothing reads it yet.
 3. **Rift `GameEvents` ids**: `RiftChestOpened`, `RiftShrineUsed`, `RiftEvolved`,
    `RiftEndlessMinute`, `RiftCleared` (value = tier), `RiftLevelReached`. Raised from
    `RunState` / `RunDirector`, for M7's challenges.
@@ -238,7 +238,8 @@ genre's "I just stand still" complaint.
   gold and orb drops**. The HUD's danger gauge shows "Greed ×N".
 - **Challenge:** touch to summon an announced elite plus 2 champions at the shrine. When
   all three die they drop **one chest of size ≥ 3** (for every player in co-op).
-- **Charge:** stand inside for 3 s; leaving resets it, and a ring fills on screen. The
+- **Charge** (*as built: heals 30 % and drops a 1-chest for every player instead of the
+  power-up below — see "As built" -> M3*): stand inside for 3 s; leaving resets it, and a ring fills on screen. The
   reward is a random **Rare power-up** among the owned ones (no pause), or a new Magic
   one if none is owned.
 - **Magnet:** touch for the Lodestone effect (every gem flies in). The VS/Megabonk trick
@@ -434,7 +435,8 @@ every milestone is announced and paid.
 - **Rewards (new kinds):**
   - **Unlock:** a skill joins the Rift start pick, a new keystone joins the pool, or an
     evolution recipe becomes known. Before that, its partner card does not hint at it.
-  - **Cosmetic:** a portal tint or a hideout decoration from Ysolde's list.
+  - **Cosmetic:** a portal tint or a hideout decoration from Ysolde's list. *(Not built: the
+    challenges pay orbs, unlocks and +Skip/+Banish only — see "As built" -> M7.)*
   - **Currency:** orbs.
 - Locked keystones and recipes are simply not in the pool until unlocked. **Owner:**
   confirm that gating content behind challenges is wanted (Megabonk does it and gets
@@ -477,12 +479,32 @@ bot clears both at similar rates on the same tier.
 
 ## Measuring (fill in during M0 and update after each milestone)
 
+**Baseline, 2026-11-09** (M0–M7 all on, tier 1, no Fear cards; `--class=<c> --level=20 --runs=6`, tree
+spent, no ascendancy; `--skill=spark --runs=6` is the old preset character). Level at 7:30 is the
+median of the runs still alive then; death time is the median of the runs lost; a "win" ends when
+the Colossus dies (the bot cashes out at once). Endless minutes come from a second set of three runs
+each with `--endless=10` (keep going after the Colossus, leave at 10 endless minutes).
+
 | Build (autoplay) | Level at 7:30 | Colossus kills / runs | Death time (median) | Endless minutes (median) | Chests per win |
 |---|---|---|---|---|---|
-| warrior (reference) | | | | | — |
-| rogue (reference) | | | | | — |
-| arcanist (reference) | | | | | — |
-| `--skill=spark` | | | | | — |
+| warrior lv 20 | 23 (18–31) | **6 / 6** | — (never died) | 0.5 (0.7, 0.3; 2 of 2 died in endless) | 4.7 |
+| rogue lv 20 | 21 (18–23) | 3 / 6 | 5:26 | 0.2 (1 win of 3) | 2.7 |
+| arcanist lv 20 | 25.5 (23, 28) | 2 / 6 | 5:18 | — (0 wins of 3) | 5.0 |
+| `--skill=spark` | 27 (one run) | 1 / 6 | 4:27 | — (0 wins of 3) | 7.0 |
+
+What it says (to discuss before tuning; nothing was changed):
+- **Deaths cluster at 4:30–5:30**, before the Colossus (the Herald window and the climb after it):
+  rogue, arcanist and spark lose 4 of 6 there. The warrior never dies but often **cannot kill the
+  Colossus quickly**: its wins end at 8:32, 9:04, 11:28, 18:15, 27:33 and 55:24 (median ≈ 15 min).
+- **The endless phase kills at once:** every character that went in died within 15–45 s (230
+  monsters alive 20 s after the kill, contact damage from Ember Brutes). No run reached the first
+  milestone chest (5 min), so M6's milestones and the endless challenges are out of reach for a
+  level-20 character on tier 1.
+- **Chests per win** are on the plan's target (4–6) for the warrior and arcanist, under it for the
+  rogue (2.7), over it for the one spark win (7).
+- One warrior endless run ended without a RESULT line (the process exited with the Colossus at 3 %);
+  not reproduced, counted nowhere above.
+- Logs: the bot's `[BOT] RESULT` lines carry `lv730=`, `chests=` and `endless=` since this run.
 
 ## Open questions (collected from the milestones)
 
@@ -535,8 +557,21 @@ design pass and is not started. Where the build differs from the plan above:
   with progress is in the Rift's entry panel. Progress and unlocks are saved in the profile
   (`RiftChallenges`, `Unlocks`). In co-op a client counts its own clears, chests, evolutions and
   levels; shrines and endless milestones count on the host only.
+- **M7 (cont.):** the cosmetic rewards of the plan (portal tint, a decoration) were **not
+  built**; the fourteen challenges pay orbs, unlocks (Starfall, Hailstorm, Treasure Hunter) and
+  +1 Skip / +1 Banish. Two challenges are smaller than the plan's examples: "use 5 Greed shrines"
+  (plan: 10) and "evolve 5 skills" (plan: all six); "open a 5-chest" is "open a golden chest".
+- **Test names differ from the plan's:** e.g. `SKIP-LIMITS` (plan: `SKIP-REFUNDS-XP` and
+  `SKIP-NOT-ON-KEYSTONE-ROW`), `CHEST-KEYS-REPLAY` (`CHEST-COOP-KEYS`), `SHRINES-PLACED`
+  (`SHRINE-PLACEMENT`), `TIER-SAVED` (`TIER-SAVE-COMPAT`), `ONSLAUGHT-*` (`SURGE-*`); there is no
+  `RiftChestTest` or `RiftEvolutionTest` suite — both live in `RiftLoopTest`. Co-op is covered since 2026-11-09 by **`CoopRiftLoopTest`**
+  (`COOP-RIFT-TIER-AND-FEARS`, `COOP-SKIP-THROUGH-THE-HOST`, `COOP-BANISH-ROW-REACHES-HOST`,
+  `COOP-CHEST-OPENS-FOR-ITS-OWNER`, `COOP-CHEST-NO-PAUSE`, `COOP-SHRINE-USED-ONCE`,
+  `COOP-GREED-ON-EVERY-SCREEN`, plus same-build checks after each). Not covered yet (content audit,
+  2026-11-09): an effect check per evolution beyond Firestorm, `EVOLVED-SURVIVES-SUPPORT`, and the bot's
+  "walk to a shrine" behaviour from M3.
 - **Tests:** `RiftLoopTest` (difficulty, pick control, chests, evolutions, unlocks) and
   `RiftShrineTest` (shrines, tiers at launch, the Onslaught, milestones, challenges, the entry
   panel), both under the runner's frame limit.
-- **Measuring:** not done yet. The bot runs in "Measuring" are the next step, before tuning any
-  number in this doc.
+- **Measuring:** the baseline is in "Measuring" above (2026-11-09). Tuning comes next, starting with
+  the 4:30–5:30 deaths, the warrior's slow Colossus kills and the endless phase's first minute.

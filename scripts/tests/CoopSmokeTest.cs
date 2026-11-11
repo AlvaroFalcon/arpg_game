@@ -76,9 +76,13 @@ public partial class CoopSmokeTest : Node
 /// <summary>The host end: starts the clients and judges everything.</summary>
 public partial class CoopTestHost : CoopTestDriver
 {
-    protected override string LogPath => "user://test_results/CoopSmokeTest.txt";
+    /// <summary>CoopRiftLoopTest: only the lobby, the start pick and <see cref="RiftLoopCoopChecks"/>
+    /// (their own suite: CoopSmokeTest is at the runner's frame limit).</summary>
+    public bool RiftLoopOnly { get; init; }
 
-    protected override string Tag => "COOP";
+    protected override string LogPath => RiftLoopOnly ? "user://test_results/CoopRiftLoopTest.txt" : "user://test_results/CoopSmokeTest.txt";
+
+    protected override string Tag => RiftLoopOnly ? "COOPRIFT" : "COOP";
 
     private bool _failed;
     private readonly List<int> _pids = new();
@@ -167,7 +171,10 @@ public partial class CoopTestHost : CoopTestDriver
             return;
         }
 
-        await SecurityUnitChecks(profile);
+        if (!RiftLoopOnly)
+        {
+            await SecurityUnitChecks(profile);
+        }
 
         // --- lobby ---------------------------------------------------------------------
         // No router in the cloud: hosting must still work and say why the port isn't open.
@@ -184,7 +191,10 @@ public partial class CoopTestHost : CoopTestDriver
                 && session.Ports.Message.Contains($"forward UDP {_port} manually") && session.Ports.Message.Contains("Tailscale") && session.IsHost,
             $"state={session.Ports.State}, message='{session.Ports.Message}', still hosting={session.IsHost}");
 
-        await IntruderChecks(session, profile);
+        if (!RiftLoopOnly)
+        {
+            await IntruderChecks(session, profile);
+        }
 
         StartClient("alpha");
         StartClient("beta");
@@ -201,7 +211,16 @@ public partial class CoopTestHost : CoopTestDriver
         await Seconds(0.5f);
 
         // --- into the run: the start pick, for everyone, before anything acts ----------
-        session.StartRun();
+        if (RiftLoopOnly)
+        {
+            // The Rift on tier 2 with one Fear card: RiftLoopCoopChecks verifies every machine
+            // plays the proposer's choice.
+            session.StartRift(new RiftSpec { Kind = RiftKind.SurvivalRift, Tier = CoopRiftTier, Modifiers = { CoopRiftFear } }, session.Members.Select(m => m.PeerId));
+        }
+        else
+        {
+            session.StartRun();
+        }
         bool created = await WaitFor(() => Run?.NetHost is not null, 30f);
         if (created)
         {
@@ -261,6 +280,12 @@ public partial class CoopTestHost : CoopTestDriver
         }
 
         await Seconds(0.5f);
+        if (RiftLoopOnly)
+        {
+            await RiftLoopCoopChecks(run, host, alpha, beta);
+            return;
+        }
+
 
         // --- players on both sides -----------------------------------------------------
         Check("PLAYERS-ON-HOST", run.State.Players.Count == 3 && GetTree().GetNodesInGroup(CombatQuery.PlayerGroup).Count == 3,
@@ -373,6 +398,8 @@ public partial class CoopTestHost : CoopTestDriver
         await RateLimitCheck(session, profile);
     }
 
+    private const string BanishedNote = "Banished: ";
+
     /// <summary>The host's copy of each client's build has the same history as the client's own.</summary>
     private async Task BuildsMatch(string name, RunController run, params LobbyMember[] members)
     {
@@ -383,9 +410,15 @@ public partial class CoopTestHost : CoopTestDriver
                 continue;
             }
 
-            string hostSide = string.Join(" ", build.History);
-            string? clientSide = await Ask(m.PeerId, "history");
-            Check($"{name}-{m.Name.ToUpperInvariant()}", clientSide is not null && clientSide == hostSide, $"host: '{hostSide}' client: '{clientSide}'");
+            // A Banish is local to the client's machine, which rolls its own row
+            // (docs/design/survival-roadmap.md -> "As built", M1): the host only sees the new row,
+            // so the client's "Banished: …" notes are not part of the build being compared.
+            static string Applied(IEnumerable<string> entries) => string.Join(" ", entries.Where(e => !e.StartsWith(BanishedNote, StringComparison.Ordinal)));
+            string hostSide = Applied(build.History);
+            string? clientRaw = await Ask(m.PeerId, "history");
+            string? clientSide = clientRaw is null ? null : Applied(clientRaw.Split('|'));
+            Check($"{name}-{m.Name.ToUpperInvariant()}", clientSide is not null && clientSide == hostSide && !hostSide.Contains(BanishedNote),
+                $"host: '{hostSide}' client: '{clientSide}'");
         }
     }
 
@@ -1179,8 +1212,14 @@ public partial class CoopTestClient : CoopTestDriver
             case "pick_key":
             case "life":
                 return await VitalityAnswer(run, question);
+            case "difficulty":
+            case "skip":
+            case "pick_control":
+            case "banish":
+            case "chests":
+                return await RiftLoopAnswer(run, question);
             case "history":
-                return string.Join(" ", run.Build.History);
+                return string.Join("|", run.Build.History);
             case "leave":
                 _leaving = true;
                 return "leaving";

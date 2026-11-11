@@ -55,6 +55,7 @@ public partial class AutoplayBot : Node
             if (kv.Length == 2 && kv[0] == "level") _startLevel = kv[1] == "auto" ? 0 : kv[1].ToInt();
             if (kv.Length == 2 && kv[0] == "gear") _gear = kv[1];
             if (kv.Length == 2 && kv[0] == "layouts") _layouts = kv[1].Split(',');
+            if (kv.Length == 2 && kv[0] == "endless") _endlessMinutes = kv[1] == "0" ? 0f : kv[1] == "1" ? 30f : kv[1].ToFloat();
         }
 
         _rng.Randomize();
@@ -99,6 +100,12 @@ public partial class AutoplayBot : Node
     /// own skills start at level 1 and the start pick is a random card, like any
     /// other (docs/design/progression.md -> "The character in the Rift").</summary>
     private bool _riftCharacter;
+
+    /// <summary>`--endless=1` (or `=N` minutes, 1 means 30): after the Colossus the bot keeps
+    /// going into the endless phase instead of taking the reward, until it dies or N minutes of
+    /// endless time pass, and its RESULT line reports `endless=` minutes
+    /// (docs/design/survival-roadmap.md -> "Measuring"). 0 (default) cashes out at once.</summary>
+    private float _endlessMinutes;
     private bool _riftTree = true;
     private bool _riftAscend;
 
@@ -131,6 +138,14 @@ public partial class AutoplayBot : Node
 
     private async Task Loop()
     {
+        // Balance runs never write the real save: a preset --skill run used to keep its wins,
+        // Rift challenges, unlocks (+1 Banish…) and cleared tier in user://profile.json, which
+        // then changed later runs and RiftLoopTest's pick-control checks on that machine.
+        if (Core.Profile.Get(this) is { } profile)
+        {
+            profile.Persist = false;
+        }
+
         if (_riftCharacter)
         {
             PrepareRiftCharacter();
@@ -148,7 +163,7 @@ public partial class AutoplayBot : Node
             {
                 RunLaunchOptions.StartSkill = skill;
             }
-            RunLaunchOptions.AutoCashOut = true;
+            RunLaunchOptions.AutoCashOut = _endlessMinutes <= 0f;
             GetTree().Paused = false;
             GetTree().ChangeSceneToFile(Core.Scenes.Run);
             await ToSignal(GetTree().CreateTimer(0.5, processAlways: true), SceneTreeTimer.SignalName.Timeout);
@@ -158,14 +173,31 @@ public partial class AutoplayBot : Node
             _dodges = 0;
             _damageBySource.Clear();
             _hooked = null;
+            int levelAt730 = -1;
+            float endlessPlayed = 0f;
             Log($"[BOT] run {_runIndex + 1}/{_runs} start: {skill}");
             while (Run() is { State.Ended: false } current)
             {
-                // The Colossus is down: the bot takes the reward at once (AutoCashOut ends
-                // the run on the kill) rather than playing the endless phase (balance
-                // targets the 7:00 victory); this is the backstop.
-                if (current.Director.ColossusDefeated)
+                if (levelAt730 < 0 && current.State.Elapsed >= 450f)
                 {
+                    levelAt730 = current.State.Level;
+                }
+
+                if (_endlessMinutes > 0f && current.Director.ColossusDefeated)
+                {
+                    // --endless: say "keep going" before the offer opens, then leave at the cap.
+                    current.Director.BeginEndless();
+                    endlessPlayed = current.State.Elapsed - current.Director.EndlessSince;
+                    if (endlessPlayed >= _endlessMinutes * 60f)
+                    {
+                        current.Director.TakeExitPortal();
+                    }
+                }
+                else if (current.Director.ColossusDefeated)
+                {
+                    // The Colossus is down: the bot takes the reward at once (AutoCashOut ends
+                    // the run on the kill) rather than playing the endless phase (balance
+                    // targets the 7:00 victory); this is the backstop.
                     current.Director.TakeExitPortal();
                 }
 
@@ -175,7 +207,7 @@ public partial class AutoplayBot : Node
             if (Run() is { } run)
             {
                 RunState s = run.State;
-                Log($"[BOT] RESULT run={_runIndex + 1} skill={skill} victory={s.Victory} time={UI.UiTheme.FormatTime(s.Elapsed)} level={s.Level} kills={s.Kills} bosses={s.BossesKilled} dodges={_dodges} dmgTaken={_damageTaken:0}");
+                Log($"[BOT] RESULT run={_runIndex + 1} skill={skill} victory={s.Victory} time={UI.UiTheme.FormatTime(s.Elapsed)} level={s.Level} lv730={(levelAt730 < 0 ? "-" : levelAt730.ToString())} chests={s.ChestsOpened} endless={endlessPlayed / 60f:0.0} kills={s.Kills} bosses={s.BossesKilled} dodges={_dodges} dmgTaken={_damageTaken:0}");
                 string sources = string.Join(", ", _damageBySource.OrderByDescending(kv => kv.Value).Take(6).Select(kv => $"{kv.Key} {kv.Value:0}"));
                 Log($"[BOT] damage by source: {sources}");
                 Log($"[BOT] build: {UI.LevelUpScreen.BuildSummary(run.Build).Replace("\n", " | ")}");

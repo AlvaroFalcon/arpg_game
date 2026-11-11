@@ -10,3 +10,4 @@ docs/devlog/
 tools/art/node_modules/
 graphify-out/
 .claude/skills/
+docs/design/templates/
