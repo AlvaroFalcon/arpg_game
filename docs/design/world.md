@@ -147,6 +147,31 @@ Searched on 2026-11-11: no released game uses these names. Similar titles exist:
 
 A common pattern: world name + subtitle, e.g. *Velmira: Shards of the Mirror*.
 
+#### Second round, English only (2026-11-11)
+
+Grouped by what the name says. "Free" means a search on 2026-11-11 found no game with
+that name.
+
+| Name | Says | Search |
+|---|---|---|
+| **Mirrorwake** | Waking up through the Mirror (the isekai) | Free |
+| **Mirrorfall** | The Mirror breaking; the fall into other worlds | Free |
+| **Worldseam** | The seams where worlds are stitched together | Free (only *World Seed*) |
+| **Twiceborn** | Your second life | Free, but *Twice Reborn* (a vampire visual novel) exists |
+| **Seamless** | A world without seams… and a pun | Generic word, hard to search for |
+| **The Silvered Path** | The silver behind a mirror, the way through it | Not checked |
+| **Glasswake** | Like Mirrorwake | **Taken**: an upcoming Steam game |
+| **Silverfall** | Like Mirrorfall | **Taken**: an action RPG from 2007 |
+| **Refraction** | Light bent through glass | **Taken** by several games |
+
+Close competitor to keep in mind: *Fractured Worlds*, an upcoming dark-fantasy action RPG
+"in the shattered remnants of a ruined reality". Avoid "fractured" and "shattered"
+in the title.
+
+Shortlist after this round: **Mirrorwake** (says the premise: you wake up through the
+Mirror) and **Mirrorfall** (says the conflict: the Mirror breaking); **Worldseam** if the
+title should be about the fusing worlds rather than the Mirror.
+
 ### The world
 
 If the title is not the world's name: Velmira, Aelmir, Ilvaren, Myrrhen.
