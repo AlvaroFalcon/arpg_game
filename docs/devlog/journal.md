@@ -874,3 +874,9 @@ A `/content-audit` of `survival-roadmap.md` found M0–M7 really in the code and
 ## 2026-11-10: the bot was writing the real save
 
 The full suite before the PR failed `RiftLoopTest`'s `BANISH-NEVER-RETURNS` with one Banish too many. The machine's `user://profile.json` held the "+1 Banish" Rift unlock and two completed challenges. They came from the autoplay bot's baseline runs: a preset `--skill=spark` run never set `Profile.Persist = false` (only `--class` runs did), so its wins were saved like a player's. Two fixes. The bot now never persists, in any survival mode, and a spark win leaves the profile's hash unchanged. `RiftLoopTest`'s pick-control checks also clear the unlocks before building, so they pass on that same profile; before the fix they failed on it.
+
+## 2026-11-10: an arrow to the boss
+
+A tester's feedback (issue #53, split into 17 issues) said that when the boss leaves the screen you lose it. A boss that is alive and off screen now shows as a badge with the boss star at the edge of the screen, with an arrow pointing to it; it goes away as soon as the boss is visible again. The component (`OffscreenIndicator`) is generic, maps the target through the camera's canvas transform and keeps clear of the boss bar and the vitals. It runs in realities during the fight and in the Rift for the Herald and the Colossus. `EndgameSmokeTest` moves the boss far to the right and back to check it, and `RunCapture --only=bossarrow` takes the pictures.
+
+![The boss off to the right](screenshots/boss-arrow-right.png)

@@ -39,6 +39,9 @@ public partial class RunHud : CanvasLayer
     private float _bannerTime;
     private float _calloutTime;
     private BossEnemy? _boss;
+
+    /// <summary>Points at the current boss while it is alive and off screen (tests).</summary>
+    public OffscreenIndicator BossIndicator { get; private set; } = null!;
     private TargetFrame _target = null!;
 
     // The reward panel of the endless phase (docs/design/run.md -> "Cash-out offer and the infinite Rift").
@@ -108,6 +111,10 @@ public partial class RunHud : CanvasLayer
         _target = new TargetFrame { Player = Player, Boss = () => _boss, Name = "TargetFrame" };
         root.AddChild(_target);
         _target.Dock(56f);
+
+        // --- an arrow at the screen's edge while the boss is off screen (docs/design/bosses.md -> "Off-screen indicator") ---
+        BossIndicator = new OffscreenIndicator { Name = "BossIndicator", Target = () => _boss };
+        root.AddChild(BossIndicator);
 
         // --- bottom centre: life, level badge, flask, skills (no mana here) ---
         var bar = new PlayerHudBar { Player = Player, Progress = () => (State.Level, State.ExperienceFraction), RightGauge = DangerGauge };

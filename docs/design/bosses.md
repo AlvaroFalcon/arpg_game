@@ -101,6 +101,36 @@ its tier) and their target points clamp to walkable cells, since there is no
 arena rectangle. Reality boss life = authored life × tier multiplier × a
 per-theme factor (Colossus 0.45, Herald 2.6, Nereth 0.5) tuned with the bot.
 
+## Off-screen indicator **[IMPLEMENTED 2026-11-10]**
+
+A boss can leave the screen during its fight (a charge, a big arena, a player who
+kites far), and then the player has no idea where it is. While a boss is alive and
+off screen, a badge sits at the edge of the screen where the line from the centre
+to the boss leaves it: a dark disc with a red ring and the boss star (the same star
+as the boss bar), with a red arrow on its outer side pointing at the boss and a
+slow pulse. It disappears as soon as the boss is back on screen. Player feedback
+of 2026-11-09 (issue #55).
+
+- `UI/OffscreenIndicator` is generic: a full-rect, click-through control that takes
+  a `Func<Node2D?>` target, maps its world position through the viewport's canvas
+  transform (the Camera2D; the voxel view matches it pixel for pixel) and draws
+  only while that point is outside the screen. Allies, the exit portal or a quest
+  can use it later.
+- The badge stays inside insets (56 px on the sides, 130 at the top, 170 at the
+  bottom) so it never covers the boss bar or the life globes and skills.
+- Realities: shown during the boss fight, hidden while the Tab map is open. Rift:
+  follows the current boss (Herald, Colossus) while it is alive.
+- No distance number: the arrow is enough for "over there", and a number adds a
+  readout that changes every frame.
+- Tested in `EndgameSmokeTest` `BOSS-OFFSCREEN-ARROW`; `RunCapture -- --only=bossarrow`
+  captures it.
+
+![The boss off to the right](../devlog/screenshots/boss-arrow-right.png)
+![The boss above and to the left](../devlog/screenshots/boss-arrow-top-left.png)
+
+The alternative in the feedback — smaller arenas, or arenas that make you use the
+terrain — is its own issue (#70).
+
 ## Why it is shaped like this
 
 The fight is a *reading* test more than a reflex test: every attack is visible
