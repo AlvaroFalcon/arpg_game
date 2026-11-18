@@ -168,7 +168,31 @@ Close competitor to keep in mind: *Fractured Worlds*, an upcoming dark-fantasy a
 "in the shattered remnants of a ruined reality". Avoid "fractured" and "shattered"
 in the title.
 
-Shortlist after this round: **Mirrorwake** (says the premise: you wake up through the
+#### Third round: fantasy, with "Mirror" (2026-11-18)
+
+The owner wants a clearer fantasy tone and "Mirror" in the name.
+
+| Name | Says | Fits the fiction as | Search |
+|---|---|---|---|
+| **Mirrorhaven** | A safe haven around the Mirror | The hideout town itself: the title would be the place you defend | Free |
+| **Mirrorvale** | A valley of mirrors | The world's name (or the land around the haven) | Free (only *Mirror Valley*, a web game) |
+| **Mirrorkin** | Kin of the Mirror | What the player is: the reborn bound to the Mirror | Free |
+| **Mirrorspire** | A tower of mirrors | Where the Antagonist waits, the end goal | Free |
+| **Mirrorkeep** / **Mirrorhold** | A fortress of the Mirror | The haven as a stronghold | Free |
+| **Mirrorsong** | The song of the Mirror | Lyrical, softer | Free |
+| **Mirrorwrought** | Made by the Mirror | Fantasy-heavy, harder to say | Free |
+| **Mirrorlight** | The Mirror's light | | **Taken**: an upcoming VR puzzle game |
+| **The Last Mirror** | | | Taken by a small itch.io game |
+
+Phrase-style titles, not checked: *Realms of the Mirror*, *Throne of Mirrors*, *The
+Mirror of a Thousand Realms*. *Tales of the Mirror* is already a game.
+
+Shortlist after this round: **Mirrorhaven** (the place: the title is the home you fight
+for, and the hub gets its name), **Mirrorkin** (the hero: who you are after the rebirth),
+**Mirrorvale** (the world). They combine: *Mirrorhaven*, a game where the Mirrorkin
+travel out from the haven.
+
+Shortlist after the second round: **Mirrorwake** (says the premise: you wake up through the
 Mirror) and **Mirrorfall** (says the conflict: the Mirror breaking); **Worldseam** if the
 title should be about the fusing worlds rather than the Mirror.
 
