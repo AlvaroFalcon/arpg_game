@@ -49,6 +49,19 @@ Godot game project. This file orients any agent (or future-you) working here.
 
 - `docs/backlog.md` — the agreed order of work for the player feedback of 2026-11-09 (epic issue #53 and its 17 sub-issues). Read it when asked "what's next"; tick an item there when its issue is done.
 
+## Product and planning big efforts
+
+- `docs/knowledge/product.md` holds who the game is for, its three pillars (theorycrafting, grind
+  and gear, story and lore), the current goal and what is not a priority. Ask the **product**
+  agent whether a request is worth it before designing it; update the file when the owner
+  decides something about goals or priorities.
+- Work too big or too foggy for one session is charted with `/project-kit:wayfinder` (the
+  `project-kit` plugin, declared in `.claude/settings.json`): a map issue labelled
+  `wayfinder:map` with decision tickets as sub-issues (`wayfinder:research|prototype|grilling|task`),
+  one ticket per session. The owner's GitHub Project shows them as a board (it auto-adds issues
+  labelled `wayfinder`). Open questions go to the owner in rounds with `project-kit:grilling`.
+- The labels are created by `.github/workflows/labels.yml`; add new ones there.
+
 ## Git rules
 
 - **NEVER push directly to `main`** — not a commit, not a merge, not a tag — unless the owner explicitly says so for that specific push. Work goes on a branch and reaches `main` through a pull request the owner merges. (Every push to `main` publishes a release.)
@@ -147,6 +160,8 @@ It auto-detects the Mono/.NET Godot binary (checks `$GODOT_BIN`, `godot4`/`godot
 | [ui-ux-expert](.claude/agents/ui-ux-expert.md) | Menus, HUD, flows and feedback/error states: reviews from real captures, redesigns and implements fixes (`docs/design/menus.md`) |
 | [economy-designer](.claude/agents/economy-designer.md) | Gold, orbs, dust, shards, drop rates, vendor/crafting/skill costs, Rift rewards: sink/faucet maps, inflation, pacing, measured with the bot |
 | [systems-designer](.claude/agents/systems-designer.md) | The maths of a mechanic: formulas, scaling curves, stacking, interactions, difficulty curves — against `balance-testing.md`'s targets |
+| [product](.claude/agents/product.md) | Is a request worth it, does it already exist, what can be reused, what is the quick win — judged against `docs/knowledge/product.md`. Read-only; from the project-kit catalog (update with `project-kit:sync-agents`) |
+| [researcher](.claude/agents/researcher.md) | Facts a decision waits on, from the code, the design docs and the web, with sources. Read-only; from the project-kit catalog |
 | [accessibility-specialist](.claude/agents/accessibility-specialist.md) | Remapping, text scaling, colour-blind safety (rarity, telegraphs), motion/flash options; audits captures, implements in Settings |
 
 Project skills besides `create-pr` and `graphify`: `/balance-check`, `/test-flakiness`, `/soak-test`, `/patch-notes`, `/reverse-document`, `/content-audit`. Design-doc templates for economy and difficulty work: `docs/design/templates/`. Several agents/skills are adapted from Claude Code Game Studios (MIT, `.claude/THIRD_PARTY.md`).
