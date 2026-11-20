@@ -150,5 +150,6 @@ The repo is set up to be developed with Claude Code. Specialised agents in [`.cl
 - security
 - UI/UX
 - the devlog
+- product (is a request worth it?) and research, from the [project-kit](https://github.com/AlvaroFalcon/af-ai) plugin, which also plans big efforts as maps of GitHub issues (`wayfinder`)
 
 [`CLAUDE.md`](CLAUDE.md) tells each agent when to use which tool and how to verify work: build, then run the headless tests and judge them by their `RESULT:` line.

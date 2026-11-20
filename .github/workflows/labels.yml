@@ -1,5 +1,6 @@
 # Makes sure the labels the issue forms apply (bug / idea / enhancement) exist,
-# so feedback sent from the game is tagged (docs/design/menus.md -> "Feedback").
+# so feedback sent from the game is tagged (docs/design/menus.md -> "Feedback"),
+# and the labels of the project-kit wayfinder maps (CLAUDE.md -> "Planning big efforts").
 name: Labels
 
 on:
@@ -23,3 +24,9 @@ jobs:
           gh label create bug --color d73a4a --description "Something is broken (player feedback)" --force
           gh label create idea --color fbca04 --description "A player's idea about the game" --force
           gh label create enhancement --color a2eeef --description "Feature request" --force
+          gh label create wayfinder --color 5319e7 --description "Wayfinder map or ticket (shown on the Project board)" --force
+          gh label create "wayfinder:map" --color 5319e7 --description "Wayfinder map: destination, decisions so far, fog" --force
+          gh label create "wayfinder:research" --color c5def5 --description "Wayfinder ticket: facts a decision waits on (AFK)" --force
+          gh label create "wayfinder:prototype" --color c5def5 --description "Wayfinder ticket: a rough thing to react to (with the owner)" --force
+          gh label create "wayfinder:grilling" --color c5def5 --description "Wayfinder ticket: a decision taken with the owner" --force
+          gh label create "wayfinder:task" --color c5def5 --description "Wayfinder ticket: work that unblocks a decision" --force

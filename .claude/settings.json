@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "af-ai": {
+      "source": {
+        "source": "github",
+        "repo": "AlvaroFalcon/af-ai"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "project-kit@af-ai": true
+  }
+}
